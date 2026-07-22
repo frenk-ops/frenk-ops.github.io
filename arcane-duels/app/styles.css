@@ -1930,6 +1930,16 @@ body {
   .cast-card { width: min(190px, 52vw); }
   .cast-card-art { height: 205px; }
   .turn-banner { top: 10%; }
+  /* Ensure duel status label wraps and stays centered on narrow screens */
+  .classic-duel-status .classic-round-line {
+    flex-wrap: wrap !important;
+    white-space: normal !important;
+    gap: 6px;
+    padding: 6px 8px;
+    justify-content: center;
+    text-align: center;
+    max-width: 100%;
+  }
 }
 
 
