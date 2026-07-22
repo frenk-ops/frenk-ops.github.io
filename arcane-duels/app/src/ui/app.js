@@ -1596,7 +1596,115 @@
   $("#animationSpeed").addEventListener("change", event => {
     animationSpeed = Number(event.target.value || 1);
     document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+    // keep menu selector in sync if present
+    try { const m = $("#animationSpeedMenu"); if (m && m.value !== String(event.target.value)) m.value = String(event.target.value); } catch (e) {}
   });
+  // Sync menu speed selector (footer) with main selector and set mobile default
+  const menuSpeed = $("#animationSpeedMenu");
+  if (menuSpeed) {
+    // when menu selector changes, update main selector and trigger change logic
+    menuSpeed.addEventListener("change", e => {
+      const v = e.target.value;
+      const main = $("#animationSpeed");
+      if (main && main.value !== v) main.value = v;
+      animationSpeed = Number(v || 1);
+      document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+    });
+  }
+  // If on narrow screens, default to slow animations
+  try {
+    const isMobile = window.matchMedia && window.matchMedia('(max-width:760px)').matches;
+    if (isMobile) {
+      const slowVal = '2.75';
+      const main = $("#animationSpeed");
+      const menu = $("#animationSpeedMenu");
+      if (main) main.value = slowVal;
+      if (menu) menu.value = slowVal;
+      animationSpeed = Number(slowVal);
+      document.body.dataset.animationSpeed = "slow";
+    }
+  } catch (e) {}
+
+  // Ensure selectors reflect the actual animationSpeed on startup
+  try {
+    const cur = String(animationSpeed);
+    if (menuSpeed && menuSpeed.value !== cur) menuSpeed.value = cur;
+    const mainSel = $("#animationSpeed");
+    if (mainSel && mainSel.value !== cur) mainSel.value = cur;
+    document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+  } catch (e) {}
+
+  // Background music support
+  let bgmAudio = null;
+  let bgmEnabled = false;
+  // subtle default so music is present but not intrusive
+  let bgmVolume = 0.12;
+
+  function startBackgroundMusic() {
+    try {
+      if (!bgmAudio) {
+        bgmAudio = new Audio('assets/audio/bgm.ogg');
+        bgmAudio.loop = true;
+        bgmAudio.volume = bgmVolume;
+        bgmAudio.preload = 'auto';
+      }
+      bgmAudio.play().catch(err => {
+        console.warn('Background music play blocked or failed:', err);
+        try {
+          const cb = document.querySelector('#bgmEnabled');
+          if (cb) cb.checked = false;
+          window.localStorage.setItem('bgmEnabled', '0');
+        } catch (e) {}
+        stopBackgroundMusic();
+        // Inform the user that interaction is required to start audio
+        try { alert('Il browser ha bloccato l\'autoplay della musica. Clicca il checkbox "Musica di sottofondo" per attivarla.'); } catch (e) {}
+      });
+    } catch (e) { bgmAudio = null; }
+  }
+
+  function stopBackgroundMusic() {
+    try {
+      if (bgmAudio) {
+        bgmAudio.pause();
+        bgmAudio.currentTime = 0;
+      }
+    } catch (e) {}
+  }
+
+  // initialize bgm toggle from localStorage and wire the menu checkbox
+  try {
+    const stored = window.localStorage.getItem('bgmEnabled');
+    bgmEnabled = stored === null ? false : stored === '1';
+    const bgmCheckbox = $("#bgmEnabled");
+    const bgmSlider = $("#bgmVolume");
+
+    // load stored volume (0-100) -> convert to 0-1
+    const storedVol = window.localStorage.getItem('bgmVolume');
+    if (storedVol !== null) {
+      const n = Number(storedVol);
+      if (!Number.isNaN(n)) bgmVolume = Math.max(0, Math.min(1, n / 100));
+    }
+
+    if (bgmSlider) {
+      bgmSlider.value = Math.round(bgmVolume * 100);
+      bgmSlider.addEventListener('input', e => {
+        const v = Number(e.target.value || 0);
+        bgmVolume = Math.max(0, Math.min(1, v / 100));
+        window.localStorage.setItem('bgmVolume', String(Math.round(bgmVolume * 100)));
+        try { if (bgmAudio) bgmAudio.volume = bgmVolume; } catch (err) {}
+      });
+    }
+
+    if (bgmCheckbox) {
+      bgmCheckbox.checked = bgmEnabled;
+      bgmCheckbox.addEventListener('change', e => {
+        bgmEnabled = Boolean(e.target.checked);
+        window.localStorage.setItem('bgmEnabled', bgmEnabled ? '1' : '0');
+        if (bgmEnabled) startBackgroundMusic(); else stopBackgroundMusic();
+      });
+    }
+    if (bgmEnabled) startBackgroundMusic();
+  } catch (e) {}
   $("#collectionSearch")?.addEventListener("input", event => { collectionState.search = event.target.value; renderCollectionPanels(); const other = $("#collectionPageSearch"); if (other && other.value !== event.target.value) other.value = event.target.value; });
   $("#soundEnabled").addEventListener("change", event => { soundEnabled = event.target.checked; if (soundEnabled) ensureAudio(); });
 
