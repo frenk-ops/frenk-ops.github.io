@@ -148,6 +148,22 @@
             <nav id="duelSessionActions" class="duel-session-actions hidden" aria-label="Gestione partita">
               <button id="restartSameSetsBtn" type="button">Riavvia partita con stessi set</button>
               <button id="startNewDrawBtn" type="button">Avvia nuova partita</button>
+              <div class="duel-session-control">
+                <label for="animationSpeedMenu">Velocità animazioni</label>
+                <select id="animationSpeedMenu">
+                  <option value="0.55">Fastest</option>
+                  <option value="0.8">Fast</option>
+                  <option value="1">Normal</option>
+                  <option value="2.75">Slow</option>
+                </select>
+              </div>
+              <div class="duel-session-control">
+                <label for="bgmEnabled"><input id="bgmEnabled" type="checkbox"> Musica di sottofondo</label>
+              </div>
+              <div class="duel-session-control">
+                <label for="bgmVolume">Volume</label>
+                <input id="bgmVolume" type="range" min="0" max="100" value="12">
+              </div>
             </nav>
 
             <footer class="classic-info-bar">
