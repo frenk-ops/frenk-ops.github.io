@@ -10,6 +10,7 @@
   let engine = null;
   let activeSchool = "fire";
   let enemySchool = "fire";
+  let enemyRevealedModalOpen = false;
   let animationSpeed = 1;
   let cardArtStyle = "original";
   let soundEnabled = true;
@@ -37,6 +38,32 @@
     return String(value ?? "").replace(/[&<>'"]/g, char => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
     }[char]));
+  }
+
+  function bindTapAction(element, handler) {
+    if (!element) return;
+    element.type = "button";
+    let suppressNextClick = false;
+    const run = event => {
+      const isTouchInput = event.type === "touchstart" || (event.type === "pointerdown" && event.pointerType === "touch");
+      if (isTouchInput) {
+        if (event.cancelable) event.preventDefault();
+        suppressNextClick = true;
+        handler(event);
+        return;
+      }
+      if (event.type === "click" && suppressNextClick) {
+        suppressNextClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      suppressNextClick = false;
+      handler(event);
+    };
+    element.addEventListener("click", run);
+    element.addEventListener("touchstart", run, { passive: false });
+    element.addEventListener("pointerdown", run);
   }
 
   function school(id) {
@@ -432,6 +459,42 @@
     });
   }
 
+  function isMobileEnemyBookLayout() {
+    return window.matchMedia("(max-width: 820px)").matches;
+  }
+
+  function openEnemyRevealedModal() {
+    const modal = $("#enemyRevealedModal");
+    if (!modal) return;
+    enemyRevealedModalOpen = true;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeEnemyRevealedModal() {
+    const modal = $("#enemyRevealedModal");
+    if (!modal) return;
+    enemyRevealedModalOpen = false;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function toggleEnemyRevealedModal(forceOpen = null) {
+    if (forceOpen === true) {
+      openEnemyRevealedModal();
+      return;
+    }
+    if (forceOpen === false) {
+      closeEnemyRevealedModal();
+      return;
+    }
+    if (enemyRevealedModalOpen) {
+      closeEnemyRevealedModal();
+    } else {
+      openEnemyRevealedModal();
+    }
+  }
+
   function renderSchoolButtons() {
     const playerRoot = $("#schoolFilters");
     const enemyRoot = $("#enemySchoolMenu");
@@ -441,7 +504,7 @@
         if (!button) {
           button = document.createElement("button");
           button.dataset.schoolId = item.id;
-          button.addEventListener("click", () => {
+          bindTapAction(button, () => {
             const selectedSchool = button.dataset.schoolId;
             if (side === "player") {
               if (activeSchool === selectedSchool) return;
@@ -449,6 +512,13 @@
               renderSchoolButtons();
               renderHand();
             } else {
+              if (isMobileEnemyBookLayout()) {
+                enemySchool = selectedSchool;
+                renderSchoolButtons();
+                renderEnemyRevealed();
+                toggleEnemyRevealedModal(true);
+                return;
+              }
               if (enemySchool === selectedSchool) return;
               enemySchool = selectedSchool;
               renderSchoolButtons();
@@ -854,15 +924,20 @@
     $("#handSummary").textContent = `${cards.length} carte · ${school(activeSchool).name}`;
     const pending = engine.state.pendingCardId ? engine.getCard("player", engine.state.pendingCardId) : null;
     $("#selectedCardHint").textContent = pending
-      ? `${pending.name} selezionata: ${pending.type === "creature" ? "scegli uno slot libero" : "lancio in corso"}.`
+      ? `${pending.name} ${pending.type === "spell" && !supportsHoverPreview ? "preparata" : "selezionata"}: ${pending.type === "creature" ? "scegli uno slot libero" : "tocca di nuovo per lanciarla"}.`
       : "";
   }
 
   function renderEnemyRevealed() {
     const root = $("#enemyRevealedCards");
+    const modalRoot = $("#enemyRevealedModalContent");
+    const summary = $("#enemySchoolSummary");
+    const modalSummary = $("#enemyRevealedModalSummary");
     const hand = engine.state.enemy.hand.filter(card => card.school === enemySchool);
     const revealed = hand.filter(card => engine.state.enemy.revealedCards.includes(card.id));
-    $("#enemySchoolSummary").textContent = `${school(enemySchool).name}: ${hand.length} carte totali · ${revealed.length} rivelate`;
+    const summaryText = `${school(enemySchool).name}: ${hand.length} carte totali · ${revealed.length} rivelate`;
+    if (summary) summary.textContent = summaryText;
+    if (modalSummary) modalSummary.textContent = summaryText;
     const fragment = document.createDocumentFragment();
     revealed.forEach(card => {
       const chip = document.createElement("button");
@@ -891,7 +966,13 @@
       hidden.setAttribute("aria-label", "Carta avversaria nascosta");
       fragment.appendChild(hidden);
     }
-    root.replaceChildren(fragment);
+    if (isMobileEnemyBookLayout()) {
+      if (modalRoot) modalRoot.replaceChildren(fragment);
+      if (root) root.replaceChildren("");
+      return;
+    }
+    if (root) root.replaceChildren(fragment);
+    closeEnemyRevealedModal();
   }
 
   function renderGame() {
@@ -927,11 +1008,59 @@
     renderCollectionPanels();
   }
 
+  const supportsHoverPreview = (() => {
+    if (!window.matchMedia) return true;
+    const hasHover = window.matchMedia("(hover: hover)").matches;
+    const hasFinePointer = window.matchMedia("(pointer: fine)").matches;
+    const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const hasTouch = window.matchMedia("(hover: none)").matches
+      || navigator.maxTouchPoints > 0
+      || "ontouchstart" in window;
+    return hasHover && hasFinePointer && !hasTouch && !hasCoarsePointer;
+  })();
+
+  $("#enemyRevealedModalClose")?.addEventListener("click", () => closeEnemyRevealedModal());
+  $("#enemyRevealedQuickToggle")?.addEventListener("click", () => toggleEnemyRevealedModal());
+  $("#enemyRevealedModal")?.addEventListener("click", event => {
+    if (event.target === event.currentTarget) closeEnemyRevealedModal();
+  });
+  window.addEventListener("resize", () => {
+    if (!isMobileEnemyBookLayout()) {
+      closeEnemyRevealedModal();
+    }
+    renderEnemyRevealed();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && enemyRevealedModalOpen) closeEnemyRevealedModal();
+  });
+
   async function onPlayerCard(cardId) {
     inspectedCardId = cardId;
     inspectedCardSide = "player";
     renderCollectionPanels();
     if (!engine || busy) return;
+
+    const isSpellConfirmTap = !supportsHoverPreview
+      && engine.state.phase === A.PHASES.PLAYER_TARGET
+      && engine.state.pendingCardId === cardId;
+
+    if (isSpellConfirmTap) {
+      const healthBefore = captureHealthState();
+      const play = engine.playSelected(null);
+      if (play.ok) {
+        spellSound();
+        renderGame();
+        showHealingChanges(healthBefore);
+        await animateCardPlay(play, "player", null);
+        await sleep(120);
+        await resolveAttackFlow("player");
+      } else {
+        setMessage(play.reason);
+        renderGame();
+      }
+      return;
+    }
+
     if (engine.state.phase === A.PHASES.PLAYER_TARGET) {
       const sameCard = engine.state.pendingCardId === cardId;
       engine.cancelSelection();
@@ -941,6 +1070,7 @@
         return;
       }
     }
+
     if (engine.state.phase !== A.PHASES.PLAYER_SELECT) return;
     const result = engine.selectCard(cardId);
     if (!result.ok) {
@@ -949,8 +1079,14 @@
       return;
     }
     renderGame();
-    setMessage(result.requiresSlot ? `Hai selezionato ${result.card.name}. Scegli uno slot.` : `${result.card.name} viene lanciata.`);
-    if (!result.requiresSlot) {
+
+    if (result.requiresSlot) {
+      setMessage(`Hai selezionato ${result.card.name}. Scegli uno slot.`);
+      return;
+    }
+
+    if (supportsHoverPreview) {
+      setMessage(`${result.card.name} viene lanciata.`);
       const healthBefore = captureHealthState();
       const play = engine.playSelected(null);
       if (play.ok) {
@@ -961,6 +1097,8 @@
         await sleep(120);
         await resolveAttackFlow("player");
       }
+    } else {
+      setMessage(`${result.card.name} ${result.card.type === "spell" ? "preparata" : "selezionata"}. Tocca di nuovo per lanciarla.`);
     }
   }
 
