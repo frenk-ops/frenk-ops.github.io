@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Provenienza e integrita degli asset originali usati dalla UI del duello",
+  "assets": [
+    {
+      "path": "ui/portraits/cooler.png",
+      "sha256": "bd6750713ed18485a4a28e32301d0032e08886335402b142cac1ed0d03b33134",
+      "source": "converted/faces-png/Face14.png",
+      "status": "lossless_conversion_of_original_bmp"
+    },
+    {
+      "path": "ui/portraits/alice.png",
+      "sha256": "665d3060eec0bdf53abc41575d8f0bd141e47b650e88cfb7464e3fa98e1a6835",
+      "source": "converted/faces-png/face31.png",
+      "status": "lossless_conversion_of_original_bmp"
+    },
+    {
+      "path": "audio/original/click.ogg",
+      "sha256": "7c6b082943952b1091b25f2181dc07a0c68491743d6ba01e7ba0939cbaf58ad8",
+      "source": "Astral/Audio/click.ogg",
+      "status": "original"
+    },
+    {
+      "path": "audio/original/looser.ogg",
+      "sha256": "44e14e9f96e2913410a3926a194745e00477c39903553d8af22cacdae8063150",
+      "source": "Astral/Audio/looser.ogg",
+      "status": "original"
+    },
+    {
+      "path": "audio/original/move.ogg",
+      "sha256": "373d38e2aa07804d3ecdb6c602ce4bee58b800b9a4a489f5f048f59f5b72b99f",
+      "source": "Astral/Audio/move.ogg",
+      "status": "original"
+    },
+    {
+      "path": "audio/original/movecard.ogg",
+      "sha256": "da03189899d41659ec8e1c7754b46856d819639fe42a825cc6f65c7e13dea807",
+      "source": "Astral/Audio/movecard.ogg",
+      "status": "original"
+    },
+    {
+      "path": "audio/original/spelldamaged.ogg",
+      "sha256": "e5765ece6480465a96745ee654ab4230e3dd53460887d76e3a8d47aa695aabb8",
+      "source": "Astral/Audio/spelldamaged.ogg",
+      "status": "original"
+    },
+    {
+      "path": "audio/original/summon2.ogg",
+      "sha256": "d8eb9ad9aa36c21ddbd80eb13d80b83b450ecfa3bfe6752d491ecaa4bf75148c",
+      "source": "Astral/Audio/summon2.ogg",
+      "status": "original"
+    },
+    {
+      "path": "audio/original/winner.ogg",
+      "sha256": "6066c86c6bb3310fadd6b0436b363835e536b3a233f221d352f43bc94b6376f8",
+      "source": "Astral/Audio/winner.ogg",
+      "status": "original"
+    }
+  ]
+}
