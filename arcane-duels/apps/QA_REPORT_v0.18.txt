@@ -1,0 +1,35 @@
+ARCANE DUELS v0.18 — QA REPORT
+================================
+
+SCOPE
+- Six recovered specializations
+- Three direct replacement league loadouts
+- Initial power modifiers and Knowledge cards
+- Lord growth modifiers
+- Starting creatures
+- Runtime passive abilities
+- AI state cloning with abilities preserved
+
+AUTOMATED TESTS
+- npm test: 60/60 PASS
+- Previous engine, spellbook, AI and 65-card regression tests: PASS
+- New specialization and ability tests: PASS
+
+SPECIALIZATION SMOKE TEST
+- 6 specializations × 3 league stages: 18/18 PASS
+- Legal recovered-AI move in every case: PASS
+- Starting creatures: PASS
+- Lord growth: PASS
+- Wizard Advanced power total 25: PASS
+- Wizard Major power total 30 and 70 life: PASS
+- Wizard tournament spellbook: 28 final cards (24 base + 4 Elementals): PASS
+
+STATIC VALIDATION
+- JavaScript syntax checks: PASS
+- HTML references and required controls: PASS
+- index.html / START_HERE_v0.18.html synchronized: PASS
+
+KNOWN LIMITATIONS
+- Exact machine-code site for Life Penalty and Life Knowledge remains to be isolated.
+- Simultaneous death/trigger ordering still requires the next reverse-engineering pass.
+- The complete original tournament scoring and opponent sequence are not yet recovered.

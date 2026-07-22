@@ -1,0 +1,66 @@
+
+> arcane-duels-recovered-specializations@0.18.0 test
+> node tests/run-tests.js
+
+PASS  Generatore deterministico con seed
+PASS  Pool esclusivi
+PASS  Almeno una carta iniziale per scuola quando disponibile
+PASS  Selezione carta porta alla fase bersaglio
+PASS  Una sola carta per turno
+PASS  Il difensore non contrattacca
+PASS  Il danno diretto aggiorna la vita dell'eroe
+PASS  Fine attacco giocatore avvia il pensiero IA
+PASS  Il round aumenta dopo il turno IA
+PASS  L'IA produce una mossa legale a ogni difficoltà
+PASS  Progressione torneo e ricompensa passiva
+PASS  Ciclo completo giocatore → IA → nuovo round senza stalli
+PASS  Le mani rispettano la quantità configurata
+PASS  Completare un torneo vincente assegna un trofeo
+PASS  Schema carte valido
+PASS  Il set Astral contiene 65 carte e 65 record IA
+PASS  Curva vita originale tradotta senza approssimazioni
+PASS  Fattori casuali delle cinque IA rispettano gli intervalli originali
+PASS  Le leghe selezionano lo stadio abilità senza sovrascrivere i poteri
+PASS  L'IA recuperata produce una mossa legale a tutti i livelli
+PASS  Archmage è deterministico a parità di stato e seed
+PASS  Archmage simula tre fasi di attacco, le altre IA due
+PASS  Il libro Astral umano contiene 20 carte permanenti e un livello 12
+PASS  Le prime fasce garantiscono basso, medio e alto in ogni scuola
+PASS  La difficoltà modifica il numero di carte dell'IA
+PASS  Knowledge aggiunge elementali e livello 13 senza estrarli casualmente
+PASS  Le carte Terra sono collegate alla scuola interna Natura
+PASS  Il motore applica i poteri iniziali recuperati
+PASS  Le carte del libro restano disponibili dopo il lancio
+PASS  Le formule Astral usano il potere prima di sottrarre il costo
+PASS  Fire Ritual produce il +2 netto originale
+PASS  Dragon e Faerie modificano insieme il danno delle magie
+PASS  Warlord potenzia anche l'attacco dinamico dell'elementale
+PASS  Ice Guard e Elf Armorer riducono in sequenza il danno all'eroe
+PASS  Le creature multi-bersaglio colpiscono eroe e tutte le creature
+PASS  Phoenix rinasce a vita piena con almeno 10 Fuoco
+PASS  Death Keeper e Wall of Souls reagiscono alla morte di una creatura
+PASS  I modificatori permanenti scompaiono quando la creatura muore
+PASS  A fine attacco cresce solo il potere del prossimo giocatore
+PASS  Drain Life cura in base al danno realmente inflitto
+PASS  Tutte le 65 carte attraversano il dispatcher senza errori
+PASS  Il ruleset Astral non applica sconti alla scuola del talento
+PASS  Master Healer cura prima del proprio attacco
+PASS  Sea Sprite danneggia il proprietario quando è indietro in Acqua
+PASS  Vampire recupera metà del danno effettivo inflitto
+PASS  Stone Rain rispetta la soglia di 12 Terra
+PASS  Wyvern e Tornado scelgono la creatura con più vita attuale
+PASS  Drain Souls conta tutte le creature e consente la rinascita di Phoenix
+PASS  Mind Master e Astral Guard modificano tutte le crescite
+PASS  Più Ice Guard dimezzano ripetutamente il danno
+PASS  I gruppi di specializzazione sostituiscono il loadout tra le tre leghe
+PASS  Il GameEngine assegna automaticamente il loadout della lega
+PASS  I Lord aumentano a 2 la crescita della propria scuola
+PASS  Life Knowledge e Life Penalty modificano vita iniziale e massimo
+PASS  Skeleton Master e Faery Master schierano creature senza effetti di evocazione
+PASS  Astral Nets infligge 3 danni alla creatura appena evocata
+PASS  Healing Aura cura dopo la crescita dei poteri del turno
+PASS  Knowledge aggiunge le carte extra al libro generato
+PASS  Gli ID delle abilità runtime vengono convertiti nei passivi corretti
+PASS  Battle Lord e Stone Skin funzionano anche tramite ID abilità
+
+60/60 test superati.

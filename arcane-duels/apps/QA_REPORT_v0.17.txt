@@ -1,0 +1,28 @@
+ARCANE DUELS v0.17 — QA REPORT
+
+Esito automatico: 50/50 test superati.
+
+Copertura principale:
+- regressione motore classico;
+- 65 carte e metadati;
+- generatore del libro;
+- cinque IA;
+- effetto prima del costo;
+- costo uguale al livello;
+- modificatori di danno e difesa;
+- attacchi dinamici e multi-target;
+- ricorrenze, crescita e morti;
+- dispatcher di tutte le 65 carte.
+
+Smoke test IA contro IA:
+- Novice: concluso;
+- Advanced: concluso;
+- Expert: concluso;
+- Master: concluso;
+- Archmage: concluso;
+- nessuno stallo entro 30 round.
+
+Limiti dichiarati:
+- nessun trace dinamico dell'eseguibile Windows in questo ambiente;
+- casi limite di morte simultanea ancora da confrontare col binario;
+- abilità torneo non ancora integrate completamente.

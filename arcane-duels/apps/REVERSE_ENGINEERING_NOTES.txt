@@ -1,0 +1,73 @@
+Astral Tournament — Reverse Engineering Notes v0.17
+
+IA
+BestMove                 0x44C3C8
+EvaluateSide             0x44BB14
+EvaluateDelta            0x44C398
+ReadDifficulty           0x4529C0
+EvaluateAttack           0x447A4C
+
+ESTRAZIONE / PREPARAZIONE DUELLO
+PrepareDuel              0x446A9C
+Random                   0x4031A8
+Healing mask             0x4475F0
+Damage mask              0x4475F8
+
+STRUTTURA IA
+Snapshot duello          0x35 DWORD = 212 byte
+Matrice candidati        0x514 byte
+Forma matrice            5 scuole x 13 carte x 5 corsie x int32
+Passaggio turno          coordinate 0,0,0
+
+DIFFICOLTA
+1 Novice Mage            random(8)+2, 2 fasi attacco, 15 carte
+2 Advanced Mage          random(4)+3, 2 fasi attacco, 15 carte
+3 Expert Mage            random(4)+15, 2 fasi attacco, 17 carte
+4 Master Mage            random(3)+50, 2 fasi attacco, 20 carte
+5 Archmage               nessun rumore, 3 fasi attacco, 20 carte
+
+LIBRO
+Giocatore                20 carte
+Torneo normale           20 carte
+Wizard torneo            24 carte
+Prime 15                 5 scuole x fasce 1-4 / 5-8 / 9-12
+Livello 13               solo Knowledge
+Carta giocata            resta nel libro
+Libri avversari          indipendenti
+
+POTERI INIZIALI
+Primo mago               somma base 20
+Secondo mago             somma base 19
+Modificatori             Craft, Mystery, Penalty, Meditation, Ancient Knowledge
+
+IMPLEMENTAZIONE
+src/core/astral-spellbook-re.js
+src/core/astral-ai-re.js
+src/data/astral-ai-card-metadata.js
+src/core/original-rules.js
+
+STATO
+Libro e poteri iniziali integrati.
+Valutatore IA integrato.
+Restano effetti carta specifici, torneo, progressione abilità e asset grafici.
+
+
+v0.17 CARD ENGINE
+- Dispatcher carte: 0x448878
+- Damage: 0x447AE0
+- Mass damage: 0x448334
+- Attack phase: 0x44A698
+- Death cleanup: 0x447DF4
+- Strongest creature: 0x44B170
+- Effetti risolti prima del costo; costo sempre uguale al livello.
+
+v0.18 SPECIALIZATIONS
+- Specialization table: 0x478330
+- Tournament loadout copy: 0x43AB90–0x43ABF9
+- Fighter ability slots: +0x2C, 8 bytes
+- hasAbility: 0x44B3CC
+- Three groups are direct replacement loadouts by league.
+- Initial modifiers order: Craft, Mystery, elemental Penalty, Meditation, Ancient Knowledge.
+- Lords set school growth from 1 to 2.
+- Healing Aura executes after power growth.
+- Astral Nets executes immediately after summon placement.

@@ -1,0 +1,317 @@
+{
+  "ok": true,
+  "cases": 18,
+  "wizardTournamentCards": 28,
+  "rows": [
+    {
+      "stage": "starting",
+      "specialization": "necromancer",
+      "abilities": "15,34",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 21,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_death_01"
+    },
+    {
+      "stage": "starting",
+      "specialization": "battlemage",
+      "abilities": "11,30",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 21,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_fire_02"
+    },
+    {
+      "stage": "starting",
+      "specialization": "druid",
+      "abilities": "14,33",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 21,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_air_04"
+    },
+    {
+      "stage": "starting",
+      "specialization": "thundermage",
+      "abilities": "13,32",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 21,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_water_04"
+    },
+    {
+      "stage": "starting",
+      "specialization": "stormmage",
+      "abilities": "12,31",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 21,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_air_03"
+    },
+    {
+      "stage": "starting",
+      "specialization": "wizard",
+      "abilities": "29",
+      "cards": 24,
+      "hp": 50,
+      "powerTotal": 20,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_air_01"
+    },
+    {
+      "stage": "advanced",
+      "specialization": "necromancer",
+      "abilities": "5,22,34",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 22,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_fire_02"
+    },
+    {
+      "stage": "advanced",
+      "specialization": "battlemage",
+      "abilities": "1,23,30",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 22,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_earth_02"
+    },
+    {
+      "stage": "advanced",
+      "specialization": "druid",
+      "abilities": "4,26,33",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 22,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_air_02"
+    },
+    {
+      "stage": "advanced",
+      "specialization": "thundermage",
+      "abilities": "3,27,32",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 22,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [
+        "astral_air_01"
+      ],
+      "move": "astral_earth_05"
+    },
+    {
+      "stage": "advanced",
+      "specialization": "stormmage",
+      "abilities": "2,28,31",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 22,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_air_03"
+    },
+    {
+      "stage": "advanced",
+      "specialization": "wizard",
+      "abilities": "29,35",
+      "cards": 24,
+      "hp": 50,
+      "powerTotal": 25,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_water_04"
+    },
+    {
+      "stage": "major",
+      "specialization": "necromancer",
+      "abilities": "10,5,22,34,1",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 24,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 2
+      },
+      "startingUnits": [],
+      "move": "astral_air_02"
+    },
+    {
+      "stage": "major",
+      "specialization": "battlemage",
+      "abilities": "6,1,23,30",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 22,
+      "growth": {
+        "fire": 2,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_earth_02"
+    },
+    {
+      "stage": "major",
+      "specialization": "druid",
+      "abilities": "9,4,26,33",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 22,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 2,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_death_04"
+    },
+    {
+      "stage": "major",
+      "specialization": "thundermage",
+      "abilities": "8,3,4,27,32",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 24,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 2,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [
+        "astral_air_01"
+      ],
+      "move": "astral_air_04"
+    },
+    {
+      "stage": "major",
+      "specialization": "stormmage",
+      "abilities": "7,2,28,31,17",
+      "cards": 21,
+      "hp": 50,
+      "powerTotal": 21,
+      "growth": {
+        "fire": 1,
+        "water": 2,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_earth_05"
+    },
+    {
+      "stage": "major",
+      "specialization": "wizard",
+      "abilities": "29,36,37",
+      "cards": 24,
+      "hp": 70,
+      "powerTotal": 30,
+      "growth": {
+        "fire": 1,
+        "water": 1,
+        "air": 1,
+        "nature": 1,
+        "death": 1
+      },
+      "startingUnits": [],
+      "move": "astral_air_03"
+    }
+  ]
+}

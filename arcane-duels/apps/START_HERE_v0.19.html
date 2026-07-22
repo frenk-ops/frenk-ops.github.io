@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>Arcane Duels — Recovered Specializations v0.19</title>
+  <link rel="stylesheet" href="styles.css?v=0.18.0">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">RECOVERED SPECIALIZATIONS v0.19</span>
+        <h1>Arcane Duels</h1>
+      </div>
+      <button id="restartBtn" class="ghost">Nuovo duello</button>
+    </header>
+
+    <nav class="tabs" aria-label="Sezioni">
+      <button class="tab active" data-view="game">Duello</button>
+      <button class="tab" data-view="tournament">Torneo</button>
+      <button class="tab" data-view="profile">Profilo</button>
+      <button class="tab" data-view="editor">Editor</button>
+      <button class="tab" data-view="rules">Ruleset</button>
+      <button class="tab" data-view="diagnostics">Diagnostica</button>
+    </nav>
+
+    <main>
+      <section id="gameView" class="view active">
+        <section id="setupPanel" class="panel talent-panel">
+          <h2>Configura il duello</h2>
+          <p>La v0.19 integra anche i carichi di abilità originali delle sei specializzazioni, distinti per lega.</p>
+          <div class="duel-setup foundation-grid">
+            <label>Set di carte
+              <select id="cardSetSelect">
+                <option value="astral-original" selected>Astral Tournament — 65 carte originali</option>
+                <option value="classic">Classico provvisorio</option>
+                <option value="arcane">Arcane Duels sperimentale</option>
+              </select>
+            </label>
+            <label>Difficoltà IA
+              <select id="difficultySelect"></select>
+            </label>
+            <label>Seed partita
+              <input id="seedInput" type="text" value="specializations-001">
+            </label>
+            <label id="astralLeagueLabel">Lega / stadio abilità
+              <select id="astralLeagueSelect">
+                <option value="starting">Starting League</option>
+                <option value="advanced">Advanced League</option>
+                <option value="major">Major League</option>
+              </select>
+            </label>
+            <label id="enemySpecializationLabel">Specializzazione avversaria
+              <select id="enemySpecializationSelect"></select>
+            </label>
+          </div>
+          <h3 id="talentChoiceHeading">Scegli la specializzazione</h3>
+          <div id="talentChoices" class="talent-grid"></div>
+        </section>
+
+        <section id="battlePanel" class="battle hidden">
+          <section class="battle-status-bar">
+            <div class="hero-hp enemy-hp-box"><span>Avversario</span><strong id="enemyHpBattle">45 ♥</strong></div>
+            <div class="turn-indicator"><strong id="phaseLabel">Selezione</strong><small id="roundLabel">Round 1</small></div>
+            <div class="hero-hp player-hp-box"><span>Tu</span><strong id="playerHpBattle">45 ♥</strong></div>
+          </section>
+
+          <section class="school-overview">
+            <div class="school-panel enemy-schools-panel">
+              <div class="school-panel-heading"><h3>Poteri avversario</h3><span id="enemyTalentLabel"></span></div>
+              <div id="enemySchoolMenu" class="school-status-grid"></div>
+              <div id="enemySchoolSummary" class="enemy-school-summary"></div>
+              <div id="enemyRevealedCards" class="revealed-cards"></div>
+            </div>
+            <div class="animation-control panel compact-controls">
+              <label>Velocità
+                <select id="animationSpeed">
+                  <option value="0.45">Molto veloce</option>
+                  <option value="0.7">Veloce</option>
+                  <option value="1" selected>Normale</option>
+                  <option value="1.5">Lenta</option>
+                </select>
+              </label>
+              <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> Suoni</label>
+              <span id="seedBadge" class="seed-badge"></span>
+            </div>
+          </section>
+
+          <section class="lane-block"><h3>Campo avversario</h3><div id="enemyBoard" class="board"></div></section>
+          <div class="message-row"><div id="message" class="message" aria-live="polite"></div><button id="endTurnBtn" class="primary">Passa</button></div>
+          <details class="combat-log-panel"><summary>Registro del duello</summary><div id="combatLog" class="combat-log"></div></details>
+          <section class="lane-block"><h3>Il tuo campo</h3><div id="playerBoard" class="board"></div></section>
+
+          <section class="hand-section">
+            <div class="hand-heading"><h3>Le tue carte</h3><span id="handSummary"></span></div>
+            <div class="school-panel-heading"><h3>I tuoi poteri</h3><span id="playerTalentLabel"></span></div>
+            <div id="schoolFilters" class="school-status-grid"></div>
+            <div id="selectedCardHint" class="selected-card-hint">Seleziona una carta, poi scegli lo slot. Una sola carta per turno.</div>
+            <div id="playerHand" class="hand"></div>
+          </section>
+        </section>
+      </section>
+
+      <section id="tournamentView" class="view">
+        <section class="panel">
+          <div class="section-heading"><div><h2>Torneo</h2><p>Struttura funzionante e salvata nel browser. Soglie, ranghi e passive sono provvisori.</p></div><button id="newTournamentBtn" class="primary">Nuovo torneo</button></div>
+          <div id="tournamentContent"></div>
+        </section>
+      </section>
+
+      <section id="profileView" class="view">
+        <section class="panel"><div class="section-heading"><div><h2>Profilo e trofei</h2><p>Progressione persistente nel browser.</p></div><button id="resetProfileBtn" class="ghost danger">Azzera profilo</button></div><div id="profileContent"></div></section>
+      </section>
+
+      <section id="editorView" class="view">
+        <div class="editor-layout">
+          <section class="panel editor-controls">
+            <h2>Editor dati carta</h2>
+            <label>Set <select id="editorSetSelect"><option value="astral-original">Astral originale</option><option value="classic">Classico</option><option value="arcane">Arcane</option></select></label>
+            <label>Carta <select id="editorCardSelect"></select></label>
+            <label>Nome <input id="editName" type="text"></label>
+            <div class="two-col"><label>Scuola <select id="editSchool"></select></label><label>Livello <input id="editLevel" type="number" min="1" max="30"></label></div>
+            <div class="two-col"><label>Tipo <select id="editType"><option value="creature">Creatura</option><option value="spell">Magia</option></select></label><label>Parola chiave <input id="editKeyword" type="text"></label></div>
+            <div class="two-col"><label>Attacco <input id="editAttack" type="number" min="0" max="99"></label><label>Vita <input id="editHealth" type="number" min="0" max="99"></label></div>
+            <label>Testo <textarea id="editText" rows="4"></textarea></label>
+            <h3>Effetto principale</h3>
+            <div class="two-col">
+              <label>Attivazione
+                <select id="editEffectTrigger"><option value="onPlay">Quando giocata</option><option value="onSummon">All'evocazione</option><option value="onDeath">Alla morte</option><option value="none">Nessun effetto</option></select>
+              </label>
+              <label>Azione
+                <select id="editEffectAction">
+                  <option value="none">Nessuna</option>
+                  <option value="damage_enemy_hero">Danno all'eroe nemico</option>
+                  <option value="heal_self_hero">Cura il proprio eroe</option>
+                  <option value="damage_all_enemy_creatures">Danno a tutte le creature</option>
+                  <option value="reduce_strongest_enemy_attack">Riduce attacco nemico</option>
+                  <option value="buff_strongest_ally_health">Aumenta vita alleata</option>
+                  <option value="heal_all_allies">Cura tutte le creature alleate</option>
+                  <option value="mana_gain">Aumenta il potere</option>
+                </select>
+              </label>
+            </div>
+            <label>Valore effetto <input id="editEffectAmount" type="number" min="0" max="99" value="0"></label>
+            <div class="editor-actions"><button id="saveCardBtn" class="primary">Salva nella sessione</button><button id="exportCardsBtn" class="ghost">Esporta JSON</button></div>
+          </section>
+          <section class="preview-column"><h2>Anteprima</h2><div id="cardPreview" class="large-card"></div><div id="schemaValidation" class="diagnostic-box"></div></section>
+        </div>
+      </section>
+
+      <section id="rulesView" class="view">
+        <section class="panel rules"><h2>Astral Ruleset — ricostruzione tecnica</h2><div id="rulesetContent"></div></section>
+      </section>
+
+      <section id="diagnosticsView" class="view">
+        <section class="panel">
+          <div class="section-heading"><div><h2>Diagnostica</h2><p>Test del motore, generatore originale, IA recuperata e inventario dei file legacy.</p></div><button id="runTestsBtn" class="primary">Esegui test</button></div>
+          <div id="testResults" class="diagnostic-box">Test non ancora eseguiti.</div>
+          <hr>
+          <h3>Analizzatore cartella legacy</h3>
+          <p>Seleziona la vecchia cartella di installazione. Il browser mostra solo un inventario locale: nessun file viene caricato online.</p>
+          <input id="legacyFolderInput" type="file" webkitdirectory multiple>
+          <div id="legacyScanResults" class="diagnostic-box">Nessuna cartella selezionata.</div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <template id="smallCardTemplate">
+    <button class="game-card" type="button">
+      <div class="card-header"><span class="cost"></span><span class="school"></span></div>
+      <div class="art"></div><strong class="name"></strong><p class="text"></p>
+      <div class="bottom-row"><span class="keyword"></span><span class="stats"></span></div>
+    </button>
+  </template>
+
+  <div id="cardPreviewOverlay" class="card-preview-overlay" aria-hidden="true">
+    <div class="card-preview-modal"><button id="closeCardPreview" class="close-preview">×</button><div id="cardPreviewContent"></div></div>
+  </div>
+
+  <script src="src/core/constants.js?v=0.18.0"></script>
+  <script src="src/core/rng.js?v=0.18.0"></script>
+  <script src="src/data/cards.js?v=0.18.0"></script>
+  <script src="src/data/original-cards.js?v=0.18.0"></script>
+  <script src="src/core/card-schema.js?v=0.18.0"></script>
+  <script src="src/data/astral-ai-card-metadata.js?v=0.18.0"></script>
+  <script src="src/core/original-rules.js?v=0.18.0"></script>
+  <script src="src/core/generator.js?v=0.18.0"></script>
+  <script src="src/core/astral-abilities-re.js?v=0.18.0"></script>
+  <script src="src/core/astral-spellbook-re.js?v=0.18.0"></script>
+  <script src="src/core/passives.js?v=0.18.0"></script>
+  <script src="src/core/effects.js?v=0.18.0"></script>
+  <script src="src/core/astral-card-effects-re.js?v=0.18.0"></script>
+  <script src="src/core/game-engine.js?v=0.18.0"></script>
+  <script src="src/core/ai.js?v=0.18.0"></script>
+  <script src="src/core/astral-ai-re.js?v=0.18.0"></script>
+  <script src="src/core/tournament.js?v=0.18.0"></script>
+  <script src="tests/test-suite.js?v=0.18.0"></script>
+  <script src="src/ui/app.js?v=0.18.0"></script>
+</body>
+</html>
