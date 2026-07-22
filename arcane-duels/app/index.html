@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.11">
+  <link rel="stylesheet" href="styles.css?v=3.0.13">
 </head>
 <body>
   <div class="shell">
@@ -124,8 +124,21 @@
 
               <section class="classic-hand-zone classic-hand-enemy">
                 <div id="enemyRevealedCards" class="revealed-cards classic-enemy-book"></div>
-                <div id="enemySchoolSummary" class="enemy-school-summary"></div>
+                <div class="enemy-school-summary-row">
+                  <div id="enemySchoolSummary" class="enemy-school-summary"></div>
+                  <button id="enemyRevealedQuickToggle" class="enemy-revealed-quick-toggle" type="button">Vedi carte</button>
+                </div>
               </section>
+
+              <div id="enemyRevealedModal" class="enemy-revealed-modal hidden" aria-hidden="true">
+                <div class="enemy-revealed-modal-card" role="dialog" aria-modal="true" aria-label="Carte rivelate dell'avversario">
+                  <div class="enemy-revealed-modal-header">
+                    <strong id="enemyRevealedModalSummary">Carte rivelate</strong>
+                    <button id="enemyRevealedModalClose" class="classic-small-button" type="button" aria-label="Chiudi">✕</button>
+                  </div>
+                  <div id="enemyRevealedModalContent" class="enemy-revealed-modal-content"></div>
+                </div>
+              </div>
 
               <aside class="classic-power-column classic-power-right">
                 <div id="enemySchoolMenu" class="school-status-grid classic-power-stack enemy-grid"></div>

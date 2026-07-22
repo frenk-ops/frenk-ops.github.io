@@ -2044,10 +2044,15 @@ body.ui-essential .tab[data-view="editor"] {
 body.ui-essential #battlePanel .left-sidebar,
 body.ui-essential #battlePanel .right-sidebar,
 body.ui-essential #battlePanel .full-collection-panel,
-body.ui-essential #enemyRevealedCards,
-body.ui-essential #enemySchoolSummary,
 body.ui-essential .combat-log-panel {
   display: none !important;
+}
+body.ui-essential #enemyRevealedCards,
+body.ui-essential #enemySchoolSummary {
+  display: flex !important;
+}
+section.classic-hand-zone.classic-hand-enemy {
+  display: flex !important;
 }
 body.ui-essential #battlePanel .battle-shell-grid {
   grid-template-columns: 1fr;
@@ -2686,6 +2691,12 @@ body.ui-classic .view { padding: 0; }
 .classic-mini-settings { display:grid;gap:5px;padding:7px;background:rgba(6,9,18,.8);border:2px ridge #7b7e84;font-size:.72rem; }
 .classic-mini-settings select { width:100%; }
 .classic-hand-zone { min-width:0;align-self:center; }
+.classic-hand-enemy {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:8px;
+}
 .classic-zone-title { color:#b8eeff;text-align:center;font-size:1rem;margin-bottom:5px;text-shadow:0 2px #000; }
 .classic-hand-grid {
   display:grid !important;
@@ -2874,6 +2885,9 @@ body[data-animation-speed="slow"] .turn-banner { transition-duration:.65s, .9s; 
 .classic-enemy-book .hidden-card-chip {
   position:relative;
   box-sizing:border-box;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
   width:128px !important;
   min-width:128px !important;
   height:128px !important;
@@ -2955,6 +2969,9 @@ body[data-animation-speed="slow"] .turn-banner { transition-duration:.65s, .9s; 
   --power-color:#7bc7ff;
   position:relative;
   overflow:hidden;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
   border:1px solid color-mix(in srgb,var(--power-color) 55%,#efd17b) !important;
   border-radius:10px;
   background:
@@ -3068,7 +3085,11 @@ body.ui-essential .classic-nav { display:none; }
   .classic-battlefield { grid-area:field;min-height:520px;width:min(100%,520px);justify-self:center; }
   .classic-board-column { grid-template-rows:repeat(5,minmax(82px,1fr)); }
   .classic-hand-player { grid-area:hand; }
-  .classic-hand-enemy { display:none; }
+  .classic-hand-enemy {
+    display:flex;
+    grid-column:1 / -1;
+    margin-top:6px;
+  }
   .classic-hand-grid { display:flex !important;overflow-x:auto !important;scroll-snap-type:x mandatory;padding:5px; }
   .classic-hand-grid .game-card { flex:0 0 132px;width:132px !important;scroll-snap-align:start; }
   .classic-info-bar { grid-template-columns:70px minmax(0,1fr) 70px;padding:6px;min-height:100px; }
@@ -3084,6 +3105,25 @@ html, body { max-width: 100%; overflow-x: hidden; }
 body:has(#battlePanel:not(.hidden)) { background: #01030d; }
 body:has(#battlePanel:not(.hidden)) .classic-topbar { display: none; }
 body:has(#battlePanel:not(.hidden)) .shell { width: 100%; max-width: none; padding: 0; }
+.classic-hand-zone.classic-hand-enemy,
+.classic-hand-zone.classic-hand-enemy #enemyRevealedCards,
+.classic-hand-zone.classic-hand-enemy #enemySchoolSummary {
+  display: flex !important;
+  visibility: visible !important;
+}
+.classic-hand-zone.classic-hand-enemy {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.classic-hand-zone.classic-hand-enemy #enemyRevealedCards {
+  display: grid !important;
+  justify-content: center;
+}
+.classic-hand-zone.classic-hand-enemy #enemySchoolSummary {
+  justify-content: center;
+  align-items: center;
+}
 .classic-duel-screen { min-height: 100svh; padding: 0; }
 .classic-duel-frame {
   height: 100vh; min-height: 100vh; max-height: 100vh;
@@ -4299,6 +4339,100 @@ body[data-card-art-style="new"] #playerHand .game-card.type-spell .cost {
 }
 #playerHand::-webkit-scrollbar,
 #enemyRevealedCards::-webkit-scrollbar { display:none;width:0;height:0; }
+.enemy-revealed-modal {
+  position:fixed;
+  inset:0;
+  z-index:80;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  background:rgba(2,6,23,.78);
+  backdrop-filter:blur(4px);
+  pointer-events:auto;
+}
+.enemy-revealed-modal.hidden {
+  display:none;
+  pointer-events:none;
+}
+.enemy-revealed-modal-card {
+  pointer-events:auto;
+  width:min(92vw, 560px);
+  max-height:min(86vh, 720px);
+  display:grid;
+  grid-template-rows:auto 1fr;
+  gap:10px;
+  padding:12px;
+  border:2px solid rgba(213,174,72,.8);
+  border-radius:16px;
+  background:linear-gradient(180deg,#0f172a 0%,#040816 100%);
+  box-shadow:0 18px 36px rgba(0,0,0,.45);
+}
+.enemy-revealed-modal-card .classic-small-button {
+  display:inline-flex !important;
+  min-width:0;
+  padding:4px 10px;
+}
+.enemy-school-summary-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.enemy-revealed-quick-toggle {
+  border:1px solid rgba(255,231,173,.55);
+  border-radius:999px;
+  padding:4px 10px;
+  background:rgba(15,23,42,.82);
+  color:#ffe7ad;
+  font-size:.7rem;
+}
+.enemy-revealed-modal-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  color:#ffe7ad;
+}
+.enemy-revealed-modal-content {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:8px;
+  overflow:auto;
+  padding-right:4px;
+}
+.enemy-revealed-modal-content .revealed-chip,
+.enemy-revealed-modal-content .hidden-card-chip {
+  width:100%;
+  min-height:140px;
+  height:auto;
+}
+@media (max-width:820px) {
+  body:has(#battlePanel:not(.hidden)) .classic-hand-zone.classic-hand-enemy,
+  body:has(#battlePanel:not(.hidden)) .classic-hand-zone.classic-hand-enemy #enemyRevealedCards,
+  body:has(#battlePanel:not(.hidden)) .classic-hand-zone.classic-hand-enemy #enemySchoolSummary,
+  body:has(#battlePanel:not(.hidden)) .classic-hand-zone.classic-hand-enemy .enemy-school-summary-row,
+  body:has(#battlePanel:not(.hidden)) .classic-hand-zone.classic-hand-enemy .enemy-revealed-quick-toggle {
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    height:0 !important;
+    min-height:0 !important;
+    margin:0 !important;
+    padding:0 !important;
+  }
+  .enemy-revealed-modal {
+    padding:10px;
+  }
+  .enemy-revealed-modal-card {
+    width:min(96vw, 560px);
+    padding:10px;
+  }
+  .enemy-revealed-modal-content {
+    grid-template-columns:1fr;
+  }
+}
+
 
 /* Footer information hierarchy: gameplay values read as discrete status chips. */
 .classic-card-ability .current-card-value {
