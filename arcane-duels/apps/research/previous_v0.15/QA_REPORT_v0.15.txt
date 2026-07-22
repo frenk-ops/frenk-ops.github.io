@@ -1,0 +1,21 @@
+ARCANE DUELS v0.15 — RECOVERED EVALUATOR QA REPORT
+
+ESITO
+- 22/22 test automatici superati.
+- Tutti i file JavaScript superano il caricamento della suite Node.
+- Le pagine principali caricano i quattro moduli Astral recuperati.
+
+VERIFICHE SPECIFICHE v0.15
+- 65/65 carte originali presenti.
+- 65/65 record binari IA convertiti.
+- Curva vita originale verificata sui punti di cambio segmento.
+- Intervalli dei fattori casuali verificati per tutti e cinque i livelli.
+- Poteri delle tre leghe verificati: 5/3, 7/5, 10/8.
+- Mossa legale prodotta dall’IA recuperata a ogni difficoltà.
+- Archmage deterministico a parità di stato e seed.
+- Orizzonte verificato: due fasi per livelli 1–4, tre per livello 5.
+- Regressione del motore, del turno, del torneo e dello schema carte superata.
+
+LIMITI DELLA VERIFICA
+- Il browser Chromium disponibile nel container non ha completato in modo affidabile il test headless per limiti dell’ambiente; la logica è stata verificata tramite la stessa sequenza di script usata dall’app e mediante la suite automatica.
+- La corrispondenza mossa-per-mossa con astral.exe richiede ancora esecuzione dinamica del gioco originale sotto debugger Windows.

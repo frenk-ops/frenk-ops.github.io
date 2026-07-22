@@ -1,0 +1,326 @@
+{
+  "necromancer": {
+    "name": "Necromancer",
+    "starting": [
+      {
+        "id": 15,
+        "name": "Deathcraft",
+        "effect": "Start with +1 Death power"
+      },
+      {
+        "id": 34,
+        "name": "Hell knowledge",
+        "effect": "Additional Greater Demon creature spell"
+      }
+    ],
+    "advanced": [
+      {
+        "id": 5,
+        "name": "Death mystery",
+        "effect": "Start with +2 Death power"
+      },
+      {
+        "id": 22,
+        "name": "Souldrinker",
+        "effect": "Whenever any creature dies, gain 2 life"
+      },
+      {
+        "id": 34,
+        "name": "Hell knowledge",
+        "effect": "Additional Greater Demon creature spell"
+      }
+    ],
+    "major": [
+      {
+        "id": 10,
+        "name": "Death lord",
+        "effect": "+1 Death power growth each turn"
+      },
+      {
+        "id": 5,
+        "name": "Death mystery",
+        "effect": "Start with +2 Death power"
+      },
+      {
+        "id": 22,
+        "name": "Souldrinker",
+        "effect": "Whenever any creature dies, gain 2 life"
+      },
+      {
+        "id": 34,
+        "name": "Hell knowledge",
+        "effect": "Additional Greater Demon creature spell"
+      },
+      {
+        "id": 1,
+        "name": "Fire mystery",
+        "effect": "Start with +2 Fire power"
+      }
+    ]
+  },
+  "battlemage": {
+    "name": "BattleMage",
+    "starting": [
+      {
+        "id": 11,
+        "name": "Firecraft",
+        "effect": "Start with +1 Fire power"
+      },
+      {
+        "id": 30,
+        "name": "Efreets knowledge",
+        "effect": "Additional Efreet creature spell"
+      }
+    ],
+    "advanced": [
+      {
+        "id": 1,
+        "name": "Fire mystery",
+        "effect": "Start with +2 Fire power"
+      },
+      {
+        "id": 23,
+        "name": "Fire aura",
+        "effect": "Whenever a creature damages this mage, it loses 2 life"
+      },
+      {
+        "id": 30,
+        "name": "Efreets knowledge",
+        "effect": "Additional Efreet creature spell"
+      }
+    ],
+    "major": [
+      {
+        "id": 6,
+        "name": "Fire lord",
+        "effect": "+1 Fire power growth each turn"
+      },
+      {
+        "id": 1,
+        "name": "Fire mystery",
+        "effect": "Start with +2 Fire power"
+      },
+      {
+        "id": 23,
+        "name": "Fire aura",
+        "effect": "Whenever a creature damages this mage, it loses 2 life"
+      },
+      {
+        "id": 30,
+        "name": "Efreets knowledge",
+        "effect": "Additional Efreet creature spell"
+      }
+    ]
+  },
+  "druid": {
+    "name": "Druid",
+    "starting": [
+      {
+        "id": 14,
+        "name": "Earthcraft",
+        "effect": "Start with +1 Earth power"
+      },
+      {
+        "id": 33,
+        "name": "Stone knowledge",
+        "effect": "Additional Stone Giant creature spell"
+      }
+    ],
+    "advanced": [
+      {
+        "id": 4,
+        "name": "Earth mystery",
+        "effect": "Start with +2 Earth power"
+      },
+      {
+        "id": 26,
+        "name": "Healing aura",
+        "effect": "Gain 2 life each turn"
+      },
+      {
+        "id": 33,
+        "name": "Stone knowledge",
+        "effect": "Additional Stone Giant creature spell"
+      }
+    ],
+    "major": [
+      {
+        "id": 9,
+        "name": "Earth lord",
+        "effect": "+1 Earth power growth each turn"
+      },
+      {
+        "id": 4,
+        "name": "Earth mystery",
+        "effect": "Start with +2 Earth power"
+      },
+      {
+        "id": 26,
+        "name": "Healing aura",
+        "effect": "Gain 2 life each turn"
+      },
+      {
+        "id": 33,
+        "name": "Stone knowledge",
+        "effect": "Additional Stone Giant creature spell"
+      }
+    ]
+  },
+  "thundermage": {
+    "name": "ThunderMage",
+    "starting": [
+      {
+        "id": 13,
+        "name": "Aircraft",
+        "effect": "Start with +1 Air power"
+      },
+      {
+        "id": 32,
+        "name": "Titans knowledge",
+        "effect": "Additional Titan creature spell"
+      }
+    ],
+    "advanced": [
+      {
+        "id": 3,
+        "name": "Air mystery",
+        "effect": "Start with +2 Air power"
+      },
+      {
+        "id": 27,
+        "name": "Faery master",
+        "effect": "Start combat with 1 Faerie"
+      },
+      {
+        "id": 32,
+        "name": "Titans knowledge",
+        "effect": "Additional Titan creature spell"
+      }
+    ],
+    "major": [
+      {
+        "id": 8,
+        "name": "Air lord",
+        "effect": "+1 Air power growth each turn"
+      },
+      {
+        "id": 3,
+        "name": "Air mystery",
+        "effect": "Start with +2 Air power"
+      },
+      {
+        "id": 4,
+        "name": "Earth mystery",
+        "effect": "Start with +2 Earth power"
+      },
+      {
+        "id": 27,
+        "name": "Faery master",
+        "effect": "Start combat with 1 Faerie"
+      },
+      {
+        "id": 32,
+        "name": "Titans knowledge",
+        "effect": "Additional Titan creature spell"
+      }
+    ]
+  },
+  "stormmage": {
+    "name": "StormMage",
+    "starting": [
+      {
+        "id": 12,
+        "name": "Watercraft",
+        "effect": "Start with +1 Water power"
+      },
+      {
+        "id": 31,
+        "name": "Sea knowledge",
+        "effect": "Additional Sea Monster creature spell"
+      }
+    ],
+    "advanced": [
+      {
+        "id": 2,
+        "name": "Water mystery",
+        "effect": "Start with +2 Water power"
+      },
+      {
+        "id": 28,
+        "name": "Astral nets",
+        "effect": "When opponent summons a creature, it loses 3 life"
+      },
+      {
+        "id": 31,
+        "name": "Sea knowledge",
+        "effect": "Additional Sea Monster creature spell"
+      }
+    ],
+    "major": [
+      {
+        "id": 7,
+        "name": "Water lord",
+        "effect": "+1 Water power growth each turn"
+      },
+      {
+        "id": 2,
+        "name": "Water mystery",
+        "effect": "Start with +2 Water power"
+      },
+      {
+        "id": 28,
+        "name": "Astral nets",
+        "effect": "When opponent summons a creature, it loses 3 life"
+      },
+      {
+        "id": 31,
+        "name": "Sea knowledge",
+        "effect": "Additional Sea Monster creature spell"
+      },
+      {
+        "id": 16,
+        "name": "Fire penalty",
+        "effect": "Start with -1 Fire power"
+      }
+    ]
+  },
+  "wizard": {
+    "name": "Wizard",
+    "starting": [
+      {
+        "id": 29,
+        "name": "Elemental knowledge",
+        "effect": "Can summon all elementals"
+      }
+    ],
+    "advanced": [
+      {
+        "id": 29,
+        "name": "Elemental knowledge",
+        "effect": "Can summon all elementals"
+      },
+      {
+        "id": 35,
+        "name": "Meditation",
+        "effect": "Start with +1 to all powers"
+      }
+    ],
+    "major": [
+      {
+        "id": 29,
+        "name": "Elemental knowledge",
+        "effect": "Can summon all elementals"
+      },
+      {
+        "id": 36,
+        "name": "Ancient knowledge",
+        "effect": "Start with +2 to all powers"
+      },
+      {
+        "id": 37,
+        "name": "Life knowledge",
+        "effect": "Start with +20 life"
+      }
+    ]
+  }
+}

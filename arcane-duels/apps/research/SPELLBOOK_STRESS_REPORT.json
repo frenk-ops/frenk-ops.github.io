@@ -1,0 +1,20 @@
+{
+  "iterations": 100,
+  "passed": 100,
+  "failed": 0,
+  "attempts": {
+    "min": 244,
+    "median": 17379,
+    "p90": 60721,
+    "p99": 181127,
+    "max": 181127,
+    "average": 24569
+  },
+  "timingMs": {
+    "min": 0,
+    "median": 27,
+    "max": 299,
+    "average": 40
+  },
+  "failures": []
+}

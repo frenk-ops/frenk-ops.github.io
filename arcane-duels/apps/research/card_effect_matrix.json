@@ -1,0 +1,991 @@
+{
+  "dispatcher": "0x448878",
+  "count": 65,
+  "rows": [
+    {
+      "dispatcherIndex": 0,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_01",
+      "name": "Fire spikes",
+      "school": "fire",
+      "level": 1,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals 3 damage to all enemy creatures",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 1,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_02",
+      "name": "Orc",
+      "school": "fire",
+      "level": 2,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play if Earth power<6 deals 4 damage to caster",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 2,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_03",
+      "name": "Fire ritual",
+      "school": "fire",
+      "level": 3,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "+5 to caster's Fire power [+2 total] -1 to enemy Water power",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 3,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_04",
+      "name": "Fire wall",
+      "school": "fire",
+      "level": 4,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 3 damage to all enemies",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 4,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_05",
+      "name": "Minotaur",
+      "school": "fire",
+      "level": 5,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play reduces by 2 enemy Earth power",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 5,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_06",
+      "name": "Flame wave",
+      "school": "fire",
+      "level": 6,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals (Fire power/2+4) damage to all enemy creatures",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 6,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_07",
+      "name": "Salamander",
+      "school": "fire",
+      "level": 7,
+      "type": "creature",
+      "categories": [
+        "combat/passive",
+        "power-growth"
+      ],
+      "text": "Attacks all enemies -1 to Fire power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 7,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_08",
+      "name": "Inferno",
+      "school": "fire",
+      "level": 8,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals (Fire power/2+4) damage to all enemies",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 8,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_09",
+      "name": "Warlord",
+      "school": "fire",
+      "level": 9,
+      "type": "creature",
+      "categories": [
+        "combat/passive"
+      ],
+      "text": "Increases by 50% all combat damage dealt by allied creatures.",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 9,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_10",
+      "name": "Fire elemental",
+      "school": "fire",
+      "level": 10,
+      "type": "creature",
+      "categories": [
+        "immediate",
+        "combat/passive",
+        "power-growth"
+      ],
+      "text": "+1 to Fire power each turn, when comes into play deals 3 damage to all enemies",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 10,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_11",
+      "name": "Armageddon",
+      "school": "fire",
+      "level": 11,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals (Fire power+5) damage to all creatures and opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 11,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_12",
+      "name": "Dragon",
+      "school": "fire",
+      "level": 12,
+      "type": "creature",
+      "categories": [
+        "combat/passive"
+      ],
+      "text": "All spells its owner casts deal +50% damage",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 12,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_fire_13",
+      "name": "Efreet",
+      "school": "fire",
+      "level": 13,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 10 damage to all enemy creatures",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 13,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_01",
+      "name": "Cure",
+      "school": "water",
+      "level": 1,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Caster gains (Water power/2+3) life",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 14,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_02",
+      "name": "Merfolk shaman",
+      "school": "water",
+      "level": 2,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play increases by 1 caster's Earth magic power",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 15,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_03",
+      "name": "Justice",
+      "school": "water",
+      "level": 3,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals to each enemy creature damage equal to that creature's attack power",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 16,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_04",
+      "name": "Sea sprite",
+      "school": "water",
+      "level": 4,
+      "type": "creature",
+      "categories": [
+        "pre-attack"
+      ],
+      "text": "If Water power<enemy Water power deals 2 damage to owner each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 17,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_05",
+      "name": "Ice bolt",
+      "school": "water",
+      "level": 5,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals to opponent (Water power+3) damage",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 18,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_06",
+      "name": "Ice guard",
+      "school": "water",
+      "level": 6,
+      "type": "creature",
+      "categories": [
+        "combat/passive"
+      ],
+      "text": "Reduces by 50% all damage done to owner",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 19,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_07",
+      "name": "Giant toad",
+      "school": "water",
+      "level": 7,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 5 damage to opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 20,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_08",
+      "name": "Acidic rain",
+      "school": "water",
+      "level": 8,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals 15 damage to all creatures. Reduces by 1 all enemy powers",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 21,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_09",
+      "name": "Ocean master",
+      "school": "water",
+      "level": 9,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "+1 to Water power each turn -1 to enemy Water power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 22,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_10",
+      "name": "Water elemental",
+      "school": "water",
+      "level": 10,
+      "type": "creature",
+      "categories": [
+        "immediate",
+        "power-growth"
+      ],
+      "text": "+1 to Water power each turn, when comes into play gives to caster 8 life",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 23,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_11",
+      "name": "Mind master",
+      "school": "water",
+      "level": 11,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "+1 to all magic powers each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 24,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_12",
+      "name": "Astral guard",
+      "school": "water",
+      "level": 12,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "-1 to all enemy powers each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 25,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_water_13",
+      "name": "Sea monster",
+      "school": "water",
+      "level": 13,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "+1 to Water power each turn -1 to Fire power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 26,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_01",
+      "name": "Faerie",
+      "school": "air",
+      "level": 1,
+      "type": "creature",
+      "categories": [
+        "combat/passive"
+      ],
+      "text": "Increases by 1 all damage owner's spells deal",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 27,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_02",
+      "name": "Griffon",
+      "school": "air",
+      "level": 2,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play if Air power>5 deals 5 damage to opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 28,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_03",
+      "name": "Priest of air",
+      "school": "air",
+      "level": 3,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "+1 to Air power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 29,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_04",
+      "name": "Wyvern",
+      "school": "air",
+      "level": 4,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 5 damage to the greatest enemy creature",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 30,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_05",
+      "name": "Hypnosis",
+      "school": "air",
+      "level": 5,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "2 strongest enemy creatures attack opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 31,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_06",
+      "name": "Lightning",
+      "school": "air",
+      "level": 6,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals (Air power+5) damage to opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 32,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_07",
+      "name": "Phoenix",
+      "school": "air",
+      "level": 7,
+      "type": "creature",
+      "categories": [
+        "combat/passive",
+        "death-trigger"
+      ],
+      "text": "Whenever is killed if Fire power>9, rebirths",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 33,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_08",
+      "name": "Chain lightning",
+      "school": "air",
+      "level": 8,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals (Air power-1) damage to all enemies",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 34,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_09",
+      "name": "Tornado",
+      "school": "air",
+      "level": 9,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Destroys the greatest enemy creature",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 35,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_10",
+      "name": "Air elemental",
+      "school": "air",
+      "level": 10,
+      "type": "creature",
+      "categories": [
+        "immediate",
+        "combat/passive",
+        "power-growth"
+      ],
+      "text": "+1 to Air power each turn, when comes into play deals 7 damage to opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 36,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_11",
+      "name": "Lightning cloud",
+      "school": "air",
+      "level": 11,
+      "type": "creature",
+      "categories": [
+        "combat/passive",
+        "power-growth"
+      ],
+      "text": "Damages all enemies -1 to Air power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 37,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_12",
+      "name": "Archangel",
+      "school": "air",
+      "level": 12,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play completely heals all ally creatures",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 38,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_air_13",
+      "name": "Titan",
+      "school": "air",
+      "level": 13,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 15 damage to opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 39,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_01",
+      "name": "Elf healer",
+      "school": "nature",
+      "level": 1,
+      "type": "creature",
+      "categories": [
+        "pre-attack"
+      ],
+      "text": "Gives to owner 2 life each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 40,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_02",
+      "name": "Elf armorer",
+      "school": "nature",
+      "level": 2,
+      "type": "creature",
+      "categories": [
+        "combat/passive"
+      ],
+      "text": "Reduces by 1 all damage greater than 1 done to owner and ally creatures",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 41,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_03",
+      "name": "Forest sprite",
+      "school": "nature",
+      "level": 3,
+      "type": "creature",
+      "categories": [
+        "combat/passive"
+      ],
+      "text": "Attacks all enemies",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 42,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_04",
+      "name": "Nature ritual",
+      "school": "nature",
+      "level": 4,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Gives to caster 5 life and heals so much his or her creatures",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 43,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_05",
+      "name": "Elf hermit",
+      "school": "nature",
+      "level": 5,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "+2 to Earth power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 44,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_06",
+      "name": "Rejuvenation",
+      "school": "nature",
+      "level": 6,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Caster gains (Earth power*2) life",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 45,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_07",
+      "name": "Night elf",
+      "school": "nature",
+      "level": 7,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "+2 to Death power each turn -1 to Earth power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 46,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_08",
+      "name": "Troll",
+      "school": "nature",
+      "level": 8,
+      "type": "creature",
+      "categories": [
+        "pre-attack"
+      ],
+      "text": "Regerates 3 life each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 47,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_09",
+      "name": "Master healer",
+      "school": "nature",
+      "level": 9,
+      "type": "creature",
+      "categories": [
+        "pre-attack"
+      ],
+      "text": "Heals 2 life to owner and all ally creatures each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 48,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_10",
+      "name": "Stone rain",
+      "school": "nature",
+      "level": 10,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals 20 damage to all cretures If Earth power>=12 damages only enemies",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 49,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_11",
+      "name": "Earth elemental",
+      "school": "nature",
+      "level": 11,
+      "type": "creature",
+      "categories": [
+        "combat/passive",
+        "power-growth"
+      ],
+      "text": "+1 to Earth power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 50,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_12",
+      "name": "Hydra",
+      "school": "nature",
+      "level": 12,
+      "type": "creature",
+      "categories": [
+        "pre-attack",
+        "combat/passive"
+      ],
+      "text": "Attacks all enemies Regenerates 4 life each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 51,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_earth_13",
+      "name": "Stone giant",
+      "school": "nature",
+      "level": 13,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 18 damage to the greatest enemy creature",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 52,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_01",
+      "name": "Skeleton",
+      "school": "death",
+      "level": 1,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 1 damage to the caster",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 53,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_02",
+      "name": "Zombie",
+      "school": "death",
+      "level": 2,
+      "type": "creature",
+      "categories": [
+        "pre-attack"
+      ],
+      "text": "Regenerates 2 life each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 54,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_03",
+      "name": "Curse",
+      "school": "death",
+      "level": 3,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Deals 1 damage to opponent and reduces by 1 all enemy powers",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 55,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_04",
+      "name": "Death keeper",
+      "school": "death",
+      "level": 4,
+      "type": "creature",
+      "categories": [
+        "death-trigger"
+      ],
+      "text": "When any creature dies Death keeper increases by 1 owner's death power",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 56,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_05",
+      "name": "Demon",
+      "school": "death",
+      "level": 5,
+      "type": "creature",
+      "categories": [
+        "power-growth"
+      ],
+      "text": "+1 to Fire power each turn",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 57,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_06",
+      "name": "Ghost",
+      "school": "death",
+      "level": 6,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play reduces by 1 all enemy powers",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 58,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_07",
+      "name": "Assassin",
+      "school": "death",
+      "level": 7,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 9 damage to opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 59,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_08",
+      "name": "Drain life",
+      "school": "death",
+      "level": 8,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Caster drains (Death power/2+5) life from opponent",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 60,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_09",
+      "name": "Wall of souls",
+      "school": "death",
+      "level": 9,
+      "type": "creature",
+      "categories": [
+        "death-trigger"
+      ],
+      "text": "When any creature dies Wall of souls owner gains 3 life",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 61,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_10",
+      "name": "Lich",
+      "school": "death",
+      "level": 10,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play deals 4 damage to all enemies",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 62,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_11",
+      "name": "Vampire",
+      "school": "death",
+      "level": 11,
+      "type": "creature",
+      "categories": [
+        "combat/passive"
+      ],
+      "text": "Vampire gets 1 life for each 2 damage it deals",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 63,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_12",
+      "name": "Drain souls",
+      "school": "death",
+      "level": 12,
+      "type": "spell",
+      "categories": [
+        "immediate"
+      ],
+      "text": "Destroys all creatures Caster gains 4 life for each creature",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    },
+    {
+      "dispatcherIndex": 64,
+      "addressModel": "0x448878 jump table",
+      "id": "astral_death_13",
+      "name": "Greater demon",
+      "school": "death",
+      "level": 13,
+      "type": "creature",
+      "categories": [
+        "immediate"
+      ],
+      "text": "When comes into play reduces all caster's powers by 1",
+      "implemented": true,
+      "verification": "static-disassembly + automated-tests"
+    }
+  ]
+}

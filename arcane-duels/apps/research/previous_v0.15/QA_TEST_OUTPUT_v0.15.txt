@@ -1,0 +1,24 @@
+PASS  Generatore deterministico con seed
+PASS  Pool esclusivi
+PASS  Almeno una carta iniziale per scuola quando disponibile
+PASS  Selezione carta porta alla fase bersaglio
+PASS  Una sola carta per turno
+PASS  Il difensore non contrattacca
+PASS  Il danno diretto aggiorna la vita dell'eroe
+PASS  Fine attacco giocatore avvia il pensiero IA
+PASS  Il round aumenta dopo il turno IA
+PASS  L'IA produce una mossa legale a ogni difficoltà
+PASS  Progressione torneo e ricompensa passiva
+PASS  Ciclo completo giocatore → IA → nuovo round senza stalli
+PASS  Le mani rispettano la quantità configurata
+PASS  Completare un torneo vincente assegna un trofeo
+PASS  Schema carte valido
+PASS  Il set Astral contiene 65 carte e 65 record IA
+PASS  Curva vita originale tradotta senza approssimazioni
+PASS  Fattori casuali delle cinque IA rispettano gli intervalli originali
+PASS  Le leghe applicano poteri 5/3, 7/5 e 10/8
+PASS  L'IA recuperata produce una mossa legale a tutti i livelli
+PASS  Archmage è deterministico a parità di stato e seed
+PASS  Archmage simula tre fasi di attacco, le altre IA due
+
+22/22 test superati.

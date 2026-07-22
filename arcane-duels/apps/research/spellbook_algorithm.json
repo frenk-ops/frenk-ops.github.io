@@ -1,0 +1,29 @@
+{
+  "sourceFunction": "astral.exe:0x446A9C",
+  "model": "permanent spellbook",
+  "randomReplacementDraw": false,
+  "counts": {
+    "player": 20,
+    "novice": 15,
+    "advancedMage": 15,
+    "expertMage": 17,
+    "masterMage": 20,
+    "archmage": 20,
+    "tournamentNormal": 20,
+    "tournamentWizard": 24
+  },
+  "firstFifteen": {
+    "schools": ["fire", "water", "air", "earth", "death"],
+    "bandsPerSchool": [[1, 4], [5, 8], [9, 12]]
+  },
+  "randomLevelRange": [1, 12],
+  "randomLevel13": false,
+  "maskAddresses": {
+    "healing": "0x4475F0",
+    "damage": "0x4475F8"
+  },
+  "initialPowerSums": {
+    "firstMage": 20,
+    "secondMage": 19
+  }
+}
