@@ -128,6 +128,88 @@
     return audioContext;
   }
 
+  function playSyntheticCue(options = {}) {
+    const ctx = ensureAudio();
+    if (!ctx) return false;
+    const now = ctx.currentTime;
+    const duration = Math.max(0.08, Number(options.duration || 0.22));
+    const volume = Math.max(0.0001, Math.min(0.18, Number(options.volume || 0.05)));
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = options.type || "sine";
+    osc.frequency.setValueAtTime(options.frequency || 440, now);
+    if (options.secondFrequency) {
+      osc.frequency.exponentialRampToValueAtTime(options.secondFrequency, now + duration * 0.65);
+    }
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + Math.min(0.02, duration * 0.2));
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.01);
+    return true;
+  }
+
+  function playFallbackSound(name, volume = 0.45) {
+    if (!soundEnabled || UI_MODE === "essential") return false;
+    const normalized = String(name || "");
+    if (normalized === "summon2") {
+      return playSyntheticCue({
+        type: "triangle",
+        frequency: 620,
+        secondFrequency: 940,
+        duration: 0.26,
+        volume: Math.min(0.07, Math.max(0.04, volume * 0.16))
+      });
+    }
+    if (normalized === "click") {
+      return playSyntheticCue({
+        type: "square",
+        frequency: 820,
+        secondFrequency: 560,
+        duration: 0.14,
+        volume: Math.min(0.06, Math.max(0.03, volume * 0.14))
+      });
+    }
+    if (normalized === "move" || normalized === "movecard") {
+      return playSyntheticCue({
+        type: "sawtooth",
+        frequency: 300,
+        secondFrequency: 420,
+        duration: 0.2,
+        volume: Math.min(0.06, Math.max(0.03, volume * 0.14))
+      });
+    }
+    if (normalized === "spelldamaged") {
+      return playSyntheticCue({
+        type: "sine",
+        frequency: 220,
+        secondFrequency: 980,
+        duration: 0.34,
+        volume: Math.min(0.07, Math.max(0.04, volume * 0.16))
+      });
+    }
+    if (normalized === "winner") {
+      return playSyntheticCue({
+        type: "triangle",
+        frequency: 650,
+        secondFrequency: 1320,
+        duration: 0.42,
+        volume: Math.min(0.08, Math.max(0.04, volume * 0.16))
+      });
+    }
+    if (normalized === "looser") {
+      return playSyntheticCue({
+        type: "sine",
+        frequency: 180,
+        secondFrequency: 120,
+        duration: 0.38,
+        volume: Math.min(0.06, Math.max(0.04, volume * 0.16))
+      });
+    }
+    return playSyntheticCue({ type: "sine", frequency: 440, duration: 0.16, volume: 0.04 });
+  }
+
   function playOriginalSound(name, volume = 0.45) {
     if (!soundEnabled || UI_MODE === "essential") return false;
     try {
@@ -139,11 +221,23 @@
       }
       const sound = source.cloneNode();
       sound.volume = Math.max(0, Math.min(1, volume));
-      sound.play().catch(() => {});
+      const playPromise = sound.play();
+      playPromise?.catch(() => {
+        try { sound.pause(); } catch (e) {}
+        playFallbackSound(name, volume);
+      });
       return true;
     } catch (error) {
-      return false;
+      return playFallbackSound(name, volume);
     }
+  }
+
+  function playSchoolSelectionSound() {
+    return playSyntheticCue({ type: "triangle", frequency: 560, secondFrequency: 780, duration: 0.16, volume: 0.045 });
+  }
+
+  function playCardReadySound() {
+    return playSyntheticCue({ type: "sine", frequency: 720, secondFrequency: 1120, duration: 0.22, volume: 0.05 });
   }
 
   function attackSound(direct) {
@@ -509,11 +603,14 @@
             if (side === "player") {
               if (activeSchool === selectedSchool) return;
               activeSchool = selectedSchool;
+              playSchoolSelectionSound();
               renderSchoolButtons();
               renderHand();
             } else {
               if (isMobileEnemyBookLayout()) {
+                if (enemySchool === selectedSchool) return;
                 enemySchool = selectedSchool;
+                playSchoolSelectionSound();
                 renderSchoolButtons();
                 renderEnemyRevealed();
                 toggleEnemyRevealedModal(true);
@@ -521,6 +618,7 @@
               }
               if (enemySchool === selectedSchool) return;
               enemySchool = selectedSchool;
+              playSchoolSelectionSound();
               renderSchoolButtons();
               renderEnemyRevealed();
             }
@@ -1085,6 +1183,8 @@
       return;
     }
 
+    playCardReadySound();
+
     if (supportsHoverPreview) {
       setMessage(`${result.card.name} viene lanciata.`);
       const healthBefore = captureHealthState();
@@ -1641,6 +1741,8 @@
   let bgmVolume = 0.12;
 
   function startBackgroundMusic() {
+    if (!bgmEnabled || !soundEnabled || UI_MODE === "essential") return;
+    if (document.visibilityState === "hidden") return;
     try {
       if (!bgmAudio) {
         bgmAudio = new Audio('assets/audio/bgm.ogg');
@@ -1648,27 +1750,37 @@
         bgmAudio.volume = bgmVolume;
         bgmAudio.preload = 'auto';
       }
-      bgmAudio.play().catch(err => {
-        console.warn('Background music play blocked or failed:', err);
-        try {
-          const cb = document.querySelector('#bgmEnabled');
-          if (cb) cb.checked = false;
-          window.localStorage.setItem('bgmEnabled', '0');
-        } catch (e) {}
-        stopBackgroundMusic();
-        // Inform the user that interaction is required to start audio
-        try { alert('Il browser ha bloccato l\'autoplay della musica. Clicca il checkbox "Musica di sottofondo" per attivarla.'); } catch (e) {}
-      });
+      if (bgmAudio.paused) {
+        bgmAudio.play().catch(err => {
+          console.warn('Background music play blocked or failed:', err);
+          try {
+            const cb = document.querySelector('#bgmEnabled');
+            if (cb) cb.checked = false;
+            window.localStorage.setItem('bgmEnabled', '0');
+          } catch (e) {}
+          pauseBackgroundMusic();
+          // Inform the user that interaction is required to start audio
+          try { alert('Il browser ha bloccato l\'autoplay della musica. Clicca il checkbox "Musica di sottofondo" per attivarla.'); } catch (e) {}
+        });
+      }
     } catch (e) { bgmAudio = null; }
   }
 
-  function stopBackgroundMusic() {
-    try {
-      if (bgmAudio) {
-        bgmAudio.pause();
-        bgmAudio.currentTime = 0;
-      }
-    } catch (e) {}
+  function pauseBackgroundMusic() {
+    try { if (bgmAudio && !bgmAudio.paused) bgmAudio.pause(); } catch (e) {}
+  }
+
+  function resumeBackgroundMusic() {
+    if (!bgmEnabled || !soundEnabled || UI_MODE === "essential") return;
+    startBackgroundMusic();
+  }
+
+  function handleBackgroundMusicVisibility() {
+    if (document.visibilityState === "hidden") {
+      pauseBackgroundMusic();
+    } else {
+      resumeBackgroundMusic();
+    }
   }
 
   // initialize bgm toggle from localStorage and wire the menu checkbox
@@ -1700,13 +1812,18 @@
       bgmCheckbox.addEventListener('change', e => {
         bgmEnabled = Boolean(e.target.checked);
         window.localStorage.setItem('bgmEnabled', bgmEnabled ? '1' : '0');
-        if (bgmEnabled) startBackgroundMusic(); else stopBackgroundMusic();
+        if (bgmEnabled) startBackgroundMusic(); else pauseBackgroundMusic();
       });
     }
+    document.addEventListener("visibilitychange", handleBackgroundMusicVisibility);
+    window.addEventListener("focus", resumeBackgroundMusic);
+    window.addEventListener("blur", pauseBackgroundMusic);
+    window.addEventListener("pageshow", resumeBackgroundMusic);
+    window.addEventListener("pagehide", pauseBackgroundMusic);
     if (bgmEnabled) startBackgroundMusic();
   } catch (e) {}
   $("#collectionSearch")?.addEventListener("input", event => { collectionState.search = event.target.value; renderCollectionPanels(); const other = $("#collectionPageSearch"); if (other && other.value !== event.target.value) other.value = event.target.value; });
-  $("#soundEnabled").addEventListener("change", event => { soundEnabled = event.target.checked; if (soundEnabled) ensureAudio(); });
+  $("#soundEnabled").addEventListener("change", event => { soundEnabled = event.target.checked; if (soundEnabled) { ensureAudio(); if (bgmEnabled) startBackgroundMusic(); } else { pauseBackgroundMusic(); } });
 
   function cleanupOldCaches() {
     if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(items => items.forEach(item => item.unregister())).catch(() => {});
