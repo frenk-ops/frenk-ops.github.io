@@ -203,7 +203,23 @@
       }
       const card = this.getCard("player", cardId);
       if (!card) return { ok: false, reason: "Carta non trovata." };
-      const playable = this.getPlayability("player", card);
+
+      let playable = false;
+      if(card.type === "creature" ) {
+        //Trova il primo slot vuoto
+        let slot = 0;
+        while (slot < this.rules.boardSize && this.getFighter("player").board[slot]) {
+            slot++;
+        }
+
+        if (slot === this.rules.boardSize) {
+            return { ok: false, reason: "Non puoi giocarla. Il campo è pieno." };
+        }
+        playable = this.getPlayability("player", card, slot);
+      }else{
+        playable = this.getPlayability("player", card);
+      }
+      
       if (!playable.ok) return playable;
       this.state.pendingCardId = cardId;
       this.state.phase = A.PHASES.PLAYER_TARGET;
