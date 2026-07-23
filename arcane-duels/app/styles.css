@@ -3798,6 +3798,8 @@ body[data-card-art-style="new"] #playerHand .game-card.type-spell .art {
   .classic-info-bar {
     position:relative;
     min-height:118px;
+    height:118px;
+    overflow:hidden;
     grid-template-columns:170px minmax(0,1fr) 170px;
     padding:7px 18px;
     border-top:2px solid #c09a3d;
@@ -4509,8 +4511,9 @@ body[data-card-art-style="new"] #playerHand .game-card.type-spell .cost {
 .classic-card-details { box-sizing:border-box;min-width:0;max-width:100%; }
 .classic-card-info {
   display:grid;
-  grid-template-rows:auto auto auto;
-  align-content:center;
+  grid-template-rows:min-content auto min-content;
+  gap:4px;
+  align-content:stretch;
   justify-items:stretch;
   overflow:hidden;
 }
@@ -4521,16 +4524,38 @@ body[data-card-art-style="new"] #playerHand .game-card.type-spell .cost {
   overflow-wrap:anywhere;
   word-break:normal;
 }
-.classic-card-info > strong { display:block;max-width:100%; }
-.classic-card-ability { width:100%; }
+.classic-card-info > strong {
+  display:block;
+  max-width:100%;
+  font-size:clamp(1rem, 1.35vw, 1.45rem);
+  line-height:1.05;
+  max-height:2.2em;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.classic-card-ability {
+  width:100%;
+  display:block;
+  font-size:clamp(.88rem, .95vw, 1rem);
+  line-height:1.18;
+  max-height:3em;
+  overflow:hidden;
+}
 .classic-card-details { width:100%; }
 .classic-card-details > span { max-width:100%; }
 .classic-card-ability .current-card-value { max-width:100%; }
 
 @media (min-width:821px) {
   .classic-duel-frame { grid-template-rows:clamp(78px,7.2vw,108px) minmax(0,1fr) minmax(118px,auto) auto; }
-  .classic-info-bar { height:auto;padding-block:10px 16px;overflow:hidden; }
+  .classic-info-bar { height:118px;padding-block:10px 16px;overflow:hidden; }
   .classic-card-info { padding:3px clamp(6px,1vw,16px); }
+  .classic-card-info > strong {
+    max-height:2.2em;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
   .classic-card-ability { max-height:2.5em;overflow:hidden; }
   .classic-card-details { gap:5px 8px; }
 }
