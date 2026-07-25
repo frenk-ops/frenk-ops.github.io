@@ -4613,3 +4613,36 @@ body[data-card-art-style="new"] #playerHand .game-card.type-spell .cost {
   .classic-card-details { gap:3px; }
   .classic-card-details > span { flex:1 1 auto;justify-content:center; }
 }
+
+
+/* Summoning sickness: engine-owned state, presentation-only badge. */
+.unit.summoning-sick {
+  filter: saturate(.72) brightness(.9);
+}
+.summoning-sickness-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 6;
+  min-width: 26px;
+  padding: 3px 5px;
+  border: 1px solid rgba(185, 211, 238, .86);
+  border-radius: 4px;
+  background: rgba(25, 39, 60, .94);
+  color: #e1efff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .58);
+  font: 700 11px/1 Georgia, serif;
+  letter-spacing: .02em;
+  text-align: center;
+  pointer-events: none;
+}
+.summoning-sickness-preview {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(185, 211, 238, .58);
+  border-radius: 4px;
+  background: rgba(25, 39, 60, .78);
+  color: #e1efff;
+  font-size: .82rem;
+  line-height: 1.25;
+}
