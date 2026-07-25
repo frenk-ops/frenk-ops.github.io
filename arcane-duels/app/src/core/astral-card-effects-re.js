@@ -214,6 +214,7 @@
     // Fire is checked but not consumed; therefore it can rebirth again later.
     if (unit.id === "astral_air_07" && (fighter(engine, side).power.fire || 0) >= 10) {
       unit.currentHealth = unit.health;
+      if (typeof engine.getOwnerTurnCount === "function") unit.summonedOnOwnerTurn = engine.getOwnerTurnCount(side);
       events?.push({ type: "astralPhoenixRebirth", side, slot, cardId: unit.id, health: unit.currentHealth });
       return true;
     }
@@ -515,7 +516,7 @@
     engine.checkWinner();
   }
 
-  function attackUnit(engine, side, slot) {
+  function attackUnit(engine, side, slot, options = {}) {
     const events = [];
     const own = fighter(engine, side);
     const enemySide = opponent(engine, side);
@@ -558,6 +559,7 @@
       }
     }
 
+    if (primaryEvent) primaryEvent.forcedByEffect = options.forcedByEffect === true;
     cleanupDeaths(engine, events, side);
     return { events, event: primaryEvent, skipped: false, damage, multiTarget: Boolean(cardMeta?.multiTarget) };
   }

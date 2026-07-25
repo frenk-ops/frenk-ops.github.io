@@ -105,10 +105,11 @@
       this.cards = cards;
       this.rules = rules;
       this.state = {
-        version: 1,
+        version: 2,
         rulesetId: rules.id,
         seed,
         round: 1,
+        turnCounters: { player: 1, enemy: 0 },
         phase: A.PHASES.PLAYER_SELECT,
         activeSide: "player",
         pendingCardId: null,
@@ -152,6 +153,39 @@
 
     getOpponentSide(side) {
       return side === "player" ? "enemy" : "player";
+    }
+
+    ensureTurnCounters() {
+      if (!this.state.turnCounters) {
+        const round = Math.max(1, Number(this.state.round || 1));
+        const activeSide = this.state.activeSide === "enemy" ? "enemy" : "player";
+        this.state.turnCounters = {
+          player: round,
+          enemy: Math.max(0, round - (activeSide === "player" ? 1 : 0))
+        };
+      }
+      return this.state.turnCounters;
+    }
+
+    getOwnerTurnCount(side) {
+      const counters = this.ensureTurnCounters();
+      return Number(counters[side] || 0);
+    }
+
+    beginSideTurn(side) {
+      const counters = this.ensureTurnCounters();
+      counters[side] = Number(counters[side] || 0) + 1;
+      this.state.activeSide = side;
+      return counters[side];
+    }
+
+    isUnitSummoningSick(unit, side = unit?.owner) {
+      if (!unit || !side || !Number.isFinite(Number(unit.summonedOnOwnerTurn))) return false;
+      return Number(unit.summonedOnOwnerTurn) >= this.getOwnerTurnCount(side);
+    }
+
+    canUnitAttackNormally(side, unit) {
+      return Boolean(unit && unit.currentHealth > 0 && !this.isUnitSummoningSick(unit, side));
     }
 
     getCard(side, cardId) {
@@ -287,7 +321,8 @@
           ...A.deepClone(card),
           currentHealth: card.health,
           owner: side,
-          instanceId: `${side}-${this.state.round}-${slot}-${card.id}`
+          instanceId: `${side}-${this.state.round}-${slot}-${card.id}`,
+          summonedOnOwnerTurn: this.getOwnerTurnCount(side)
         };
         fighter.board[slot] = unit;
         const passiveEvent = A.applySummonPassives(fighter, unit);
@@ -323,29 +358,27 @@
       return { ok: true, events: [{ type: "pass", side }], phase: this.state.phase };
     }
 
-    attackNext(side) {
-      if (this.state.phase !== sideAttackPhase(side)) {
-        return { ok: false, done: true, reason: "Fase di attacco non valida." };
-      }
+    _resolveAttackAtSlot(side, slot, options = {}) {
       const attacker = this.getFighter(side);
       const enemySide = this.getOpponentSide(side);
       const defender = this.getFighter(enemySide);
-
-      while (this.state.attackCursor < this.rules.boardSize && !attacker.board[this.state.attackCursor]) {
-        this.state.attackCursor += 1;
-      }
-      if (this.state.attackCursor >= this.rules.boardSize) {
-        return { ok: true, done: true };
-      }
-
-      const slot = this.state.attackCursor;
-      this.state.attackCursor += 1;
       const unit = attacker.board[slot];
-      if (!unit) return { ok: true, done: false, skipped: true };
+      if (!unit || unit.currentHealth <= 0) return { ok: true, done: false, skipped: true };
+
+      const forcedByEffect = options.forcedByEffect === true;
+      if (!forcedByEffect && this.isUnitSummoningSick(unit, side)) {
+        return {
+          ok: true,
+          done: false,
+          skipped: true,
+          reason: "summoning_sickness",
+          events: [{ type: "summoningSicknessSkip", side, slot, cardId: unit.id, instanceId: unit.instanceId }]
+        };
+      }
 
       const recoveredAstral = typeof A.isRecoveredAstralEngine === "function" && A.isRecoveredAstralEngine(this);
       if (recoveredAstral && typeof A.astralAttackUnit === "function") {
-        const result = A.astralAttackUnit(this, side, slot);
+        const result = A.astralAttackUnit(this, side, slot, { forcedByEffect });
         if (result.skipped || !result.event) return { ok: true, done: false, skipped: true, events: result.events || [] };
         this.addLog(result.multiTarget
           ? `${unit.name} colpisce tutti i nemici.`
@@ -370,7 +403,8 @@
           targetName: target.name,
           damage: unit.attack,
           targetHealth: Math.max(0, target.currentHealth),
-          died
+          died,
+          forcedByEffect
         };
         this.addLog(`${unit.name} infligge ${unit.attack} danni a ${target.name}.`);
         if (died) defender.board[slot] = null;
@@ -385,7 +419,8 @@
           attackerName: unit.name,
           damage: unit.attack,
           heroHealth: defender.hp,
-          retaliation: null
+          retaliation: null,
+          forcedByEffect
         };
         this.addLog(`${unit.name} infligge ${unit.attack} danni diretti.`);
 
@@ -401,6 +436,32 @@
       return { ok: true, done: false, event };
     }
 
+    attackNext(side) {
+      if (this.state.phase !== sideAttackPhase(side)) {
+        return { ok: false, done: true, reason: "Fase di attacco non valida." };
+      }
+      const attacker = this.getFighter(side);
+
+      while (this.state.attackCursor < this.rules.boardSize && !attacker.board[this.state.attackCursor]) {
+        this.state.attackCursor += 1;
+      }
+      if (this.state.attackCursor >= this.rules.boardSize) {
+        return { ok: true, done: true };
+      }
+
+      const slot = this.state.attackCursor;
+      this.state.attackCursor += 1;
+      return this._resolveAttackAtSlot(side, slot, { forcedByEffect: false });
+    }
+
+    attackUnitFromEffect(side, slot) {
+      const numericSlot = Number(slot);
+      if (!Number.isInteger(numericSlot) || numericSlot < 0 || numericSlot >= this.rules.boardSize) {
+        return { ok: false, done: true, reason: "Slot di attacco non valido." };
+      }
+      return this._resolveAttackAtSlot(side, numericSlot, { forcedByEffect: true });
+    }
+
     finishAttack(side) {
       if (this.state.phase !== sideAttackPhase(side)) return { ok: false, reason: "L'attacco non è in corso." };
       this.state.attackCursor = 0;
@@ -413,7 +474,7 @@
       if (recoveredAstral && typeof A.astralGrowPowers === "function") {
         const nextSide = this.getOpponentSide(side);
         A.astralGrowPowers(this, nextSide, []);
-        this.state.activeSide = nextSide;
+        this.beginSideTurn(nextSide);
         this.state.pendingCardId = null;
         if (side === "player") {
           this.state.phase = A.PHASES.ENEMY_THINK;
@@ -427,7 +488,7 @@
       }
 
       if (side === "player") {
-        this.state.activeSide = "enemy";
+        this.beginSideTurn("enemy");
         this.state.phase = A.PHASES.ENEMY_THINK;
       } else {
         this.state.phase = A.PHASES.ROUND_END;
@@ -455,7 +516,7 @@
           );
         });
       });
-      this.state.activeSide = "player";
+      this.beginSideTurn("player");
       this.state.pendingCardId = null;
       this.state.phase = A.PHASES.PLAYER_SELECT;
       this.addLog(`Round ${this.state.round}: i poteri elementali aumentano.`);
