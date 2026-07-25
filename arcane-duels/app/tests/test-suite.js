@@ -132,6 +132,83 @@
       }
     },
     {
+      name: "Debolezza da evocazione: una creatura appena giocata salta l'attacco",
+      run() {
+        const engine = engineWithHands();
+        const card = engine.state.player.hand[0];
+        engine.selectCard(card.id);
+        const played = engine.playSelected(0);
+        assert(played.ok, "La creatura non è stata evocata");
+        const before = engine.state.enemy.hp;
+        const step = engine.attackNext("player");
+        assert(step.skipped && step.reason === "summoning_sickness", "La creatura appena evocata avrebbe dovuto essere saltata");
+        assert(engine.state.enemy.hp === before, "La creatura appena evocata ha inflitto danno");
+      }
+    },
+    {
+      name: "Debolezza da evocazione: la creatura attacca dal turno successivo del proprietario",
+      run() {
+        const engine = engineWithHands();
+        const card = engine.state.player.hand[0];
+        engine.selectCard(card.id);
+        engine.playSelected(0);
+        while (!engine.attackNext("player").done) { /* skip della creatura appena evocata */ }
+        engine.finishAttack("player");
+        engine.beginEnemyPlay();
+        engine.pass("enemy");
+        while (!engine.attackNext("enemy").done) { /* nessun attaccante */ }
+        engine.finishAttack("enemy");
+        engine.pass("player");
+        const before = engine.state.enemy.hp;
+        const step = engine.attackNext("player");
+        assert(step.event?.type === "directAttack", "La creatura non ha attaccato nel turno successivo");
+        assert(engine.state.enemy.hp < before, "L'attacco del turno successivo non ha inflitto danno");
+      }
+    },
+    {
+      name: "Attacco ordinato da un effetto ignora soltanto la debolezza da evocazione",
+      run() {
+        const engine = engineWithHands();
+        const card = engine.state.player.hand[0];
+        engine.selectCard(card.id);
+        engine.playSelected(0);
+        const unit = engine.state.player.board[0];
+        assert(engine.isUnitSummoningSick(unit, "player"), "La creatura dovrebbe avere debolezza da evocazione");
+        const before = engine.state.enemy.hp;
+        const forced = engine.attackUnitFromEffect("player", 0);
+        assert(forced.event?.forcedByEffect === true, "L'attacco non è stato marcato come generato da un effetto");
+        assert(engine.state.enemy.hp < before, "L'attacco generato dall'effetto non ha inflitto danno");
+        assert(engine.isUnitSummoningSick(unit, "player"), "L'attacco forzato ha rimosso prematuramente la debolezza");
+        const normal = engine.attackNext("player");
+        assert(normal.skipped && normal.reason === "summoning_sickness", "La creatura ha attaccato anche nella fase normale");
+      }
+    },
+    {
+      name: "Una creatura evocata fuori turno è pronta al prossimo turno del proprietario",
+      run() {
+        const engine = engineWithHands();
+        const card = engine.state.enemy.hand[0];
+        const unit = { ...A.deepClone(card), currentHealth: card.health, owner: "enemy", instanceId: "enemy-out-of-turn", summonedOnOwnerTurn: engine.getOwnerTurnCount("enemy") };
+        engine.state.enemy.board[0] = unit;
+        assert(engine.isUnitSummoningSick(unit, "enemy"), "La creatura dovrebbe risultare appena evocata");
+        engine.state.phase = A.PHASES.PLAYER_ATTACK;
+        engine.finishAttack("player");
+        assert(!engine.isUnitSummoningSick(unit, "enemy"), "La creatura non è diventata pronta all'inizio del turno del proprietario");
+      }
+    },
+    {
+      name: "Lo spostamento di slot non riapplica la debolezza da evocazione",
+      run() {
+        const engine = engineWithHands();
+        const card = engine.state.player.hand[0];
+        const unit = { ...A.deepClone(card), currentHealth: card.health, owner: "player", instanceId: "moved-unit", summonedOnOwnerTurn: engine.getOwnerTurnCount("player") - 1 };
+        engine.state.player.board[0] = unit;
+        engine.state.player.board[0] = null;
+        engine.state.player.board[2] = unit;
+        assert(!engine.isUnitSummoningSick(unit, "player"), "Lo spostamento ha riapplicato la debolezza");
+      }
+    },
+    {
       name: "Il difensore non contrattacca",
       run() {
         const engine = engineWithHands();
@@ -503,6 +580,7 @@
         A.astralCleanupDeaths(engine, []);
         assert(engine.state.player.board[0] === phoenix, "Phoenix rimossa dal campo");
         assert(phoenix.currentHealth === phoenix.health, `Phoenix rinata a ${phoenix.currentHealth}`);
+        assert(engine.isUnitSummoningSick(phoenix, "player"), "Phoenix rinata senza debolezza da evocazione");
       }
     },
     {
@@ -1007,7 +1085,9 @@
         engine.state.phase=A.PHASES.PLAYER_ATTACK;
         engine.state.attackCursor=0;
         const before=engine.state.enemy.hp;
-        const step=engine.attackNext("player");
+        const normal=engine.attackNext("player");
+        assert(normal.skipped && normal.reason==="summoning_sickness","Salamander appena evocata non deve attaccare normalmente");
+        const step=engine.attackUnitFromEffect("player",0);
         assert(step.event.damage===2 && a.currentHealth===11 && b.currentHealth===7 && engine.state.enemy.hp===before-2,"Attacco multi-bersaglio Salamander errato");
         engine.state.player.board[0].currentHealth=0;
         A.astralCleanupDeaths(engine,[],"player");
