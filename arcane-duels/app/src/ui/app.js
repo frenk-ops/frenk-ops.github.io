@@ -28,6 +28,7 @@
   document.body.dataset.uiMode = UI_MODE;
   let inspectedCardId = null;
   let inspectedCardSide = null;
+  let inspectedCardInstanceId = null;
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   let turnBannerTimer = null;
   let previewCloseTimer = null;
@@ -526,9 +527,12 @@
       if (unit) {
         const cardSchool = school(unit.school);
         const isMultiTargetAttacker = Boolean(A.ASTRAL_CARD_AI_METADATA?.[unit.id]?.multiTarget);
+        const hasSummoningSickness = typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(unit, side);
         cell.classList.toggle("multi-target-attacker", isMultiTargetAttacker);
+        cell.classList.toggle("summoning-sick", hasSummoningSickness);
         cell.innerHTML = `<div class="unit-art"></div>
           ${isMultiTargetAttacker ? '<span class="multi-target-badge" title="Attacca tutti i nemici" aria-label="Attacco multiplo">⚔×</span>' : ''}
+          ${hasSummoningSickness ? '<span class="summoning-sickness-badge" title="Debolezza da evocazione — potrà attaccare dal prossimo turno" aria-label="Debolezza da evocazione — potrà attaccare dal prossimo turno"><span aria-hidden="true">Zz</span></span>' : ''}
           <div class="unit-stats"><strong class="unit-attack" title="Attacco"><span aria-hidden="true">⚔</span>${unit.attack}</strong><strong class="unit-health" title="Vita"><span aria-hidden="true">♥</span>${Math.max(0, unit.currentHealth)}</strong></div>`;
         const unitArt = cell.querySelector(".unit-art");
         unitArt.appendChild(buildArtBlock(unit, "board"));
@@ -538,6 +542,7 @@
         const inspectUnit = () => {
           inspectedCardId = unit.id;
           inspectedCardSide = side;
+          inspectedCardInstanceId = unit.instanceId;
           renderCollectionPanels();
         };
         cell.addEventListener("mouseenter", inspectUnit);
@@ -730,6 +735,11 @@
     return cards.find(card => card.id === inspectedCardId) || cards[0] || null;
   }
 
+  function getInspectedBoardUnit() {
+    if (!engine || !inspectedCardSide || !inspectedCardInstanceId) return null;
+    return engine.state[inspectedCardSide]?.board?.find(unit => unit?.instanceId === inspectedCardInstanceId) || null;
+  }
+
   function currentCardValue(card, side = inspectedCardSide) {
     if (!engine || !side || !card) return null;
     const power = Number(engine.state[side]?.power?.[card.school] || 0);
@@ -798,6 +808,15 @@
       return;
     }
     renderPreviewInto(target, card, null);
+    const inspectedUnit = getInspectedBoardUnit();
+    const inspectedUnitIsSick = inspectedUnit && typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(inspectedUnit, inspectedCardSide);
+    if (inspectedUnitIsSick) {
+      const status = document.createElement("div");
+      status.className = "summoning-sickness-preview";
+      status.setAttribute("role", "status");
+      status.textContent = "Debolezza da evocazione — potrà attaccare dal prossimo turno";
+      target.appendChild(status);
+    }
     $("#inspectCardTitle").textContent = card.name;
     $("#inspectCardAbility").innerHTML = cardDescriptionHtml(card);
     const combatDetails = card.type === "spell" ? "" : `
