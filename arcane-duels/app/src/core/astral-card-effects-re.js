@@ -36,15 +36,28 @@
 
   function healHero(engine, side, amount, reason, events) {
     const target = fighter(engine, side);
-    const healed = capHeal(target, amount, "hp", "maxHp");
+    const before = Math.max(0, Number(target.hp || 0));
+    target.hp = before + Math.max(0, Math.trunc(amount || 0));
+    const healed = target.hp - before;
     if (healed > 0) {
       events?.push({ type: "astralHealHero", side, amount: healed, reason, hp: target.hp });
     }
     return healed;
   }
 
-  function healUnit(unit, amount) {
-    return capHeal(unit, amount, "currentHealth", "health");
+  function healUnit(unit, amount, events, details = {}) {
+    const healed = capHeal(unit, amount, "currentHealth", "health");
+    if (healed > 0) events?.push({
+      type: "astralUnitHeal",
+      side: details.side,
+      slot: details.slot,
+      cardId: unit.id,
+      instanceId: unit.instanceId,
+      amount: healed,
+      health: unit.currentHealth,
+      reason: details.reason || unit.id
+    });
+    return healed;
   }
 
   function effectiveAttack(engine, side, unit) {
@@ -93,7 +106,9 @@
   function applyHeroDamage(engine, sourceSide, targetSide, baseAmount, options, events) {
     const sourceKind = options?.sourceKind || "spell";
     let amount = sourceKind === "spell" ? spellDamage(engine, sourceSide, baseAmount) : Math.max(0, Math.trunc(baseAmount || 0));
+    const modifiedAmount = amount;
     amount = reduceIncomingDamage(engine, targetSide, "hero", amount);
+    const resolvedAmount = amount;
     const target = fighter(engine, targetSide);
     const before = target.hp;
     target.hp = Math.max(0, target.hp - amount);
@@ -106,6 +121,8 @@
       sourceId: options?.sourceUnit?.id || options?.sourceCard?.id || null,
       amount: actual,
       baseAmount: Math.max(0, Math.trunc(baseAmount || 0)),
+      modifiedAmount,
+      resolvedAmount,
       hp: target.hp,
       reason: options?.reason || null
     });
@@ -117,7 +134,9 @@
     if (!target || target.currentHealth <= 0) return 0;
     const sourceKind = options?.sourceKind || "spell";
     let amount = sourceKind === "spell" ? spellDamage(engine, sourceSide, baseAmount) : Math.max(0, Math.trunc(baseAmount || 0));
+    const modifiedAmount = amount;
     amount = reduceIncomingDamage(engine, targetSide, "creature", amount);
+    const resolvedAmount = amount;
     const before = target.currentHealth;
     target.currentHealth -= amount;
     const actual = Math.max(0, Math.min(before, amount));
@@ -138,6 +157,8 @@
       targetId: target.id,
       amount: actual,
       baseAmount: Math.max(0, Math.trunc(baseAmount || 0)),
+      modifiedAmount,
+      resolvedAmount,
       health: Math.max(0, target.currentHealth),
       reason: options?.reason || null
     });
@@ -400,7 +421,7 @@
         applyHeroDamage(engine, side, enemySide, 7, summonOptions, events);
         break;
       case "astral_air_12":
-        own.board.forEach(target => { if (target) target.currentHealth = target.health; });
+        own.board.forEach((target, slot) => { if (target) healUnit(target, target.health, events, { side, slot, reason: card.id }); });
         break;
       case "astral_air_13":
         applyHeroDamage(engine, side, enemySide, 15, summonOptions, events);
@@ -408,7 +429,7 @@
 
       case "astral_earth_04":
         healHero(engine, side, 5, card.id, events);
-        own.board.forEach(target => { if (target) healUnit(target, 5); });
+        own.board.forEach((target, slot) => { if (target) healUnit(target, 5, events, { side, slot, reason: card.id }); });
         break;
       case "astral_earth_06":
         healHero(engine, side, current * 2, card.id, events);
@@ -486,7 +507,7 @@
     cleanupDeaths(engine, events, side);
   }
 
-  function beforeUnitAttack(engine, side, unit, events) {
+  function beforeUnitAttack(engine, side, slot, unit, events) {
     if (!unit || unit.currentHealth <= 0) return;
     const own = fighter(engine, side);
     const enemy = fighter(engine, opponent(engine, side));
@@ -498,17 +519,17 @@
         healHero(engine, side, 2, unit.id, events);
         break;
       case "astral_earth_08":
-        healUnit(unit, 3);
+        healUnit(unit, 3, events, { side, slot });
         break;
       case "astral_earth_09":
         healHero(engine, side, 2, unit.id, events);
-        own.board.forEach(target => { if (target) healUnit(target, 2); });
+        own.board.forEach((target, targetSlot) => { if (target) healUnit(target, 2, events, { side, slot: targetSlot, reason: unit.id }); });
         break;
       case "astral_earth_12":
-        healUnit(unit, 4);
+        healUnit(unit, 4, events, { side, slot });
         break;
       case "astral_death_02":
-        healUnit(unit, 2);
+        healUnit(unit, 2, events, { side, slot });
         break;
       default:
         break;
@@ -524,7 +545,7 @@
     const unit = own.board[slot];
     if (!unit || unit.currentHealth <= 0) return { events, skipped: true };
 
-    beforeUnitAttack(engine, side, unit, events);
+    beforeUnitAttack(engine, side, slot, unit, events);
     if (engine.state.gameOver || !own.board[slot] || own.board[slot].currentHealth <= 0) {
       cleanupDeaths(engine, events, side);
       return { events, skipped: true };
@@ -577,6 +598,33 @@
     events?.push({ type: "astralPowerGrowth", side, power: A.deepClone(target.power), gain: A.deepClone(target.powerGain) });
   }
 
+  function previewCardValue(engine, side, card) {
+    if (!isAstral(engine) || !side || !card) return null;
+    const own = fighter(engine, side);
+    const targetSide = opponent(engine, side);
+    const power = Number(own.power?.[card.school] || 0);
+    const formulas = {
+      astral_fire_06: { base: Math.trunc(power / 2) + 4, kind: "damage", targetKind: "creature" },
+      astral_fire_08: { base: Math.trunc(power / 2) + 4, kind: "damage", targetKind: "hero" },
+      astral_fire_11: { base: power + 5, kind: "damage", targetKind: "hero" },
+      astral_water_01: { base: Math.trunc(power / 2) + 3, kind: "heal" },
+      astral_water_05: { base: power + 3, kind: "damage", targetKind: "hero" },
+      astral_air_06: { base: power + 5, kind: "damage", targetKind: "hero" },
+      astral_air_08: { base: Math.max(0, power - 1), kind: "damage", targetKind: "hero" },
+      astral_earth_06: { base: power * 2, kind: "heal" },
+      astral_death_08: { base: Math.trunc(power / 2) + 5, kind: "damage", targetKind: "hero" }
+    };
+    const formula = formulas[card.id];
+    if (!formula) return null;
+    if (formula.kind === "heal") return { ...formula, modified: formula.base, effective: formula.base, targetSide: side };
+    const modified = spellDamage(engine, side, formula.base);
+    const reduced = reduceIncomingDamage(engine, targetSide, formula.targetKind, modified);
+    const effective = formula.targetKind === "hero"
+      ? Math.min(reduced, Math.max(0, Number(fighter(engine, targetSide).hp || 0)))
+      : reduced;
+    return { ...formula, modified, effective, targetSide };
+  }
+
   A.ASTRAL_CARD_ENGINE_RE = Object.freeze({
     dispatcherAddress: "0x448878",
     damageAddress: "0x447AE0",
@@ -601,4 +649,5 @@
   A.astralOnSpell = onSpell;
   A.astralAttackUnit = attackUnit;
   A.astralGrowPowers = growPowers;
+  A.astralPreviewCardValue = previewCardValue;
 })(window.Arcane = window.Arcane || {});

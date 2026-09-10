@@ -322,4 +322,36 @@
     const best = ranked.find(entry => entry.legal && Number.isFinite(entry.score));
     return best ? { ...best.move, source: "astral-re-v0.17", recoveredLevel: best.level, recoveredScore: best.score } : { type: "pass", source: "astral-re-v0.17" };
   };
+
+  A.canonicalAstralMove = function canonicalAstralMove(move) {
+    if (!move || move.type === "pass") return { type: "pass", cardId: null, slot: null };
+    return {
+      type: move.type || "play",
+      cardId: move.cardId || null,
+      slot: Number.isInteger(move.slot) ? move.slot : null
+    };
+  };
+
+  A.compareRecoveredAstralOracle = function compareRecoveredAstralOracle(ranked, oracleMove) {
+    const legal = (ranked || []).filter(entry => entry?.legal && Number.isFinite(entry.score));
+    const recovered = A.canonicalAstralMove(legal[0]?.move || { type: "pass" });
+    if (!oracleMove) return { status: "pending", exact: false, oracleRank: null, recovered, oracle: null, scoreGap: null };
+
+    const oracle = A.canonicalAstralMove(oracleMove);
+    const rankIndex = legal.findIndex(entry => {
+      const candidate = A.canonicalAstralMove(entry.move);
+      return candidate.type === oracle.type && candidate.cardId === oracle.cardId && candidate.slot === oracle.slot;
+    });
+    const sameCard = recovered.type === oracle.type && recovered.cardId === oracle.cardId;
+    const exact = sameCard && recovered.slot === oracle.slot;
+    const oracleEntry = rankIndex >= 0 ? legal[rankIndex] : null;
+    return {
+      status: exact ? "exact" : rankIndex < 0 ? "illegal-oracle" : sameCard ? "lane-difference" : "different",
+      exact,
+      oracleRank: rankIndex >= 0 ? rankIndex + 1 : null,
+      recovered,
+      oracle,
+      scoreGap: oracleEntry && legal[0] ? legal[0].score - oracleEntry.score : null
+    };
+  };
 })(window.Arcane = window.Arcane || {});

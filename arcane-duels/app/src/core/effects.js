@@ -23,7 +23,7 @@
           events.push({ type: "heroDamage", side: enemySide, amount, source: card.name });
           break;
         case "heal_self_hero":
-          self.hp = Math.min(self.maxHp, self.hp + amount);
+          self.hp += amount;
           events.push({ type: "heroHeal", side, amount, source: card.name });
           break;
         case "damage_all_enemy_creatures":
@@ -51,7 +51,7 @@
             target.unit.currentHealth += amount;
             events.push({ type: "statChange", side, slot: target.slot, stat: "health", delta: amount });
           } else {
-            self.hp = Math.min(self.maxHp, self.hp + amount);
+            self.hp += amount;
             events.push({ type: "heroHeal", side, amount, source: card.name });
           }
           break;

@@ -3,17 +3,29 @@
 
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
+  const t = (key, vars) => A.i18n?.t(key, vars) ?? key;
+  const localizedCard = card => A.i18n?.card(card) || { name: card?.name || "", description: card?.text || "" };
+  const cardName = card => localizedCard(card).name;
+  const cardText = card => localizedCard(card).description;
   const sessionSets = {
     "astral-original": A.getCardSet("astral-original")
   };
+  const preference = (key, fallback) => {
+    try {
+      const value = localStorage.getItem(`arcane.${key}`);
+      return value === null ? fallback : value;
+    } catch { return fallback; }
+  };
 
   let engine = null;
+  let duelCommandSession = null;
   let activeSchool = "fire";
   let enemySchool = "fire";
   let enemyRevealedModalOpen = false;
-  let animationSpeed = 1;
-  let cardArtStyle = "original";
-  let soundEnabled = true;
+  let animationSpeed = 1.15;
+  animationSpeed = Number(preference("animationSpeed", "1.15"));
+  let cardArtStyle = preference("cardArtStyle", "new") === "original" ? "original" : "new";
+  let soundEnabled = preference("soundEnabled", "1") !== "0";
   let busy = false;
   let audioContext = null;
   const originalSoundCache = new Map();
@@ -32,7 +44,14 @@
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   let turnBannerTimer = null;
   let previewCloseTimer = null;
+  let presentationLog = [];
   let currentDuelLaunch = null;
+  let remoteRoomClient = null;
+  let remoteRoomPoll = null;
+  let remoteDuelActive = false;
+  let remoteRefreshBusy = false;
+  let currentPlayerName = "";
+  let currentOpponentName = "";
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
 
   function escapeHtml(value) {
@@ -71,8 +90,140 @@
     return A.SCHOOLS.find(item => item.id === id) || A.SCHOOLS[0];
   }
 
+  function schoolName(id) {
+    return t(`schools.${id}`);
+  }
+
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms * animationSpeed));
+  }
+
+  function normalizedPlayerName(value, fallback = t("ui.player")) {
+    return String(value || "").replace(/\s+/g, " ").trim().slice(0, 24) || fallback;
+  }
+
+  function selectedPlayerName() {
+    return normalizedPlayerName($("#playerNameInput")?.value);
+  }
+
+  function savePlayerName() {
+    const name = selectedPlayerName();
+    if ($("#playerNameInput")) $("#playerNameInput").value = name;
+    localStorage.setItem("arcane.playerName", name);
+    return name;
+  }
+
+  function saveRemoteRoom() {
+    if (!remoteRoomClient?.code) return localStorage.removeItem("arcane.remoteRoom");
+    localStorage.setItem("arcane.remoteRoom", JSON.stringify({
+      code: remoteRoomClient.code, token: remoteRoomClient.token, side: remoteRoomClient.side,
+      sequence: remoteRoomClient.sequence, checksum: remoteRoomClient.checksum
+    }));
+  }
+
+  function renderRemoteLobby(response) {
+    $("#onlineLobbyActions").classList.toggle("hidden", Boolean(response));
+    $("#onlineLobbyStatus").classList.toggle("hidden", !response);
+    if (!response) return;
+    $("#onlineRoomCodeLabel").textContent = response.code;
+    $("#onlineConnectionMessage").textContent = t(response.ready ? "online.ready" : "online.waiting");
+    if (response.ready) showRemoteBattle(response);
+  }
+
+  function orientRemoteSnapshot(snapshot, side) {
+    const oriented = A.deepClone(snapshot);
+    if (side !== "enemy") return oriented;
+    [oriented.state.player, oriented.state.enemy] = [oriented.state.enemy, oriented.state.player];
+    const phaseSwap = {
+      [A.PHASES.PLAYER_SELECT]: A.PHASES.ENEMY_PLAY,
+      [A.PHASES.PLAYER_TARGET]: A.PHASES.ENEMY_PLAY,
+      [A.PHASES.PLAYER_ATTACK]: A.PHASES.ENEMY_ATTACK,
+      [A.PHASES.ENEMY_THINK]: A.PHASES.PLAYER_SELECT,
+      [A.PHASES.ENEMY_PLAY]: A.PHASES.PLAYER_SELECT,
+      [A.PHASES.ENEMY_ATTACK]: A.PHASES.PLAYER_ATTACK
+    };
+    oriented.state.phase = phaseSwap[oriented.state.phase] || oriented.state.phase;
+    oriented.state.activeSide = oriented.state.activeSide === "player" ? "enemy" : "player";
+    return oriented;
+  }
+
+  function showRemoteBattle(response) {
+    if (!response?.state) return;
+    engine = A.GameEngine.fromSnapshot(
+      orientRemoteSnapshot(response.state, remoteRoomClient.side),
+      sessionSets["astral-original"]
+    );
+    remoteDuelActive = true;
+    const names = response.playerNames || {};
+    currentPlayerName = remoteRoomClient.side === "enemy"
+      ? normalizedPlayerName(names.enemy, t("ui.player"))
+      : normalizedPlayerName(names.player, t("ui.player"));
+    currentOpponentName = remoteRoomClient.side === "enemy"
+      ? normalizedPlayerName(names.player, t("ui.opponent"))
+      : normalizedPlayerName(names.enemy, t("ui.opponent"));
+    tournamentMatch = false;
+    presentationLog = [];
+    activeSchool = engine.state.player.talent;
+    enemySchool = engine.state.enemy.talent;
+    inspectedCardId = engine.state.player.hand.find(card => !card.hidden)?.id || null;
+    inspectedCardSide = "player";
+    $("#setupPanel").classList.add("hidden");
+    $("#battlePanel").classList.remove("hidden");
+    $("#seedBadge").textContent = `online · ${response.code || remoteRoomClient.code} · #${response.sequence}`;
+    renderGame();
+  }
+
+  async function refreshRemoteRoom() {
+    if (!remoteRoomClient || remoteRefreshBusy || busy) return;
+    remoteRefreshBusy = true;
+    try {
+      let state = await remoteRoomClient.reconnect();
+      if (state.ready && remoteRoomClient.side === "enemy" && state.state?.state?.phase === A.PHASES.ENEMY_THINK) {
+        state = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.BEGIN_PLAY);
+      }
+      saveRemoteRoom(); renderRemoteLobby(state);
+    }
+    catch { clearInterval(remoteRoomPoll); remoteRoomPoll = null; renderRemoteLobby(null); }
+    finally { remoteRefreshBusy = false; }
+  }
+
+  function beginRemotePolling() {
+    clearInterval(remoteRoomPoll);
+    remoteRoomPoll = setInterval(refreshRemoteRoom, 1200);
+  }
+
+  async function resolveRemoteMove(type, payload = {}) {
+    clearInterval(remoteRoomPoll);
+    remoteRoomPoll = null;
+    busy = true;
+    try {
+      let response = await remoteRoomClient.submit(type, payload);
+      showRemoteBattle(response);
+      while (response.state?.state?.phase === (remoteRoomClient.side === "player" ? A.PHASES.PLAYER_ATTACK : A.PHASES.ENEMY_ATTACK)) {
+        response = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.ATTACK_NEXT);
+        if (response.result?.done) {
+          response = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
+          break;
+        }
+      }
+      saveRemoteRoom();
+      showRemoteBattle(response);
+      return response;
+    } catch (error) {
+      setMessage(error.message);
+      await refreshRemoteRoom();
+      return null;
+    } finally {
+      busy = false;
+      beginRemotePolling();
+    }
+  }
+
+  function issueDuelCommand(actor, type, payload = {}) {
+    if (!duelCommandSession) return { ok: false, reason: "Sessione del duello non disponibile." };
+    const command = duelCommandSession.createCommand(actor, type, payload);
+    const outcome = duelCommandSession.dispatch(command);
+    return outcome.ok ? outcome.result : { ok: false, reason: outcome.reason };
   }
 
   function setupLocalServerLifecycle() {
@@ -338,8 +489,13 @@
       ? `${tournament.seed}-match-${tournament.currentMatch + 1}`
       : (seedOverride || requestedSeed || createDuelSeed());
     const difficulty = fromTournament ? opponent.difficulty : $("#difficultySelect").value;
+    currentPlayerName = savePlayerName();
+    currentOpponentName = fromTournament
+      ? normalizedPlayerName(opponent?.name, t("ui.opponent"))
+      : normalizedPlayerName(A.DIFFICULTIES[difficulty]?.label, t("ui.opponent"));
     tournamentMatch = Boolean(fromTournament);
     matchRecorded = false;
+    presentationLog = [];
     activeSchool = playerTalent;
     const originalMode = setId === "astral-original";
     const duelRules = originalMode
@@ -355,13 +511,14 @@
       rules: duelRules,
       aiDifficulty: difficulty,
       astralMode: fromTournament ? "tournament" : "duel",
-      astralLeague: originalMode ? (fromTournament ? (tournament.astralLeague || "starting") : ($("#astralLeagueSelect")?.value || "starting")) : undefined,
+      astralLeague: originalMode ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting")) : undefined,
       playerSpecialization: withSpecializations ? (fromTournament ? tournament.specialization : selectedSpecialization) : undefined,
       enemySpecialization: withSpecializations ? (fromTournament ? opponent?.specialization : ($("#enemySpecializationSelect")?.value || undefined)) : undefined,
       playerAstralAbilities: withSpecializations ? undefined : [],
       enemyAstralAbilities: withSpecializations ? undefined : []
     });
     engine.aiDifficulty = difficulty;
+    duelCommandSession = new A.CommandSession(engine, { matchId: `local:${seed}` });
     currentDuelLaunch = {
       playerTalent,
       fromTournament: Boolean(fromTournament),
@@ -388,6 +545,8 @@
 
   function restartDuel() {
     engine = null;
+    duelCommandSession = null;
+    remoteDuelActive = false;
     busy = false;
     tournamentMatch = false;
     $("#battlePanel").classList.add("hidden");
@@ -397,6 +556,10 @@
   }
 
   $("#restartBtn").addEventListener("click", restartDuel);
+  $("#returnMainMenuBtn")?.addEventListener("click", () => {
+    restartDuel();
+    switchView("game");
+  });
   $("#duelMenuBtn")?.addEventListener("click", () => {
     if (tournamentMatch) return restartDuel();
     const actions = $("#duelSessionActions");
@@ -472,7 +635,7 @@
       art.className = "cast-card-art";
       art.appendChild(buildArtBlock(card, "cast"));
       const label = document.createElement("strong");
-      label.textContent = card.name;
+      label.textContent = cardName(card);
       cast.appendChild(art);
       cast.appendChild(label);
       layer.appendChild(cast);
@@ -488,9 +651,9 @@
       target?.classList.add("summon-arrival");
       setTimeout(() => target?.classList.remove("summon-arrival"), fxDuration(700) || 40);
     }
-    // Keep the cast readable as a distinct beat before combat starts.
-    // `sleep` and the removal timer share the same speed multiplier.
-    await sleep(reducedMotion ? 0 : 760);
+    // Complete the card preview before damage/healing feedback is allowed to
+    // enter the battlefield. The cast removes itself at 820ms.
+    await sleep(reducedMotion ? 0 : 860);
   }
 
   function updatePhaseVisual(state) {
@@ -503,14 +666,14 @@
 
   function phaseLabel(phase) {
     return ({
-      [A.PHASES.PLAYER_SELECT]: "Scegli una carta",
-      [A.PHASES.PLAYER_TARGET]: "Scegli lo slot",
-      [A.PHASES.PLAYER_ATTACK]: "Il tuo attacco",
-      [A.PHASES.ENEMY_THINK]: "L'IA sta pensando",
-      [A.PHASES.ENEMY_PLAY]: "Giocata avversaria",
-      [A.PHASES.ENEMY_ATTACK]: "Attacco avversario",
-      [A.PHASES.ROUND_END]: "Fine round",
-      [A.PHASES.GAME_OVER]: "Duello terminato"
+      [A.PHASES.PLAYER_SELECT]: t("phase.playerSelect"),
+      [A.PHASES.PLAYER_TARGET]: t("phase.playerTarget"),
+      [A.PHASES.PLAYER_ATTACK]: t("phase.playerAttack"),
+      [A.PHASES.ENEMY_THINK]: t("phase.enemyThink"),
+      [A.PHASES.ENEMY_PLAY]: t("phase.enemyPlay"),
+      [A.PHASES.ENEMY_ATTACK]: t("phase.enemyAttack"),
+      [A.PHASES.ROUND_END]: t("phase.roundEnd"),
+      [A.PHASES.GAME_OVER]: t("phase.gameOver")
     })[phase] || phase;
   }
 
@@ -523,6 +686,7 @@
       cell.type = "button";
       cell.className = unit ? `unit school-${unit.school}` : "slot";
       cell.dataset.slot = String(slot);
+      if (unit?.instanceId) cell.dataset.instanceId = unit.instanceId;
       cell.style.setProperty("--slot-index", slot);
       if (unit) {
         const cardSchool = school(unit.school);
@@ -649,7 +813,7 @@
     const id = card?.id || "";
     if (!id) return [];
     const candidates = [];
-    if (cardArtStyle === "new" && ["fire", "water", "air", "nature"].includes(card.school)) {
+    if (cardArtStyle === "new" && ["fire", "water", "air", "nature", "death"].includes(card.school)) {
       candidates.push(`assets/cards/remastered/${id}.png`);
     }
     candidates.push(
@@ -671,7 +835,7 @@
 
     const img = document.createElement("img");
     img.className = "art-image";
-    img.alt = `Illustrazione di ${card.name}`;
+    img.alt = cardName(card);
     img.loading = "eager";
     img.decoding = "async";
 
@@ -723,7 +887,7 @@
   }
 
   function getIllustratedSchoolCounts() {
-    return { fire: 13, water: 13, air: 13, earth: 13, death: 0 };
+    return { fire: 13, water: 13, air: 13, earth: 13, death: 13 };
   }
 
   function getIllustratedTotal() {
@@ -732,7 +896,7 @@
 
   function getInspectedCard() {
     const cards = allAstralCards();
-    return cards.find(card => card.id === inspectedCardId) || cards[0] || null;
+    return cards.find(card => card.id === inspectedCardId) || null;
   }
 
   function getInspectedBoardUnit() {
@@ -742,6 +906,12 @@
 
   function currentCardValue(card, side = inspectedCardSide) {
     if (!engine || !side || !card) return null;
+    const preview = A.astralPreviewCardValue?.(engine, side, card);
+    if (preview) {
+      return preview.effective !== preview.modified
+        ? `${preview.effective} (${preview.modified} ${t("ui.beforeDefense")})`
+        : preview.effective;
+    }
     const power = Number(engine.state[side]?.power?.[card.school] || 0);
     const formulas = {
       astral_fire_06: Math.trunc(power / 2) + 4,
@@ -757,23 +927,173 @@
     return Object.hasOwn(formulas, card.id) ? formulas[card.id] : null;
   }
 
+  function localizedSide(side) {
+    return side === "player" ? t("ui.player") : t("ui.opponent");
+  }
+
+  function localizedCardNameById(id, fallback = "") {
+    const card = allAstralCards().find(item => item.id === id);
+    return card ? cardName(card) : fallback;
+  }
+
+  function pushPresentationLog(key, vars) {
+    const previous = presentationLog[presentationLog.length - 1];
+    const next = { key, vars };
+    if (previous && previous.key === next.key && JSON.stringify(previous.vars) === JSON.stringify(next.vars)) return;
+    presentationLog.push(next);
+    presentationLog = presentationLog.slice(-30);
+    renderPresentationLog();
+  }
+
+  function presentationVars(vars = {}) {
+    const localized = { ...vars };
+    if (vars.actorSide) localized.actor = localizedSide(vars.actorSide);
+    if (vars.targetSide) localized.target = localizedSide(vars.targetSide);
+    if (vars.cardId) localized.card = localizedCardNameById(vars.cardId, vars.cardName);
+    if (vars.sourceCardId) localized.source = localizedCardNameById(vars.sourceCardId, vars.sourceName);
+    else if (vars.sourceName) localized.source = vars.sourceName;
+    if (vars.targetCardId) localized.target = localizedCardNameById(vars.targetCardId, vars.targetName);
+    else if (vars.targetName) localized.target = vars.targetName;
+    return localized;
+  }
+
+  function renderPresentationLog() {
+    const root = $("#combatLog");
+    if (root) {
+      root.innerHTML = presentationLog.map(item => `<div>${escapeHtml(t(item.key, presentationVars(item.vars)))}</div>`).join("");
+      root.scrollTop = root.scrollHeight;
+    }
+  }
+
+  function recordCardResolution(result) {
+    if (!result?.ok || !result.card) return;
+    const actorSide = result.events?.find(event => event.sourceSide || event.side)?.sourceSide
+      || result.events?.find(event => event.side)?.side
+      || "player";
+    pushPresentationLog(result.card.type === "spell" ? "log.cast" : "log.summon", {
+      actorSide,
+      cardId: result.card.id,
+      cardName: result.card.name
+    });
+    (result.events || []).forEach(event => {
+      if (event.type === "astralHeroDamage") {
+        const vars = {
+          sourceCardId: result.card.id,
+          sourceName: result.card.name,
+          targetSide: event.targetSide,
+          amount: event.amount,
+          gross: event.modifiedAmount
+        };
+        pushPresentationLog(event.modifiedAmount > event.resolvedAmount ? "log.damageHeroReduced" : "log.damageHero", vars);
+      } else if (event.type === "astralCreatureDamage") {
+        if (event.reason === "astral_nets") return;
+        pushPresentationLog("log.damageCreature", {
+          sourceCardId: result.card.id,
+          sourceName: result.card.name,
+          targetCardId: event.targetId,
+          targetName: event.targetId,
+          amount: event.amount
+        });
+      } else if (event.type === "astralHealHero") {
+        const reactiveSourceIds = {
+          wall_of_souls: "astral_death_09",
+          souldrinker: null,
+          healing_aura: null
+        };
+        pushPresentationLog("log.healHero", {
+          sourceCardId: Object.hasOwn(reactiveSourceIds, event.reason) ? reactiveSourceIds[event.reason] : result.card.id,
+          sourceName: event.reason === "souldrinker" ? t("effect.souldrinker")
+            : event.reason === "healing_aura" ? t("effect.healingAura")
+              : result.card.name,
+          targetSide: event.side,
+          amount: event.amount
+        });
+      } else if (event.type === "astralDeath") {
+        pushPresentationLog("log.death", {
+          targetCardId: event.cardId,
+          targetName: event.cardName
+        });
+      } else if (event.type === "astralPhoenixRebirth") {
+        pushPresentationLog("log.rebirth", {
+          targetCardId: event.cardId,
+          amount: event.health
+        });
+      } else if (event.type === "astralPowerReduction") {
+        pushPresentationLog("log.powerReduction", {
+          targetSide: event.side,
+          amount: event.amount
+        });
+      } else if (event.type === "astralVampireHeal") {
+        pushPresentationLog("log.vampireHeal", {
+          sourceCardId: "astral_death_11",
+          amount: event.amount
+        });
+      } else if (event.type === "astralFireRitual") {
+        pushPresentationLog("log.fireRitual", {
+          actorSide: event.side,
+          targetSide: event.side === "player" ? "enemy" : "player"
+        });
+      } else if (event.type === "astralNets") {
+        pushPresentationLog("log.astralNets", {
+          targetCardId: event.targetId,
+          amount: event.amount
+        });
+      } else if (event.type === "astralDeathKeeper") {
+        pushPresentationLog("log.deathKeeper", {
+          actorSide: event.side,
+          amount: event.amount
+        });
+      } else if (event.type === "astralUnitHeal") {
+        pushPresentationLog("log.healCreature", {
+          sourceCardId: event.reason,
+          sourceName: result.card.name,
+          targetCardId: event.cardId,
+          amount: event.amount
+        });
+      }
+    });
+  }
+
+  function recordAttackSecondaryEffects(result) {
+    (result?.events || []).forEach(event => {
+      if (event.type === "astralVampireHeal") {
+        pushPresentationLog("log.vampireHeal", { sourceCardId: "astral_death_11", amount: event.amount });
+      } else if (event.type === "astralDeath") {
+        pushPresentationLog("log.death", { targetCardId: event.cardId, targetName: event.cardName });
+      } else if (event.type === "astralPhoenixRebirth") {
+        pushPresentationLog("log.rebirth", { targetCardId: event.cardId, amount: event.health });
+      } else if (event.type === "astralDeathKeeper") {
+        pushPresentationLog("log.deathKeeper", { actorSide: event.side, amount: event.amount });
+      } else if (event.type === "astralHealHero") {
+        const sourceCardId = event.reason === "wall_of_souls" ? "astral_death_09" : null;
+        const sourceName = event.reason === "souldrinker" ? t("effect.souldrinker")
+          : event.reason === "healing_aura" ? t("effect.healingAura") : event.reason;
+        pushPresentationLog("log.healHero", { sourceCardId, sourceName, targetSide: event.side, amount: event.amount });
+      } else if (event.type === "astralFireAura") {
+        pushPresentationLog("log.fireAura", { targetCardId: event.sourceId, amount: event.amount });
+      }
+    });
+  }
+
+  function recordAttackRegeneration(result) {
+    (result?.events || []).filter(event => event.type === "astralUnitHeal").forEach(event => {
+      pushPresentationLog("log.regenerate", {
+        sourceCardId: event.reason,
+        targetCardId: event.cardId,
+        amount: event.amount
+      });
+    });
+  }
+
   function cardDescription(card, side = inspectedCardSide) {
-    const raw = card?.text || card?.keyword || "Nessuna abilità descritta.";
+    const raw = cardText(card) || card?.keyword || t("ui.selectCardForDetails");
     const separated = raw.replace(/\s+([+-]\d+\b)/g, ". $1");
     const base = /[.!?]$/.test(separated) ? separated : `${separated}.`;
-    const value = currentCardValue(card, side);
-    return value === null ? base : `${base} · Valore attuale: ${value}`;
+    return base;
   }
 
   function cardDescriptionHtml(card, side = inspectedCardSide) {
-    const raw = card?.text || card?.keyword || "Nessuna abilità descritta.";
-    const separated = raw.replace(/\s+([+-]\d+\b)/g, ". $1");
-    const base = /[.!?]$/.test(separated) ? separated : `${separated}.`;
-    const value = currentCardValue(card, side);
-    const safeBase = escapeHtml(base);
-    return value === null
-      ? safeBase
-      : `${safeBase} <span class="current-card-value"><small>Valore attuale</small><strong>${escapeHtml(value)}</strong></span>`;
+    return escapeHtml(cardDescription(card, side));
   }
 
   function applyCollectionFilters(cards) {
@@ -800,11 +1120,13 @@
     const target = $("#inspectPreview");
     if (!target) return;
     if (!card) {
-      target.innerHTML = "<p>Nessuna carta selezionata.</p>";
-      $("#inspectCardTitle").textContent = "Nessuna carta";
-      $("#inspectCardAbility").textContent = "Evidenzia una carta per leggerne l'abilità.";
+      target.innerHTML = `<p>${escapeHtml(t("ui.noCard"))}</p>`;
+      $("#inspectCardTitle").textContent = t("ui.noCard");
+      $("#inspectCardAbility").textContent = t("ui.selectCardForDetails");
       $("#inspectCardDetails").innerHTML = "";
       $("#inspectCardMeta").innerHTML = "";
+      $("#inspectCardCurrentValue")?.classList.add("hidden");
+      if ($("#viewCardBtn")) $("#viewCardBtn").disabled = true;
       return;
     }
     renderPreviewInto(target, card, null);
@@ -814,20 +1136,28 @@
       const status = document.createElement("div");
       status.className = "summoning-sickness-preview";
       status.setAttribute("role", "status");
-      status.textContent = "Debolezza da evocazione — potrà attaccare dal prossimo turno";
+      status.textContent = t("status.summoningSickness");
       target.appendChild(status);
     }
-    $("#inspectCardTitle").textContent = card.name;
+    $("#inspectCardTitle").textContent = cardName(card);
     $("#inspectCardAbility").innerHTML = cardDescriptionHtml(card);
+    const currentValue = currentCardValue(card);
+    const currentValueNode = $("#inspectCardCurrentValue");
+    currentValueNode?.classList.toggle("hidden", currentValue === null);
+    if (currentValueNode && currentValue !== null) {
+      currentValueNode.querySelector(".label").textContent = `${t("ui.currentValue")}:`;
+      currentValueNode.querySelector(".value").textContent = currentValue;
+    }
+    if ($("#viewCardBtn")) $("#viewCardBtn").disabled = false;
     const combatDetails = card.type === "spell" ? "" : `
-      <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> Attacco</small><b>${escapeHtml(card.attack)}</b></span>
-      <span class="detail-combat-stat detail-health"><small><i aria-hidden="true">♥</i> Vita</small><b>${escapeHtml(card.currentHealth ?? card.health)}</b></span>`;
+      <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(card.attack)}</b></span>
+      <span class="detail-combat-stat detail-health"><small><i aria-hidden="true">♥</i> ${t("ui.life")}</small><b>${escapeHtml(card.currentHealth ?? card.health)}</b></span>`;
     $("#inspectCardDetails").innerHTML = `
-      <span class="detail-school"><small>Scuola</small><b>${escapeHtml(school(card.school).name)}</b></span>
-      <span class="detail-type"><small>Tipo</small><b>${card.type === "spell" ? "Magia" : "Creatura"}</b></span>
-      <span class="detail-cost"><small>Costo</small><b>${escapeHtml(card.level)}</b></span>
+      <span class="detail-school"><small>${t("ui.school")}</small><b>${escapeHtml(schoolName(card.school))}</b></span>
+      <span class="detail-type"><small>${t("ui.type")}</small><b>${card.type === "spell" ? t("ui.spell") : t("ui.creature")}</b></span>
+      <span class="detail-cost"><small>${t("ui.cost")}</small><b>${escapeHtml(card.level)}</b></span>
       ${combatDetails}
-      <span class="detail-ability"><small>Abilità</small><b>${escapeHtml(card.keyword || "Originale")}</b></span>`;
+      <span class="detail-ability"><small>${t("ui.ability")}</small><b>${escapeHtml(card.keyword || t("ui.original"))}</b></span>`;
     const previewCombatMeta = card.type === "spell" ? "" : `
         <div><small>Attacco</small><strong>${escapeHtml(card.attack)}</strong></div>
         <div><small>Vita</small><strong>${escapeHtml(card.health)}</strong></div>`;
@@ -873,7 +1203,7 @@
     art.appendChild(buildArtBlock(card, compact ? "collectionCompact" : "collection"));
     const body = document.createElement("div");
     body.className = "collection-tile-body";
-    body.innerHTML = `<strong>${escapeHtml(card.name)}</strong><small>Lv. ${card.level}</small>`;
+    body.innerHTML = `<strong>${escapeHtml(cardName(card))}</strong><small>Lv. ${card.level}</small>`;
     button.appendChild(art);
     button.appendChild(body);
     button.addEventListener("click", () => {
@@ -975,7 +1305,7 @@
     const meta = $("#collectionPageMeta");
     if (card && featured && meta) {
       renderPreviewInto(featured, card, null);
-      $("#collectionPageCardTitle").textContent = card.name;
+      $("#collectionPageCardTitle").textContent = cardName(card);
       meta.innerHTML = `
         <div class="inspect-meta-grid">
           <div><small>Scuola</small><strong>${school(card.school).name}</strong></div>
@@ -985,7 +1315,7 @@
           <div><small>Vita</small><strong>${card.type === "spell" ? "—" : card.health}</strong></div>
           <div><small>Keyword</small><strong>${escapeHtml(card.keyword || "Originale")}</strong></div>
         </div>
-        <div class="inspect-ability-block"><small>Testo carta</small><p>${escapeHtml(card.text || "")}</p></div>`;
+        <div class="inspect-ability-block"><small>Testo carta</small><p>${escapeHtml(cardText(card))}</p></div>`;
     }
     const pageGrid = $("#collectionPageGrid");
     if (pageGrid) {
@@ -1023,12 +1353,12 @@
       clone.classList.toggle("selected", selected);
       clone.classList.toggle("unplayable", !playable && !selected);
       clone.querySelector(".cost").textContent = cost;
-      clone.querySelector(".school").textContent = `${school(card.school).icon} ${school(card.school).name}`;
+      clone.querySelector(".school").textContent = `${school(card.school).icon} ${schoolName(card.school)}`;
       const artNode = clone.querySelector(".art");
       artNode.innerHTML = "";
       artNode.appendChild(buildArtBlock(card, "hand"));
-      clone.querySelector(".name").textContent = card.name;
-      clone.querySelector(".text").textContent = card.text;
+      clone.querySelector(".name").textContent = cardName(card);
+      clone.querySelector(".text").textContent = cardText(card);
       clone.querySelector(".keyword").textContent = card.keyword || "—";
       clone.querySelector(".stats").textContent = card.type === "spell" ? `Lv ${card.level} · ✨` : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
       const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; renderCollectionPanels(); };
@@ -1046,6 +1376,7 @@
   }
 
   function renderEnemyRevealed() {
+    if (!engine) return;
     const root = $("#enemyRevealedCards");
     const modalRoot = $("#enemyRevealedModalContent");
     const summary = $("#enemySchoolSummary");
@@ -1095,11 +1426,13 @@
   function renderGame() {
     if (!engine) return;
     const state = engine.state;
+    $("#playerNameBattle").textContent = currentPlayerName || t("ui.player");
+    $("#enemyNameBattle").textContent = currentOpponentName || t("ui.opponent");
     updatePhaseVisual(state);
     $("#enemyHpBattle").textContent = `${state.enemy.hp} ♥`;
     $("#playerHpBattle").textContent = `${state.player.hp} ♥`;
     $("#phaseLabel").textContent = phaseLabel(state.phase);
-    $("#roundLabel").textContent = `Round ${state.round}`;
+    $("#roundLabel").textContent = t("ui.round", { value: state.round });
     const abilitiesEnabled = (state.player.astralAbilityIds || []).length > 0 || (state.enemy.astralAbilityIds || []).length > 0;
     const playerSpec = abilitiesEnabled && state.playerSpecialization && A.getAstralSpecialization ? A.getAstralSpecialization(state.playerSpecialization) : null;
     const enemySpec = abilitiesEnabled && state.enemySpecialization && A.getAstralSpecialization ? A.getAstralSpecialization(state.enemySpecialization) : null;
@@ -1108,7 +1441,7 @@
     $("#playerTalentLabel").textContent = playerSpec ? `${playerSpec.name}: ${playerAbilityNames || "nessuna abilità"}` : `Talento: ${school(state.player.talent).name}`;
     $("#enemyTalentLabel").textContent = enemySpec ? `${enemySpec.name}: ${enemyAbilityNames || "nessuna abilità"}` : `Talento: ${school(state.enemy.talent).name}`;
     $("#endTurnBtn").disabled = busy || ![A.PHASES.PLAYER_SELECT, A.PHASES.PLAYER_TARGET].includes(state.phase);
-    $("#combatLog").innerHTML = state.log.map(item => `<div>${escapeHtml(item)}</div>`).join("");
+    renderPresentationLog();
     renderSchoolButtons();
     renderBoard("enemy");
     renderBoard("player");
@@ -1156,6 +1489,18 @@
     inspectedCardSide = "player";
     renderCollectionPanels();
     if (!engine || busy) return;
+    if (remoteDuelActive) {
+      const card = engine.getCard("player", cardId);
+      if (!card) return;
+      if (card.type === "creature") {
+        const selected = engine.selectCard(cardId);
+        if (!selected.ok) return setMessage(selected.reason);
+        renderGame();
+        return setMessage(`${cardName(card)}: scegli uno slot.`);
+      }
+      await resolveRemoteMove(A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
+      return;
+    }
 
     const isSpellConfirmTap = !supportsHoverPreview
       && engine.state.phase === A.PHASES.PLAYER_TARGET
@@ -1163,12 +1508,15 @@
 
     if (isSpellConfirmTap) {
       const healthBefore = captureHealthState();
-      const play = engine.playSelected(null);
+      const play = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       if (play.ok) {
         spellSound();
+        await animateCardPlay(play, "player", null);
+        await presentResolutionBeforeUpdate(play);
         renderGame();
         showHealingChanges(healthBefore);
-        await animateCardPlay(play, "player", null);
+        showResolutionAfterUpdate(play, healthBefore);
+        recordCardResolution(play);
         await sleep(120);
         await resolveAttackFlow("player");
       } else {
@@ -1180,7 +1528,7 @@
 
     if (engine.state.phase === A.PHASES.PLAYER_TARGET) {
       const sameCard = engine.state.pendingCardId === cardId;
-      engine.cancelSelection();
+      issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.CANCEL_SELECTION);
       if (sameCard) {
         setMessage("Selezione annullata.");
         renderGame();
@@ -1189,7 +1537,7 @@
     }
 
     if (engine.state.phase !== A.PHASES.PLAYER_SELECT) return;
-    const result = engine.selectCard(cardId);
+    const result = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.SELECT, { cardId });
     if (!result.ok) {
       setMessage(result.reason);
       renderGame();
@@ -1207,12 +1555,15 @@
     if (supportsHoverPreview) {
       setMessage(`${result.card.name} viene lanciata.`);
       const healthBefore = captureHealthState();
-      const play = engine.playSelected(null);
+      const play = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       if (play.ok) {
         spellSound();
+        await animateCardPlay(play, "player", null);
+        await presentResolutionBeforeUpdate(play);
         renderGame();
         showHealingChanges(healthBefore);
-        await animateCardPlay(play, "player", null);
+        showResolutionAfterUpdate(play, healthBefore);
+        recordCardResolution(play);
         await sleep(120);
         await resolveAttackFlow("player");
       }
@@ -1222,28 +1573,44 @@
   }
 
   async function onPlayerSlot(slot) {
+    if (remoteDuelActive) {
+      const cardId = engine.state.pendingCardId;
+      if (cardId) await resolveRemoteMove(A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot });
+      return;
+    }
     if (!engine || busy || engine.state.phase !== A.PHASES.PLAYER_TARGET) return;
     const healthBefore = captureHealthState();
-    const result = engine.playSelected(slot);
+    const result = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, {
+      cardId: engine.state.pendingCardId,
+      slot
+    });
     if (!result.ok) {
       setMessage(result.reason);
       renderGame();
       return;
     }
     playOriginalSound("summon2", 0.4);
+    await animateCardPlay(result, "player", slot);
+    await presentResolutionBeforeUpdate(result);
     renderGame();
     showHealingChanges(healthBefore);
-    await animateCardPlay(result, "player", slot);
+    showResolutionAfterUpdate(result, healthBefore);
+    recordCardResolution(result);
     await sleep(80);
     await resolveAttackFlow("player");
   }
 
   $("#endTurnBtn").addEventListener("click", async () => {
     if (!engine || busy) return;
-    const result = engine.pass("player");
+    if (remoteDuelActive) {
+      await resolveRemoteMove(A.MULTIPLAYER_COMMANDS.PASS);
+      return;
+    }
+    const result = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PASS);
     if (!result.ok) return setMessage(result.reason);
     playOriginalSound("click", 0.35);
     showTurnBanner("Turno passato", "neutral", 700);
+    pushPresentationLog("log.pass", { actorSide: "player" });
     renderGame();
     await resolveAttackFlow("player");
   });
@@ -1275,9 +1642,9 @@
     const layer = $("#duelFxLayer");
     if (!layer || !event) return;
     const cue = document.createElement("div");
-    cue.className = `combat-cue side-${event.side}${event.multiTarget ? " multi-target" : ""}`;
+    cue.className = `combat-cue side-${event.side}${event.multiTarget ? " multi-target" : ""}${event.forcedByEffect ? " forced-attack" : ""}`;
     const target = event.multiTarget ? "tutti i nemici" : (event.targetName || "eroe avversario");
-    cue.textContent = `${event.attackerName || "Creatura"} → ${target}`;
+    cue.textContent = `${event.forcedByEffect ? `${t("effect.forcedAttack")} · ` : ""}${event.attackerName || "Creatura"} → ${target}`;
     layer.appendChild(cue);
     requestAnimationFrame(() => cue.classList.add("show"));
     setTimeout(() => cue.remove(), fxDuration(760) || 40);
@@ -1287,7 +1654,9 @@
     if (!parent || amount <= 0) return;
     const badge = document.createElement("span");
     badge.className = `damage-number${options.lethal ? " lethal" : ""}${options.hero ? " hero-damage" : ""}${options.collateral ? " collateral" : ""}`;
-    badge.textContent = options.lethal ? `−${amount} · KO` : options.hero ? `−${amount} ♥` : `−${amount}`;
+    badge.textContent = options.lethal
+      ? (amount > 0 ? `−${amount} · KO` : "KO")
+      : options.hero ? `−${amount} ♥` : `−${amount}`;
     const fxLayer = $("#duelFxLayer");
     if (options.hero && fxLayer) {
       const rect = parent.getBoundingClientRect();
@@ -1318,10 +1687,162 @@
       ));
   }
 
+  function showResolvedEffectDamage(result) {
+    const events = result?.events || [];
+    const schoolId = result?.card?.school || "generic";
+    events.forEach(event => {
+      let parent = null;
+      let options = { collateral: true };
+      if (event.type === "astralCreatureDamage") {
+        parent = $(`#${event.targetSide}Board [data-slot="${event.slot}"]`);
+        options.lethal = event.health <= 0;
+      } else if (event.type === "astralHeroDamage") {
+        parent = $(`#${event.targetSide}HpBattle`)?.parentElement;
+        options.hero = true;
+        options.lethal = event.hp <= 0;
+      } else if (event.type === "creatureDamage") {
+        parent = $(`#${event.side}Board [data-slot="${event.slot}"]`);
+        options.lethal = Boolean(event.died);
+      } else if (event.type === "heroDamage") {
+        parent = $(`#${event.side}HpBattle`)?.parentElement;
+        options.hero = true;
+      } else {
+        return;
+      }
+      if (!parent || Number(event.amount || 0) <= 0) return;
+      parent.classList.add("effect-damage-hit", `effect-school-${schoolId}`);
+      appendDamageBadge(parent, Number(event.amount), options);
+      setTimeout(() => parent.classList.remove("effect-damage-hit", `effect-school-${schoolId}`), fxDuration(720) || 40);
+    });
+  }
+
+  function showResolutionDeaths(result) {
+    const events = result?.events || [];
+    const damagedSlots = new Set(events
+      .filter(event => ["astralCreatureDamage", "creatureDamage"].includes(event.type))
+      .map(event => `${event.targetSide || event.side}:${event.slot}`));
+    if (events.some(event => event.type === "astralFireAura") && result?.event?.slot !== undefined) {
+      damagedSlots.add(`${result.event.side}:${result.event.slot}`);
+    }
+    events.filter(event => event.type === "astralDeath").forEach(event => {
+      if (damagedSlots.has(`${event.side}:${event.slot}`)) return;
+      const parent = $(`#${event.side}Board [data-slot="${event.slot}"]`);
+      if (!parent) return;
+      parent.classList.add("effect-damage-hit", "effect-death-hit");
+      appendDamageBadge(parent, 0, { lethal: true });
+      setTimeout(() => parent.classList.remove("effect-damage-hit", "effect-death-hit"), fxDuration(900) || 40);
+    });
+  }
+
+  function showResolutionAfterUpdate(result, before) {
+    (result?.events || []).filter(event => event.type === "astralPhoenixRebirth").forEach(event => {
+      const parent = $(`#${event.side}Board [data-slot="${event.slot}"]`);
+      if (!parent) return;
+      parent.classList.add("effect-rebirth-hit");
+      const badge = document.createElement("span");
+      badge.className = "effect-status-number rebirth";
+      badge.textContent = `↻ +${event.health}`;
+      parent.appendChild(badge);
+      setTimeout(() => {
+        badge.remove();
+        parent.classList.remove("effect-rebirth-hit");
+      }, fxDuration(1500) || 40);
+    });
+    (result?.events || []).filter(event => event.type === "astralPowerReduction").forEach(event => {
+      A.SCHOOLS.forEach(school => showPowerChange(
+        event.side,
+        school.id,
+        Number(engine.state[event.side].power[school.id] || 0) - Number(before?.[event.side]?.power?.[school.id] || 0)
+      ));
+    });
+    (result?.events || []).filter(event => event.type === "astralFireRitual").forEach(event => {
+      const enemySide = event.side === "player" ? "enemy" : "player";
+      showPowerChange(event.side, "fire", Number(engine.state[event.side].power.fire || 0) - Number(before?.[event.side]?.power?.fire || 0));
+      showPowerChange(enemySide, "water", Number(engine.state[enemySide].power.water || 0) - Number(before?.[enemySide]?.power?.water || 0));
+    });
+    (result?.events || []).filter(event => event.type === "astralDeathKeeper").forEach(event => {
+      showPowerChange(event.side, "death", Number(engine.state[event.side].power.death || 0) - Number(before?.[event.side]?.power?.death || 0));
+    });
+    showPowerGainChanges(before);
+  }
+
+  function showPowerGainChanges(before) {
+    if (!before || !engine) return;
+    ["player", "enemy"].forEach(side => A.SCHOOLS.forEach(school => {
+      const previous = Number(before[side]?.powerGain?.[school.id] || 0);
+      const current = Number(engine.state[side].powerGain?.[school.id] || 0);
+      if (current !== previous) showPowerGainChange(side, school.id, current - previous);
+    }));
+  }
+
+  function showPowerValueChanges(before) {
+    if (!before || !engine) return;
+    ["player", "enemy"].forEach(side => A.SCHOOLS.forEach(school => {
+      const previous = Number(before[side]?.power?.[school.id] || 0);
+      const current = Number(engine.state[side].power?.[school.id] || 0);
+      if (current !== previous) showPowerChange(side, school.id, current - previous);
+    }));
+  }
+
+  function showPowerGainChange(side, schoolId, amount) {
+    const root = side === "player" ? $("#schoolFilters") : $("#enemySchoolMenu");
+    const parent = root?.querySelector(`[data-school-id="${schoolId}"]`);
+    if (!parent || !amount) return;
+    parent.classList.add("effect-power-change", amount > 0 ? "power-gain" : "power-loss");
+    const badge = document.createElement("span");
+    badge.className = `effect-power-number rate ${amount > 0 ? "gain" : "loss"}`;
+    badge.textContent = `${amount > 0 ? "+" : "−"}${Math.abs(amount)}/${t("effect.turnShort")}`;
+    parent.appendChild(badge);
+    setTimeout(() => {
+      badge.remove();
+      parent.classList.remove("effect-power-change", "power-gain", "power-loss");
+    }, fxDuration(1650) || 40);
+  }
+
+  function showPowerChange(side, schoolId, amount) {
+    if (!amount) return;
+    const root = side === "player" ? $("#schoolFilters") : $("#enemySchoolMenu");
+    const parent = root?.querySelector(`[data-school-id="${schoolId}"]`);
+    if (!parent) return;
+    parent.classList.add("effect-power-change", amount > 0 ? "power-gain" : "power-loss");
+    const badge = document.createElement("span");
+    badge.className = `effect-power-number ${amount > 0 ? "gain" : "loss"}`;
+    badge.textContent = `${amount > 0 ? "+" : "−"}${Math.abs(amount)}`;
+    parent.appendChild(badge);
+    setTimeout(() => {
+      badge.remove();
+      parent.classList.remove("effect-power-change", "power-gain", "power-loss");
+    }, fxDuration(1500) || 40);
+  }
+
+  async function presentResolutionBeforeUpdate(result) {
+    showResolvedEffectDamage(result);
+    showResolutionDeaths(result);
+    (result?.events || []).filter(event => event.type === "astralFireAura").forEach(event => {
+      const parent = $(`#${event.side}Board [data-slot="${result?.event?.slot}"]`);
+      if (!parent) return;
+      parent.classList.add("effect-damage-hit", "effect-fire-aura-hit");
+      appendDamageBadge(parent, Number(event.amount || 0), { lethal: Boolean(result?.event?.retaliation?.died), collateral: true });
+      setTimeout(() => parent.classList.remove("effect-damage-hit", "effect-fire-aura-hit"), fxDuration(900) || 40);
+    });
+    (result?.events || []).filter(event => event.type === "astralNets").forEach(event => {
+      const damage = (result.events || []).find(item => item.type === "astralCreatureDamage" && item.reason === "astral_nets" && item.targetSide === event.targetSide);
+      const parent = damage ? $(`#${event.targetSide}Board [data-slot="${damage.slot}"]`) : null;
+      parent?.classList.add("effect-nets-hit");
+      setTimeout(() => parent?.classList.remove("effect-nets-hit"), fxDuration(1100) || 40);
+    });
+    const hasVisibleEffect = (result?.events || []).some(event => [
+      "astralCreatureDamage", "astralHeroDamage", "creatureDamage", "heroDamage", "astralDeath", "astralFireAura", "astralNets"
+    ].includes(event.type));
+    if (hasVisibleEffect) await sleep(reducedMotion ? 0 : 620);
+  }
+
   function captureHealthState() {
     if (!engine) return null;
     return Object.fromEntries(["player", "enemy"].map(side => [side, {
       hp: Number(engine.state[side].hp || 0),
+      power: { ...engine.state[side].power },
+      powerGain: { ...engine.state[side].powerGain },
       units: engine.state[side].board.map(unit => unit ? Number(unit.currentHealth || 0) : null)
     }]));
   }
@@ -1357,20 +1878,38 @@
     renderGame();
     while (!engine.state.gameOver) {
       const healthBefore = captureHealthState();
-      const step = engine.attackNext(side);
+      const step = issueDuelCommand(side, A.MULTIPLAYER_COMMANDS.ATTACK_NEXT);
       if (!step.ok || step.done) break;
       if (step.skipped) continue;
       await animateAttack(step.event);
-      renderGame();
       showDamage(step.event);
       showCollateralDamage(step.events);
+      showResolutionDeaths(step);
+      await sleep(reducedMotion ? 0 : 520);
+      renderGame();
       showHealingChanges(healthBefore);
+      showResolutionAfterUpdate(step, healthBefore);
+      const structuredDamage = (step.events || []).find(event =>
+        ["astralHeroDamage", "astralCreatureDamage"].includes(event.type)
+        && event.sourceKind === "creature"
+      );
+      pushPresentationLog("log.attack", {
+        sourceCardId: structuredDamage?.sourceId,
+        sourceName: step.event.attackerName,
+        ...(step.event.type === "directAttack"
+          ? { targetSide: step.event.enemySide }
+          : { targetCardId: structuredDamage?.targetId, targetName: step.event.targetName }),
+        amount: step.event.damage
+      });
+      recordAttackSecondaryEffects(step);
+      recordAttackRegeneration(step);
       await sleep(260);
     }
     const finishHealthBefore = captureHealthState();
-    engine.finishAttack(side);
+    issueDuelCommand(side, A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
     renderGame();
     showHealingChanges(finishHealthBefore);
+    showPowerValueChanges(finishHealthBefore);
 
     if (engine.state.gameOver) {
       busy = false;
@@ -1382,19 +1921,26 @@
       setMessage("L'avversario sta valutando la mossa...");
       showTurnBanner("Turno avversario", "enemy", 760);
       await sleep(420);
-      engine.beginEnemyPlay();
+      issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.BEGIN_PLAY);
       renderGame();
       const useRecoveredAi = engine.state.rulesetId === A.ASTRAL_ORIGINAL_RULESET?.id;
       const move = useRecoveredAi
         ? A.chooseRecoveredAstralMove(engine, "enemy", engine.aiDifficulty || "advanced")
         : A.chooseAiMove(engine, "enemy", engine.aiDifficulty || "advanced");
       const healthBefore = captureHealthState();
-      const result = engine.playMove("enemy", move);
+      const result = move.type === "pass"
+        ? issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PASS)
+        : issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: move.cardId, slot: move.slot ?? null });
       if (result.ok && result.card?.type === "spell") spellSound();
       if (result.ok && result.card?.type === "creature") playOriginalSound("summon2", 0.36);
-      renderGame();
-      showHealingChanges(healthBefore);
       if (result.ok && result.card) await animateCardPlay(result, "enemy", move?.slot ?? null);
+      if (result.ok) {
+        await presentResolutionBeforeUpdate(result);
+        renderGame();
+        showHealingChanges(healthBefore);
+        showResolutionAfterUpdate(result, healthBefore);
+      }
+      if (result.ok) recordCardResolution(result);
       await sleep(100);
       await resolveAttackFlow("enemy");
     } else {
@@ -1415,7 +1961,7 @@
     if (tournamentMatch && !matchRecorded) {
       matchRecorded = true;
       const won = winner === "player";
-      const score = won ? Math.max(10, engine.state.player.hp * 10 + Math.max(0, 20 - engine.state.round) * 5) : 0;
+      const score = A.calculateTournamentScore(won, engine.state.player.hp, engine.state.round);
       A.recordTournamentDuel(profile, tournament, won, score);
       profile = A.loadProfile();
       tournament = A.loadTournament();
@@ -1436,19 +1982,19 @@
     article.appendChild(art);
 
     const title = document.createElement("h3");
-    title.textContent = card.name;
+    title.textContent = cardName(card);
     article.appendChild(title);
 
     const subtitle = document.createElement("div");
-    subtitle.textContent = `${school(card.school).name} · ${card.type === "spell" ? "Magia" : "Creatura"}`;
+    subtitle.textContent = `${schoolName(card.school)} · ${card.type === "spell" ? t("ui.spell") : t("ui.creature")}`;
     article.appendChild(subtitle);
 
     const meta = document.createElement("div");
     meta.className = "preview-meta";
     const blocks = [
       { value: cost, label: "Livello/costo" },
-      { value: card.type === "spell" ? "—" : card.attack, label: "Attacco" },
-      { value: card.type === "spell" ? "—" : (card.currentHealth ?? card.health ?? 0), label: "Vita" }
+      { value: card.type === "spell" ? "—" : card.attack, label: t("ui.attack") },
+      { value: card.type === "spell" ? "—" : (card.currentHealth ?? card.health ?? 0), label: t("ui.life") }
     ];
     blocks.forEach(item => {
       const stat = document.createElement("div");
@@ -1459,7 +2005,7 @@
     article.appendChild(meta);
 
     const keyword = document.createElement("p");
-    keyword.innerHTML = `<strong>${escapeHtml(card.keyword || "Originale")}</strong>`;
+    keyword.innerHTML = `<strong>${escapeHtml(card.keyword || t("ui.original"))}</strong>`;
     article.appendChild(keyword);
 
     const text = document.createElement("p");
@@ -1518,22 +2064,28 @@
 
   function renderTournament() {
     const root = $("#tournamentContent");
+    const resetButton = $("#newTournamentBtn");
+    resetButton.classList.toggle("hidden", !tournament);
+    resetButton.textContent = t("tournament.abandon");
     if (!tournament) {
       root.innerHTML = `<div class="tournament-create">
-        <label>Specializzazione <select id="tournamentTalentSelect">${A.SCHOOLS.map(s => `<option value="${s.id}">${s.icon} ${s.name}</option>`).join("")}</select></label>
-        <label>Seed torneo <input id="tournamentSeedInput" value="astral-cup-001"></label>
-        <label>Set <select id="tournamentSetSelect"><option value="classic">Classico provvisorio</option><option value="arcane">Arcane</option></select></label>
-        <button id="createTournamentConfirm" class="primary">Crea il torneo</button>
+        <div class="tournament-intro"><strong>${t("tournament.introTitle")}</strong><span>${t("tournament.intro")}</span></div>
+        <div class="tournament-rules-grid">
+          <span><b>Starting League</b><small>${t("tournament.matches12")}</small></span>
+          <span><b>Advanced League</b><small>${t("tournament.matches34")}</small></span>
+          <span><b>Major League</b><small>${t("tournament.matches57")}</small></span>
+        </div>
+        <label>${t("tournament.playerSchool")} <select id="tournamentTalentSelect">${A.SCHOOLS.map(s => `<option value="${s.id}">${s.icon} ${schoolName(s.id)}</option>`).join("")}</select></label>
+        <label>${t("tournament.seed")} <input id="tournamentSeedInput" placeholder="${t("tournament.randomSeed")}"></label>
+        <button id="createTournamentConfirm" class="primary">${t("tournament.create")}</button>
       </div>`;
       $("#createTournamentConfirm")?.addEventListener("click", () => {
-        tournament = A.createTournament({
+        tournament = A.startTournament(profile, {
           specialization: $("#tournamentTalentSelect").value,
           seed: $("#tournamentSeedInput").value,
-          setId: $("#tournamentSetSelect").value
+          setId: "astral-original"
         });
-        profile.tournamentsPlayed += 1;
-        A.saveProfile(profile);
-        A.saveTournament(tournament);
+        profile = A.loadProfile();
         renderProfile();
         renderTournament();
       });
@@ -1541,36 +2093,40 @@
     }
 
     const current = tournament.opponents[tournament.currentMatch];
+    const currentLeague = A.getTournamentLeagueForMatch(tournament, tournament.currentMatch);
+    const leagueLabel = A.ASTRAL_LEAGUES.find(item => item.id === currentLeague)?.label || currentLeague;
+    const remainingWins = Math.max(0, tournament.winTarget - tournament.wins);
     root.innerHTML = `
       <div class="tournament-summary">
-        <div><small>Specializzazione</small><strong>${school(tournament.specialization).icon} ${school(tournament.specialization).name}</strong></div>
-        <div><small>Vittorie</small><strong>${tournament.wins}</strong></div>
-        <div><small>Punti</small><strong>${tournament.points}</strong></div>
-        <div><small>Rango</small><strong>${A.RANKS[Math.min(tournament.currentMatch, A.RANKS.length - 1)]}</strong></div>
+        <div><small>${t("tournament.school")}</small><strong>${school(tournament.specialization).icon} ${schoolName(tournament.specialization)}</strong></div>
+        <div><small>${t("tournament.match")}</small><strong>${Math.min(tournament.currentMatch + 1, tournament.opponents.length)} / ${tournament.opponents.length}</strong></div>
+        <div><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
+        <div><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
       </div>
-      <div class="opponent-list">${tournament.opponents.map((opponent, index) => `<div class="opponent-row ${opponent.defeated ? "defeated" : ""} ${index === tournament.currentMatch ? "current" : ""}"><span>${index + 1}. ${escapeHtml(opponent.name)}</span><small>${escapeHtml(opponent.rank)} · ${school(opponent.talent).icon} · ${A.DIFFICULTIES[opponent.difficulty].label}</small></div>`).join("")}</div>
-      <div class="passive-list"><h3>Passive acquisite</h3>${tournament.selectedPassives.length ? tournament.selectedPassives.map(id => `<span class="passive-chip">${escapeHtml(A.getPassive(id)?.name || id)}</span>`).join("") : "<p>Nessuna passiva.</p>"}</div>
+      ${!tournament.completed ? `<div class="tournament-current"><span>${t("tournament.nextOpponent")}</span><strong>${escapeHtml(current.name)} · ${leagueLabel}</strong><small>${t("tournament.winsNeeded", { value: remainingWins })}</small></div>` : ""}
+      <div class="opponent-list">${tournament.opponents.map((opponent, index) => `<div class="opponent-row result-${opponent.result || "pending"} ${index === tournament.currentMatch ? "current" : ""}"><span><b>${index + 1}. ${escapeHtml(opponent.name)}</b><em>${opponent.result === "win" ? t("tournament.win") : opponent.result === "loss" ? t("tournament.loss") : t("tournament.pending")}</em></span><small>${t(`tournament.rank.${index}`)} · ${school(opponent.talent).icon} · ${A.ASTRAL_LEAGUES.find(item => item.id === opponent.league)?.label || opponent.league} · ${A.DIFFICULTIES[opponent.difficulty].label}${opponent.result ? ` · ${opponent.score} ${t("tournament.pointsShort")}` : ""}</small></div>`).join("")}</div>
+      <div class="passive-list"><h3>${t("tournament.passives")}</h3>${tournament.selectedPassives.length ? tournament.selectedPassives.map(id => `<span class="passive-chip">${escapeHtml(A.getPassive(id)?.name || id)}</span>`).join("") : `<p>${t("tournament.noPassives")}</p>`}</div>
       <div id="tournamentActions"></div>`;
 
     const actions = $("#tournamentActions");
     if (tournament.pendingPassiveChoice) {
-      actions.innerHTML = `<h3>Scegli una passiva permanente per questo torneo</h3><div class="passive-choice-grid">${tournament.offeredPassives.map(id => { const p = A.getPassive(id); return `<button class="passive-choice" data-passive="${id}"><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.description)}</small></button>`; }).join("")}</div>`;
+      actions.innerHTML = `<h3>${t("tournament.choosePassive")}</h3><div class="passive-choice-grid">${tournament.offeredPassives.map(id => { const p = A.getPassive(id); return `<button class="passive-choice" data-passive="${id}"><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.description)}</small></button>`; }).join("")}</div>`;
       actions.querySelectorAll("[data-passive]").forEach(button => button.addEventListener("click", () => {
         A.selectTournamentPassive(tournament, button.dataset.passive);
         A.saveTournament(tournament);
         renderTournament();
       }));
     } else if (tournament.completed) {
-      actions.innerHTML = `<div class="tournament-result"><strong>${tournament.won ? "Torneo vinto" : "Torneo concluso"}</strong><p>${tournament.wins} vittorie, ${tournament.points} punti.</p><button id="archiveTournamentBtn" class="ghost">Chiudi torneo</button></div>`;
+      actions.innerHTML = `<div class="tournament-result ${tournament.won ? "won" : "lost"}"><strong>${tournament.won ? t("tournament.won") : t("tournament.notWon")}</strong><p>${t("tournament.result", { wins: tournament.wins, matches: tournament.opponents.length, points: tournament.points })}</p><button id="archiveTournamentBtn" class="ghost">${t("tournament.archive")}</button></div>`;
       $("#archiveTournamentBtn")?.addEventListener("click", () => { tournament = null; A.saveTournament(null); renderTournament(); });
     } else {
-      actions.innerHTML = `<button id="continueTournamentBtn" class="primary">Affronta ${escapeHtml(current.name)}</button>`;
+      actions.innerHTML = `<button id="continueTournamentBtn" class="primary">${t("tournament.face", { name: escapeHtml(current.name) })}</button>`;
       $("#continueTournamentBtn")?.addEventListener("click", () => startDuel(tournament.specialization, true));
     }
   }
 
   $("#newTournamentBtn").addEventListener("click", () => {
-    if (tournament && !confirm("Il torneo attivo verrà sostituito. Continuare?")) return;
+    if (tournament && !confirm(t("tournament.confirmAbandon"))) return;
     tournament = null;
     A.saveTournament(null);
     renderTournament();
@@ -1714,9 +2270,12 @@
 
   $("#animationSpeed").addEventListener("change", event => {
     animationSpeed = Number(event.target.value || 1);
+    localStorage.setItem("arcane.animationSpeed", String(event.target.value));
     document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
     // keep menu selector in sync if present
     try { const m = $("#animationSpeedMenu"); if (m && m.value !== String(event.target.value)) m.value = String(event.target.value); } catch (e) {}
+    const optionsSpeed = $("#optionsAnimationSpeed");
+    if (optionsSpeed && optionsSpeed.value !== String(event.target.value)) optionsSpeed.value = String(event.target.value);
   });
   // Sync menu speed selector (footer) with main selector and set mobile default
   const menuSpeed = $("#animationSpeedMenu");
@@ -1727,6 +2286,7 @@
       const main = $("#animationSpeed");
       if (main && main.value !== v) main.value = v;
       animationSpeed = Number(v || 1);
+      localStorage.setItem("arcane.animationSpeed", v);
       document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
     });
   }
@@ -1841,8 +2401,102 @@
     window.addEventListener("pagehide", pauseBackgroundMusic);
     if (bgmEnabled) startBackgroundMusic();
   } catch (e) {}
+
+  function syncOptionsPage() {
+    if ($("#optionsLanguageSelect")) $("#optionsLanguageSelect").value = A.i18n?.getLanguage?.() || "it";
+    if ($("#optionsAnimationSpeed")) $("#optionsAnimationSpeed").value = String(animationSpeed);
+    if ($("#optionsCardArtStyle")) $("#optionsCardArtStyle").value = cardArtStyle;
+    if ($("#optionsSoundEnabled")) $("#optionsSoundEnabled").checked = soundEnabled;
+    if ($("#optionsBgmEnabled")) $("#optionsBgmEnabled").checked = bgmEnabled;
+    if ($("#optionsBgmVolume")) $("#optionsBgmVolume").value = String(Math.round(bgmVolume * 100));
+  }
+
+  $("#optionsLanguageSelect")?.addEventListener("change", event => {
+    A.i18n?.setLanguage(event.target.value);
+    if ($("#languageSelect")) $("#languageSelect").value = event.target.value;
+  });
+  $("#optionsAnimationSpeed")?.addEventListener("change", event => {
+    $("#animationSpeed").value = event.target.value;
+    $("#animationSpeed").dispatchEvent(new Event("change"));
+  });
+  $("#optionsCardArtStyle")?.addEventListener("change", event => {
+    $("#cardArtStyleSelect").value = event.target.value;
+    $("#cardArtStyleSelect").dispatchEvent(new Event("change"));
+  });
+  $("#optionsSoundEnabled")?.addEventListener("change", event => {
+    $("#soundEnabled").checked = event.target.checked;
+    $("#soundEnabled").dispatchEvent(new Event("change"));
+  });
+  $("#optionsBgmEnabled")?.addEventListener("change", event => {
+    const battleToggle = $("#bgmEnabled");
+    battleToggle.checked = event.target.checked;
+    battleToggle.dispatchEvent(new Event("change"));
+  });
+  $("#optionsBgmVolume")?.addEventListener("input", event => {
+    const battleVolume = $("#bgmVolume");
+    battleVolume.value = event.target.value;
+    battleVolume.dispatchEvent(new Event("input"));
+  });
+  $("#resetPreferencesBtn")?.addEventListener("click", () => {
+    localStorage.removeItem("arcane.animationSpeed");
+    localStorage.removeItem("arcane.cardArtStyle");
+    localStorage.removeItem("arcane.soundEnabled");
+    localStorage.removeItem("arcaneLanguage");
+    localStorage.removeItem("bgmEnabled");
+    localStorage.removeItem("bgmVolume");
+    animationSpeed = 1.15;
+    cardArtStyle = "new";
+    soundEnabled = true;
+    bgmEnabled = false;
+    bgmVolume = 0.12;
+    $("#animationSpeed").value = "1.15";
+    $("#animationSpeed").dispatchEvent(new Event("change"));
+    $("#cardArtStyleSelect").value = "new";
+    $("#cardArtStyleSelect").dispatchEvent(new Event("change"));
+    $("#soundEnabled").checked = true;
+    $("#soundEnabled").dispatchEvent(new Event("change"));
+    $("#bgmEnabled").checked = false;
+    $("#bgmEnabled").dispatchEvent(new Event("change"));
+    $("#bgmVolume").value = "12";
+    $("#bgmVolume").dispatchEvent(new Event("input"));
+    A.i18n?.setLanguage("it");
+    syncOptionsPage();
+  });
+  syncOptionsPage();
+
   $("#collectionSearch")?.addEventListener("input", event => { collectionState.search = event.target.value; renderCollectionPanels(); const other = $("#collectionPageSearch"); if (other && other.value !== event.target.value) other.value = event.target.value; });
-  $("#soundEnabled").addEventListener("change", event => { soundEnabled = event.target.checked; if (soundEnabled) { ensureAudio(); if (bgmEnabled) startBackgroundMusic(); } else { pauseBackgroundMusic(); } });
+  $("#soundEnabled").addEventListener("change", event => {
+    soundEnabled = event.target.checked;
+    localStorage.setItem("arcane.soundEnabled", soundEnabled ? "1" : "0");
+    if ($("#optionsSoundEnabled")) $("#optionsSoundEnabled").checked = soundEnabled;
+    if (soundEnabled) { ensureAudio(); if (bgmEnabled) startBackgroundMusic(); } else { pauseBackgroundMusic(); }
+  });
+  $("#languageSelect")?.addEventListener("change", event => A.i18n?.setLanguage(event.target.value));
+  $("#createOnlineRoomBtn")?.addEventListener("click", async () => {
+    try {
+      remoteRoomClient = new A.RemoteRoomClient();
+      const response = await remoteRoomClient.create({ playerTalent: "fire", playerName: savePlayerName() });
+      saveRemoteRoom(); renderRemoteLobby(response); beginRemotePolling();
+    } catch (error) { renderRemoteLobby({ code: "", ready: false }); $("#onlineConnectionMessage").textContent = error.message || t("online.error"); }
+  });
+  $("#joinOnlineRoomBtn")?.addEventListener("click", async () => {
+    try {
+      remoteRoomClient = new A.RemoteRoomClient();
+      const response = await remoteRoomClient.join($("#onlineRoomCode").value.trim().toUpperCase(), { playerName: savePlayerName() });
+      saveRemoteRoom(); renderRemoteLobby(response); beginRemotePolling();
+    } catch (error) { renderRemoteLobby({ code: "", ready: false }); $("#onlineConnectionMessage").textContent = error.message || t("online.error"); }
+  });
+  $("#leaveOnlineRoomBtn")?.addEventListener("click", async () => {
+    clearInterval(remoteRoomPoll); remoteRoomPoll = null;
+    await remoteRoomClient?.disconnect().catch(() => {});
+    remoteRoomClient = null; saveRemoteRoom(); renderRemoteLobby(null);
+  });
+  window.addEventListener("arcane:languagechange", () => {
+    syncOptionsPage();
+    renderCollectionPanels();
+    renderTournament();
+    if (engine) renderGame();
+  });
 
   function cleanupOldCaches() {
     if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(items => items.forEach(item => item.unregister())).catch(() => {});
@@ -1850,14 +2504,23 @@
   }
 
   setupDifficultyOptions();
+  if ($("#playerNameInput")) {
+    $("#playerNameInput").value = normalizedPlayerName(localStorage.getItem("arcane.playerName"), t("ui.player"));
+    $("#playerNameInput").addEventListener("change", savePlayerName);
+  }
   setupLocalServerLifecycle();
   setupAstralSpecializationOptions();
   $("#duelModeSelect").addEventListener("change", renderTalentChoices);
   $("#cardArtStyleSelect").addEventListener("change", event => {
     cardArtStyle = event.target.value === "new" ? "new" : "original";
+    localStorage.setItem("arcane.cardArtStyle", cardArtStyle);
+    if ($("#optionsCardArtStyle")) $("#optionsCardArtStyle").value = cardArtStyle;
     document.body.dataset.cardArtStyle = cardArtStyle;
     renderCollectionPanels();
   });
+  $("#cardArtStyleSelect").value = cardArtStyle;
+  $("#animationSpeed").value = String(animationSpeed);
+  $("#soundEnabled").checked = soundEnabled;
   document.body.dataset.cardArtStyle = cardArtStyle;
   renderTalentChoices();
   populateEditor();
@@ -1866,6 +2529,14 @@
   renderRuleset();
   inspectedCardId = allAstralCards()[0]?.id || null;
   renderCollectionPanels();
+  try {
+    const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
+    if (savedRoom?.code && savedRoom?.token) {
+      remoteRoomClient = new A.RemoteRoomClient();
+      Object.assign(remoteRoomClient, savedRoom);
+      refreshRemoteRoom().then(beginRemotePolling);
+    }
+  } catch { localStorage.removeItem("arcane.remoteRoom"); }
   if (urlParams.get("qa") === "duel") {
     setTimeout(() => startDuel("fire", false, null, "normal"), 30);
   }

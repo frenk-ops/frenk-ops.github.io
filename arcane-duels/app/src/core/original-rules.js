@@ -3,7 +3,7 @@
 
   A.ASTRAL_ORIGINAL_RULESET = Object.freeze({
     id: "astral-original-recovered",
-    label: "Astral Tournament — regole recuperate",
+    label: "Arcane Duels — regole classiche",
     boardSize: 5,
     startingHp: 50,
     initialPower: 3,

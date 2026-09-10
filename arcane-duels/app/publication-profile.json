@@ -1,0 +1,10 @@
+{
+  "profile": "github-pages-remastered",
+  "source": "app",
+  "cards": {
+    "remastered": 65,
+    "originalAlias": "remastered"
+  },
+  "staticHosting": true,
+  "multiplayerServerIncluded": false
+}

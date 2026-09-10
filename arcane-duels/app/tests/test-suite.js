@@ -78,7 +78,81 @@
     return unit;
   }
 
+  function assertAstralStateIntegrity(engine, context) {
+    ["player", "enemy"].forEach(side => {
+      const fighter = engine.state[side];
+      assert(Number.isFinite(fighter.hp) && fighter.hp >= 0, `${context}: vita ${side} non valida`);
+      A.SCHOOLS.forEach(school => {
+        const power = fighter.power[school.id];
+        const gain = fighter.powerGain[school.id];
+        assert(Number.isFinite(power) && power >= 0 && power <= engine.rules.maxPower, `${context}: potere ${side}/${school.id} non valido: ${power}`);
+        assert(Number.isFinite(gain) && Math.abs(gain) <= 20, `${context}: crescita ${side}/${school.id} non valida: ${gain}`);
+      });
+      assert(fighter.board.length === engine.rules.boardSize, `${context}: dimensione campo ${side} non valida`);
+      fighter.board.forEach((unit, slot) => {
+        if (!unit) return;
+        assert(Number.isFinite(unit.currentHealth) && unit.currentHealth > 0, `${context}: creatura morta rimasta in ${side}:${slot}`);
+        assert(Number.isFinite(unit.health) && unit.health > 0, `${context}: vita massima creatura non valida in ${side}:${slot}`);
+      });
+    });
+  }
+
+  function assertStructuredEvents(events, context) {
+    (events || []).forEach((event, index) => {
+      assert(event && typeof event.type === "string" && event.type.length > 0, `${context}: evento ${index} senza tipo`);
+      ["amount", "baseAmount", "modifiedAmount", "resolvedAmount", "health", "hp"].forEach(field => {
+        if (event[field] !== undefined) assert(Number.isFinite(event[field]), `${context}: ${event.type}.${field} non numerico`);
+      });
+    });
+  }
+
   const tests = [
+    {
+      name: "Protocollo multiplayer: comandi e replay producono lo stesso stato",
+      run() {
+        const first = engineWithHands();
+        const card = first.state.player.hand[0];
+        const session = new A.CommandSession(first, { matchId: "match-replay" });
+        const play = session.createCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: card.id, slot: 0 });
+        assert(session.dispatch(play).ok, "Il comando PLAY deve essere accettato");
+        while (first.state.phase === A.PHASES.PLAYER_ATTACK) {
+          const attack = session.createCommand("player", A.MULTIPLAYER_COMMANDS.ATTACK_NEXT);
+          const result = session.dispatch(attack);
+          assert(result.ok, "Il comando ATTACK_NEXT deve essere accettato");
+          if (result.result.done) {
+            const finish = session.createCommand("player", A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
+            assert(session.dispatch(finish).ok, "Il comando FINISH_ATTACK deve essere accettato");
+          }
+        }
+        const replay = session.exportReplay();
+        const restored = A.replayCommands(replay, first.cards);
+        assert(restored.checksum === session.checksum, "Il replay deve produrre lo stesso checksum");
+        assert(A.stableStringify(restored.engine.state) === A.stableStringify(first.state), "Il replay deve riprodurre lo stesso stato");
+      }
+    },
+    {
+      name: "Protocollo multiplayer: rifiuta sequenze vecchie e desincronizzate senza mutare lo stato",
+      run() {
+        const engine = engineWithHands();
+        const session = new A.CommandSession(engine, { matchId: "match-validation" });
+        const valid = session.createCommand("player", A.MULTIPLAYER_COMMANDS.PASS);
+        const stale = { ...valid, sequence: 2 };
+        const before = session.checksum;
+        assert(!session.dispatch(stale).ok, "Una sequenza fuori ordine deve essere rifiutata");
+        assert(session.checksum === before, "Un comando rifiutato non deve mutare lo stato");
+        const desynced = { ...valid, previousChecksum: "fnv1a32:00000000" };
+        assert(!session.dispatch(desynced).ok, "Un checksum precedente errato deve essere rifiutato");
+        assert(session.checksum === before, "Una desincronizzazione non deve mutare lo stato");
+      }
+    },
+    {
+      name: "Protocollo multiplayer: serializzazione canonica indipendente dall'ordine delle chiavi",
+      run() {
+        const left = { b: 2, a: { d: 4, c: 3 } };
+        const right = { a: { c: 3, d: 4 }, b: 2 };
+        assert(A.stableStringify(left) === A.stableStringify(right), "La serializzazione deve essere canonica");
+      }
+    },
     {
       name: "Generatore deterministico con seed",
       run() {
@@ -279,6 +353,52 @@
       }
     },
     {
+      name: "Il torneo usa una sola collezione e avanza tra le tre leghe",
+      run() {
+        const tournament = A.createTournament({ seed: "league-ladder", specialization: "fire", setId: "classic" });
+        assert(tournament.setId === "astral-original", `Set torneo ambiguo: ${tournament.setId}`);
+        assert(JSON.stringify(tournament.opponents.map(item => item.league)) === JSON.stringify(["starting", "starting", "advanced", "advanced", "major", "major", "major"]), "Progressione leghe errata");
+        assert(tournament.opponents.every(item => A.getAstralSpecialization(item.specialization, item.talent).talent === item.talent), "Specializzazione avversario incoerente");
+      }
+    },
+    {
+      name: "Avvio e ripresa torneo persistono una sola partecipazione",
+      run() {
+        const storage = (() => { const data = {}; return { getItem:key => data[key] ?? null, setItem:(key,value) => { data[key] = String(value); }, removeItem:key => { delete data[key]; } }; })();
+        const profile = A.createDefaultProfile();
+        const tournament = A.startTournament(profile, { seed: "resume-cup", specialization: "water" }, storage);
+        const restored = A.loadTournament(storage);
+        const restoredProfile = A.loadProfile(storage);
+        assert(restored.id === tournament.id && restored.currentMatch === 0, "Torneo non ripristinato");
+        assert(restoredProfile.tournamentsPlayed === 1, `Partecipazioni registrate: ${restoredProfile.tournamentsPlayed}`);
+        assert(A.getTournamentLeagueForMatch(restored, 4) === "major", "Lega ripristinata errata");
+      }
+    },
+    {
+      name: "Punteggio torneo separa vita residua e bonus velocità",
+      run() {
+        const score = A.calculateTournamentScore(true, 37, 8);
+        assert(score.lifePoints === 370 && score.speedBonus === 60 && score.total === 430, `Punteggio: ${JSON.stringify(score)}`);
+        assert(A.calculateTournamentScore(false, 37, 8).total === 0, "Una sconfitta ha assegnato punti");
+      }
+    },
+    {
+      name: "Cinque vittorie su sette conquistano il torneo e salvano i risultati",
+      run() {
+        const profile = A.createDefaultProfile();
+        const tournament = A.createTournament({ seed: "five-of-seven", specialization: "death" });
+        [true, true, false, true, false, true, true].forEach((won, index) => {
+          const score = A.calculateTournamentScore(won, 30 + index, 10);
+          A.recordTournamentDuel(profile, tournament, won, score);
+          if (tournament.pendingPassiveChoice) A.selectTournamentPassive(tournament, tournament.offeredPassives[0]);
+        });
+        assert(tournament.completed && tournament.won, "Il torneo 5/7 non è stato conquistato");
+        assert(tournament.results.length === 7 && tournament.results.filter(item => item.won).length === 5, "Storico incontri incompleto");
+        assert(tournament.opponents[2].result === "loss" && tournament.opponents[2].score === 0, "Sconfitta non registrata");
+        assert(profile.trophies.length === 1 && profile.trophies[0].id === "trophy-five-of-seven", "Trofeo non stabile");
+      }
+    },
+    {
       name: "Ciclo completo giocatore → IA → nuovo round senza stalli",
       run() {
         const engine = engineWithHands();
@@ -411,6 +531,24 @@
       }
     },
     {
+      name: "Il comparatore Archmage distingue corrispondenza, corsia e divergenza",
+      run() {
+        const ranked=[
+          {legal:true,score:120,move:{type:"play",cardId:"astral_fire_01",slot:0}},
+          {legal:true,score:115,move:{type:"play",cardId:"astral_fire_01",slot:1}},
+          {legal:true,score:90,move:{type:"play",cardId:"astral_water_01",slot:0}}
+        ];
+        const exact=A.compareRecoveredAstralOracle(ranked,{type:"play",cardId:"astral_fire_01",slot:0});
+        const lane=A.compareRecoveredAstralOracle(ranked,{type:"play",cardId:"astral_fire_01",slot:1});
+        const different=A.compareRecoveredAstralOracle(ranked,{type:"play",cardId:"astral_water_01",slot:0});
+        const pending=A.compareRecoveredAstralOracle(ranked,null);
+        assert(exact.status==="exact" && exact.oracleRank===1,"Corrispondenza esatta non rilevata");
+        assert(lane.status==="lane-difference" && lane.oracleRank===2 && lane.scoreGap===5,"Differenza di corsia non rilevata");
+        assert(different.status==="different" && different.oracleRank===3 && different.scoreGap===30,"Divergenza carta non rilevata");
+        assert(pending.status==="pending" && pending.oracle===null,"Oracle mancante non gestito");
+      }
+    },
+    {
       name: "Il libro Astral umano contiene 20 carte permanenti e un livello 12",
       run() {
         const cards=A.getCardSet("astral-original");
@@ -500,6 +638,20 @@
         assert(result.ok, "Lightning non giocata");
         assert(engine.state.enemy.hp === beforeHp - 15, `Danno Lightning: ${beforeHp - engine.state.enemy.hp}`);
         assert(engine.state.player.power.air === 4, `Potere Air residuo: ${engine.state.player.power.air}`);
+      }
+    },
+    {
+      name: "Fulmine mostra il danno effettivo dopo le difese",
+      run() {
+        const engine = astralEngine(["astral_air_06"], ["astral_earth_02"]);
+        engine.state.player.power.air = 6;
+        placeAstralUnit(engine, "enemy", "astral_earth_02", 0);
+        const card = engine.getCard("player", "astral_air_06");
+        const preview = A.astralPreviewCardValue(engine, "player", card);
+        assert(preview.base === 11 && preview.modified === 11 && preview.effective === 10, `Anteprima Fulmine: ${JSON.stringify(preview)}`);
+        const result = engine.playMove("player", { type: "play", cardId: card.id });
+        const damage = result.events.find(event => event.type === "astralHeroDamage");
+        assert(damage?.modifiedAmount === 11 && damage.resolvedAmount === 10 && damage.amount === 10, `Evento Fulmine: ${JSON.stringify(damage)}`);
       }
     },
     {
@@ -692,7 +844,7 @@
       }
     },
     {
-      name: "Tutte le 65 carte attraversano il dispatcher senza errori",
+      name: "Tutte le 65 carte producono stato ed eventi integri in uno scenario reale",
       run() {
         const cards = A.getCardSet("astral-original");
         cards.forEach(card => {
@@ -702,6 +854,63 @@
           placeAstralUnit(engine, "enemy", "astral_water_02", 1);
           const result = engine.playMove("player", { type: "play", cardId: card.id, slot: card.type === "creature" ? 0 : null });
           assert(result.ok, `Dispatcher fallito per ${card.id}: ${result.reason || "errore"}`);
+          assertStructuredEvents(result.events, card.id);
+          assertAstralStateIntegrity(engine, card.id);
+        });
+      }
+    },
+    {
+      name: "Le cinque IA completano più round senza stalli o stati corrotti",
+      run() {
+        const allIds = A.getCardSet("astral-original").map(card => card.id);
+        Object.keys(A.DIFFICULTIES).forEach(difficulty => {
+          const engine = astralEngine(allIds, allIds, { seed: `milestone-c-${difficulty}` });
+          for (let round = 0; round < 6 && !engine.state.gameOver; round += 1) {
+            const playerMove = A.chooseRecoveredAstralMove(engine, "player", difficulty, `p-${round}`);
+            const playerResult = engine.playMove("player", playerMove);
+            assert(playerResult.ok, `${difficulty} giocatore, round ${round}: ${playerResult.reason}`);
+            assertStructuredEvents(playerResult.events, `${difficulty}/player/${round}`);
+            while (!engine.state.gameOver) {
+              const attack = engine.attackNext("player");
+              assert(attack.ok, `${difficulty}: attacco giocatore non valido`);
+              assertStructuredEvents(attack.events, `${difficulty}/player-attack/${round}`);
+              if (attack.done) break;
+            }
+            engine.finishAttack("player");
+            if (engine.state.gameOver) break;
+            assert(engine.state.phase === A.PHASES.ENEMY_THINK, `${difficulty}: fase IA bloccata`);
+            engine.beginEnemyPlay();
+            const enemyMove = A.chooseRecoveredAstralMove(engine, "enemy", difficulty, `e-${round}`);
+            const enemyResult = engine.playMove("enemy", enemyMove);
+            assert(enemyResult.ok, `${difficulty} IA, round ${round}: ${enemyResult.reason}`);
+            assertStructuredEvents(enemyResult.events, `${difficulty}/enemy/${round}`);
+            while (!engine.state.gameOver) {
+              const attack = engine.attackNext("enemy");
+              assert(attack.ok, `${difficulty}: attacco IA non valido`);
+              assertStructuredEvents(attack.events, `${difficulty}/enemy-attack/${round}`);
+              if (attack.done) break;
+            }
+            engine.finishAttack("enemy");
+            assertAstralStateIntegrity(engine, `${difficulty}/round-${round}`);
+            if (!engine.state.gameOver) assert(engine.state.phase === A.PHASES.PLAYER_SELECT, `${difficulty}: nuovo round bloccato`);
+          }
+        });
+      }
+    },
+    {
+      name: "La fine partita distingue vittoria, sconfitta e pareggio simultaneo",
+      run() {
+        const outcomes = [
+          { player: 10, enemy: 0, winner: "player" },
+          { player: 0, enemy: 10, winner: "enemy" },
+          { player: 0, enemy: 0, winner: "draw" }
+        ];
+        outcomes.forEach(outcome => {
+          const engine = astralEngine(["astral_fire_01"], ["astral_water_01"]);
+          engine.state.player.hp = outcome.player;
+          engine.state.enemy.hp = outcome.enemy;
+          engine.checkWinner();
+          assert(engine.state.gameOver && engine.state.winner === outcome.winner, `Esito ${outcome.player}/${outcome.enemy}: ${engine.state.winner}`);
         });
       }
     }
@@ -723,9 +932,12 @@
         const ally = placeAstralUnit(engine, "player", "astral_fire_02", 1, 8);
         engine.state.player.hp = 40;
         engine.state.phase = A.PHASES.PLAYER_ATTACK;
-        engine.attackNext("player");
+        const step = engine.attackNext("player");
         assert(engine.state.player.hp === 42, "Eroe non curato prima dell'attacco");
         assert(healer.currentHealth === 22 && ally.currentHealth === 10, "Creature non curate correttamente");
+        const unitHeals = step.events.filter(event => event.type === "astralUnitHeal");
+        assert(unitHeals.length === 2, `Eventi cura creature: ${unitHeals.length}`);
+        assert(unitHeals.every(event => event.amount === 2 && event.reason === "astral_earth_09"), "Evento cura creatura non autorevole");
       }
     },
     {
@@ -778,8 +990,9 @@
         const wyvernEngine = astralEngine(["astral_air_04"], ["astral_fire_02", "astral_water_02"]);
         const high = placeAstralUnit(wyvernEngine, "enemy", "astral_fire_02", 0, 12);
         const low = placeAstralUnit(wyvernEngine, "enemy", "astral_water_02", 1, 8);
-        wyvernEngine.playMove("player", { type: "play", cardId: "astral_air_04", slot: 0 });
+        const wyvernResult = wyvernEngine.playMove("player", { type: "play", cardId: "astral_air_04", slot: 0 });
         assert(high.currentHealth === 7 && low.currentHealth === 8, "Wyvern ha scelto il bersaglio sbagliato");
+        assert(wyvernResult.events.some(event => event.type === "astralCreatureDamage" && event.targetSide === "enemy" && event.slot === 0 && event.amount === 5), "Wyvern non ha emesso un evento danno presentabile");
 
         const tornadoEngine = astralEngine(["astral_air_09"], ["astral_fire_02", "astral_water_02"]);
         placeAstralUnit(tornadoEngine, "enemy", "astral_fire_02", 0, 12);
@@ -1004,9 +1217,11 @@
         const a=placeAstralUnit(engine,"enemy","astral_fire_02",0,13);
         const b=placeAstralUnit(engine,"enemy","astral_water_02",1,9);
         engine.state.player.power.fire=1;
-        engine.playMove("player",{type:"play",cardId:"astral_fire_01"});
+        const result=engine.playMove("player",{type:"play",cardId:"astral_fire_01"});
         assert(a.currentHealth===10 && b.currentHealth===6,`Fire Spikes: ${a.currentHealth}/${b.currentHealth}`);
         assert(engine.state.enemy.hp===50,"Fire Spikes non deve colpire l'eroe");
+        const damageEvents=result.events.filter(event=>event.type==="astralCreatureDamage");
+        assert(damageEvents.length===2 && damageEvents.every(event=>event.amount===3),"Fire Spikes non ha emesso un evento per ogni bersaglio");
       }
     },
     {
@@ -1170,6 +1385,22 @@
         engine.playMove("player",{type:"play",cardId:"astral_fire_13",slot:0});
         assert(a.currentHealth===10 && b.currentHealth===10,"Efreet deve infliggere 10 a tutte le creature nemiche");
         assert(engine.state.enemy.hp===50,"Efreet non deve colpire l'eroe");
+      }
+    },
+    {
+      name: "La vita degli eroi può superare il valore massimo iniziale",
+      run() {
+        const player=astralEngine(["astral_water_01"],["astral_fire_02"]);
+        player.state.player.power.water=20;
+        player.playMove("player",{type:"play",cardId:"astral_water_01"});
+        assert(player.state.player.hp===63,`Cura oltre il massimo errata: ${player.state.player.hp}`);
+        assert(player.state.player.maxHp===50,"Il riferimento alla vita iniziale non deve cambiare");
+
+        const enemy=astralEngine(["astral_fire_02"],["astral_water_01"]);
+        enemy.state.enemy.power.water=20;
+        enemy.state.phase=A.PHASES.ENEMY_PLAY;
+        enemy.playMove("enemy",{type:"play",cardId:"astral_water_01"});
+        assert(enemy.state.enemy.hp===63,`Cura nemica oltre il massimo errata: ${enemy.state.enemy.hp}`);
       }
     }
 
