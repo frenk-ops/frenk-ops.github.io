@@ -3,100 +3,219 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frenk Ops - Home</title>
+    <meta name="description" content="Accesso rapido ai progetti di frenk-ops.">
+    <title>frenk-ops — Progetti</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            color-scheme: light;
+            --accent: #667eea;
+            --accent-dark: #764ba2;
+            --ink: #333;
+            --muted: #666;
+            --quiet: #999;
+            --surface: #fff;
+            --card: #f5f5fb;
+            --border: #e5e5ef;
+            --success-bg: #e5f5ee;
+            --success: #248763;
         }
-        
+
+        * { box-sizing: border-box; }
+
+        html {
+            min-height: 100%;
+            background: var(--accent-dark);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            color: var(--ink);
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+        }
+
+        .shell {
+            display: flex;
+            flex-direction: column;
+            width: min(100%, 600px);
+            min-height: calc(100vh - 2rem);
+            margin: 0 auto;
+            padding: 3.5rem 1.25rem 2rem;
+            border-radius: 10px;
+            background: var(--surface);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .eyebrow {
+            margin: 0 0 0.5rem;
+            color: var(--quiet);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0 0 0.75rem;
+            color: var(--accent);
+            font-size: clamp(2rem, 9vw, 2.5rem);
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+        }
+
+        .intro {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        main { flex: 1; padding-top: 2rem; }
+
+        .project-count {
+            margin: 0 0 1rem;
+            color: var(--muted);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .project-card {
+            display: flex;
+            min-height: 176px;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 2rem;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: inherit;
+            background: var(--card);
+            text-decoration: none;
+            transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .project-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(102, 126, 234, 0.14);
+        }
+
+        .project-card:focus-visible,
+        .github-link:focus-visible {
+            outline: 3px solid var(--accent);
+            outline-offset: 3px;
+        }
+
+        .project-heading,
+        .project-action {
             display: flex;
             align-items: center;
-            justify-content: center;
-            color: #333;
-        }
-        
-        .container {
-            background: white;
-            padding: 4rem 2rem;
-            border-radius: 10px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
-            text-align: center;
-        }
-        
-        h1 {
-            color: #667eea;
-            margin-bottom: 1rem;
-            font-size: 2.5rem;
-        }
-        
-        p {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-            font-size: 1.1rem;
-        }
-        
-        .links {
-            display: flex;
+            justify-content: space-between;
             gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
         }
-        
-        a {
-            display: inline-block;
-            padding: 0.75rem 1.5rem;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background 0.3s ease;
-            font-weight: 500;
+
+        h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            letter-spacing: -0.02em;
         }
-        
-        a:hover {
-            background: #764ba2;
+
+        .status {
+            flex: 0 0 auto;
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            color: var(--success);
+            background: var(--success-bg);
+            font-size: 0.75rem;
+            font-weight: 600;
         }
-        
-        a.secondary {
-            background: #f0f0f0;
-            color: #667eea;
-            border: 2px solid #667eea;
+
+        .project-description {
+            margin: 0.75rem 0 0;
+            color: var(--muted);
+            font-size: 0.875rem;
+            line-height: 1.6;
         }
-        
-        a.secondary:hover {
-            background: #667eea;
-            color: white;
+
+        .project-action {
+            color: var(--accent);
+            font-size: 0.875rem;
+            font-weight: 600;
         }
-        
+
+        .arrow {
+            font-size: 1.4rem;
+            line-height: 1;
+            transition: transform 180ms ease;
+        }
+
+        .project-card:hover .arrow { transform: translateX(3px); }
+
         footer {
             margin-top: 3rem;
             padding-top: 2rem;
-            border-top: 1px solid #eee;
-            color: #999;
-            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .github-link {
+            display: inline-block;
+            min-height: 44px;
+            padding: 0.75rem 0;
+            color: var(--quiet);
+            font-size: 0.875rem;
+            text-decoration: none;
+        }
+
+        .github-link:hover { color: var(--accent); }
+
+        @media (min-width: 640px) {
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .shell {
+                min-height: min(720px, calc(100vh - 2rem));
+                padding-right: 1.5rem;
+                padding-left: 1.5rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .project-card, .arrow { transition: none; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>👋 Frenk Ops</h1>
-        <p>Benvenuto nel mio spazio digitale. Qui troverai i miei progetti e esperimenti.</p>
-        
-        <div class="links">
-            <a href="https://github.com/frenk-ops" target="_blank">GitHub</a>
-            <a href="https://github.com/frenk-ops/frenk-ops.github.io" class="secondary" target="_blank">Repository</a>
-        </div>
-        
+    <div class="shell">
+        <header>
+            <p class="eyebrow">frenk-ops</p>
+            <h1>Progetti</h1>
+            <p class="intro">Un accesso semplice ai miei progetti.</p>
+        </header>
+
+        <main>
+            <p class="project-count">1 progetto</p>
+            <a class="project-card" href="./arcane-duels/app/" aria-label="Apri Arcane Duels">
+                <div>
+                    <div class="project-heading">
+                        <h2>Arcane Duels</h2>
+                        <span class="status">Disponibile</span>
+                    </div>
+                    <p class="project-description">Gioco di carte strategico fantasy</p>
+                </div>
+                <span class="project-action" aria-hidden="true">
+                    <span>Apri progetto</span>
+                    <span class="arrow">→</span>
+                </span>
+            </a>
+        </main>
+
         <footer>
-            <p>© 2026 Frenk Ops. Tutti i diritti riservati.</p>
+            <a class="github-link" href="https://github.com/frenk-ops" target="_blank" rel="noopener noreferrer">Profilo GitHub</a>
         </footer>
     </div>
 </body>
