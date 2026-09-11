@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.13">
+  <link rel="stylesheet" href="styles.css?v=3.0.14">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -14,15 +14,15 @@
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
       </div>
-      <nav class="tabs classic-nav" aria-label="Sezioni">
-        <button class="tab active" data-view="game" data-i18n="nav.duel">Duello</button>
+      <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
+        <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
         <button class="tab" data-view="tournament" data-i18n="nav.tournament">Torneo</button>
-        <button class="tab" data-view="profile" data-i18n="nav.collection">Collezione</button>
-        <button class="tab" data-view="editor" data-i18n="nav.editor">Editor</button>
-        <button class="tab" data-view="rules" data-i18n="nav.help">Aiuto</button>
+        <button class="tab" data-view="profile" data-i18n="nav.cards">Carte</button>
+        <button class="tab" data-view="rules" data-i18n="nav.howToPlay">Come si gioca</button>
         <button class="tab" data-view="diagnostics" data-i18n="nav.options">Opzioni</button>
+        <button class="tab dev-only hidden" data-view="editor" data-i18n="nav.editor">Editor</button>
       </nav>
-      <button id="restartBtn" class="ghost classic-small-button" data-i18n="menu.main">Menu principale</button>
+      <span class="classic-topbar-balance" aria-hidden="true"></span>
     </header>
 
     <main>
@@ -33,12 +33,12 @@
             <strong>Duels</strong>
           </div>
           <div class="classic-menu-scene">
-            <div class="classic-menu-character classic-menu-character-left" aria-hidden="true">🧙‍♂️</div>
+            <div class="classic-menu-character classic-menu-character-left" aria-hidden="true"></div>
             <div class="classic-menu-config parchment-panel">
-              <h2 data-i18n="menu.newDuel">Nuovo duello</h2>
-              <p data-i18n="menu.rulesetSummary">Regole classiche — 65 carte.</p>
-              <h3 class="classic-config-section-title" data-i18n="menu.localDuel">Duello locale</h3>
-              <div class="duel-setup foundation-grid classic-config-grid">
+              <span class="classic-menu-kicker" data-i18n="nav.play">Gioca</span>
+              <h2 data-i18n="menu.prepareDuel">Prepara il duello</h2>
+              <p data-i18n="menu.rulesetSummaryRemastered">Regole classiche · 65 carte rimasterizzate.</p>
+              <div class="duel-setup foundation-grid classic-config-grid classic-config-essential">
                 <label><span data-i18n="menu.playerName">Nome giocatore</span>
                   <input id="playerNameInput" type="text" maxlength="24" autocomplete="nickname" value="Giocatore">
                 </label>
@@ -52,29 +52,29 @@
                 <label><span data-i18n="menu.opponent">Avversario IA</span>
                   <select id="difficultySelect"></select>
                 </label>
-                <label><span data-i18n="menu.cardStyle">Stile grafico carte</span>
-                  <select id="cardArtStyleSelect">
-                    <option value="original" selected data-i18n="menu.originalArt">Originale</option>
-                    <option value="new" data-i18n="menu.remasteredArt">Nuovo</option>
-                  </select>
-                </label>
-                <label><span data-i18n="menu.seed">Seed partita</span>
-                  <input id="seedInput" type="text" value="" data-i18n-placeholder="menu.randomSeed" placeholder="Casuale (oppure inserisci un seed)">
-                </label>
-                <label id="astralLeagueLabel">League
-                  <select id="astralLeagueSelect">
-                    <option value="starting">Starting League</option>
-                    <option value="advanced">Advanced League</option>
-                    <option value="major">Major League</option>
-                  </select>
-                </label>
-                <label id="enemySpecializationLabel">Enemy specialization
-                  <select id="enemySpecializationSelect"></select>
-                </label>
               </div>
-              <h3 id="talentChoiceHeading">Scegli partita</h3>
+              <input id="cardArtStyleSelect" type="hidden" value="new">
+              <details class="classic-advanced-settings">
+                <summary><span data-i18n="menu.advancedSettings">Impostazioni avanzate</span><span aria-hidden="true">⌄</span></summary>
+                <div class="classic-advanced-grid">
+                  <label><span data-i18n="menu.seed">Seed partita</span>
+                    <input id="seedInput" type="text" value="" data-i18n-placeholder="menu.randomSeed" placeholder="Casuale (oppure inserisci un seed)">
+                  </label>
+                  <label id="astralLeagueLabel"><span data-i18n="menu.league">Lega</span>
+                    <select id="astralLeagueSelect">
+                      <option value="starting" data-i18n="league.starting">Starting League</option>
+                      <option value="advanced" data-i18n="league.advanced">Advanced League</option>
+                      <option value="major" data-i18n="league.major">Major League</option>
+                    </select>
+                  </label>
+                  <label id="enemySpecializationLabel"><span data-i18n="menu.enemySpecialization">Specializzazione avversaria</span>
+                    <select id="enemySpecializationSelect"></select>
+                  </label>
+                </div>
+              </details>
+              <h3 id="talentChoiceHeading" class="visually-hidden">Scegli partita</h3>
               <div id="talentChoices" class="talent-grid classic-start-buttons"></div>
-              <section class="online-lobby" aria-labelledby="onlineLobbyTitle">
+              <section class="online-lobby dev-only hidden" aria-labelledby="onlineLobbyTitle">
                 <h3 id="onlineLobbyTitle" data-i18n="online.title">Partita online</h3><p class="pages-static-note">Il multiplayer richiede la versione con server e non è disponibile su GitHub Pages.</p>
                 <div id="onlineLobbyActions" class="hidden">
                   <button id="createOnlineRoomBtn" type="button" data-i18n="online.create">Crea partita online</button>
@@ -90,7 +90,7 @@
                 </div>
               </section>
             </div>
-            <div class="classic-menu-character classic-menu-character-right" aria-hidden="true">💀</div>
+            <div class="classic-menu-character classic-menu-character-right" aria-hidden="true"></div>
           </div>
         </section>
 
@@ -115,9 +115,9 @@
               <aside class="classic-power-column classic-power-left">
                 <div id="schoolFilters" class="school-status-grid classic-power-stack player-grid"></div>
                 <button id="endTurnBtn" class="primary classic-skip-button" data-i18n="ui.passTurn">Passa</button>
-                <div class="classic-mini-settings">
-                  <label>Speed<select id="animationSpeed"><option value="0.55">Fastest</option><option value="0.8">Fast</option><option value="1.15" selected>Normal</option><option value="2.75">Slow</option></select></label>
-                  <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> Sound</label>
+                <div class="classic-mini-settings dev-only hidden">
+                  <label><span data-i18n="ui.speed">Velocità</span><select id="animationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.15" selected data-i18n="speed.normal">Standard</option><option value="2.75" data-i18n="speed.slow">Lenta</option></select></label>
+                  <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> <span data-i18n="ui.sound">Suono</span></label>
                   <span id="seedBadge" class="seed-badge"></span>
                 </div>
               </aside>
@@ -140,14 +140,14 @@
                 <div id="enemyRevealedCards" class="revealed-cards classic-enemy-book"></div>
                 <div class="enemy-school-summary-row">
                   <div id="enemySchoolSummary" class="enemy-school-summary"></div>
-                  <button id="enemyRevealedQuickToggle" class="enemy-revealed-quick-toggle" type="button">Vedi carte</button>
+                  <button id="enemyRevealedQuickToggle" class="enemy-revealed-quick-toggle" type="button" data-i18n="cards.viewRevealed">Vedi carte</button>
                 </div>
               </section>
 
               <div id="enemyRevealedModal" class="enemy-revealed-modal hidden" aria-hidden="true">
-                <div class="enemy-revealed-modal-card" role="dialog" aria-modal="true" aria-label="Carte rivelate dell'avversario">
+                <div class="enemy-revealed-modal-card" role="dialog" aria-modal="true" aria-label="Carte rivelate dell'avversario" data-i18n-aria-label="cards.revealedEnemy">
                   <div class="enemy-revealed-modal-header">
-                    <strong id="enemyRevealedModalSummary">Carte rivelate</strong>
+                    <strong id="enemyRevealedModalSummary" data-i18n="cards.revealed">Carte rivelate</strong>
                     <button id="enemyRevealedModalClose" class="classic-small-button" type="button" aria-label="Chiudi">✕</button>
                   </div>
                   <div id="enemyRevealedModalContent" class="enemy-revealed-modal-content"></div>
@@ -159,34 +159,24 @@
               </aside>
             </div>
 
-            <nav id="duelSessionActions" class="duel-session-actions hidden" aria-label="Gestione partita">
-              <button id="returnMainMenuBtn" type="button" data-i18n="ui.returnMainMenu">TORNA AL MENU</button>
-              <button id="restartSameSetsBtn" type="button">Riavvia partita con stessi set</button>
-              <button id="startNewDrawBtn" type="button">Avvia nuova partita</button>
-              <div class="duel-session-control">
-                <label for="animationSpeedMenu">Velocità animazioni</label>
-                <select id="animationSpeedMenu">
-                  <option value="0.55">Fastest</option>
-                  <option value="0.8">Fast</option>
-                  <option value="1.15">Normal</option>
-                  <option value="2.75">Slow</option>
-                </select>
+            <nav id="duelSessionActions" class="duel-session-actions hidden" aria-label="Gestione partita" role="dialog" aria-modal="true" aria-labelledby="duelPauseTitle">
+              <header class="duel-pause-header"><span aria-hidden="true">⌛</span><h2 id="duelPauseTitle" data-i18n="pause.title">Pausa</h2><small id="duelPauseSubtitle"></small></header>
+              <button id="continueDuelBtn" type="button" class="duel-pause-primary" data-i18n="pause.continue">Continua</button>
+              <div id="normalDuelPauseActions" class="duel-pause-mode-actions">
+                <button id="restartSameSetsBtn" type="button"><strong data-i18n="pause.restart">Ricomincia il duello</strong><small data-i18n="pause.restartHint">Stessi grimori e stesso seed</small></button>
+                <button id="startNewDrawBtn" type="button"><strong data-i18n="pause.newDuel">Nuovo duello</strong><small data-i18n="pause.newDuelHint">Torna alla configurazione</small></button>
               </div>
-              <div class="duel-session-control">
-                <label for="bgmEnabled"><input id="bgmEnabled" type="checkbox"> Musica di sottofondo</label>
-              </div>
-              <div class="duel-session-control">
-                <label for="bgmVolume">Volume</label>
-                <input id="bgmVolume" type="range" min="0" max="100" value="12">
-              </div>
-              <div class="duel-session-control">
-                <label for="languageSelect" data-i18n="ui.language">Lingua</label>
-                <select id="languageSelect">
-                  <option value="it" data-i18n="ui.italian">Italiano</option>
-                  <option value="en" data-i18n="ui.english">English</option>
-                </select>
-              </div>
+              <button id="openDuelOptionsBtn" type="button" data-i18n="nav.options">Opzioni</button>
+              <button id="returnMainMenuBtn" type="button" class="duel-pause-danger normal-pause-action" data-i18n="pause.abandonToMenu">Abbandona e torna al menu</button>
+              <button id="abandonTournamentMatchBtn" type="button" class="duel-pause-danger tournament-pause-action hidden" data-i18n="pause.abandonMatch">Abbandona incontro</button>
+              <p class="duel-pause-note" data-i18n="pause.unsaved">I progressi del duello corrente non vengono salvati.</p>
             </nav>
+
+            <div class="classic-hidden-ui-support" aria-hidden="true">
+              <select id="animationSpeedMenu"><option value="0.55">Fastest</option><option value="0.8">Fast</option><option value="1.15">Normal</option><option value="2.75">Slow</option></select>
+              <input id="bgmEnabled" type="checkbox"><input id="bgmVolume" type="range" min="0" max="100" value="12">
+              <select id="languageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
+            </div>
 
             <footer class="classic-info-bar duel-info-footer" aria-label="Informazioni carta">
               <section class="classic-card-info duel-card-info" aria-live="polite" aria-atomic="true">
@@ -206,7 +196,7 @@
               </nav>
             </footer>
 
-            <details class="combat-log-panel classic-combat-log"><summary>Battle log</summary><div id="combatLog" class="combat-log"></div></details>
+            <details class="combat-log-panel classic-combat-log"><summary data-i18n="log.title">Registro battaglia</summary><div id="combatLog" class="combat-log"></div></details>
 
             <div class="classic-hidden-ui-support" aria-hidden="true">
               <span id="playerManaOrb">0/0</span><span id="enemyManaOrb">0/0</span>
@@ -231,17 +221,18 @@
             <div id="tournamentContent"></div>
           </div>
           <div class="classic-tournament-actions">
-            <button id="newTournamentBtn" class="classic-stone-button" data-i18n="tournament.new">Nuovo torneo</button>
+            <button id="newTournamentBtn" class="classic-stone-button" data-i18n="tournament.startNew">Avvia nuovo torneo</button>
             <button type="button" class="classic-stone-button" data-view-jump="game" data-i18n="ui.returnMainMenu">TORNA AL MENU</button>
+            <button id="abandonTournamentBtn" class="classic-stone-button danger hidden" data-i18n="tournament.abandon">Abbandona torneo</button>
           </div>
         </section>
       </section>
 
       <section id="profileView" class="view">
-        <section class="panel collection-page-shell"><div class="section-heading"><div><h2>Collezione Arcane</h2><p>Consulta tutte le 65 carte, filtra il catalogo e confronta caratteristiche e illustrazioni.</p></div></div><div id="profileContent"></div></section>
+        <section class="panel collection-page-shell"><div class="section-heading"><div><h2 data-i18n="cards.title">Carte</h2><p data-i18n="cards.intro">Consulta tutte le 65 carte e confronta caratteristiche e illustrazioni.</p></div></div><div id="profileContent"></div></section>
       </section>
 
-      <section id="editorView" class="view">
+      <section id="editorView" class="view dev-only hidden">
         <div class="editor-layout">
           <section class="panel editor-controls">
             <h2>Editor dati carta</h2>
@@ -279,30 +270,28 @@
       </section>
 
       <section id="rulesView" class="view">
-        <section class="panel rules"><h2>Regole classiche — ricostruzione tecnica</h2><div id="rulesetContent"></div></section>
+        <section class="panel rules player-help-page"><h2 data-i18n="help.title">Come si gioca</h2><div id="rulesetContent"></div></section>
       </section>
 
       <section id="diagnosticsView" class="view">
         <section class="panel options-page-shell">
-          <div class="section-heading"><div><h2>Opzioni</h2><p>Le preferenze vengono salvate in questo browser e applicate anche ai prossimi duelli.</p></div></div>
+          <div class="section-heading"><div><h2 data-i18n="options.title">Opzioni</h2><p data-i18n="options.intro">Le preferenze vengono salvate in questo browser e applicate anche ai prossimi duelli.</p></div></div>
           <div class="options-grid">
-            <label>Lingua
+            <label><span data-i18n="options.language">Lingua</span>
               <select id="optionsLanguageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
             </label>
-            <label>Velocità animazioni
-              <select id="optionsAnimationSpeed"><option value="0.55">Molto veloce</option><option value="0.8">Veloce</option><option value="1.15">Standard</option><option value="2.75">Lenta</option></select>
+            <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
+              <select id="optionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.15" data-i18n="speed.normal">Standard</option><option value="2.75" data-i18n="speed.slow">Lenta</option></select>
             </label>
-            <label>Grafica carte predefinita
-              <select id="optionsCardArtStyle"><option value="new">Nuovo</option><option value="original">Originale</option></select>
-            </label>
-            <label class="options-check"><input id="optionsSoundEnabled" type="checkbox"> Effetti sonori</label>
-            <label class="options-check"><input id="optionsBgmEnabled" type="checkbox"> Musica di sottofondo</label>
-            <label>Volume musica
+            <select id="optionsCardArtStyle" class="hidden" aria-hidden="true"><option value="new">Nuovo</option></select>
+            <label class="options-check"><input id="optionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
+            <label class="options-check"><input id="optionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
+            <label><span data-i18n="options.musicVolume">Volume musica</span>
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <div class="options-actions"><button id="resetPreferencesBtn" class="ghost">Ripristina preferenze</button><button id="resetProfileBtn" class="ghost danger">Azzera progressi e tornei</button></div>
-          <details class="advanced-diagnostics">
+          <div class="options-actions"><button id="resetPreferencesBtn" class="ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
+          <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
             <div class="section-heading"><div><h3>Test del motore</h3><p>Controlla motore, generatore e IA nel browser.</p></div><button id="runTestsBtn" class="primary">Esegui test</button></div>
             <div id="testResults" class="diagnostic-box">Test non ancora eseguiti.</div>
@@ -354,6 +343,9 @@
   <script src="src/core/astral-ai-re.js?v=3.0.0"></script>
   <script src="src/core/tournament.js?v=3.0.0"></script>
   <script src="tests/test-suite.js?v=3.0.0"></script>
-  <script src="src/ui/app.js?v=3.0.12"></script>
+  <script src="src/ui/navigation.js?v=3.0.0"></script>
+  <script src="src/ui/pause-menu.js?v=3.0.0"></script>
+  <script src="src/ui/tournament-view.js?v=3.0.0"></script>
+  <script src="src/ui/app.js?v=3.0.13"></script>
 </body>
 </html>

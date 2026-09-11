@@ -24,7 +24,7 @@
   let enemyRevealedModalOpen = false;
   let animationSpeed = 1.15;
   animationSpeed = Number(preference("animationSpeed", "1.15"));
-  let cardArtStyle = preference("cardArtStyle", "new") === "original" ? "original" : "new";
+  let cardArtStyle = "new";
   let soundEnabled = preference("soundEnabled", "1") !== "0";
   let busy = false;
   let audioContext = null;
@@ -52,6 +52,8 @@
   let remoteRefreshBusy = false;
   let currentPlayerName = "";
   let currentOpponentName = "";
+  let navigation = null;
+  let pauseMenu = null;
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
 
   function escapeHtml(value) {
@@ -255,21 +257,14 @@
 
   function switchView(name) {
     $$(".view").forEach(view => view.classList.remove("active"));
-    $$(".tab").forEach(tab => tab.classList.remove("active"));
     $(`#${name}View`)?.classList.add("active");
-    $(`.tab[data-view="${name}"]`)?.classList.add("active");
+    navigation?.setActive(name);
     if (name === "tournament") renderTournament();
     if (name === "profile") renderProfile();
     if (name === "rules") renderRuleset();
   }
 
-  $$(".tab").forEach(tab => tab.addEventListener("click", () => switchView(tab.dataset.view)));
-
-  $$('[data-view-jump]').forEach(button => button.addEventListener('click', () => {
-    const view = button.dataset.viewJump;
-    if (view === 'game') restartDuel();
-    switchView(view);
-  }));
+  navigation = A.UINavigation?.create({ onViewChange: switchView, onReturnToGame: () => { if (!engine) restartDuel(); } });
 
   function ensureAudio() {
     if (!soundEnabled) return null;
@@ -437,13 +432,13 @@
     const mode = $("#duelModeSelect")?.value || "normal";
     const withSpecializations = mode === "specializations";
     root.innerHTML = "";
-    $("#talentChoiceHeading").textContent = withSpecializations ? "Scegli la specializzazione" : "Duello normale";
+    $("#talentChoiceHeading").textContent = withSpecializations ? t("menu.chooseSpecialization") : t("menu.normalDuel");
     $("#astralLeagueLabel").classList.toggle("hidden", !withSpecializations);
     $("#enemySpecializationLabel").classList.toggle("hidden", !withSpecializations);
     if (!withSpecializations) {
       const button = document.createElement("button");
       button.className = "talent";
-      button.innerHTML = `<span>⚔️</span><strong>Avvia duello normale</strong><small>Nessuna specializzazione. Regole e 65 carte originali.</small>`;
+      button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${t("menu.startDuelHint")}</small>`;
       button.addEventListener("click", () => startDuel("fire", false, null, "normal"));
       root.appendChild(button);
       return;
@@ -459,9 +454,12 @@
   }
 
   function setupDifficultyOptions() {
-    $("#difficultySelect").innerHTML = Object.values(A.DIFFICULTIES)
-      .map(item => `<option value="${item.id}" ${item.id === "advanced" ? "selected" : ""}>${item.label}</option>`)
+    const select = $("#difficultySelect");
+    const selected = select.value || "advanced";
+    select.innerHTML = Object.values(A.DIFFICULTIES)
+      .map(item => `<option value="${item.id}">${t(`difficulty.${item.id}`)}</option>`)
       .join("");
+    select.value = A.DIFFICULTIES[selected] ? selected : "advanced";
   }
 
   function setupAstralSpecializationOptions() {
@@ -492,7 +490,7 @@
     currentPlayerName = savePlayerName();
     currentOpponentName = fromTournament
       ? normalizedPlayerName(opponent?.name, t("ui.opponent"))
-      : normalizedPlayerName(A.DIFFICULTIES[difficulty]?.label, t("ui.opponent"));
+      : normalizedPlayerName(t(`difficulty.${difficulty}`), t("ui.opponent"));
     tournamentMatch = Boolean(fromTournament);
     matchRecorded = false;
     presentationLog = [];
@@ -540,7 +538,7 @@
     switchView("game");
     setMessage("");
     renderGame();
-    showTurnBanner("Il tuo turno", "player", 900);
+    showTurnBanner(t("turn.yours"), "player", 900);
   }
 
   function restartDuel() {
@@ -555,30 +553,49 @@
     setMessage("");
   }
 
-  $("#restartBtn").addEventListener("click", restartDuel);
-  $("#returnMainMenuBtn")?.addEventListener("click", () => {
+  function pauseSubtitle() {
+    return tournamentMatch
+      ? t("pause.tournamentSubtitle", { opponent: currentOpponentName || t("ui.opponent") })
+      : t("pause.duelSubtitle", { opponent: currentOpponentName || t("ui.opponent") });
+  }
+
+  function reopenPauseAfterCancelledAction() {
+    pauseMenu?.open({ tournamentMode: tournamentMatch, subtitle: pauseSubtitle() });
+  }
+
+  function abandonCurrentDuel() {
+    if (!confirm(t("pause.confirmAbandonDuel"))) return reopenPauseAfterCancelledAction();
     restartDuel();
     switchView("game");
+  }
+
+  function abandonTournamentEncounter() {
+    if (!tournamentMatch || !tournament || matchRecorded) return;
+    if (!confirm(t("pause.confirmAbandonMatch"))) return reopenPauseAfterCancelledAction();
+    matchRecorded = true;
+    A.recordTournamentDuel(profile, tournament, false, A.calculateTournamentScore(false, engine?.state?.player?.hp, engine?.state?.round));
+    profile = A.loadProfile();
+    tournament = A.loadTournament();
+    restartDuel();
+    renderTournament();
+    renderProfile();
+    switchView("tournament");
+  }
+
+  pauseMenu = A.UIPauseMenu?.create({
+    root: $("#duelSessionActions"),
+    onToggle: open => $("#duelMenuBtn")?.setAttribute("aria-expanded", String(open)),
+    onRestart: () => {
+      if (!currentDuelLaunch || busy) return;
+      const launch = currentDuelLaunch;
+      startDuel(launch.playerTalent, launch.fromTournament, launch.selectedSpecialization, launch.requestedMode, launch.seed);
+    },
+    onNewDuel: () => { restartDuel(); switchView("game"); },
+    onOptions: () => switchView("diagnostics"),
+    onAbandonDuel: abandonCurrentDuel,
+    onAbandonTournamentMatch: abandonTournamentEncounter
   });
-  $("#duelMenuBtn")?.addEventListener("click", () => {
-    if (tournamentMatch) return restartDuel();
-    const actions = $("#duelSessionActions");
-    const willOpen = actions?.classList.contains("hidden");
-    actions?.classList.toggle("hidden", !willOpen);
-    $("#duelMenuBtn").setAttribute("aria-expanded", String(Boolean(willOpen)));
-  });
-  $("#restartSameSetsBtn")?.addEventListener("click", () => {
-    if (!currentDuelLaunch || busy) return;
-    const launch = currentDuelLaunch;
-    startDuel(launch.playerTalent, launch.fromTournament, launch.selectedSpecialization, launch.requestedMode, launch.seed);
-  });
-  $("#startNewDrawBtn")?.addEventListener("click", () => {
-    if (!currentDuelLaunch || busy) return;
-    const launch = currentDuelLaunch;
-    const nextSeed = createDuelSeed();
-    $("#seedInput").value = "";
-    startDuel(launch.playerTalent, false, launch.selectedSpecialization, launch.requestedMode, nextSeed);
-  });
+  $("#duelMenuBtn")?.addEventListener("click", () => pauseMenu?.toggle({ tournamentMode: tournamentMatch, subtitle: pauseSubtitle() }));
 
   function fxDuration(ms) {
     if (reducedMotion) return 0;
@@ -1159,17 +1176,18 @@
       ${combatDetails}
       <span class="detail-ability"><small>${t("ui.ability")}</small><b>${escapeHtml(card.keyword || t("ui.original"))}</b></span>`;
     const previewCombatMeta = card.type === "spell" ? "" : `
-        <div><small>Attacco</small><strong>${escapeHtml(card.attack)}</strong></div>
-        <div><small>Vita</small><strong>${escapeHtml(card.health)}</strong></div>`;
+        <div><small>${t("ui.attack")}</small><strong>${escapeHtml(card.attack)}</strong></div>
+        <div><small>${t("cards.health")}</small><strong>${escapeHtml(card.health)}</strong></div>`;
+    const rarity = card.level >= 8 ? t("cards.legendary") : card.level >= 6 ? t("cards.rare") : t("cards.common");
     $("#inspectCardMeta").innerHTML = `
       <div class="inspect-meta-grid">
-        <div><small>Scuola</small><strong>${school(card.school).name}</strong></div>
-        <div><small>Tipo</small><strong>${card.type === "spell" ? "Magia" : "Creatura"}</strong></div>
-        <div><small>Livello</small><strong>${card.level}</strong></div>
-        <div><small>Rarità</small><strong>${card.level >= 8 ? "Leggendaria" : card.level >= 6 ? "Rara" : "Comune"}</strong></div>
+        <div><small>${t("ui.school")}</small><strong>${schoolName(card.school)}</strong></div>
+        <div><small>${t("ui.type")}</small><strong>${t(card.type === "spell" ? "ui.spell" : "ui.creature")}</strong></div>
+        <div><small>${t("cards.level")}</small><strong>${card.level}</strong></div>
+        <div><small>${t("cards.rarity")}</small><strong>${rarity}</strong></div>
         ${previewCombatMeta}
       </div>
-      <div class="inspect-ability-block"><small>Abilità</small><p><strong>${escapeHtml(card.keyword || "Originale")}</strong></p><p>${escapeHtml(card.text || "")}</p></div>`;
+      <div class="inspect-ability-block"><small>${t("ui.ability")}</small><p><strong>${escapeHtml(card.keyword || t("ui.original"))}</strong></p><p>${escapeHtml(cardText(card))}</p></div>`;
     $("#illustrationProgress").textContent = `${getIllustratedTotal()} / ${allAstralCards().length}`;
   }
 
@@ -1186,12 +1204,15 @@
   }
 
   function buildCollectionFilterButtons() {
-    renderFilterGroup("#collectionSchoolFilters", "school", [{ id: "all", label: "Tutte" }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon}` }))]);
-    renderFilterGroup("#collectionTypeFilters", "type", [{ id: "all", label: "Tutti" }, { id: "creature", label: "Creature" }, { id: "spell", label: "Magie" }]);
-    renderFilterGroup("#collectionLevelFilters", "level", [{ id: "all", label: "Tutti" }, ...Array.from({ length: 9 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }))]);
-    renderFilterGroup("#collectionPageSchoolFilters", "school", [{ id: "all", label: "Tutte" }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon} ${item.name}` }))]);
-    renderFilterGroup("#collectionPageTypeFilters", "type", [{ id: "all", label: "Tutti" }, { id: "creature", label: "Creature" }, { id: "spell", label: "Magie" }]);
-    renderFilterGroup("#collectionPageLevelFilters", "level", [{ id: "all", label: "Tutti" }, ...Array.from({ length: 9 }, (_, i) => ({ id: String(i + 1), label: `Liv. ${i + 1}` }))]);
+    const schoolFilters = [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon}` }))];
+    const typeFilters = [{ id: "all", label: t("cards.allMasculine") }, { id: "creature", label: t("ui.creature") }, { id: "spell", label: t("ui.spell") }];
+    const levelFilters = [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 9 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }))];
+    renderFilterGroup("#collectionSchoolFilters", "school", schoolFilters);
+    renderFilterGroup("#collectionTypeFilters", "type", typeFilters);
+    renderFilterGroup("#collectionLevelFilters", "level", levelFilters);
+    renderFilterGroup("#collectionPageSchoolFilters", "school", [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon} ${schoolName(item.id)}` }))]);
+    renderFilterGroup("#collectionPageTypeFilters", "type", typeFilters);
+    renderFilterGroup("#collectionPageLevelFilters", "level", [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 9 }, (_, i) => ({ id: String(i + 1), label: `${t("cards.level")} ${i + 1}` }))]);
   }
 
   function buildCollectionTile(card, compact = false) {
@@ -1222,7 +1243,7 @@
     const quick = $("#collectionQuickList");
     const grid = $("#collectionGrid");
     const status = $("#collectionStatus");
-    if (status) status.textContent = `${filtered.length} carte mostrate su ${allCards.length}`;
+    if (status) status.textContent = t("cards.shown", { shown: filtered.length, total: allCards.length });
     if (quick) {
       quick.innerHTML = "";
       filtered.slice(0, 18).forEach(card => quick.appendChild(buildCollectionTile(card, true)));
@@ -1238,39 +1259,18 @@
   function renderCollectionPage() {
     const root = $("#profileContent");
     if (!root) return;
-    profile = A.loadProfile();
     const allCards = allAstralCards();
     const filtered = applyCollectionFilters(allCards);
-    const counts = getIllustratedSchoolCounts();
     root.innerHTML = `
       <div class="collection-page-layout">
         <aside class="collection-page-sidebar">
-          <div class="collection-page-progress ornate-subpanel">
-            <h3>Progresso illustrazioni</h3>
-            <div class="progress-total"><strong>${getIllustratedTotal()} / ${allCards.length}</strong><small>Carte illustrate</small></div>
-            <div class="progress-school-list">
-              <div><span>🔥 Fuoco</span><strong>${counts.fire} / 13</strong></div>
-              <div><span>💧 Acqua</span><strong>${counts.water} / 13</strong></div>
-              <div><span>🌪️ Aria</span><strong>${counts.air} / 13</strong></div>
-              <div><span>🌿 Terra</span><strong>${counts.earth} / 13</strong></div>
-              <div><span>💀 Morte</span><strong>${counts.death} / 13</strong></div>
-            </div>
-          </div>
           <div class="collection-page-filters ornate-subpanel">
-            <h3>Filtri</h3>
+            <h3>${t("cards.filters")}</h3>
             <div id="collectionPageSchoolFilters" class="mini-filter-grid vertical-filters"></div>
             <div id="collectionPageTypeFilters" class="mini-filter-grid"></div>
             <div id="collectionPageLevelFilters" class="mini-filter-grid level-filters wide"></div>
-            <label class="search-label">Cerca una carta<input id="collectionPageSearch" type="search" placeholder="Nome, scuola, testo..."></label>
-            <div class="collection-page-profile-box">
-              <h4>Profilo</h4>
-              <div class="profile-mini-grid">
-                <div><small>Tornei giocati</small><strong>${profile.tournamentsPlayed}</strong></div>
-                <div><small>Tornei vinti</small><strong>${profile.tournamentsWon}</strong></div>
-                <div><small>Duelli vinti</small><strong>${profile.duelsWon}</strong></div>
-                <div><small>Duelli persi</small><strong>${profile.duelsLost}</strong></div>
-              </div>
-            </div>
+            <label class="search-label">${t("cards.search")}<input id="collectionPageSearch" type="search" placeholder="${t("cards.searchPlaceholder")}"></label>
+            <p id="collectionPageStatus" class="collection-page-count">${t("cards.shown", { shown: filtered.length, total: allCards.length })}</p>
           </div>
         </aside>
         <section class="collection-page-main">
@@ -1278,13 +1278,8 @@
             <div class="collection-page-featured" id="collectionPageFeatured"></div>
             <div class="collection-page-meta">
               <div class="collection-page-meta-card ornate-subpanel">
-                <h3 id="collectionPageCardTitle">Dettaglio carta</h3>
+                <h3 id="collectionPageCardTitle">${t("cards.detail")}</h3>
                 <div id="collectionPageMeta"></div>
-              </div>
-              <div class="collection-page-meta-card ornate-subpanel">
-                <h3>Stato visualizzazione</h3>
-                <p id="collectionPageStatus">${filtered.length} carte mostrate su ${allCards.length}</p>
-                <p>Questa schermata usa lo stesso archivio del duello, ma in una vista più ampia e leggibile.</p>
               </div>
             </div>
           </div>
@@ -1308,14 +1303,14 @@
       $("#collectionPageCardTitle").textContent = cardName(card);
       meta.innerHTML = `
         <div class="inspect-meta-grid">
-          <div><small>Scuola</small><strong>${school(card.school).name}</strong></div>
-          <div><small>Tipo</small><strong>${card.type === "spell" ? "Magia" : "Creatura"}</strong></div>
-          <div><small>Livello</small><strong>${card.level}</strong></div>
-          <div><small>Attacco</small><strong>${card.type === "spell" ? "—" : card.attack}</strong></div>
-          <div><small>Vita</small><strong>${card.type === "spell" ? "—" : card.health}</strong></div>
-          <div><small>Keyword</small><strong>${escapeHtml(card.keyword || "Originale")}</strong></div>
+          <div><small>${t("ui.school")}</small><strong>${schoolName(card.school)}</strong></div>
+          <div><small>${t("ui.type")}</small><strong>${t(card.type === "spell" ? "ui.spell" : "ui.creature")}</strong></div>
+          <div><small>${t("cards.level")}</small><strong>${card.level}</strong></div>
+          <div><small>${t("ui.attack")}</small><strong>${card.type === "spell" ? "—" : card.attack}</strong></div>
+          <div><small>${t("cards.health")}</small><strong>${card.type === "spell" ? "—" : card.health}</strong></div>
+          <div><small>${t("cards.keyword")}</small><strong>${escapeHtml(card.keyword || t("ui.original"))}</strong></div>
         </div>
-        <div class="inspect-ability-block"><small>Testo carta</small><p>${escapeHtml(cardText(card))}</p></div>`;
+        <div class="inspect-ability-block"><small>${t("cards.cardText")}</small><p>${escapeHtml(cardText(card))}</p></div>`;
     }
     const pageGrid = $("#collectionPageGrid");
     if (pageGrid) {
@@ -1368,10 +1363,12 @@
       fragment.appendChild(clone);
     });
     root.replaceChildren(fragment);
-    $("#handSummary").textContent = `${cards.length} carte · ${school(activeSchool).name}`;
+    $("#handSummary").textContent = `${cards.length} · ${schoolName(activeSchool)}`;
     const pending = engine.state.pendingCardId ? engine.getCard("player", engine.state.pendingCardId) : null;
     $("#selectedCardHint").textContent = pending
-      ? `${pending.name} ${pending.type === "spell" && !supportsHoverPreview ? "preparata" : "selezionata"}: ${pending.type === "creature" ? "scegli uno slot libero" : "tocca di nuovo per lanciarla"}.`
+      ? (pending.type === "creature"
+        ? t("status.pendingCreature", { card: cardName(pending) })
+        : t("status.pending", { card: cardName(pending), state: t(pending.type === "spell" && !supportsHoverPreview ? "status.prepared" : "status.selected") }))
       : "";
   }
 
@@ -1383,7 +1380,7 @@
     const modalSummary = $("#enemyRevealedModalSummary");
     const hand = engine.state.enemy.hand.filter(card => card.school === enemySchool);
     const revealed = hand.filter(card => engine.state.enemy.revealedCards.includes(card.id));
-    const summaryText = `${school(enemySchool).name}: ${hand.length} carte totali · ${revealed.length} rivelate`;
+    const summaryText = t("cards.enemySummary", { school: schoolName(enemySchool), total: hand.length, revealed: revealed.length });
     if (summary) summary.textContent = summaryText;
     if (modalSummary) modalSummary.textContent = summaryText;
     const fragment = document.createDocumentFragment();
@@ -1411,7 +1408,7 @@
     for (let i = revealed.length; i < hand.length; i += 1) {
       const hidden = document.createElement("span");
       hidden.className = "hidden-card-chip";
-      hidden.setAttribute("aria-label", "Carta avversaria nascosta");
+      hidden.setAttribute("aria-label", t("cards.hiddenEnemy"));
       fragment.appendChild(hidden);
     }
     if (isMobileEnemyBookLayout()) {
@@ -1438,8 +1435,8 @@
     const enemySpec = abilitiesEnabled && state.enemySpecialization && A.getAstralSpecialization ? A.getAstralSpecialization(state.enemySpecialization) : null;
     const playerAbilityNames = state.player.astralAbilities?.map(item => item.name).join(" · ");
     const enemyAbilityNames = state.enemy.astralAbilities?.map(item => item.name).join(" · ");
-    $("#playerTalentLabel").textContent = playerSpec ? `${playerSpec.name}: ${playerAbilityNames || "nessuna abilità"}` : `Talento: ${school(state.player.talent).name}`;
-    $("#enemyTalentLabel").textContent = enemySpec ? `${enemySpec.name}: ${enemyAbilityNames || "nessuna abilità"}` : `Talento: ${school(state.enemy.talent).name}`;
+    $("#playerTalentLabel").textContent = playerSpec ? `${playerSpec.name}: ${playerAbilityNames || t("status.noAbility")}` : `${t("status.talent")}: ${schoolName(state.player.talent)}`;
+    $("#enemyTalentLabel").textContent = enemySpec ? `${enemySpec.name}: ${enemyAbilityNames || t("status.noAbility")}` : `${t("status.talent")}: ${schoolName(state.enemy.talent)}`;
     $("#endTurnBtn").disabled = busy || ![A.PHASES.PLAYER_SELECT, A.PHASES.PLAYER_TARGET].includes(state.phase);
     renderPresentationLog();
     renderSchoolButtons();
@@ -1496,7 +1493,7 @@
         const selected = engine.selectCard(cardId);
         if (!selected.ok) return setMessage(selected.reason);
         renderGame();
-        return setMessage(`${cardName(card)}: scegli uno slot.`);
+        return setMessage(t("status.selectSlot", { card: cardName(card) }));
       }
       await resolveRemoteMove(A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       return;
@@ -1530,7 +1527,7 @@
       const sameCard = engine.state.pendingCardId === cardId;
       issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.CANCEL_SELECTION);
       if (sameCard) {
-        setMessage("Selezione annullata.");
+        setMessage(t("status.selectionCancelled"));
         renderGame();
         return;
       }
@@ -1546,14 +1543,14 @@
     renderGame();
 
     if (result.requiresSlot) {
-      setMessage(`Hai selezionato ${result.card.name}. Scegli uno slot.`);
+      setMessage(t("status.selectSlot", { card: cardName(result.card) }));
       return;
     }
 
     playCardReadySound();
 
     if (supportsHoverPreview) {
-      setMessage(`${result.card.name} viene lanciata.`);
+      setMessage(t("status.cast", { card: cardName(result.card) }));
       const healthBefore = captureHealthState();
       const play = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       if (play.ok) {
@@ -1568,7 +1565,7 @@
         await resolveAttackFlow("player");
       }
     } else {
-      setMessage(`${result.card.name} ${result.card.type === "spell" ? "preparata" : "selezionata"}. Tocca di nuovo per lanciarla.`);
+      setMessage(t("status.pending", { card: cardName(result.card), state: t(result.card.type === "spell" ? "status.prepared" : "status.selected") }));
     }
   }
 
@@ -1609,7 +1606,7 @@
     const result = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PASS);
     if (!result.ok) return setMessage(result.reason);
     playOriginalSound("click", 0.35);
-    showTurnBanner("Turno passato", "neutral", 700);
+    showTurnBanner(t("turn.passed"), "neutral", 700);
     pushPresentationLog("log.pass", { actorSide: "player" });
     renderGame();
     await resolveAttackFlow("player");
@@ -1918,8 +1915,8 @@
     }
 
     if (side === "player") {
-      setMessage("L'avversario sta valutando la mossa...");
-      showTurnBanner("Turno avversario", "enemy", 760);
+      setMessage(t("turn.enemyThinking"));
+      showTurnBanner(t("turn.enemy"), "enemy", 760);
       await sleep(420);
       issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.BEGIN_PLAY);
       renderGame();
@@ -1945,8 +1942,8 @@
       await resolveAttackFlow("enemy");
     } else {
       busy = false;
-      showTurnBanner(`Round ${engine.state.round} · Il tuo turno`, "player", 900);
-      setMessage(`Round ${engine.state.round}: scegli una carta o passa.`);
+      showTurnBanner(t("turn.roundYours", { round: engine.state.round }), "player", 900);
+      setMessage(t("turn.chooseOrPass", { round: engine.state.round }));
       renderGame();
     }
   }
@@ -1955,9 +1952,9 @@
     const winner = engine.state.winner;
     if (winner === "player") playOriginalSound("winner", 0.5);
     if (winner === "enemy") playOriginalSound("looser", 0.5);
-    const resultText = winner === "player" ? "Vittoria" : winner === "enemy" ? "Sconfitta" : "Parità";
+    const resultText = winner === "player" ? t("result.victory") : winner === "enemy" ? t("result.defeat") : t("result.draw");
     showTurnBanner(resultText, winner === "player" ? "player" : winner === "enemy" ? "enemy" : "neutral", 1800);
-    setMessage(winner === "player" ? "Hai vinto il duello." : winner === "enemy" ? "Hai perso il duello." : "Il duello è finito in parità.");
+    setMessage(winner === "player" ? t("result.victoryMessage") : winner === "enemy" ? t("result.defeatMessage") : t("result.drawMessage"));
     if (tournamentMatch && !matchRecorded) {
       matchRecorded = true;
       const won = winner === "player";
@@ -1992,7 +1989,7 @@
     const meta = document.createElement("div");
     meta.className = "preview-meta";
     const blocks = [
-      { value: cost, label: "Livello/costo" },
+      { value: cost, label: t("cards.levelCost") },
       { value: card.type === "spell" ? "—" : card.attack, label: t("ui.attack") },
       { value: card.type === "spell" ? "—" : (card.currentHealth ?? card.health ?? 0), label: t("ui.life") }
     ];
@@ -2064,21 +2061,18 @@
 
   function renderTournament() {
     const root = $("#tournamentContent");
-    const resetButton = $("#newTournamentBtn");
-    resetButton.classList.toggle("hidden", !tournament);
-    resetButton.textContent = t("tournament.abandon");
+    const newButton = $("#newTournamentBtn");
+    const abandonButton = $("#abandonTournamentBtn");
+    const context = {
+      tournament, t, school, schoolName, escapeHtml,
+      schools: A.SCHOOLS,
+      leagueLabel: id => t(`league.${id}`),
+      difficultyLabel: id => t(`difficulty.${id}`)
+    };
+    newButton?.classList.toggle("hidden", !tournament);
+    abandonButton?.classList.toggle("hidden", !tournament || tournament.completed);
     if (!tournament) {
-      root.innerHTML = `<div class="tournament-create">
-        <div class="tournament-intro"><strong>${t("tournament.introTitle")}</strong><span>${t("tournament.intro")}</span></div>
-        <div class="tournament-rules-grid">
-          <span><b>Starting League</b><small>${t("tournament.matches12")}</small></span>
-          <span><b>Advanced League</b><small>${t("tournament.matches34")}</small></span>
-          <span><b>Major League</b><small>${t("tournament.matches57")}</small></span>
-        </div>
-        <label>${t("tournament.playerSchool")} <select id="tournamentTalentSelect">${A.SCHOOLS.map(s => `<option value="${s.id}">${s.icon} ${schoolName(s.id)}</option>`).join("")}</select></label>
-        <label>${t("tournament.seed")} <input id="tournamentSeedInput" placeholder="${t("tournament.randomSeed")}"></label>
-        <button id="createTournamentConfirm" class="primary">${t("tournament.create")}</button>
-      </div>`;
+      root.innerHTML = A.UITournamentView.renderEmpty(context);
       $("#createTournamentConfirm")?.addEventListener("click", () => {
         tournament = A.startTournament(profile, {
           specialization: $("#tournamentTalentSelect").value,
@@ -2092,21 +2086,9 @@
       return;
     }
 
-    const current = tournament.opponents[tournament.currentMatch];
-    const currentLeague = A.getTournamentLeagueForMatch(tournament, tournament.currentMatch);
-    const leagueLabel = A.ASTRAL_LEAGUES.find(item => item.id === currentLeague)?.label || currentLeague;
-    const remainingWins = Math.max(0, tournament.winTarget - tournament.wins);
-    root.innerHTML = `
-      <div class="tournament-summary">
-        <div><small>${t("tournament.school")}</small><strong>${school(tournament.specialization).icon} ${schoolName(tournament.specialization)}</strong></div>
-        <div><small>${t("tournament.match")}</small><strong>${Math.min(tournament.currentMatch + 1, tournament.opponents.length)} / ${tournament.opponents.length}</strong></div>
-        <div><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
-        <div><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
-      </div>
-      ${!tournament.completed ? `<div class="tournament-current"><span>${t("tournament.nextOpponent")}</span><strong>${escapeHtml(current.name)} · ${leagueLabel}</strong><small>${t("tournament.winsNeeded", { value: remainingWins })}</small></div>` : ""}
-      <div class="opponent-list">${tournament.opponents.map((opponent, index) => `<div class="opponent-row result-${opponent.result || "pending"} ${index === tournament.currentMatch ? "current" : ""}"><span><b>${index + 1}. ${escapeHtml(opponent.name)}</b><em>${opponent.result === "win" ? t("tournament.win") : opponent.result === "loss" ? t("tournament.loss") : t("tournament.pending")}</em></span><small>${t(`tournament.rank.${index}`)} · ${school(opponent.talent).icon} · ${A.ASTRAL_LEAGUES.find(item => item.id === opponent.league)?.label || opponent.league} · ${A.DIFFICULTIES[opponent.difficulty].label}${opponent.result ? ` · ${opponent.score} ${t("tournament.pointsShort")}` : ""}</small></div>`).join("")}</div>
-      <div class="passive-list"><h3>${t("tournament.passives")}</h3>${tournament.selectedPassives.length ? tournament.selectedPassives.map(id => `<span class="passive-chip">${escapeHtml(A.getPassive(id)?.name || id)}</span>`).join("") : `<p>${t("tournament.noPassives")}</p>`}</div>
-      <div id="tournamentActions"></div>`;
+    root.innerHTML = tournament.completed
+      ? A.UITournamentView.renderCompleted(context)
+      : A.UITournamentView.renderActive(context);
 
     const actions = $("#tournamentActions");
     if (tournament.pendingPassiveChoice) {
@@ -2117,16 +2099,20 @@
         renderTournament();
       }));
     } else if (tournament.completed) {
-      actions.innerHTML = `<div class="tournament-result ${tournament.won ? "won" : "lost"}"><strong>${tournament.won ? t("tournament.won") : t("tournament.notWon")}</strong><p>${t("tournament.result", { wins: tournament.wins, matches: tournament.opponents.length, points: tournament.points })}</p><button id="archiveTournamentBtn" class="ghost">${t("tournament.archive")}</button></div>`;
       $("#archiveTournamentBtn")?.addEventListener("click", () => { tournament = null; A.saveTournament(null); renderTournament(); });
     } else {
-      actions.innerHTML = `<button id="continueTournamentBtn" class="primary">${t("tournament.face", { name: escapeHtml(current.name) })}</button>`;
       $("#continueTournamentBtn")?.addEventListener("click", () => startDuel(tournament.specialization, true));
     }
   }
 
-  $("#newTournamentBtn").addEventListener("click", () => {
-    if (tournament && !confirm(t("tournament.confirmAbandon"))) return;
+  $("#newTournamentBtn")?.addEventListener("click", () => {
+    if (tournament && !confirm(t("tournament.confirmNew"))) return;
+    tournament = null;
+    A.saveTournament(null);
+    renderTournament();
+  });
+  $("#abandonTournamentBtn")?.addEventListener("click", () => {
+    if (!tournament || !confirm(t("tournament.confirmAbandon"))) return;
     tournament = null;
     A.saveTournament(null);
     renderTournament();
@@ -2137,7 +2123,7 @@
   }
 
   $("#resetProfileBtn").addEventListener("click", () => {
-    if (!confirm("Azzerare profilo, trofei e torneo attivo?")) return;
+    if (!confirm(t("options.confirmResetProgress"))) return;
     A.resetProgress();
     profile = A.loadProfile();
     tournament = null;
@@ -2227,15 +2213,15 @@
   }
 
   function renderRuleset() {
-    const rules = A.ASTRAL_ORIGINAL_RULESET || A.DEFAULT_RULESET;
-    const aiRows = Object.values(A.DIFFICULTIES).map(item => `<div><code>${escapeHtml(item.label)}</code><strong>fattore ${escapeHtml(item.randomFactor)} · ${item.simulatedAttackPhases} fasi</strong></div>`).join("");
-    $("#rulesetContent").innerHTML = `<h3>Ruleset originale recuperato</h3><div class="ruleset-grid">${Object.entries(rules).map(([key, value]) => `<div><code>${escapeHtml(key)}</code><strong>${escapeHtml(value)}</strong></div>`).join("")}</div>
-      <h3>Le cinque IA originali</h3><div class="ruleset-grid">${aiRows}</div>
-      <h3>Macchina degli stati</h3><div class="state-flow">${Object.values(A.PHASES).map(phase => `<span>${phase}</span>`).join("<b>→</b>")}</div>
-      <h3>Estrazione originale recuperata</h3><div class="ruleset-grid"><div><code>Giocatore</code><strong>20 carte permanenti</strong></div><div><code>IA</code><strong>15 / 15 / 17 / 20 / 20</strong></div><div><code>Fasce iniziali</code><strong>1–4 · 5–8 · 9–12 per scuola</strong></div><div><code>Livello 13</code><strong>solo tramite Knowledge</strong></div></div>
-      <h3>Motore delle 65 carte</h3><div class="ruleset-grid"><div><code>Dispatcher</code><strong>0x448878 · 65 rami</strong></div><div><code>Danno</code><strong>0x447AE0</strong></div><div><code>Attacco</code><strong>0x44A698</strong></div><div><code>Morti</code><strong>0x447DF4</strong></div><div><code>Ordine</code><strong>effetto → costo</strong></div><div><code>Costo</code><strong>sempre uguale al livello</strong></div></div>
-      <h3>Specializzazioni recuperate</h3><div class="ruleset-grid">${A.ASTRAL_SPECIALIZATIONS.map(spec => `<div><code>${escapeHtml(spec.name)}</code><strong>${spec.groups.map((group,index) => `${index + 1}: ${A.getAstralAbilityRecords(group).map(a => a.name).join(", ")}`).join(" · ")}</strong></div>`).join("")}</div>
-      <p class="note">I gruppi delle tre leghe sono loadout sostitutivi, non cumulativi. Craft/Mystery/Penalty modificano i poteri iniziali; Lord, aure, Nets, creature iniziali e Knowledge sono attivi anche nelle simulazioni IA.</p>`;
+    const technical = navigation?.developerMode ? `<details class="technical-rules"><summary>${t("help.technical")}</summary><div class="ruleset-grid">${Object.entries(A.ASTRAL_ORIGINAL_RULESET || A.DEFAULT_RULESET).map(([key, value]) => `<div><code>${escapeHtml(key)}</code><strong>${escapeHtml(value)}</strong></div>`).join("")}</div></details>` : "";
+    $("#rulesetContent").innerHTML = `<div class="player-help-grid">
+      <article><span>1</span><h3>${t("help.goalTitle")}</h3><p>${t("help.goalText")}</p></article>
+      <article><span>2</span><h3>${t("help.powerTitle")}</h3><p>${t("help.powerText")}</p></article>
+      <article><span>3</span><h3>${t("help.cardsTitle")}</h3><p>${t("help.cardsText")}</p></article>
+      <article><span>4</span><h3>${t("help.combatTitle")}</h3><p>${t("help.combatText")}</p></article>
+    </div>
+    <section class="help-round-flow"><h3>${t("help.roundTitle")}</h3><div><span>${t("help.select")}</span><b>→</b><span>${t("help.resolve")}</span><b>→</b><span>${t("help.attack")}</span><b>→</b><span>${t("help.enemy")}</span></div></section>
+    <section class="help-tournament"><h3>${t("help.tournamentTitle")}</h3><p>${t("help.tournamentText")}</p></section>${technical}`;
   }
 
   $("#runTestsBtn").addEventListener("click", () => {
@@ -2492,9 +2478,16 @@
     remoteRoomClient = null; saveRemoteRoom(); renderRemoteLobby(null);
   });
   window.addEventListener("arcane:languagechange", () => {
+    const playerNameInput = $("#playerNameInput");
+    if (playerNameInput && ["Giocatore", "Player"].includes(playerNameInput.value.trim())) playerNameInput.value = t("ui.player");
+    if (["Giocatore", "Player"].includes(String(currentPlayerName || "").trim())) currentPlayerName = t("ui.player");
     syncOptionsPage();
+    setupDifficultyOptions();
+    renderTalentChoices();
     renderCollectionPanels();
     renderTournament();
+    renderRuleset();
+    if (pauseMenu?.isOpen()) $("#duelPauseSubtitle").textContent = pauseSubtitle();
     if (engine) renderGame();
   });
 
@@ -2505,7 +2498,10 @@
 
   setupDifficultyOptions();
   if ($("#playerNameInput")) {
-    $("#playerNameInput").value = normalizedPlayerName(localStorage.getItem("arcane.playerName"), t("ui.player"));
+    const storedPlayerName = localStorage.getItem("arcane.playerName");
+    $("#playerNameInput").value = ["Giocatore", "Player"].includes(String(storedPlayerName || "").trim())
+      ? t("ui.player")
+      : normalizedPlayerName(storedPlayerName, t("ui.player"));
     $("#playerNameInput").addEventListener("change", savePlayerName);
   }
   setupLocalServerLifecycle();
@@ -2519,6 +2515,7 @@
     renderCollectionPanels();
   });
   $("#cardArtStyleSelect").value = cardArtStyle;
+  localStorage.setItem("arcane.cardArtStyle", "new");
   $("#animationSpeed").value = String(animationSpeed);
   $("#soundEnabled").checked = soundEnabled;
   document.body.dataset.cardArtStyle = cardArtStyle;
