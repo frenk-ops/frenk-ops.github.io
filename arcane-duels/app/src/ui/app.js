@@ -694,6 +694,14 @@
     })[phase] || phase;
   }
 
+  function displayedUnitAttack(side, unit) {
+    if (!unit) return 0;
+    const attack = typeof A.astralCombatAttack === "function"
+      ? A.astralCombatAttack(engine, side, unit)
+      : unit.attack;
+    return Math.max(0, Math.trunc(Number(attack) || 0));
+  }
+
   function renderBoard(side) {
     const root = $(`#${side}Board`);
     const fighter = engine.state[side];
@@ -707,6 +715,7 @@
       cell.style.setProperty("--slot-index", slot);
       if (unit) {
         const cardSchool = school(unit.school);
+        const currentAttack = displayedUnitAttack(side, unit);
         const isMultiTargetAttacker = Boolean(A.ASTRAL_CARD_AI_METADATA?.[unit.id]?.multiTarget);
         const hasSummoningSickness = typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(unit, side);
         cell.classList.toggle("multi-target-attacker", isMultiTargetAttacker);
@@ -714,7 +723,7 @@
         cell.innerHTML = `<div class="unit-art"></div>
           ${isMultiTargetAttacker ? '<span class="multi-target-badge" title="Attacca tutti i nemici" aria-label="Attacco multiplo">⚔×</span>' : ''}
           ${hasSummoningSickness ? '<span class="summoning-sickness-badge" title="Debolezza da evocazione — potrà attaccare dal prossimo turno" aria-label="Debolezza da evocazione — potrà attaccare dal prossimo turno"><span aria-hidden="true">Zz</span></span>' : ''}
-          <div class="unit-stats"><strong class="unit-attack" title="Attacco"><span aria-hidden="true">⚔</span>${unit.attack}</strong><strong class="unit-health" title="Vita"><span aria-hidden="true">♥</span>${Math.max(0, unit.currentHealth)}</strong></div>`;
+          <div class="unit-stats"><strong class="unit-attack" title="Attacco"><span aria-hidden="true">⚔</span>${currentAttack}</strong><strong class="unit-health" title="Vita"><span aria-hidden="true">♥</span>${Math.max(0, unit.currentHealth)}</strong></div>`;
         const unitArt = cell.querySelector(".unit-art");
         unitArt.appendChild(buildArtBlock(unit, "board"));
         const unitName = document.createElement("small");
@@ -1146,8 +1155,10 @@
       if ($("#viewCardBtn")) $("#viewCardBtn").disabled = true;
       return;
     }
-    renderPreviewInto(target, card, null);
     const inspectedUnit = getInspectedBoardUnit();
+    const displayedCard = inspectedUnit || card;
+    const displayedAttack = inspectedUnit ? displayedUnitAttack(inspectedCardSide, inspectedUnit) : card.attack;
+    renderPreviewInto(target, displayedCard, inspectedUnit ? inspectedCardSide : null);
     const inspectedUnitIsSick = inspectedUnit && typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(inspectedUnit, inspectedCardSide);
     if (inspectedUnitIsSick) {
       const status = document.createElement("div");
@@ -1167,8 +1178,8 @@
     }
     if ($("#viewCardBtn")) $("#viewCardBtn").disabled = false;
     const combatDetails = card.type === "spell" ? "" : `
-      <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(card.attack)}</b></span>
-      <span class="detail-combat-stat detail-health"><small><i aria-hidden="true">♥</i> ${t("ui.life")}</small><b>${escapeHtml(card.currentHealth ?? card.health)}</b></span>`;
+      <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(displayedAttack)}</b></span>
+      <span class="detail-combat-stat detail-health"><small><i aria-hidden="true">♥</i> ${t("ui.life")}</small><b>${escapeHtml(displayedCard.currentHealth ?? displayedCard.health)}</b></span>`;
     $("#inspectCardDetails").innerHTML = `
       <span class="detail-school"><small>${t("ui.school")}</small><b>${escapeHtml(schoolName(card.school))}</b></span>
       <span class="detail-type"><small>${t("ui.type")}</small><b>${card.type === "spell" ? t("ui.spell") : t("ui.creature")}</b></span>
@@ -1176,8 +1187,8 @@
       ${combatDetails}
       <span class="detail-ability"><small>${t("ui.ability")}</small><b>${escapeHtml(card.keyword || t("ui.original"))}</b></span>`;
     const previewCombatMeta = card.type === "spell" ? "" : `
-        <div><small>${t("ui.attack")}</small><strong>${escapeHtml(card.attack)}</strong></div>
-        <div><small>${t("cards.health")}</small><strong>${escapeHtml(card.health)}</strong></div>`;
+        <div><small>${t("ui.attack")}</small><strong>${escapeHtml(displayedAttack)}</strong></div>
+        <div><small>${t("cards.health")}</small><strong>${escapeHtml(displayedCard.currentHealth ?? displayedCard.health)}</strong></div>`;
     const rarity = card.level >= 8 ? t("cards.legendary") : card.level >= 6 ? t("cards.rare") : t("cards.common");
     $("#inspectCardMeta").innerHTML = `
       <div class="inspect-meta-grid">
@@ -1988,9 +1999,10 @@
 
     const meta = document.createElement("div");
     meta.className = "preview-meta";
+    const attack = side && card.type !== "spell" ? displayedUnitAttack(side, card) : card.attack;
     const blocks = [
       { value: cost, label: t("cards.levelCost") },
-      { value: card.type === "spell" ? "—" : card.attack, label: t("ui.attack") },
+      { value: card.type === "spell" ? "—" : attack, label: t("ui.attack") },
       { value: card.type === "spell" ? "—" : (card.currentHealth ?? card.health ?? 0), label: t("ui.life") }
     ];
     blocks.forEach(item => {
@@ -2305,6 +2317,17 @@
   // subtle default so music is present but not intrusive
   let bgmVolume = 0.12;
 
+  function setBackgroundMusicEnabled(enabled) {
+    bgmEnabled = Boolean(enabled);
+    try {
+      window.localStorage.setItem('bgmEnabled', bgmEnabled ? '1' : '0');
+    } catch (e) {}
+    const battleToggle = document.querySelector('#bgmEnabled');
+    const optionsToggle = document.querySelector('#optionsBgmEnabled');
+    if (battleToggle) battleToggle.checked = bgmEnabled;
+    if (optionsToggle) optionsToggle.checked = bgmEnabled;
+  }
+
   function startBackgroundMusic() {
     if (!bgmEnabled || !soundEnabled || UI_MODE === "essential") return;
     if (document.visibilityState === "hidden") return;
@@ -2318,14 +2341,8 @@
       if (bgmAudio.paused) {
         bgmAudio.play().catch(err => {
           console.warn('Background music play blocked or failed:', err);
-          try {
-            const cb = document.querySelector('#bgmEnabled');
-            if (cb) cb.checked = false;
-            window.localStorage.setItem('bgmEnabled', '0');
-          } catch (e) {}
+          setBackgroundMusicEnabled(false);
           pauseBackgroundMusic();
-          // Inform the user that interaction is required to start audio
-          try { alert('Il browser ha bloccato l\'autoplay della musica. Clicca il checkbox "Musica di sottofondo" per attivarla.'); } catch (e) {}
         });
       }
     } catch (e) { bgmAudio = null; }
@@ -2375,8 +2392,7 @@
     if (bgmCheckbox) {
       bgmCheckbox.checked = bgmEnabled;
       bgmCheckbox.addEventListener('change', e => {
-        bgmEnabled = Boolean(e.target.checked);
-        window.localStorage.setItem('bgmEnabled', bgmEnabled ? '1' : '0');
+        setBackgroundMusicEnabled(e.target.checked);
         if (bgmEnabled) startBackgroundMusic(); else pauseBackgroundMusic();
       });
     }
