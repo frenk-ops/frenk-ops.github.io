@@ -357,8 +357,18 @@
       run() {
         const tournament = A.createTournament({ seed: "league-ladder", specialization: "fire", setId: "classic" });
         assert(tournament.setId === "astral-original", `Set torneo ambiguo: ${tournament.setId}`);
+        assert(tournament.specialization === "battlemage", `Specializzazione legacy non migrata: ${tournament.specialization}`);
         assert(JSON.stringify(tournament.opponents.map(item => item.league)) === JSON.stringify(["starting", "starting", "advanced", "advanced", "major", "major", "major"]), "Progressione leghe errata");
         assert(tournament.opponents.every(item => A.getAstralSpecialization(item.specialization, item.talent).talent === item.talent), "Specializzazione avversario incoerente");
+      }
+    },
+    {
+      name: "Il torneo accetta tutte le specializzazioni, incluso Mago",
+      run() {
+        const wizard = A.createTournament({ seed: "wizard-cup", specialization: "wizard" });
+        assert(wizard.specialization === "wizard", `Specializzazione Mago persa: ${wizard.specialization}`);
+        assert(A.ASTRAL_SPECIALIZATIONS.length === 6, `Specializzazioni disponibili: ${A.ASTRAL_SPECIALIZATIONS.length}`);
+        assert(A.ASTRAL_SPECIALIZATIONS.some(item => item.id === "wizard"), "Mago non disponibile nel torneo");
       }
     },
     {

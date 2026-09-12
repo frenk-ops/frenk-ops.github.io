@@ -9,6 +9,7 @@
   const SPECIALIZATION_BY_TALENT = Object.freeze({
     fire: "battlemage", water: "stormmage", air: "thundermage", nature: "druid", death: "necromancer"
   });
+  const normalizePlayerSpecialization = value => SPECIALIZATION_BY_TALENT[value] || value || "battlemage";
 
   function memoryStorage() {
     const values = {};
@@ -86,7 +87,7 @@
       version: 2,
       id: seed,
       seed,
-      specialization: options?.specialization || "fire",
+      specialization: normalizePlayerSpecialization(options?.specialization),
       setId: "astral-original",
       currentMatch: 0,
       points: 0,
@@ -108,6 +109,7 @@
     if (!tournament) return null;
     tournament.version = 2;
     tournament.setId = "astral-original";
+    tournament.specialization = normalizePlayerSpecialization(tournament.specialization);
     tournament.winTarget = WIN_TARGET;
     tournament.results = Array.isArray(tournament.results) ? tournament.results : [];
     tournament.opponents = (tournament.opponents || []).map((opponent, index) => ({

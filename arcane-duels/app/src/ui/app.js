@@ -22,9 +22,15 @@
   let activeSchool = "fire";
   let enemySchool = "fire";
   let enemyRevealedModalOpen = false;
-  let animationSpeed = 1.15;
-  animationSpeed = Number(preference("animationSpeed", "1.15"));
+  const normalizeAnimationSpeed = value => {
+    const parsed = Number(value);
+    if (parsed === 1.15) return 1.2;
+    if (parsed === 2.75) return 1.5;
+    return [0.55, 0.8, 1.2, 1.5].includes(parsed) ? parsed : 1.2;
+  };
+  let animationSpeed = normalizeAnimationSpeed(preference("animationSpeed", "1.2"));
   let cardArtStyle = "new";
+  let parchmentSpellFrames = preference("parchmentSpellFrames", "0") === "1";
   let soundEnabled = preference("soundEnabled", "1") !== "0";
   let busy = false;
   let audioContext = null;
@@ -447,7 +453,7 @@
       const button = document.createElement("button");
       button.className = "talent";
       const starting = A.getAstralAbilityRecords(item.groups[0]).map(ability => ability.name).join(" · ");
-      button.innerHTML = `<span>${item.icon}</span><strong>${item.name}</strong><small>${starting}</small>`;
+      button.innerHTML = `<span>${item.icon}</span><strong>${t(`specialization.${item.id}`)}</strong><small>${starting}</small>`;
       button.addEventListener("click", () => startDuel(item.talent, false, item.id, "specializations"));
       root.appendChild(button);
     });
@@ -464,7 +470,7 @@
 
   function setupAstralSpecializationOptions() {
     $("#enemySpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
-      .map(item => `<option value="${item.id}" ${item.id === "stormmage" ? "selected" : ""}>${item.icon} ${item.name}</option>`)
+      .map(item => `<option value="${item.id}" ${item.id === "stormmage" ? "selected" : ""}>${item.icon} ${t(`specialization.${item.id}`)}</option>`)
       .join("");
   }
 
@@ -491,10 +497,17 @@
     currentOpponentName = fromTournament
       ? normalizedPlayerName(opponent?.name, t("ui.opponent"))
       : normalizedPlayerName(t(`difficulty.${difficulty}`), t("ui.opponent"));
+    const playerSpecialization = withSpecializations
+      ? (fromTournament ? tournament?.specialization : selectedSpecialization)
+      : undefined;
+    const specializationRecord = playerSpecialization && A.getAstralSpecialization
+      ? A.getAstralSpecialization(playerSpecialization, playerTalent)
+      : null;
+    const effectivePlayerTalent = specializationRecord?.talent || playerTalent;
     tournamentMatch = Boolean(fromTournament);
     matchRecorded = false;
     presentationLog = [];
-    activeSchool = playerTalent;
+    activeSchool = effectivePlayerTalent;
     const originalMode = setId === "astral-original";
     const duelRules = originalMode
       ? { ...A.ASTRAL_ORIGINAL_RULESET }
@@ -502,7 +515,7 @@
     engine = new A.GameEngine({
       cards: sessionSets[setId],
       seed,
-      playerTalent,
+      playerTalent: effectivePlayerTalent,
       enemyTalent: opponent?.talent,
       playerPassives: fromTournament ? tournament.selectedPassives : [],
       enemyPassives: opponent?.passives || [],
@@ -510,7 +523,7 @@
       aiDifficulty: difficulty,
       astralMode: fromTournament ? "tournament" : "duel",
       astralLeague: originalMode ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting")) : undefined,
-      playerSpecialization: withSpecializations ? (fromTournament ? tournament.specialization : selectedSpecialization) : undefined,
+      playerSpecialization,
       enemySpecialization: withSpecializations ? (fromTournament ? opponent?.specialization : ($("#enemySpecializationSelect")?.value || undefined)) : undefined,
       playerAstralAbilities: withSpecializations ? undefined : [],
       enemyAstralAbilities: withSpecializations ? undefined : []
@@ -518,7 +531,7 @@
     engine.aiDifficulty = difficulty;
     duelCommandSession = new A.CommandSession(engine, { matchId: `local:${seed}` });
     currentDuelLaunch = {
-      playerTalent,
+      playerTalent: effectivePlayerTalent,
       fromTournament: Boolean(fromTournament),
       selectedSpecialization,
       requestedMode: duelMode,
@@ -527,6 +540,7 @@
     enemySchool = engine.state.enemy.talent;
     inspectedCardId = engine.state.player.hand[0]?.id || allAstralCards()[0]?.id || null;
     inspectedCardSide = "player";
+    inspectedCardInstanceId = null;
     $("#setupPanel").classList.add("hidden");
     $("#battlePanel").classList.remove("hidden");
     const generation = engine.state.generationDiagnostics?.[0];
@@ -538,6 +552,7 @@
     switchView("game");
     setMessage("");
     renderGame();
+    resumeBackgroundMusic();
     showTurnBanner(t("turn.yours"), "player", 900);
   }
 
@@ -551,6 +566,7 @@
     $("#setupPanel").classList.remove("hidden");
     clearFxLayer();
     setMessage("");
+    pauseBackgroundMusic();
   }
 
   function pauseSubtitle() {
@@ -644,6 +660,10 @@
   async function animateCardPlay(result, side, slot = null) {
     if (!result?.card) return;
     const card = result.card;
+    // The engine has already placed a summoned creature. Render that lane now
+    // so the unit is visible beneath the cast presentation instead of only
+    // appearing after the whole automatic turn flow has completed.
+    if (card.type === "creature" && slot !== null) renderBoard(side);
     const layer = $("#duelFxLayer");
     if (!reducedMotion && layer) {
       const cast = document.createElement("div");
@@ -927,7 +947,9 @@
 
   function getInspectedBoardUnit() {
     if (!engine || !inspectedCardSide || !inspectedCardInstanceId) return null;
-    return engine.state[inspectedCardSide]?.board?.find(unit => unit?.instanceId === inspectedCardInstanceId) || null;
+    return engine.state[inspectedCardSide]?.board?.find(unit =>
+      unit?.instanceId === inspectedCardInstanceId && unit.id === inspectedCardId
+    ) || null;
   }
 
   function currentCardValue(card, side = inspectedCardSide) {
@@ -1138,7 +1160,10 @@
 
   function ensureInspectedCardVisible(cards) {
     if (!cards.length) return;
-    if (!cards.some(card => card.id === inspectedCardId)) inspectedCardId = cards[0].id;
+    if (!cards.some(card => card.id === inspectedCardId)) {
+      inspectedCardId = cards[0].id;
+      inspectedCardInstanceId = null;
+    }
   }
 
   function renderInspectPanel() {
@@ -1240,6 +1265,7 @@
     button.appendChild(body);
     button.addEventListener("click", () => {
       inspectedCardId = card.id;
+      inspectedCardInstanceId = null;
       if (engine) inspectedCardSide = "player";
       renderCollectionPanels();
     });
@@ -1274,24 +1300,30 @@
     const filtered = applyCollectionFilters(allCards);
     root.innerHTML = `
       <div class="collection-page-layout">
-        <aside class="collection-page-sidebar">
-          <div class="collection-page-filters ornate-subpanel">
-            <h3>${t("cards.filters")}</h3>
-            <div id="collectionPageSchoolFilters" class="mini-filter-grid vertical-filters"></div>
-            <div id="collectionPageTypeFilters" class="mini-filter-grid"></div>
-            <div id="collectionPageLevelFilters" class="mini-filter-grid level-filters wide"></div>
-            <label class="search-label">${t("cards.search")}<input id="collectionPageSearch" type="search" placeholder="${t("cards.searchPlaceholder")}"></label>
-            <p id="collectionPageStatus" class="collection-page-count">${t("cards.shown", { shown: filtered.length, total: allCards.length })}</p>
+        <aside class="collection-page-inspector ornate-subpanel">
+          <div class="collection-page-featured" id="collectionPageFeatured"></div>
+          <div class="collection-page-card-copy">
+            <div class="collection-page-card-heading">
+              <div><h3 id="collectionPageCardTitle">${t("cards.detail")}</h3><p id="collectionPageCardKind"></p></div>
+              <strong id="collectionPageCardLevel"></strong>
+            </div>
+            <div id="collectionPageMeta"></div>
           </div>
         </aside>
         <section class="collection-page-main">
-          <div class="collection-page-top">
-            <div class="collection-page-featured" id="collectionPageFeatured"></div>
-            <div class="collection-page-meta">
-              <div class="collection-page-meta-card ornate-subpanel">
-                <h3 id="collectionPageCardTitle">${t("cards.detail")}</h3>
-                <div id="collectionPageMeta"></div>
-              </div>
+          <div class="collection-page-filters ornate-subpanel">
+            <div class="collection-page-filter-row">
+              <span>${t("ui.school")}</span>
+              <div id="collectionPageSchoolFilters" class="mini-filter-grid vertical-filters"></div>
+            </div>
+            <div class="collection-page-filter-row">
+              <span>${t("cards.filters")}</span>
+              <div id="collectionPageTypeFilters" class="mini-filter-grid"></div>
+              <div id="collectionPageLevelFilters" class="mini-filter-grid level-filters wide"></div>
+            </div>
+            <div class="collection-page-filter-search">
+              <label class="search-label">${t("cards.search")}<input id="collectionPageSearch" type="search" placeholder="${t("cards.searchPlaceholder")}"></label>
+              <p id="collectionPageStatus" class="collection-page-count">${t("cards.shown", { shown: filtered.length, total: allCards.length })}</p>
             </div>
           </div>
           <div id="collectionPageGrid" class="collection-grid page-grid"></div>
@@ -1310,15 +1342,16 @@
     const featured = $("#collectionPageFeatured");
     const meta = $("#collectionPageMeta");
     if (card && featured && meta) {
-      renderPreviewInto(featured, card, null);
+      featured.replaceChildren(buildArtBlock(card, "collectionFeatured"));
       $("#collectionPageCardTitle").textContent = cardName(card);
+      $("#collectionPageCardKind").textContent = `${school(card.school).icon} ${schoolName(card.school)} · ${t(card.type === "spell" ? "ui.spell" : "ui.creature")}`;
+      $("#collectionPageCardLevel").textContent = `${t("cards.level")} ${card.level}`;
+      const combatDetails = card.type === "spell" ? "" : `
+          <div><small>${t("ui.attack")}</small><strong>${card.attack}</strong></div>
+          <div><small>${t("cards.health")}</small><strong>${card.health}</strong></div>`;
       meta.innerHTML = `
-        <div class="inspect-meta-grid">
-          <div><small>${t("ui.school")}</small><strong>${schoolName(card.school)}</strong></div>
-          <div><small>${t("ui.type")}</small><strong>${t(card.type === "spell" ? "ui.spell" : "ui.creature")}</strong></div>
-          <div><small>${t("cards.level")}</small><strong>${card.level}</strong></div>
-          <div><small>${t("ui.attack")}</small><strong>${card.type === "spell" ? "—" : card.attack}</strong></div>
-          <div><small>${t("cards.health")}</small><strong>${card.type === "spell" ? "—" : card.health}</strong></div>
+        <div class="inspect-meta-grid collection-page-stats">
+          ${combatDetails}
           <div><small>${t("cards.keyword")}</small><strong>${escapeHtml(card.keyword || t("ui.original"))}</strong></div>
         </div>
         <div class="inspect-ability-block"><small>${t("cards.cardText")}</small><p>${escapeHtml(cardText(card))}</p></div>`;
@@ -1367,7 +1400,7 @@
       clone.querySelector(".text").textContent = cardText(card);
       clone.querySelector(".keyword").textContent = card.keyword || "—";
       clone.querySelector(".stats").textContent = card.type === "spell" ? `Lv ${card.level} · ✨` : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
-      const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; renderCollectionPanels(); };
+      const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; inspectedCardInstanceId = null; renderCollectionPanels(); };
       clone.addEventListener("mouseenter", inspectHandCard);
       clone.addEventListener("focus", inspectHandCard);
       clone.addEventListener("click", () => onPlayerCard(card.id));
@@ -1410,10 +1443,11 @@
       chip.addEventListener("mouseenter", () => {
         inspectedCardId = card.id;
         inspectedCardSide = "enemy";
+        inspectedCardInstanceId = null;
         renderCollectionPanels();
       });
-      chip.addEventListener("focus", () => { inspectedCardId = card.id; inspectedCardSide = "enemy"; renderCollectionPanels(); });
-      chip.addEventListener("click", () => { inspectedCardId = card.id; inspectedCardSide = "enemy"; renderCollectionPanels(); });
+      chip.addEventListener("focus", () => { inspectedCardId = card.id; inspectedCardSide = "enemy"; inspectedCardInstanceId = null; renderCollectionPanels(); });
+      chip.addEventListener("click", () => { inspectedCardId = card.id; inspectedCardSide = "enemy"; inspectedCardInstanceId = null; renderCollectionPanels(); });
       fragment.appendChild(chip);
     });
     for (let i = revealed.length; i < hand.length; i += 1) {
@@ -1495,6 +1529,7 @@
   async function onPlayerCard(cardId) {
     inspectedCardId = cardId;
     inspectedCardSide = "player";
+    inspectedCardInstanceId = null;
     renderCollectionPanels();
     if (!engine || busy) return;
     if (remoteDuelActive) {
@@ -2081,7 +2116,9 @@
     const abandonButton = $("#abandonTournamentBtn");
     const context = {
       tournament, t, school, schoolName, escapeHtml,
-      schools: A.SCHOOLS,
+      specializations: A.ASTRAL_SPECIALIZATIONS,
+      specialization: id => A.getAstralSpecialization?.(id),
+      specializationName: id => t(`specialization.${A.getAstralSpecialization?.(id)?.id || id}`),
       leagueLabel: id => t(`league.${id}`),
       difficultyLabel: id => t(`difficulty.${id}`)
     };
@@ -2273,7 +2310,7 @@
   $("#animationSpeed").addEventListener("change", event => {
     animationSpeed = Number(event.target.value || 1);
     localStorage.setItem("arcane.animationSpeed", String(event.target.value));
-    document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+    document.body.dataset.animationSpeed = animationSpeed >= 1.4 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
     // keep menu selector in sync if present
     try { const m = $("#animationSpeedMenu"); if (m && m.value !== String(event.target.value)) m.value = String(event.target.value); } catch (e) {}
     const optionsSpeed = $("#optionsAnimationSpeed");
@@ -2291,14 +2328,15 @@
       if (main && main.value !== v) main.value = v;
       animationSpeed = Number(v || 1);
       localStorage.setItem("arcane.animationSpeed", v);
-      document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+      document.body.dataset.animationSpeed = animationSpeed >= 1.4 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
     });
   }
   // If on narrow screens, default to slow animations
   try {
     const isMobile = window.matchMedia && window.matchMedia('(max-width:760px)').matches;
-    if (isMobile) {
-      const slowVal = '2.75';
+    const hasSavedAnimationSpeed = window.localStorage.getItem("arcane.animationSpeed") !== null;
+    if (isMobile && !hasSavedAnimationSpeed) {
+      const slowVal = '1.5';
       const main = $("#animationSpeed");
       const menu = $("#animationSpeedMenu");
       if (main) main.value = slowVal;
@@ -2314,7 +2352,7 @@
     if (menuSpeed && menuSpeed.value !== cur) menuSpeed.value = cur;
     const mainSel = $("#animationSpeed");
     if (mainSel && mainSel.value !== cur) mainSel.value = cur;
-    document.body.dataset.animationSpeed = animationSpeed >= 2 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+    document.body.dataset.animationSpeed = animationSpeed >= 1.4 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
   } catch (e) {}
 
   // Background music support
@@ -2338,6 +2376,7 @@
 
   function startBackgroundMusic() {
     if (!bgmEnabled || !soundEnabled || UI_MODE === "essential") return;
+    if (!engine || $("#battlePanel")?.classList.contains("hidden")) return;
     if (document.visibilityState === "hidden") return;
     try {
       if (!bgmAudio) {
@@ -2422,6 +2461,7 @@
     if ($("#optionsCardArtStyle")) $("#optionsCardArtStyle").value = cardArtStyle;
     if ($("#optionsSoundEnabled")) $("#optionsSoundEnabled").checked = soundEnabled;
     if ($("#optionsBgmEnabled")) $("#optionsBgmEnabled").checked = bgmEnabled;
+    if ($("#optionsParchmentSpells")) $("#optionsParchmentSpells").checked = parchmentSpellFrames;
     if ($("#optionsBgmVolume")) $("#optionsBgmVolume").value = String(Math.round(bgmVolume * 100));
   }
 
@@ -2429,6 +2469,7 @@
     if ($("#duelOptionsAnimationSpeed")) $("#duelOptionsAnimationSpeed").value = String(animationSpeed);
     if ($("#duelOptionsSoundEnabled")) $("#duelOptionsSoundEnabled").checked = soundEnabled;
     if ($("#duelOptionsBgmEnabled")) $("#duelOptionsBgmEnabled").checked = bgmEnabled;
+    if ($("#duelOptionsParchmentSpells")) $("#duelOptionsParchmentSpells").checked = parchmentSpellFrames;
     const volume = String(Math.round(bgmVolume * 100));
     if ($("#duelOptionsBgmVolume")) $("#duelOptionsBgmVolume").value = volume;
     if ($("#duelOptionsBgmVolumeValue")) $("#duelOptionsBgmVolumeValue").textContent = `${volume}%`;
@@ -2455,6 +2496,15 @@
     battleToggle.checked = event.target.checked;
     battleToggle.dispatchEvent(new Event("change"));
   });
+  function setParchmentSpellFrames(enabled) {
+    parchmentSpellFrames = Boolean(enabled);
+    localStorage.setItem("arcane.parchmentSpellFrames", parchmentSpellFrames ? "1" : "0");
+    document.body.dataset.spellFrame = parchmentSpellFrames ? "parchment" : "arcane";
+    if ($("#optionsParchmentSpells")) $("#optionsParchmentSpells").checked = parchmentSpellFrames;
+    if ($("#duelOptionsParchmentSpells")) $("#duelOptionsParchmentSpells").checked = parchmentSpellFrames;
+  }
+  $("#optionsParchmentSpells")?.addEventListener("change", event => setParchmentSpellFrames(event.target.checked));
+  $("#duelOptionsParchmentSpells")?.addEventListener("change", event => setParchmentSpellFrames(event.target.checked));
   $("#optionsBgmVolume")?.addEventListener("input", event => {
     const battleVolume = $("#bgmVolume");
     battleVolume.value = event.target.value;
@@ -2487,12 +2537,14 @@
     localStorage.removeItem("arcaneLanguage");
     localStorage.removeItem("bgmEnabled");
     localStorage.removeItem("bgmVolume");
-    animationSpeed = 1.15;
+    localStorage.removeItem("arcane.parchmentSpellFrames");
+    animationSpeed = 1.2;
     cardArtStyle = "new";
     soundEnabled = true;
     bgmEnabled = false;
     bgmVolume = 0.12;
-    $("#animationSpeed").value = "1.15";
+    parchmentSpellFrames = false;
+    $("#animationSpeed").value = "1.2";
     $("#animationSpeed").dispatchEvent(new Event("change"));
     $("#cardArtStyleSelect").value = "new";
     $("#cardArtStyleSelect").dispatchEvent(new Event("change"));
@@ -2502,6 +2554,7 @@
     $("#bgmEnabled").dispatchEvent(new Event("change"));
     $("#bgmVolume").value = "12";
     $("#bgmVolume").dispatchEvent(new Event("input"));
+    setParchmentSpellFrames(false);
     A.i18n?.setLanguage("it");
     syncOptionsPage();
   });
@@ -2577,6 +2630,7 @@
   $("#animationSpeed").value = String(animationSpeed);
   $("#soundEnabled").checked = soundEnabled;
   document.body.dataset.cardArtStyle = cardArtStyle;
+  document.body.dataset.spellFrame = parchmentSpellFrames ? "parchment" : "arcane";
   renderTalentChoices();
   populateEditor();
   renderTournament();

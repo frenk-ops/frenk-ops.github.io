@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.16">
+  <link rel="stylesheet" href="styles.css?v=3.0.18">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -114,7 +114,7 @@
                 <div id="schoolFilters" class="school-status-grid classic-power-stack player-grid"></div>
                 <button id="endTurnBtn" class="primary classic-skip-button" data-i18n="ui.passTurn">Passa</button>
                 <div class="classic-mini-settings dev-only hidden">
-                  <label><span data-i18n="ui.speed">Velocità</span><select id="animationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.15" selected data-i18n="speed.normal">Standard</option><option value="2.75" data-i18n="speed.slow">Lenta</option></select></label>
+                  <label><span data-i18n="ui.speed">Velocità</span><select id="animationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.2" selected data-i18n="speed.normal">Standard</option><option value="1.5" data-i18n="speed.slow">Lenta</option></select></label>
                   <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> <span data-i18n="ui.sound">Suono</span></label>
                   <span id="seedBadge" class="seed-badge"></span>
                 </div>
@@ -174,10 +174,11 @@
                 <header class="duel-pause-header"><span aria-hidden="true">⚙</span><h2 id="duelPauseOptionsTitle" data-i18n="options.title">Opzioni</h2><small data-i18n="pause.optionsSubtitle">Impostazioni del duello</small></header>
                 <div class="duel-pause-options-grid">
                   <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
-                    <select id="duelOptionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.15" data-i18n="speed.normal">Standard</option><option value="2.75" data-i18n="speed.slow">Lenta</option></select>
+                    <select id="duelOptionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.2" data-i18n="speed.normal">Standard</option><option value="1.5" data-i18n="speed.slow">Lenta</option></select>
                   </label>
                   <label class="duel-pause-check"><input id="duelOptionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
                   <label class="duel-pause-check"><input id="duelOptionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
+                  <label class="duel-pause-check"><input id="duelOptionsParchmentSpells" type="checkbox"> <span data-i18n="options.parchmentSpells">Cornice pergamena per le magie</span></label>
                   <label><span><span data-i18n="options.musicVolume">Volume musica</span> <output id="duelOptionsBgmVolumeValue">12%</output></span>
                     <input id="duelOptionsBgmVolume" type="range" min="0" max="100" value="12">
                   </label>
@@ -190,7 +191,7 @@
             </nav>
 
             <div class="classic-hidden-ui-support" aria-hidden="true">
-              <select id="animationSpeedMenu"><option value="0.55">Fastest</option><option value="0.8">Fast</option><option value="1.15">Normal</option><option value="2.75">Slow</option></select>
+              <select id="animationSpeedMenu"><option value="0.55">Fastest</option><option value="0.8">Fast</option><option value="1.2">Normal</option><option value="1.5">Slow</option></select>
               <input id="bgmEnabled" type="checkbox"><input id="bgmVolume" type="range" min="0" max="100" value="12">
               <select id="languageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
             </div>
@@ -298,11 +299,12 @@
               <select id="optionsLanguageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
             </label>
             <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
-              <select id="optionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.15" data-i18n="speed.normal">Standard</option><option value="2.75" data-i18n="speed.slow">Lenta</option></select>
+              <select id="optionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.2" data-i18n="speed.normal">Standard</option><option value="1.5" data-i18n="speed.slow">Lenta</option></select>
             </label>
             <select id="optionsCardArtStyle" class="hidden" aria-hidden="true"><option value="new">Nuovo</option></select>
             <label class="options-check"><input id="optionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
             <label class="options-check"><input id="optionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
+            <label class="options-check"><input id="optionsParchmentSpells" type="checkbox"> <span data-i18n="options.parchmentSpells">Cornice pergamena per le magie</span></label>
             <label><span data-i18n="options.musicVolume">Volume musica</span>
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
@@ -341,8 +343,8 @@
   <script src="src/core/rng.js?v=3.0.0"></script>
   <script src="src/data/cards.js?v=3.0.0"></script>
   <script src="src/data/original-cards.js?v=3.0.0"></script>
-  <script src="src/i18n/en.js?v=3.0.16"></script>
-  <script src="src/i18n/it.js?v=3.0.16"></script>
+  <script src="src/i18n/en.js?v=3.0.18"></script>
+  <script src="src/i18n/it.js?v=3.0.18"></script>
   <script src="src/i18n/index.js?v=3.0.0"></script>
   <script src="src/core/card-schema.js?v=3.0.0"></script>
   <script src="src/data/astral-ai-card-metadata.js?v=3.0.0"></script>
@@ -358,11 +360,11 @@
   <script src="src/multiplayer/remote-room-client.js?v=3.0.0"></script>
   <script src="src/core/ai.js?v=3.0.0"></script>
   <script src="src/core/astral-ai-re.js?v=3.0.0"></script>
-  <script src="src/core/tournament.js?v=3.0.0"></script>
+  <script src="src/core/tournament.js?v=3.0.18"></script>
   <script src="tests/test-suite.js?v=3.0.0"></script>
   <script src="src/ui/navigation.js?v=3.0.0"></script>
   <script src="src/ui/pause-menu.js?v=3.0.16"></script>
-  <script src="src/ui/tournament-view.js?v=3.0.0"></script>
-  <script src="src/ui/app.js?v=3.0.16"></script>
+  <script src="src/ui/tournament-view.js?v=3.0.18"></script>
+  <script src="src/ui/app.js?v=3.0.18"></script>
 </body>
 </html>

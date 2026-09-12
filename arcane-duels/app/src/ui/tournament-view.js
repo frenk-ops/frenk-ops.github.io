@@ -4,7 +4,7 @@
   const portraitFor = index => index % 2 === 0 ? "assets/ui/portraits/alice.png" : "assets/ui/portraits/cooler.png";
 
   function renderEmpty(context) {
-    const { t, schools, schoolName } = context;
+    const { t, specializations, specializationName } = context;
     return `<div class="tournament-create tournament-create-redesigned">
       <div class="tournament-intro"><strong>${t("tournament.introTitle")}</strong><span>${t("tournament.intro")}</span></div>
       <div class="tournament-rules-grid">
@@ -12,7 +12,7 @@
         <span><b>${t("league.advanced")}</b><small>${t("tournament.matches34")}</small></span>
         <span><b>${t("league.major")}</b><small>${t("tournament.matches57")}</small></span>
       </div>
-      <label>${t("tournament.playerSchool")} <select id="tournamentTalentSelect">${schools.map(item => `<option value="${item.id}">${item.icon} ${schoolName(item.id)}</option>`).join("")}</select></label>
+      <label>${t("tournament.playerSpecialization")} <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${item.icon} ${specializationName(item.id)}</option>`).join("")}</select></label>
       <details class="tournament-advanced"><summary>${t("menu.advancedSettings")}</summary><label>${t("tournament.seed")} <input id="tournamentSeedInput" placeholder="${t("tournament.randomSeed")}"></label></details>
       <button id="createTournamentConfirm" class="primary tournament-primary-action">${t("tournament.startNew")}</button>
     </div>`;
@@ -29,9 +29,10 @@
   }
 
   function renderActive(context) {
-    const { tournament, t, school, schoolName, leagueLabel, difficultyLabel, escapeHtml } = context;
+    const { tournament, t, specialization, specializationName, leagueLabel, difficultyLabel, escapeHtml } = context;
     const current = tournament.opponents[tournament.currentMatch];
     const remainingWins = Math.max(0, tournament.winTarget - tournament.wins);
+    const playerSpecialization = specialization(tournament.specialization);
     return `<div class="tournament-hub">
       <aside class="tournament-next-opponent">
         <span>${t("tournament.nextOpponent")}</span>
@@ -47,7 +48,7 @@
           <div><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
           <div><small>${t("tournament.losses")}</small><strong>${tournament.losses}</strong></div>
           <div><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
-          <div><small>${t("tournament.school")}</small><strong>${school(tournament.specialization).icon} ${schoolName(tournament.specialization)}</strong></div>
+          <div><small>${t("tournament.specialization")}</small><strong>${playerSpecialization?.icon || "✦"} ${specializationName(tournament.specialization)}</strong></div>
         </div>
         <div class="tournament-path-heading"><h3>${t("tournament.path")}</h3><small>${t("tournament.winsNeeded", { value: remainingWins })}</small></div>
         <ol class="tournament-opponent-path">${tournament.opponents.map((opponent, index) => opponentMedallion(opponent, index, tournament.currentMatch, t, escapeHtml)).join("")}</ol>
