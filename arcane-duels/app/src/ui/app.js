@@ -1999,7 +1999,11 @@
 
     const meta = document.createElement("div");
     meta.className = "preview-meta";
-    const attack = side && card.type !== "spell" ? displayedUnitAttack(side, card) : card.attack;
+    // Only units already deployed on the board have a live combat value.
+    // Hand and collection previews must keep the printed/base card statistic.
+    const attack = side && card.instanceId && card.type !== "spell"
+      ? displayedUnitAttack(side, card)
+      : card.attack;
     const blocks = [
       { value: cost, label: t("cards.levelCost") },
       { value: card.type === "spell" ? "—" : attack, label: t("ui.attack") },
