@@ -65,6 +65,7 @@
     "pause.unsaved": "Progress in the current duel is not saved.",
     "pause.duelSubtitle": "Classic duel against {opponent}", "pause.tournamentSubtitle": "Tournament match against {opponent}",
     "pause.confirmAbandonDuel": "Abandon the current duel and return to the menu?", "pause.confirmAbandonMatch": "Abandon this match? It will be recorded as a tournament defeat.",
+    "pause.optionsSubtitle": "Duel settings", "pause.back": "Back",
     "cards.title": "Cards", "cards.intro": "Browse all 65 cards and compare their abilities and artwork.",
     "cards.filters": "Filters", "cards.allFeminine": "All", "cards.allMasculine": "All",
     "cards.search": "Search cards", "cards.searchPlaceholder": "Name, school, text...",

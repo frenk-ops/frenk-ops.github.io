@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.14">
+  <link rel="stylesheet" href="styles.css?v=3.0.16">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -33,7 +33,6 @@
             <strong>Duels</strong>
           </div>
           <div class="classic-menu-scene">
-            <div class="classic-menu-character classic-menu-character-left" aria-hidden="true"></div>
             <div class="classic-menu-config parchment-panel">
               <span class="classic-menu-kicker" data-i18n="nav.play">Gioca</span>
               <h2 data-i18n="menu.prepareDuel">Prepara il duello</h2>
@@ -90,7 +89,6 @@
                 </div>
               </section>
             </div>
-            <div class="classic-menu-character classic-menu-character-right" aria-hidden="true"></div>
           </div>
         </section>
 
@@ -160,16 +158,35 @@
             </div>
 
             <nav id="duelSessionActions" class="duel-session-actions hidden" aria-label="Gestione partita" role="dialog" aria-modal="true" aria-labelledby="duelPauseTitle">
-              <header class="duel-pause-header"><span aria-hidden="true">⌛</span><h2 id="duelPauseTitle" data-i18n="pause.title">Pausa</h2><small id="duelPauseSubtitle"></small></header>
-              <button id="continueDuelBtn" type="button" class="duel-pause-primary" data-i18n="pause.continue">Continua</button>
-              <div id="normalDuelPauseActions" class="duel-pause-mode-actions">
-                <button id="restartSameSetsBtn" type="button"><strong data-i18n="pause.restart">Ricomincia il duello</strong><small data-i18n="pause.restartHint">Stessi grimori e stesso seed</small></button>
-                <button id="startNewDrawBtn" type="button"><strong data-i18n="pause.newDuel">Nuovo duello</strong><small data-i18n="pause.newDuelHint">Torna alla configurazione</small></button>
+              <div id="duelPauseMainView" class="duel-pause-view">
+                <header class="duel-pause-header"><span aria-hidden="true">⌛</span><h2 id="duelPauseTitle" data-i18n="pause.title">Pausa</h2><small id="duelPauseSubtitle"></small></header>
+                <button id="continueDuelBtn" type="button" class="duel-pause-primary" data-i18n="pause.continue">Continua</button>
+                <div id="normalDuelPauseActions" class="duel-pause-mode-actions">
+                  <button id="restartSameSetsBtn" type="button"><strong data-i18n="pause.restart">Ricomincia il duello</strong><small data-i18n="pause.restartHint">Stessi grimori e stesso seed</small></button>
+                  <button id="startNewDrawBtn" type="button"><strong data-i18n="pause.newDuel">Nuovo duello</strong><small data-i18n="pause.newDuelHint">Torna alla configurazione</small></button>
+                </div>
+                <button id="openDuelOptionsBtn" type="button" data-i18n="nav.options">Opzioni</button>
+                <button id="returnMainMenuBtn" type="button" class="duel-pause-danger normal-pause-action" data-i18n="pause.abandonToMenu">Abbandona e torna al menu</button>
+                <button id="abandonTournamentMatchBtn" type="button" class="duel-pause-danger tournament-pause-action hidden" data-i18n="pause.abandonMatch">Abbandona incontro</button>
+                <p class="duel-pause-note" data-i18n="pause.unsaved">I progressi del duello corrente non vengono salvati.</p>
               </div>
-              <button id="openDuelOptionsBtn" type="button" data-i18n="nav.options">Opzioni</button>
-              <button id="returnMainMenuBtn" type="button" class="duel-pause-danger normal-pause-action" data-i18n="pause.abandonToMenu">Abbandona e torna al menu</button>
-              <button id="abandonTournamentMatchBtn" type="button" class="duel-pause-danger tournament-pause-action hidden" data-i18n="pause.abandonMatch">Abbandona incontro</button>
-              <p class="duel-pause-note" data-i18n="pause.unsaved">I progressi del duello corrente non vengono salvati.</p>
+              <div id="duelPauseOptionsView" class="duel-pause-view duel-pause-options hidden">
+                <header class="duel-pause-header"><span aria-hidden="true">⚙</span><h2 id="duelPauseOptionsTitle" data-i18n="options.title">Opzioni</h2><small data-i18n="pause.optionsSubtitle">Impostazioni del duello</small></header>
+                <div class="duel-pause-options-grid">
+                  <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
+                    <select id="duelOptionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.15" data-i18n="speed.normal">Standard</option><option value="2.75" data-i18n="speed.slow">Lenta</option></select>
+                  </label>
+                  <label class="duel-pause-check"><input id="duelOptionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
+                  <label class="duel-pause-check"><input id="duelOptionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
+                  <label><span><span data-i18n="options.musicVolume">Volume musica</span> <output id="duelOptionsBgmVolumeValue">12%</output></span>
+                    <input id="duelOptionsBgmVolume" type="range" min="0" max="100" value="12">
+                  </label>
+                </div>
+                <div class="duel-pause-options-actions">
+                  <button id="backFromDuelOptionsBtn" type="button" data-i18n="pause.back">Indietro</button>
+                  <button id="continueFromDuelOptionsBtn" type="button" class="duel-pause-primary" data-i18n="pause.continue">Continua</button>
+                </div>
+              </div>
             </nav>
 
             <div class="classic-hidden-ui-support" aria-hidden="true">
@@ -324,8 +341,8 @@
   <script src="src/core/rng.js?v=3.0.0"></script>
   <script src="src/data/cards.js?v=3.0.0"></script>
   <script src="src/data/original-cards.js?v=3.0.0"></script>
-  <script src="src/i18n/en.js?v=3.0.0"></script>
-  <script src="src/i18n/it.js?v=3.0.0"></script>
+  <script src="src/i18n/en.js?v=3.0.16"></script>
+  <script src="src/i18n/it.js?v=3.0.16"></script>
   <script src="src/i18n/index.js?v=3.0.0"></script>
   <script src="src/core/card-schema.js?v=3.0.0"></script>
   <script src="src/data/astral-ai-card-metadata.js?v=3.0.0"></script>
@@ -344,8 +361,8 @@
   <script src="src/core/tournament.js?v=3.0.0"></script>
   <script src="tests/test-suite.js?v=3.0.0"></script>
   <script src="src/ui/navigation.js?v=3.0.0"></script>
-  <script src="src/ui/pause-menu.js?v=3.0.0"></script>
+  <script src="src/ui/pause-menu.js?v=3.0.16"></script>
   <script src="src/ui/tournament-view.js?v=3.0.0"></script>
-  <script src="src/ui/app.js?v=3.0.15"></script>
+  <script src="src/ui/app.js?v=3.0.16"></script>
 </body>
 </html>

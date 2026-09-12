@@ -65,6 +65,7 @@
     "pause.unsaved": "I progressi del duello corrente non vengono salvati.",
     "pause.duelSubtitle": "Duello classico contro {opponent}", "pause.tournamentSubtitle": "Incontro di torneo contro {opponent}",
     "pause.confirmAbandonDuel": "Abbandonare il duello corrente e tornare al menu?", "pause.confirmAbandonMatch": "Abbandonare questo incontro? Verrà registrato come sconfitta nel torneo.",
+    "pause.optionsSubtitle": "Impostazioni del duello", "pause.back": "Indietro",
     "cards.title": "Carte", "cards.intro": "Consulta tutte le 65 carte e confronta caratteristiche e illustrazioni.",
     "cards.filters": "Filtri", "cards.allFeminine": "Tutte", "cards.allMasculine": "Tutti",
     "cards.search": "Cerca una carta", "cards.searchPlaceholder": "Nome, scuola, testo...",

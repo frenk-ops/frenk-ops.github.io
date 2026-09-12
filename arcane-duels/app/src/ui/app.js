@@ -591,7 +591,7 @@
       startDuel(launch.playerTalent, launch.fromTournament, launch.selectedSpecialization, launch.requestedMode, launch.seed);
     },
     onNewDuel: () => { restartDuel(); switchView("game"); },
-    onOptions: () => switchView("diagnostics"),
+    onOptions: syncDuelPauseOptions,
     onAbandonDuel: abandonCurrentDuel,
     onAbandonTournamentMatch: abandonTournamentEncounter
   });
@@ -2278,6 +2278,8 @@
     try { const m = $("#animationSpeedMenu"); if (m && m.value !== String(event.target.value)) m.value = String(event.target.value); } catch (e) {}
     const optionsSpeed = $("#optionsAnimationSpeed");
     if (optionsSpeed && optionsSpeed.value !== String(event.target.value)) optionsSpeed.value = String(event.target.value);
+    const duelSpeed = $("#duelOptionsAnimationSpeed");
+    if (duelSpeed && duelSpeed.value !== String(event.target.value)) duelSpeed.value = String(event.target.value);
   });
   // Sync menu speed selector (footer) with main selector and set mobile default
   const menuSpeed = $("#animationSpeedMenu");
@@ -2328,8 +2330,10 @@
     } catch (e) {}
     const battleToggle = document.querySelector('#bgmEnabled');
     const optionsToggle = document.querySelector('#optionsBgmEnabled');
+    const duelToggle = document.querySelector('#duelOptionsBgmEnabled');
     if (battleToggle) battleToggle.checked = bgmEnabled;
     if (optionsToggle) optionsToggle.checked = bgmEnabled;
+    if (duelToggle) duelToggle.checked = bgmEnabled;
   }
 
   function startBackgroundMusic() {
@@ -2390,6 +2394,10 @@
         bgmVolume = Math.max(0, Math.min(1, v / 100));
         window.localStorage.setItem('bgmVolume', String(Math.round(bgmVolume * 100)));
         try { if (bgmAudio) bgmAudio.volume = bgmVolume; } catch (err) {}
+        const duelVolume = $("#duelOptionsBgmVolume");
+        const duelValue = $("#duelOptionsBgmVolumeValue");
+        if (duelVolume && duelVolume.value !== String(Math.round(bgmVolume * 100))) duelVolume.value = String(Math.round(bgmVolume * 100));
+        if (duelValue) duelValue.textContent = `${Math.round(bgmVolume * 100)}%`;
       });
     }
 
@@ -2417,6 +2425,15 @@
     if ($("#optionsBgmVolume")) $("#optionsBgmVolume").value = String(Math.round(bgmVolume * 100));
   }
 
+  function syncDuelPauseOptions() {
+    if ($("#duelOptionsAnimationSpeed")) $("#duelOptionsAnimationSpeed").value = String(animationSpeed);
+    if ($("#duelOptionsSoundEnabled")) $("#duelOptionsSoundEnabled").checked = soundEnabled;
+    if ($("#duelOptionsBgmEnabled")) $("#duelOptionsBgmEnabled").checked = bgmEnabled;
+    const volume = String(Math.round(bgmVolume * 100));
+    if ($("#duelOptionsBgmVolume")) $("#duelOptionsBgmVolume").value = volume;
+    if ($("#duelOptionsBgmVolumeValue")) $("#duelOptionsBgmVolumeValue").textContent = `${volume}%`;
+  }
+
   $("#optionsLanguageSelect")?.addEventListener("change", event => {
     A.i18n?.setLanguage(event.target.value);
     if ($("#languageSelect")) $("#languageSelect").value = event.target.value;
@@ -2442,6 +2459,26 @@
     const battleVolume = $("#bgmVolume");
     battleVolume.value = event.target.value;
     battleVolume.dispatchEvent(new Event("input"));
+  });
+  $("#duelOptionsAnimationSpeed")?.addEventListener("change", event => {
+    const mainSpeed = $("#animationSpeed");
+    mainSpeed.value = event.target.value;
+    mainSpeed.dispatchEvent(new Event("change"));
+  });
+  $("#duelOptionsSoundEnabled")?.addEventListener("change", event => {
+    const soundToggle = $("#soundEnabled");
+    soundToggle.checked = event.target.checked;
+    soundToggle.dispatchEvent(new Event("change"));
+  });
+  $("#duelOptionsBgmEnabled")?.addEventListener("change", event => {
+    const musicToggle = $("#bgmEnabled");
+    musicToggle.checked = event.target.checked;
+    musicToggle.dispatchEvent(new Event("change"));
+  });
+  $("#duelOptionsBgmVolume")?.addEventListener("input", event => {
+    const musicVolume = $("#bgmVolume");
+    musicVolume.value = event.target.value;
+    musicVolume.dispatchEvent(new Event("input"));
   });
   $("#resetPreferencesBtn")?.addEventListener("click", () => {
     localStorage.removeItem("arcane.animationSpeed");
@@ -2475,6 +2512,7 @@
     soundEnabled = event.target.checked;
     localStorage.setItem("arcane.soundEnabled", soundEnabled ? "1" : "0");
     if ($("#optionsSoundEnabled")) $("#optionsSoundEnabled").checked = soundEnabled;
+    if ($("#duelOptionsSoundEnabled")) $("#duelOptionsSoundEnabled").checked = soundEnabled;
     if (soundEnabled) { ensureAudio(); if (bgmEnabled) startBackgroundMusic(); } else { pauseBackgroundMusic(); }
   });
   $("#languageSelect")?.addEventListener("change", event => A.i18n?.setLanguage(event.target.value));
