@@ -657,13 +657,38 @@
     return trail;
   }
 
-  async function animateCardPlay(result, side, slot = null) {
+  function stageSummonedUnitBeforeResolution(result, side, slot) {
+    const card = result?.card;
+    if (!card || card.type !== "creature" || slot === null) return;
+    const cell = $(`#${side}Board [data-slot="${slot}"]`);
+    if (!cell) return;
+    const startingHealth = Math.max(1, Number(card.health || card.hp || 1));
+    const existingHealth = cell.querySelector(".unit-health");
+    if (existingHealth) {
+      existingHealth.innerHTML = `<span aria-hidden="true">♥</span>${startingHealth}`;
+      return;
+    }
+    const startingAttack = Math.max(0, Math.trunc(Number(card.attack || 0)));
+    cell.className = `unit school-${card.school} transient-summon`;
+    cell.innerHTML = `<div class="unit-art"></div>
+      <div class="unit-stats"><strong class="unit-attack" title="${escapeHtml(t("ui.attack"))}"><span aria-hidden="true">⚔</span>${startingAttack}</strong><strong class="unit-health" title="${escapeHtml(t("ui.life"))}"><span aria-hidden="true">♥</span>${startingHealth}</strong></div>`;
+    const art = cell.querySelector(".unit-art");
+    art.appendChild(buildArtBlock(card, "board"));
+    const name = document.createElement("small");
+    name.textContent = cardName(card);
+    art.appendChild(name);
+  }
+
+  async function animateCardPlay(result, side, slot = null, before = null) {
     if (!result?.card) return;
     const card = result.card;
     // The engine has already placed a summoned creature. Render that lane now
     // so the unit is visible beneath the cast presentation instead of only
     // appearing after the whole automatic turn flow has completed.
-    if (card.type === "creature" && slot !== null) renderBoard(side);
+    if (card.type === "creature" && slot !== null) {
+      renderBoard(side, before?.[side]);
+      stageSummonedUnitBeforeResolution(result, side, slot);
+    }
     const layer = $("#duelFxLayer");
     if (!reducedMotion && layer) {
       const cast = document.createElement("div");
@@ -722,7 +747,7 @@
     return Math.max(0, Math.trunc(Number(attack) || 0));
   }
 
-  function renderBoard(side) {
+  function renderBoard(side, visualSnapshot = null) {
     const root = $(`#${side}Board`);
     const fighter = engine.state[side];
     root.innerHTML = "";
@@ -735,7 +760,10 @@
       cell.style.setProperty("--slot-index", slot);
       if (unit) {
         const cardSchool = school(unit.school);
-        const currentAttack = displayedUnitAttack(side, unit);
+        const previousUnit = visualSnapshot?.units?.[slot];
+        const preservePreviousStats = previousUnit?.instanceId === unit.instanceId;
+        const currentAttack = preservePreviousStats ? previousUnit.attack : displayedUnitAttack(side, unit);
+        const currentHealth = preservePreviousStats ? previousUnit.health : Math.max(0, unit.currentHealth);
         const isMultiTargetAttacker = Boolean(A.ASTRAL_CARD_AI_METADATA?.[unit.id]?.multiTarget);
         const hasSummoningSickness = typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(unit, side);
         cell.classList.toggle("multi-target-attacker", isMultiTargetAttacker);
@@ -743,7 +771,7 @@
         cell.innerHTML = `<div class="unit-art"></div>
           ${isMultiTargetAttacker ? '<span class="multi-target-badge" title="Attacca tutti i nemici" aria-label="Attacco multiplo">⚔×</span>' : ''}
           ${hasSummoningSickness ? '<span class="summoning-sickness-badge" title="Debolezza da evocazione — potrà attaccare dal prossimo turno" aria-label="Debolezza da evocazione — potrà attaccare dal prossimo turno"><span aria-hidden="true">Zz</span></span>' : ''}
-          <div class="unit-stats"><strong class="unit-attack" title="Attacco"><span aria-hidden="true">⚔</span>${currentAttack}</strong><strong class="unit-health" title="Vita"><span aria-hidden="true">♥</span>${Math.max(0, unit.currentHealth)}</strong></div>`;
+          <div class="unit-stats"><strong class="unit-attack" title="Attacco"><span aria-hidden="true">⚔</span>${currentAttack}</strong><strong class="unit-health" title="Vita"><span aria-hidden="true">♥</span>${currentHealth}</strong></div>`;
         const unitArt = cell.querySelector(".unit-art");
         unitArt.appendChild(buildArtBlock(unit, "board"));
         const unitName = document.createElement("small");
@@ -1002,6 +1030,7 @@
     else if (vars.sourceName) localized.source = vars.sourceName;
     if (vars.targetCardId) localized.target = localizedCardNameById(vars.targetCardId, vars.targetName);
     else if (vars.targetName) localized.target = vars.targetName;
+    if (vars.schoolId) localized.school = schoolName(vars.schoolId);
     return localized;
   }
 
@@ -1071,15 +1100,18 @@
           targetSide: event.side,
           amount: event.amount
         });
+      } else if (event.type === "astralPowerChange") {
+        pushPresentationLog(event.delta > 0 ? "log.powerGain" : "log.powerLoss", {
+          sourceCardId: event.reason || result.card.id,
+          sourceName: result.card.name,
+          targetSide: event.side,
+          schoolId: event.school,
+          amount: Math.abs(event.delta)
+        });
       } else if (event.type === "astralVampireHeal") {
         pushPresentationLog("log.vampireHeal", {
           sourceCardId: "astral_death_11",
           amount: event.amount
-        });
-      } else if (event.type === "astralFireRitual") {
-        pushPresentationLog("log.fireRitual", {
-          actorSide: event.side,
-          targetSide: event.side === "player" ? "enemy" : "player"
         });
       } else if (event.type === "astralNets") {
         pushPresentationLog("log.astralNets", {
@@ -1554,11 +1586,10 @@
       const play = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       if (play.ok) {
         spellSound();
-        await animateCardPlay(play, "player", null);
-        await presentResolutionBeforeUpdate(play);
+        await animateCardPlay(play, "player", null, healthBefore);
+        await presentResolutionBeforeUpdate(play, healthBefore);
         renderGame();
-        showHealingChanges(healthBefore);
-        showResolutionAfterUpdate(play, healthBefore);
+        showResolutionAfterUpdate(play);
         recordCardResolution(play);
         await sleep(120);
         await resolveAttackFlow("player");
@@ -1601,11 +1632,10 @@
       const play = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       if (play.ok) {
         spellSound();
-        await animateCardPlay(play, "player", null);
-        await presentResolutionBeforeUpdate(play);
+        await animateCardPlay(play, "player", null, healthBefore);
+        await presentResolutionBeforeUpdate(play, healthBefore);
         renderGame();
-        showHealingChanges(healthBefore);
-        showResolutionAfterUpdate(play, healthBefore);
+        showResolutionAfterUpdate(play);
         recordCardResolution(play);
         await sleep(120);
         await resolveAttackFlow("player");
@@ -1633,11 +1663,10 @@
       return;
     }
     playOriginalSound("summon2", 0.4);
-    await animateCardPlay(result, "player", slot);
-    await presentResolutionBeforeUpdate(result);
+    await animateCardPlay(result, "player", slot, healthBefore);
+    await presentResolutionBeforeUpdate(result, healthBefore);
     renderGame();
-    showHealingChanges(healthBefore);
-    showResolutionAfterUpdate(result, healthBefore);
+    showResolutionAfterUpdate(result);
     recordCardResolution(result);
     await sleep(80);
     await resolveAttackFlow("player");
@@ -1777,7 +1806,7 @@
     });
   }
 
-  function showResolutionAfterUpdate(result, before) {
+  function showResolutionAfterUpdate(result) {
     (result?.events || []).filter(event => event.type === "astralPhoenixRebirth").forEach(event => {
       const parent = $(`#${event.side}Board [data-slot="${event.slot}"]`);
       if (!parent) return;
@@ -1791,22 +1820,6 @@
         parent.classList.remove("effect-rebirth-hit");
       }, fxDuration(1500) || 40);
     });
-    (result?.events || []).filter(event => event.type === "astralPowerReduction").forEach(event => {
-      A.SCHOOLS.forEach(school => showPowerChange(
-        event.side,
-        school.id,
-        Number(engine.state[event.side].power[school.id] || 0) - Number(before?.[event.side]?.power?.[school.id] || 0)
-      ));
-    });
-    (result?.events || []).filter(event => event.type === "astralFireRitual").forEach(event => {
-      const enemySide = event.side === "player" ? "enemy" : "player";
-      showPowerChange(event.side, "fire", Number(engine.state[event.side].power.fire || 0) - Number(before?.[event.side]?.power?.fire || 0));
-      showPowerChange(enemySide, "water", Number(engine.state[enemySide].power.water || 0) - Number(before?.[enemySide]?.power?.water || 0));
-    });
-    (result?.events || []).filter(event => event.type === "astralDeathKeeper").forEach(event => {
-      showPowerChange(event.side, "death", Number(engine.state[event.side].power.death || 0) - Number(before?.[event.side]?.power?.death || 0));
-    });
-    showPowerGainChanges(before);
   }
 
   function showPowerGainChanges(before) {
@@ -1819,18 +1832,20 @@
   }
 
   function showPowerValueChanges(before) {
-    if (!before || !engine) return;
+    if (!before || !engine) return 0;
+    let shown = 0;
     ["player", "enemy"].forEach(side => A.SCHOOLS.forEach(school => {
       const previous = Number(before[side]?.power?.[school.id] || 0);
       const current = Number(engine.state[side].power?.[school.id] || 0);
-      if (current !== previous) showPowerChange(side, school.id, current - previous);
+      if (current !== previous && showPowerChange(side, school.id, current - previous)) shown += 1;
     }));
+    return shown;
   }
 
   function showPowerGainChange(side, schoolId, amount) {
     const root = side === "player" ? $("#schoolFilters") : $("#enemySchoolMenu");
     const parent = root?.querySelector(`[data-school-id="${schoolId}"]`);
-    if (!parent || !amount) return;
+    if (!parent || !amount) return false;
     parent.classList.add("effect-power-change", amount > 0 ? "power-gain" : "power-loss");
     const badge = document.createElement("span");
     badge.className = `effect-power-number rate ${amount > 0 ? "gain" : "loss"}`;
@@ -1840,13 +1855,14 @@
       badge.remove();
       parent.classList.remove("effect-power-change", "power-gain", "power-loss");
     }, fxDuration(1650) || 40);
+    return true;
   }
 
   function showPowerChange(side, schoolId, amount) {
-    if (!amount) return;
+    if (!amount) return false;
     const root = side === "player" ? $("#schoolFilters") : $("#enemySchoolMenu");
     const parent = root?.querySelector(`[data-school-id="${schoolId}"]`);
-    if (!parent) return;
+    if (!parent) return false;
     parent.classList.add("effect-power-change", amount > 0 ? "power-gain" : "power-loss");
     const badge = document.createElement("span");
     badge.className = `effect-power-number ${amount > 0 ? "gain" : "loss"}`;
@@ -1856,9 +1872,53 @@
       badge.remove();
       parent.classList.remove("effect-power-change", "power-gain", "power-loss");
     }, fxDuration(1500) || 40);
+    return true;
   }
 
-  async function presentResolutionBeforeUpdate(result) {
+  function showResolutionPowerChanges(result, before) {
+    let shown = 0;
+    (result?.events || []).forEach(event => {
+      if (event.type === "astralPowerChange") {
+        if (showPowerChange(event.side, event.school, Number(event.delta || 0))) shown += 1;
+      } else if (event.type === "astralPowerReduction") {
+        A.SCHOOLS.forEach(school => {
+          const delta = Number(event.changes?.[school.id] ?? 0);
+          if (showPowerChange(event.side, school.id, delta)) shown += 1;
+        });
+      } else if (event.type === "astralDeathKeeper") {
+        if (showPowerChange(event.side, "death", Number(event.amount || 0))) shown += 1;
+      } else if (event.type === "powerChange") {
+        if (showPowerChange(event.side, event.school, Number(event.amount || 0))) shown += 1;
+      }
+    });
+    const beforeRates = ["player", "enemy"].flatMap(side => A.SCHOOLS.map(school =>
+      Number(before?.[side]?.powerGain?.[school.id] || 0) !== Number(engine.state[side].powerGain?.[school.id] || 0)
+    )).filter(Boolean).length;
+    showPowerGainChanges(before);
+    return shown + beforeRates;
+  }
+
+  function showUnitAttackChanges(before) {
+    if (!before || !engine) return 0;
+    let shown = 0;
+    ["player", "enemy"].forEach(side => engine.state[side].board.forEach((unit, slot) => {
+      const previous = before[side]?.units?.[slot];
+      if (!unit || !previous || previous.instanceId !== unit.instanceId) return;
+      const delta = displayedUnitAttack(side, unit) - Number(previous.attack || 0);
+      if (!delta) return;
+      const parent = $(`#${side}Board [data-slot="${slot}"]`);
+      if (!parent) return;
+      const badge = document.createElement("span");
+      badge.className = `effect-status-number attack ${delta > 0 ? "gain" : "loss"}`;
+      badge.textContent = `⚔ ${delta > 0 ? "+" : "−"}${Math.abs(delta)}`;
+      parent.appendChild(badge);
+      setTimeout(() => badge.remove(), fxDuration(1500) || 40);
+      shown += 1;
+    }));
+    return shown;
+  }
+
+  async function presentResolutionBeforeUpdate(result, before) {
     showResolvedEffectDamage(result);
     showResolutionDeaths(result);
     (result?.events || []).filter(event => event.type === "astralFireAura").forEach(event => {
@@ -1874,7 +1934,10 @@
       parent?.classList.add("effect-nets-hit");
       setTimeout(() => parent?.classList.remove("effect-nets-hit"), fxDuration(1100) || 40);
     });
-    const hasVisibleEffect = (result?.events || []).some(event => [
+    const healingShown = showHealingChanges(before, result);
+    const powerShown = showResolutionPowerChanges(result, before);
+    const attackShown = showUnitAttackChanges(before);
+    const hasVisibleEffect = healingShown + powerShown + attackShown > 0 || (result?.events || []).some(event => [
       "astralCreatureDamage", "astralHeroDamage", "creatureDamage", "heroDamage", "astralDeath", "astralFireAura", "astralNets"
     ].includes(event.type));
     if (hasVisibleEffect) await sleep(reducedMotion ? 0 : 620);
@@ -1886,14 +1949,18 @@
       hp: Number(engine.state[side].hp || 0),
       power: { ...engine.state[side].power },
       powerGain: { ...engine.state[side].powerGain },
-      units: engine.state[side].board.map(unit => unit ? Number(unit.currentHealth || 0) : null)
+      units: engine.state[side].board.map(unit => unit ? {
+        instanceId: unit.instanceId,
+        health: Number(unit.currentHealth || 0),
+        attack: displayedUnitAttack(side, unit)
+      } : null)
     }]));
   }
 
   function showHealingNumber(parent, amount) {
-    if (!parent || amount <= 0) return;
+    if (!parent || amount <= 0) return false;
     const layer = $("#duelFxLayer");
-    if (!layer) return;
+    if (!layer) return false;
     const rect = parent.getBoundingClientRect();
     const badge = document.createElement("span");
     badge.className = "healing-number";
@@ -1902,18 +1969,43 @@
     badge.style.top = `${rect.top + rect.height / 2}px`;
     layer.appendChild(badge);
     setTimeout(() => badge.remove(), fxDuration(1450) || 40);
+    return true;
   }
 
-  function showHealingChanges(before) {
-    if (!before || !engine) return;
-    ["player", "enemy"].forEach(side => {
-      const fighter = engine.state[side];
-      showHealingNumber($(`#${side}HpBattle`)?.parentElement, Number(fighter.hp || 0) - before[side].hp);
-      fighter.board.forEach((unit, slot) => {
-        if (!unit || before[side].units[slot] === null) return;
-        showHealingNumber($(`#${side}Board [data-slot="${slot}"]`), Number(unit.currentHealth || 0) - before[side].units[slot]);
-      });
+  function showHealingChanges(before, result = null) {
+    if (!before || !engine) return 0;
+    const targets = new Map();
+    const add = (key, amount, locate) => {
+      if (amount <= 0) return;
+      const current = targets.get(key);
+      targets.set(key, { amount: Number(current?.amount || 0) + amount, locate });
+    };
+    (result?.events || []).forEach(event => {
+      if (event.type === "astralHealHero" || event.type === "heroHeal") {
+        add(`hero:${event.side}`, Number(event.amount || 0), () => $(`#${event.side}HpBattle`)?.parentElement);
+      } else if (event.type === "astralUnitHeal") {
+        add(`unit:${event.side}:${event.slot}`, Number(event.amount || 0), () => $(`#${event.side}Board [data-slot="${event.slot}"]`));
+      } else if (event.type === "astralVampireHeal") {
+        add(`instance:${event.sourceId}`, Number(event.amount || 0), () =>
+          $$("#playerBoard [data-instance-id], #enemyBoard [data-instance-id]").find(node => node.dataset.instanceId === event.sourceId));
+      } else if (event.type === "statChange" && event.stat === "health" && Number(event.delta || 0) > 0) {
+        add(`unit:${event.side}:${event.slot}`, Number(event.delta), () => $(`#${event.side}Board [data-slot="${event.slot}"]`));
+      }
     });
+    if (targets.size === 0) {
+      ["player", "enemy"].forEach(side => {
+        const currentFighter = engine.state[side];
+        add(`hero:${side}`, Number(currentFighter.hp || 0) - before[side].hp, () => $(`#${side}HpBattle`)?.parentElement);
+        currentFighter.board.forEach((unit, slot) => {
+          const previous = before[side].units[slot];
+          if (!unit || !previous || previous.instanceId !== unit.instanceId) return;
+          add(`unit:${side}:${slot}`, Number(unit.currentHealth || 0) - previous.health, () => $(`#${side}Board [data-slot="${slot}"]`));
+        });
+      });
+    }
+    let shown = 0;
+    targets.forEach(target => { if (showHealingNumber(target.locate(), target.amount)) shown += 1; });
+    return shown;
   }
 
   async function resolveAttackFlow(side) {
@@ -1924,14 +2016,15 @@
       const step = issueDuelCommand(side, A.MULTIPLAYER_COMMANDS.ATTACK_NEXT);
       if (!step.ok || step.done) break;
       if (step.skipped) continue;
+      const healingShown = showHealingChanges(healthBefore, step);
+      if (healingShown > 0) await sleep(reducedMotion ? 0 : 460);
       await animateAttack(step.event);
       showDamage(step.event);
       showCollateralDamage(step.events);
       showResolutionDeaths(step);
       await sleep(reducedMotion ? 0 : 520);
       renderGame();
-      showHealingChanges(healthBefore);
-      showResolutionAfterUpdate(step, healthBefore);
+      showResolutionAfterUpdate(step);
       const structuredDamage = (step.events || []).find(event =>
         ["astralHeroDamage", "astralCreatureDamage"].includes(event.type)
         && event.sourceKind === "creature"
@@ -1950,9 +2043,11 @@
     }
     const finishHealthBefore = captureHealthState();
     issueDuelCommand(side, A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
+    const finishHealingShown = showHealingChanges(finishHealthBefore);
+    const finishPowerShown = showPowerValueChanges(finishHealthBefore);
+    const finishAttackShown = showUnitAttackChanges(finishHealthBefore);
+    if (finishHealingShown + finishPowerShown + finishAttackShown > 0) await sleep(reducedMotion ? 0 : 460);
     renderGame();
-    showHealingChanges(finishHealthBefore);
-    showPowerValueChanges(finishHealthBefore);
 
     if (engine.state.gameOver) {
       busy = false;
@@ -1976,12 +2071,11 @@
         : issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: move.cardId, slot: move.slot ?? null });
       if (result.ok && result.card?.type === "spell") spellSound();
       if (result.ok && result.card?.type === "creature") playOriginalSound("summon2", 0.36);
-      if (result.ok && result.card) await animateCardPlay(result, "enemy", move?.slot ?? null);
+      if (result.ok && result.card) await animateCardPlay(result, "enemy", move?.slot ?? null, healthBefore);
       if (result.ok) {
-        await presentResolutionBeforeUpdate(result);
+        await presentResolutionBeforeUpdate(result, healthBefore);
         renderGame();
-        showHealingChanges(healthBefore);
-        showResolutionAfterUpdate(result, healthBefore);
+        showResolutionAfterUpdate(result);
       }
       if (result.ok) recordCardResolution(result);
       await sleep(100);

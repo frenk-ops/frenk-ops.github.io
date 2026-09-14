@@ -298,13 +298,32 @@
     });
   }
 
+  function changePower(engine, side, school, delta, events, reason) {
+    const target = fighter(engine, side);
+    const before = Number(target.power[school] || 0);
+    const requested = Math.trunc(delta || 0);
+    target.power[school] = Math.max(0, Math.min(engine.rules.maxPower, before + requested));
+    const applied = target.power[school] - before;
+    if (applied !== 0) events?.push({
+      type: "astralPowerChange",
+      side,
+      school,
+      delta: applied,
+      value: target.power[school],
+      reason
+    });
+    return applied;
+  }
+
   function reduceAllPowers(engine, side, amount, events, reason) {
     const target = fighter(engine, side);
+    const changes = {};
     A.SCHOOLS.forEach(school => {
       const before = target.power[school.id] || 0;
       target.power[school.id] = Math.max(0, before - Math.max(0, Math.trunc(amount || 0)));
+      changes[school.id] = target.power[school.id] - before;
     });
-    events?.push({ type: "astralPowerReduction", side, amount, reason });
+    events?.push({ type: "astralPowerReduction", side, amount, changes, reason });
   }
 
   function immediateEffect(engine, side, card, unit, events) {
@@ -326,8 +345,8 @@
         if ((own.power.nature || 0) < 6) applyHeroDamage(engine, side, side, 4, summonOptions, events);
         break;
       case "astral_fire_03":
-        own.power.fire = Math.min(engine.rules.maxPower, (own.power.fire || 0) + 5);
-        enemy.power.water = Math.max(0, (enemy.power.water || 0) - 1);
+        changePower(engine, side, "fire", 5, events, card.id);
+        changePower(engine, enemySide, "water", -1, events, card.id);
         events.push({ type: "astralFireRitual", side, fire: own.power.fire, enemyWater: enemy.power.water });
         break;
       case "astral_fire_04":
@@ -335,7 +354,7 @@
         applyHeroDamage(engine, side, enemySide, 3, summonOptions, events);
         break;
       case "astral_fire_05":
-        enemy.power.nature = Math.max(0, (enemy.power.nature || 0) - 2);
+        changePower(engine, enemySide, "nature", -2, events, card.id);
         break;
       case "astral_fire_06":
         damageAllCreatures(engine, side, [enemySide], () => Math.trunc(current / 2) + 4, spellOptions, events);
@@ -364,7 +383,7 @@
         healHero(engine, side, Math.trunc(current / 2) + 3, card.id, events);
         break;
       case "astral_water_02":
-        own.power.nature = Math.min(engine.rules.maxPower, (own.power.nature || 0) + 1);
+        changePower(engine, side, "nature", 1, events, card.id);
         break;
       case "astral_water_03":
         enemy.board.forEach((target, slot) => {

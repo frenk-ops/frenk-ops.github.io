@@ -847,10 +847,51 @@
         engine.state.player.power.death = 10;
         engine.state.player.hp = 35;
         const enemyBefore = engine.state.enemy.hp;
-        engine.playMove("player", { type: "play", cardId: "astral_death_08" });
+        const result = engine.playMove("player", { type: "play", cardId: "astral_death_08" });
         const dealt = enemyBefore - engine.state.enemy.hp;
         assert(dealt === 5, `Danno drenato dopo Ice Guard: ${dealt}`);
         assert(engine.state.player.hp === 40, `Cura drenata: ${engine.state.player.hp}`);
+        const damage = result.events.find(event => event.type === "astralHeroDamage");
+        const healing = result.events.find(event => event.type === "astralHealHero");
+        assert(damage?.amount === 5 && healing?.amount === 5, "Drain Life non espone danno e cura effettivi nello stesso risultato");
+      }
+    },
+    {
+      name: "Le famiglie di effetti espongono eventi presentabili completi",
+      run() {
+        const healing = astralEngine(["astral_water_01"], ["astral_fire_02"]);
+        healing.state.player.hp = 31;
+        healing.state.player.power.water = 8;
+        const healingResult = healing.playMove("player", { type: "play", cardId: "astral_water_01" });
+        assert(healingResult.events.some(event => event.type === "astralHealHero" && event.side === "player" && event.amount === 7), "Evento cura eroe incompleto");
+
+        const power = astralEngine(["astral_water_02"], ["astral_fire_02"]);
+        power.state.player.power.water = 2;
+        power.state.player.power.nature = 4;
+        const powerResult = power.playMove("player", { type: "play", cardId: "astral_water_02", slot: 0 });
+        assert(powerResult.events.some(event => event.type === "astralPowerChange" && event.side === "player" && event.school === "nature" && event.delta === 1), "Evento incremento potere incompleto");
+
+        const reduction = astralEngine(["astral_death_03"], ["astral_fire_02"]);
+        A.SCHOOLS.forEach(school => { reduction.state.enemy.power[school.id] = school.id === "fire" ? 0 : 3; });
+        reduction.state.player.power.death = 3;
+        const reductionResult = reduction.playMove("player", { type: "play", cardId: "astral_death_03" });
+        const reductionEvent = reductionResult.events.find(event => event.type === "astralPowerReduction");
+        assert(reductionEvent?.changes?.fire === 0 && reductionEvent?.changes?.water === -1, "Evento riduzione poteri non espone i delta effettivi");
+
+        const destruction = astralEngine(["astral_air_09"], ["astral_fire_02"]);
+        placeAstralUnit(destruction, "enemy", "astral_fire_02", 0, 12);
+        destruction.state.player.power.air = 9;
+        const destructionResult = destruction.playMove("player", { type: "play", cardId: "astral_air_09" });
+        assert(destructionResult.events.some(event => event.type === "astralDeath" && event.side === "enemy" && event.slot === 0), "Evento distruzione incompleto");
+
+        const rebirth = astralEngine(["astral_death_12", "astral_air_07"], ["astral_fire_02"]);
+        placeAstralUnit(rebirth, "player", "astral_air_07", 0);
+        placeAstralUnit(rebirth, "enemy", "astral_fire_02", 0);
+        rebirth.state.player.power.fire = 10;
+        rebirth.state.player.power.death = 12;
+        const rebirthResult = rebirth.playMove("player", { type: "play", cardId: "astral_death_12" });
+        assert(rebirthResult.events.some(event => event.type === "astralPhoenixRebirth" && event.side === "player" && event.slot === 0), "Evento resurrezione incompleto");
+        assert(rebirthResult.events.some(event => event.type === "astralDeath" && event.side === "enemy" && event.slot === 0), "Morte associata alla resurrezione assente");
       }
     },
     {
@@ -1257,9 +1298,12 @@
         const engine=astralEngine(["astral_fire_03"],["astral_water_01"]);
         engine.state.player.power.fire=3;
         engine.state.enemy.power.water=1;
-        engine.playMove("player",{type:"play",cardId:"astral_fire_03"});
+        const result=engine.playMove("player",{type:"play",cardId:"astral_fire_03"});
         assert(engine.state.player.power.fire===5,`Fire Ritual netto: ${engine.state.player.power.fire}`);
         assert(engine.state.enemy.power.water===0,"Fire Ritual deve ridurre Acqua e fermarsi a zero");
+        const changes=result.events.filter(event=>event.type==="astralPowerChange");
+        assert(changes.some(event=>event.side==="player"&&event.school==="fire"&&event.delta===5),"Fire Ritual non espone il +5 separato dal costo");
+        assert(changes.some(event=>event.side==="enemy"&&event.school==="water"&&event.delta===-1),"Fire Ritual non espone il -1 Acqua");
       }
     },
     {
@@ -1282,8 +1326,9 @@
         const engine=astralEngine(["astral_fire_05"],["astral_water_01"]);
         engine.state.player.power.fire=5;
         engine.state.enemy.power.nature=1;
-        engine.playMove("player",{type:"play",cardId:"astral_fire_05",slot:0});
+        const result=engine.playMove("player",{type:"play",cardId:"astral_fire_05",slot:0});
         assert(engine.state.enemy.power.nature===0,`Terra nemica: ${engine.state.enemy.power.nature}`);
+        assert(result.events.some(event=>event.type==="astralPowerChange"&&event.school==="nature"&&event.delta===-1),"Minotaur deve esporre la riduzione effettiva limitata a zero");
       }
     },
     {

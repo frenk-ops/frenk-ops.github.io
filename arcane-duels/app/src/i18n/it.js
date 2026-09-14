@@ -12,6 +12,8 @@
     "log.death": "{target} viene eliminata.",
     "log.rebirth": "{target} rinasce con {amount} punti vita.",
     "log.powerReduction": "I poteri di {target} diminuiscono di {amount}.",
+    "log.powerGain": "{source} aumenta di {amount} il potere {school} di {target}.",
+    "log.powerLoss": "{source} riduce di {amount} il potere {school} di {target}.",
     "log.vampireHeal": "{source} recupera {amount} punti vita con il risucchio.",
     "log.fireRitual": "Il Rituale del Fuoco rafforza {actor} e indebolisce l'Acqua di {target}.",
     "log.astralNets": "Le Reti Astrali infliggono {amount} danni a {target}.",

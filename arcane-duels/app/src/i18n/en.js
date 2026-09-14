@@ -12,6 +12,8 @@
     "log.death": "{target} is destroyed.",
     "log.rebirth": "{target} is reborn with {amount} health.",
     "log.powerReduction": "{target}'s powers decrease by {amount}.",
+    "log.powerGain": "{source} increases {target}'s {school} power by {amount}.",
+    "log.powerLoss": "{source} reduces {target}'s {school} power by {amount}.",
     "log.vampireHeal": "{source} drains {amount} health.",
     "log.fireRitual": "Fire Ritual empowers {actor} and weakens {target}'s Water.",
     "log.astralNets": "Astral Nets deal {amount} damage to {target}.",
