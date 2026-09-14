@@ -4752,17 +4752,6 @@ body[data-card-art-style="new"][data-spell-frame="parchment"] #playerHand .game-
   word-break:normal;
   line-height:1.25;
 }
-.duel-card-current-value {
-  display:inline-flex;
-  align-items:baseline;
-  justify-content:center;
-  gap:6px;
-  margin-top:3px;
-  color:#8ff0bd;
-}
-.duel-card-current-value.hidden { display:none; }
-.duel-card-current-value .label { font-size:.78rem;white-space:nowrap; }
-.duel-card-current-value .value { color:#ffe477;font-size:1rem;line-height:1.1; }
 .duel-card-info .classic-card-details { grid-area:details; }
 .duel-footer-actions {
   display:grid;
@@ -4809,7 +4798,6 @@ body[data-card-art-style="new"][data-spell-frame="parchment"] #playerHand .game-
     max-height:none;
     overflow:visible;
   }
-  .duel-card-current-value { margin-top:2px; }
   .duel-footer-actions {
     grid-template-columns:repeat(2,minmax(0,1fr));
     width:100%;
@@ -4844,10 +4832,6 @@ body[data-card-art-style="new"][data-spell-frame="parchment"] #playerHand .game-
     align-self:stretch;
     align-content:center;
     padding:2px clamp(4px,.7vw,10px);
-  }
-  .duel-card-current-value.hidden {
-    display:inline-flex;
-    visibility:hidden;
   }
   .duel-footer-actions { display:contents; }
   .duel-footer-actions .classic-footer-button {

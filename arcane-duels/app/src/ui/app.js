@@ -981,27 +981,25 @@
     ) || null;
   }
 
-  function currentCardValue(card, side = inspectedCardSide) {
+  function currentCardPreview(card, side = inspectedCardSide) {
     if (!engine || !side || !card) return null;
-    const preview = A.astralPreviewCardValue?.(engine, side, card);
-    if (preview) {
-      return preview.effective !== preview.modified
-        ? `${preview.effective} (${preview.modified} ${t("ui.beforeDefense")})`
-        : preview.effective;
-    }
-    const power = Number(engine.state[side]?.power?.[card.school] || 0);
-    const formulas = {
-      astral_fire_06: Math.trunc(power / 2) + 4,
-      astral_fire_08: Math.trunc(power / 2) + 4,
-      astral_fire_11: power + 5,
-      astral_water_01: Math.trunc(power / 2) + 3,
-      astral_water_05: power + 3,
-      astral_air_06: power + 5,
-      astral_air_08: Math.max(0, power - 1),
-      astral_earth_06: power * 2,
-      astral_death_08: Math.trunc(power / 2) + 5
-    };
-    return Object.hasOwn(formulas, card.id) ? formulas[card.id] : null;
+    return A.astralPreviewCardValue?.(engine, side, card) || null;
+  }
+
+  function integrateCurrentValue(raw, preview) {
+    if (!preview || !Number.isFinite(Number(preview.effective))) return raw;
+    const formulaMatch = raw.match(/\(([^)]+)\)/);
+    if (!formulaMatch) return raw;
+    const afterFormula = raw.slice(formulaMatch.index + formulaMatch[0].length);
+    const unitMatch = afterFormula.match(/^\s+(danni|punti vita|damage|life)\b/i);
+    if (!unitMatch) return raw;
+    const formula = formulaMatch[1]
+      .replace(/\s*([+*×-])\s*/g, " $1 ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const beforeFormula = raw.slice(0, formulaMatch.index).trimEnd();
+    const remaining = afterFormula.slice(unitMatch[0].length);
+    return `${beforeFormula} ${preview.effective} ${unitMatch[1]} (${formula})${remaining}`;
   }
 
   function localizedSide(side) {
@@ -1168,7 +1166,10 @@
 
   function cardDescription(card, side = inspectedCardSide) {
     const raw = cardText(card) || card?.keyword || t("ui.selectCardForDetails");
-    const separated = raw.replace(/\s+([+-]\d+\b)/g, ". $1");
+    const dynamic = integrateCurrentValue(raw, currentCardPreview(card, side));
+    const separated = dynamic.startsWith("+")
+      ? dynamic.replace(/\s+([+-]\d+\b)/g, ". $1")
+      : dynamic.replace(/\s+(-\d+\b)/g, ". $1");
     const base = /[.!?]$/.test(separated) ? separated : `${separated}.`;
     return base;
   }
@@ -1212,7 +1213,6 @@
       $("#inspectCardAbility").textContent = t("ui.selectCardForDetails");
       $("#inspectCardDetails").innerHTML = "";
       $("#inspectCardMeta").innerHTML = "";
-      $("#inspectCardCurrentValue")?.classList.add("hidden");
       if ($("#viewCardBtn")) $("#viewCardBtn").disabled = true;
       return;
     }
@@ -1230,13 +1230,6 @@
     }
     $("#inspectCardTitle").textContent = cardName(card);
     $("#inspectCardAbility").innerHTML = cardDescriptionHtml(card);
-    const currentValue = currentCardValue(card);
-    const currentValueNode = $("#inspectCardCurrentValue");
-    currentValueNode?.classList.toggle("hidden", currentValue === null);
-    if (currentValueNode && currentValue !== null) {
-      currentValueNode.querySelector(".label").textContent = `${t("ui.currentValue")}:`;
-      currentValueNode.querySelector(".value").textContent = currentValue;
-    }
     if ($("#viewCardBtn")) $("#viewCardBtn").disabled = false;
     const combatDetails = card.type === "spell" ? "" : `
       <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(displayedAttack)}</b></span>
