@@ -2942,7 +2942,7 @@ body[data-animation-speed="slow"] .turn-banner { transition-duration:.65s, .9s; 
   min-width:128px !important;
   height:128px !important;
   min-height:128px !important;
-  padding:3px !important;
+  padding:0 !important;
   overflow:hidden;
   border:4px ridge #b39a66;
   background:#090d1c;
@@ -2955,6 +2955,10 @@ body[data-animation-speed="slow"] .turn-banner { transition-duration:.65s, .9s; 
   height:100%;
   min-height:0;
   object-fit:cover;
+}
+.classic-enemy-book .revealed-chip-art {
+  position:absolute;
+  inset:0;
 }
 .classic-enemy-book .enemy-card-cost {
   position:absolute;

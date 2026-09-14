@@ -47,6 +47,7 @@
   let inspectedCardId = null;
   let inspectedCardSide = null;
   let inspectedCardInstanceId = null;
+  let collectionSelectedCardId = null;
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   let turnBannerTimer = null;
   let previewCloseTimer = null;
@@ -1190,12 +1191,15 @@
     });
   }
 
-  function ensureInspectedCardVisible(cards) {
+  function ensureCollectionCardVisible(cards) {
     if (!cards.length) return;
-    if (!cards.some(card => card.id === inspectedCardId)) {
-      inspectedCardId = cards[0].id;
-      inspectedCardInstanceId = null;
+    if (!cards.some(card => card.id === collectionSelectedCardId)) {
+      collectionSelectedCardId = cards[0].id;
     }
+  }
+
+  function getCollectionSelectedCard() {
+    return allAstralCards().find(card => card.id === collectionSelectedCardId) || null;
   }
 
   function renderInspectPanel() {
@@ -1286,7 +1290,7 @@
   function buildCollectionTile(card, compact = false) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `collection-tile school-${card.school} type-${card.type} ${compact ? "compact" : ""} ${inspectedCardId === card.id ? "active" : ""}`;
+    button.className = `collection-tile school-${card.school} type-${card.type} ${compact ? "compact" : ""} ${collectionSelectedCardId === card.id ? "active" : ""}`;
     const art = document.createElement("div");
     art.className = "collection-tile-art";
     art.appendChild(buildArtBlock(card, compact ? "collectionCompact" : "collection"));
@@ -1296,9 +1300,7 @@
     button.appendChild(art);
     button.appendChild(body);
     button.addEventListener("click", () => {
-      inspectedCardId = card.id;
-      inspectedCardInstanceId = null;
-      if (engine) inspectedCardSide = "player";
+      collectionSelectedCardId = card.id;
       renderCollectionPanels();
     });
     return button;
@@ -1308,7 +1310,7 @@
     const allCards = allAstralCards();
     buildCollectionFilterButtons();
     const filtered = applyCollectionFilters(allCards);
-    ensureInspectedCardVisible(filtered.length ? filtered : allCards);
+    ensureCollectionCardVisible(filtered.length ? filtered : allCards);
     const quick = $("#collectionQuickList");
     const grid = $("#collectionGrid");
     const status = $("#collectionStatus");
@@ -1370,7 +1372,7 @@
         renderCollectionPanels();
       };
     }
-    const card = getInspectedCard();
+    const card = getCollectionSelectedCard();
     const featured = $("#collectionPageFeatured");
     const meta = $("#collectionPageMeta");
     if (card && featured && meta) {
@@ -2731,6 +2733,7 @@
   renderProfile();
   renderRuleset();
   inspectedCardId = allAstralCards()[0]?.id || null;
+  collectionSelectedCardId = inspectedCardId;
   renderCollectionPanels();
   try {
     const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
