@@ -125,7 +125,7 @@
     ["astral_water_01","Cura","L'evocatore recupera (potere Acqua/2+3) punti vita"],
     ["astral_water_02","Sciamano Tritone","Quando entra in campo aumenta di 1 il potere Terra dell'evocatore"],
     ["astral_water_03","Giustizia","Infligge a ogni creatura nemica danni pari al suo valore di attacco"],
-    ["astral_water_04","Spirito Marino","Se il potere Acqua è inferiore a quello nemico, infligge 2 danni al proprietario a ogni turno"],
+    ["astral_water_04","Spirito Marino","Ogni turno, se il potere Acqua è inferiore a quello nemico, infligge 2 danni all'evocatore"],
     ["astral_water_05","Dardo di Ghiaccio","Infligge all'avversario (potere Acqua+3) danni"],
     ["astral_water_06","Guardia di Ghiaccio","Riduce del 50% tutti i danni inflitti al proprietario"],
     ["astral_water_07","Rospo Gigante","Quando entra in campo infligge 5 danni all'avversario"],

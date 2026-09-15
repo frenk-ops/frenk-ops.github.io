@@ -776,7 +776,7 @@
         const unitArt = cell.querySelector(".unit-art");
         unitArt.appendChild(buildArtBlock(unit, "board"));
         const unitName = document.createElement("small");
-        unitName.textContent = unit.name;
+        unitName.textContent = cardName(unit);
         unitArt.appendChild(unitName);
         const inspectUnit = () => {
           inspectedCardId = unit.id;
@@ -1238,8 +1238,7 @@
       <span class="detail-school"><small>${t("ui.school")}</small><b>${escapeHtml(schoolName(card.school))}</b></span>
       <span class="detail-type"><small>${t("ui.type")}</small><b>${card.type === "spell" ? t("ui.spell") : t("ui.creature")}</b></span>
       <span class="detail-cost"><small>${t("ui.cost")}</small><b>${escapeHtml(card.level)}</b></span>
-      ${combatDetails}
-      <span class="detail-ability"><small>${t("ui.ability")}</small><b>${escapeHtml(card.keyword || t("ui.original"))}</b></span>`;
+      ${combatDetails}`;
     const previewCombatMeta = card.type === "spell" ? "" : `
         <div><small>${t("ui.attack")}</small><strong>${escapeHtml(displayedAttack)}</strong></div>
         <div><small>${t("cards.health")}</small><strong>${escapeHtml(displayedCard.currentHealth ?? displayedCard.health)}</strong></div>`;
@@ -2012,12 +2011,20 @@
       if (!step.ok || step.done) break;
       if (step.skipped) continue;
       const healingShown = showHealingChanges(healthBefore, step);
-      if (healingShown > 0) await sleep(reducedMotion ? 0 : 460);
-      await animateAttack(step.event);
-      showDamage(step.event);
+      const triggeredDamageEvents = (step.events || []).filter(event =>
+        ["astralHeroDamage", "astralCreatureDamage", "heroDamage", "creatureDamage"].includes(event.type)
+        && event.sourceKind === "effect"
+      );
+      if (triggeredDamageEvents.length) showResolvedEffectDamage({ events: triggeredDamageEvents });
+      if (healingShown > 0 || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 460);
+      const hasAttackDamage = Number(step.event?.damage || 0) > 0;
+      if (hasAttackDamage) {
+        await animateAttack(step.event);
+        showDamage(step.event);
+      }
       showCollateralDamage(step.events);
       showResolutionDeaths(step);
-      await sleep(reducedMotion ? 0 : 520);
+      if (hasAttackDamage || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 520);
       renderGame();
       showResolutionAfterUpdate(step);
       const structuredDamage = (step.events || []).find(event =>
@@ -2140,10 +2147,6 @@
       meta.appendChild(stat);
     });
     article.appendChild(meta);
-
-    const keyword = document.createElement("p");
-    keyword.innerHTML = `<strong>${escapeHtml(card.keyword || t("ui.original"))}</strong>`;
-    article.appendChild(keyword);
 
     const text = document.createElement("p");
     text.textContent = cardDescription(card, side || inspectedCardSide);
