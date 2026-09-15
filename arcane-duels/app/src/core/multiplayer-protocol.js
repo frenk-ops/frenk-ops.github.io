@@ -109,6 +109,10 @@
       const before = this.engine.snapshot();
       const beforeChecksum = checksum(before);
       const reject = reason => ({ ok: false, reason, sequence: this.sequence, checksum: beforeChecksum });
+      const rollback = () => {
+        this.engine.rules = A.deepClone(before.rules);
+        this.engine.state = A.deepClone(before.state);
+      };
 
       if (!command || typeof command !== "object") return reject("Comando non valido.");
       if (command.protocolVersion !== PROTOCOL_VERSION) return reject("Versione del protocollo incompatibile.");
@@ -118,11 +122,17 @@
       if (!["player", "enemy"].includes(command.actor)) return reject("Giocatore non valido.");
       if (expectedActor(this.engine) !== command.actor) return reject("Il comando non appartiene al giocatore attivo.");
 
-      const result = applyCommand(this.engine, command);
-      if (!result?.ok) {
-        this.engine.rules = A.deepClone(before.rules);
-        this.engine.state = A.deepClone(before.state);
-        return reject(result?.reason || "Comando rifiutato.");
+      let result;
+      try {
+        result = applyCommand(this.engine, command);
+        if (!result?.ok) {
+          rollback();
+          return reject(result?.reason || "Comando rifiutato.");
+        }
+        if (typeof A.restoreGameSnapshot === "function") A.restoreGameSnapshot(this.engine.snapshot());
+      } catch (error) {
+        rollback();
+        return reject(`Comando annullato: ${error?.message || "errore interno"}`);
       }
 
       this.sequence = command.sequence;

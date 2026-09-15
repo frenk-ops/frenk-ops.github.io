@@ -146,6 +146,34 @@
       }
     },
     {
+      name: "Protocollo multiplayer: un comando fallito o corrotto viene annullato atomicamente",
+      run() {
+        const throwingEngine = engineWithHands();
+        const throwingSession = new A.CommandSession(throwingEngine, { matchId: "match-atomic-throw" });
+        const throwingBefore = throwingSession.checksum;
+        throwingEngine.pass = function passWithFailure() {
+          this.state.player.hp = 1;
+          throw new Error("effetto simulato fallito");
+        };
+        const throwingCommand = throwingSession.createCommand("player", A.MULTIPLAYER_COMMANDS.PASS);
+        const throwingResult = throwingSession.dispatch(throwingCommand);
+        assert(!throwingResult.ok && /Comando annullato/.test(throwingResult.reason), "L'eccezione deve diventare un rifiuto controllato");
+        assert(throwingSession.checksum === throwingBefore && throwingSession.sequence === 0 && throwingSession.history.length === 0, "L'eccezione non deve lasciare stato o cronologia parziali");
+
+        const corruptingEngine = engineWithHands();
+        const corruptingSession = new A.CommandSession(corruptingEngine, { matchId: "match-atomic-invalid" });
+        const corruptingBefore = corruptingSession.checksum;
+        corruptingEngine.pass = function passWithInvalidState() {
+          this.state.player.hp = -5;
+          return { ok: true, events: [], phase: this.state.phase };
+        };
+        const corruptingCommand = corruptingSession.createCommand("player", A.MULTIPLAYER_COMMANDS.PASS);
+        const corruptingResult = corruptingSession.dispatch(corruptingCommand);
+        assert(!corruptingResult.ok && /Snapshot non valido/.test(corruptingResult.reason), "Uno stato invalido deve essere rifiutato dal validatore");
+        assert(corruptingSession.checksum === corruptingBefore && corruptingSession.sequence === 0 && corruptingSession.history.length === 0, "Uno stato invalido deve essere ripristinato integralmente");
+      }
+    },
+    {
       name: "Protocollo multiplayer: serializzazione canonica indipendente dall'ordine delle chiavi",
       run() {
         const left = { b: 2, a: { d: 4, c: 3 } };
