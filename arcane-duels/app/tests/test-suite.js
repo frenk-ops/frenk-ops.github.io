@@ -154,12 +154,71 @@
       }
     },
     {
+      name: "Snapshot: valida struttura e rifiuta versioni future senza mutare l'input",
+      run() {
+        const engine = engineWithHands();
+        const valid = engine.snapshot();
+        const original = A.stableStringify(valid);
+        const restored = A.GameEngine.fromSnapshot(valid, engine.cards);
+        assert(A.stableStringify(restored.snapshot()) === original, "Il ripristino valido deve essere fedele");
+        assert(A.stableStringify(valid) === original, "Il ripristino non deve mutare lo snapshot sorgente");
+
+        const future = A.deepClone(valid);
+        future.state.version = A.GAME_STATE_VERSION + 1;
+        let futureRejected = false;
+        try { A.GameEngine.fromSnapshot(future, engine.cards); } catch (error) { futureRejected = /versione futura/.test(error.message); }
+        assert(futureRejected, "Una versione futura deve essere rifiutata esplicitamente");
+
+        const malformed = A.deepClone(valid);
+        malformed.state.player.board.pop();
+        let malformedRejected = false;
+        try { A.GameEngine.fromSnapshot(malformed, engine.cards); } catch (error) { malformedRejected = /campo player/.test(error.message); }
+        assert(malformedRejected, "Un campo di dimensione errata deve essere rifiutato");
+      }
+    },
+    {
+      name: "Snapshot: migra lo stato versione 1 aggiungendo i contratti mancanti",
+      run() {
+        const engine = engineWithHands();
+        const legacy = engine.snapshot();
+        legacy.state.version = 1;
+        delete legacy.state.activeSide;
+        delete legacy.state.turnCounters;
+        delete legacy.state.player.maxHp;
+        delete legacy.state.player.revealedCards;
+        delete legacy.state.player.flags;
+        const restored = A.GameEngine.fromSnapshot(legacy, engine.cards);
+        assert(restored.state.version === A.GAME_STATE_VERSION, "La versione deve essere migrata");
+        assert(restored.state.activeSide === "player", "Il lato attivo deve essere ricostruito dalla fase");
+        assert(restored.state.turnCounters.player === 1 && restored.state.turnCounters.enemy === 0, "I contatori turno devono essere ricostruiti");
+        assert(restored.state.player.maxHp === restored.rules.startingHp, "La vita iniziale deve essere ricostruita");
+        assert(Array.isArray(restored.state.player.revealedCards) && restored.state.player.flags.cardPlayedThisTurn === false, "I campi runtime devono essere ricostruiti");
+      }
+    },
+    {
       name: "Generatore deterministico con seed",
       run() {
         const cards = makeSimpleCards();
         const a = A.generateHands(cards, { seed: "same", playerTalent: "fire", enemyTalent: "water" });
         const b = A.generateHands(cards, { seed: "same", playerTalent: "fire", enemyTalent: "water" });
         assert(JSON.stringify(a.player.map(c => c.id)) === JSON.stringify(b.player.map(c => c.id)), "Lo stesso seed deve produrre la stessa mano");
+      }
+    },
+    {
+      name: "Generatore Astral: la cache per seed e isolata dalle mutazioni della partita",
+      run() {
+        const cards = A.getCardSet("astral-original");
+        const options = { seed: "spellbook-cache-contract", enemyDifficulty: "novice" };
+        const before = A.getAstralSpellbookCacheStats();
+        const first = A.generateRecoveredAstralHands(cards, options);
+        const afterFirst = A.getAstralSpellbookCacheStats();
+        first.player[0].name = "mutazione locale";
+        first.playerPowers.fire = 999;
+        const second = A.generateRecoveredAstralHands(cards, options);
+        const afterSecond = A.getAstralSpellbookCacheStats();
+        assert(afterFirst.misses === before.misses + 1, "La prima generazione deve registrare un cache miss");
+        assert(afterSecond.hits === afterFirst.hits + 1, "La seconda generazione deve usare la cache");
+        assert(second.player[0].name !== "mutazione locale" && second.playerPowers.fire !== 999, "La cache deve restituire una copia profonda indipendente");
       }
     },
     {
@@ -304,6 +363,20 @@
         const step = engine.attackNext("player");
         assert(step.event.type === "directAttack", "Tipo evento errato");
         assert(engine.state.enemy.hp === before - 4, "Vita eroe non aggiornata");
+      }
+    },
+    {
+      name: "Foundation: un attacco a zero non attiva Fire Aura",
+      run() {
+        const engine = engineWithHands();
+        engine.state.player.board[0] = {
+          ...A.normalizeCard({ id: "zero-attacker", name: "Zero", school: "fire", level: 1, type: "creature", attack: 0, health: 5 }),
+          currentHealth: 5, owner: "player", instanceId: "zero-attacker-instance", summonedOnOwnerTurn: 0
+        };
+        engine.state.enemy.passives.push("fire_aura");
+        engine.state.phase = A.PHASES.PLAYER_ATTACK;
+        const step = engine.attackNext("player");
+        assert(step.event?.damage === 0 && engine.state.player.board[0].currentHealth === 5, "Fire Aura non deve reagire a zero danni");
       }
     },
     {
@@ -895,6 +968,31 @@
       }
     },
     {
+      name: "Contratto eventi: Astral e Foundation espongono lo stesso envelope canonico",
+      run() {
+        const astral = astralEngine(["astral_water_05"], ["astral_fire_02"]);
+        astral.state.player.power.water = 5;
+        const astralResult = astral.playMove("player", { type: "play", cardId: "astral_water_05" });
+        const astralDamage = astralResult.events.find(event => event.type === "astralHeroDamage");
+        assert(astralDamage?.schemaVersion === A.ENGINE_EVENT_CONTRACT_VERSION && astralDamage.category === "damage" && astralDamage.targetKind === "hero" && astralDamage.targetSide === "enemy", "Envelope danno Astral incompleto");
+
+        const spell = A.normalizeCard({ id: "contract-spell", name: "Contract spell", school: "fire", level: 1, type: "spell", effects: [{ trigger: "onPlay", action: "damage_enemy_hero", amount: 3 }] });
+        const enemyCard = A.normalizeCard({ id: "contract-enemy", name: "Contract enemy", school: "water", level: 1, type: "creature", attack: 1, health: 2 });
+        const foundation = new A.GameEngine({
+          cards: [spell, enemyCard], seed: "event-contract",
+          hands: { player: [spell], enemy: [enemyCard], enemyTalent: "water", diagnostics: [] },
+          rules: { startingHp: 20, initialPower: 10 }
+        });
+        const foundationResult = foundation.playMove("player", { type: "play", cardId: spell.id });
+        const foundationDamage = foundationResult.events.find(event => event.type === "heroDamage");
+        assert(foundationDamage?.schemaVersion === A.ENGINE_EVENT_CONTRACT_VERSION && foundationDamage.category === "damage" && foundationDamage.targetKind === "hero" && foundationDamage.sourceSide === "player" && foundationDamage.targetSide === "enemy", "Envelope danno Foundation incompleto");
+
+        while (!astral.attackNext("player").done) { /* completa la fase */ }
+        const growth = astral.finishAttack("player");
+        assert(growth.events?.some(event => event.type === "astralPowerGrowth" && event.category === "power" && event.targetKind === "power"), "La crescita di fine turno deve essere restituita come evento canonico");
+      }
+    },
+    {
       name: "Tutte le 65 carte producono stato ed eventi integri in uno scenario reale",
       run() {
         const cards = A.getCardSet("astral-original");
@@ -1259,6 +1357,78 @@
         skin.state.player.power.air=20;
         skin.playMove("player",{type:"play",cardId:"astral_air_06"});
         assert(skin.state.enemy.hp===26,`Stone Skin danno: ${50-skin.state.enemy.hp}`);
+      }
+    },
+    {
+      name: "Acqua 01–13 — matrice semantica completa",
+      run() {
+        const cure=astralEngine(["astral_water_01"],["astral_fire_02"]); cure.state.player.power.water=8; cure.playMove("player",{type:"play",cardId:"astral_water_01"}); assert(cure.state.player.hp===57,"Water 01: cura");
+        const shaman=astralEngine(["astral_water_02"],["astral_fire_02"]); shaman.state.player.power.water=2; shaman.state.player.power.nature=4; shaman.playMove("player",{type:"play",cardId:"astral_water_02",slot:0}); assert(shaman.state.player.power.nature===5,"Water 02: +1 Terra");
+        const justice=astralEngine(["astral_water_03"],["astral_fire_02","astral_water_07"]); const j1=placeAstralUnit(justice,"enemy","astral_fire_02",0,20); const j2=placeAstralUnit(justice,"enemy","astral_water_07",1,20); justice.state.player.power.water=3; justice.playMove("player",{type:"play",cardId:"astral_water_03"}); assert(j1.currentHealth===16&&j2.currentHealth===15,"Water 03: danno pari agli attacchi nemici");
+        const sprite=astralEngine(["astral_water_04"],["astral_fire_02"]); placeAstralUnit(sprite,"player","astral_water_04",0); sprite.state.player.power.water=3; sprite.state.enemy.power.water=4; sprite.state.player.hp=40; sprite.state.phase=A.PHASES.PLAYER_ATTACK; const spriteStep=sprite.attackNext("player"); assert(sprite.state.player.hp===38&&spriteStep.events.some(event=>event.reason==="astral_water_04"&&event.amount===2),"Water 04: penalita pre-attacco");
+        const bolt=astralEngine(["astral_water_05"],["astral_fire_02"]); bolt.state.player.power.water=5; bolt.playMove("player",{type:"play",cardId:"astral_water_05"}); assert(bolt.state.enemy.hp===42,"Water 05: Acqua+3");
+        const guard=astralEngine(["astral_fire_01"],["astral_water_06"]); placeAstralUnit(guard,"enemy","astral_water_06",0); const guardEvents=[]; A.astralApplyHeroDamage(guard,"player","enemy",9,{sourceKind:"spell"},guardEvents); assert(guard.state.enemy.hp===46&&guardEvents[0].resolvedAmount===4,"Water 06: dimezzamento danno eroe");
+        const toad=astralEngine(["astral_water_07"],["astral_fire_02"]); toad.state.player.power.water=7; toad.playMove("player",{type:"play",cardId:"astral_water_07",slot:0}); assert(toad.state.enemy.hp===45,"Water 07: 5 danni d'ingresso");
+        const rain=astralEngine(["astral_water_08"],["astral_fire_02"]); const ownRain=placeAstralUnit(rain,"player","astral_fire_02",0,20); const enemyRain=placeAstralUnit(rain,"enemy","astral_fire_02",0,20); A.SCHOOLS.forEach(s=>rain.state.enemy.power[s.id]=3); rain.state.player.power.water=8; rain.playMove("player",{type:"play",cardId:"astral_water_08"}); assert(ownRain.currentHealth===5&&enemyRain.currentHealth===5&&A.SCHOOLS.every(s=>rain.state.enemy.power[s.id]===2),"Water 08: pioggia acida");
+        const ocean=astralEngine(["astral_water_09"],["astral_fire_02"]); ocean.state.player.power.water=9; ocean.playMove("player",{type:"play",cardId:"astral_water_09",slot:0}); assert(ocean.state.player.powerGain.water===2&&ocean.state.enemy.powerGain.water===0,"Water 09: modificatori crescita"); ocean.state.player.board[0].currentHealth=0; A.astralCleanupDeaths(ocean,[],"player"); assert(ocean.state.player.powerGain.water===1&&ocean.state.enemy.powerGain.water===1,"Water 09: rimozione modificatori");
+        const elemental=astralEngine(["astral_water_10"],["astral_fire_02"]); elemental.state.player.power.water=10; elemental.playMove("player",{type:"play",cardId:"astral_water_10",slot:0}); assert(A.astralEffectiveAttack(elemental,"player",elemental.state.player.board[0])===0&&elemental.state.player.powerGain.water===2,"Water 10: attacco dinamico e crescita");
+        const mind=astralEngine(["astral_water_11"],["astral_fire_02"]); mind.state.player.power.water=11; mind.playMove("player",{type:"play",cardId:"astral_water_11",slot:0}); assert(A.SCHOOLS.every(s=>mind.state.player.powerGain[s.id]===2),"Water 11: crescita globale"); mind.state.player.board[0].currentHealth=0; A.astralCleanupDeaths(mind,[],"player"); assert(A.SCHOOLS.every(s=>mind.state.player.powerGain[s.id]===1),"Water 11: rimozione crescita globale");
+        const astralGuard=astralEngine(["astral_water_12"],["astral_fire_02"]); astralGuard.state.player.power.water=12; astralGuard.playMove("player",{type:"play",cardId:"astral_water_12",slot:0}); assert(A.SCHOOLS.every(s=>astralGuard.state.enemy.powerGain[s.id]===0),"Water 12: penalita globale nemica"); astralGuard.state.player.board[0].currentHealth=0; A.astralCleanupDeaths(astralGuard,[],"player"); assert(A.SCHOOLS.every(s=>astralGuard.state.enemy.powerGain[s.id]===1),"Water 12: rimozione penalita globale");
+        const monster=astralEngine(["astral_water_13"],["astral_fire_02"]); monster.state.player.power.water=13; monster.playMove("player",{type:"play",cardId:"astral_water_13",slot:0}); assert(monster.state.player.powerGain.water===2&&monster.state.player.powerGain.fire===0,"Water 13: crescita Acqua e penalita Fuoco propria");
+      }
+    },
+    {
+      name: "Aria 01–13 — matrice semantica completa",
+      run() {
+        const faerie=astralEngine(["astral_air_01","astral_air_06"],["astral_fire_02"]); placeAstralUnit(faerie,"player","astral_air_01",0); faerie.state.player.power.air=6; faerie.playMove("player",{type:"play",cardId:"astral_air_06"}); assert(faerie.state.enemy.hp===38,"Air 01: +1 danno magie");
+        const griffon=astralEngine(["astral_air_02"],["astral_fire_02"]); griffon.state.player.power.air=6; griffon.playMove("player",{type:"play",cardId:"astral_air_02",slot:0}); assert(griffon.state.enemy.hp===45,"Air 02: soglia Aria");
+        const priest=astralEngine(["astral_air_03"],["astral_fire_02"]); priest.state.player.power.air=3; priest.playMove("player",{type:"play",cardId:"astral_air_03",slot:0}); assert(priest.state.player.powerGain.air===2,"Air 03: crescita Aria");
+        const wyvern=astralEngine(["astral_air_04"],["astral_fire_02","astral_water_07"]); const weak=placeAstralUnit(wyvern,"enemy","astral_fire_02",0,8); const strong=placeAstralUnit(wyvern,"enemy","astral_water_07",1,20); wyvern.state.player.power.air=4; wyvern.playMove("player",{type:"play",cardId:"astral_air_04",slot:0}); assert(weak.currentHealth===8&&strong.currentHealth===15,"Air 04: bersaglio con piu vita");
+        const hypnosis=astralEngine(["astral_air_05"],["astral_fire_02","astral_water_07","astral_air_01"]); placeAstralUnit(hypnosis,"enemy","astral_fire_02",0); placeAstralUnit(hypnosis,"enemy","astral_water_07",1); placeAstralUnit(hypnosis,"enemy","astral_air_01",2); hypnosis.state.player.power.air=5; hypnosis.playMove("player",{type:"play",cardId:"astral_air_05"}); assert(hypnosis.state.enemy.hp===41,"Air 05: i due attacchi maggiori colpiscono il proprietario");
+        const lightning=astralEngine(["astral_air_06"],["astral_fire_02"]); lightning.state.player.power.air=6; lightning.playMove("player",{type:"play",cardId:"astral_air_06"}); assert(lightning.state.enemy.hp===39,"Air 06: Aria+5");
+        const phoenix=astralEngine(["astral_air_07"],["astral_fire_02"]); const bird=placeAstralUnit(phoenix,"player","astral_air_07",0,1); phoenix.state.player.power.fire=10; bird.currentHealth=0; const rebirth=[]; A.astralCleanupDeaths(phoenix,rebirth,"player"); assert(phoenix.state.player.board[0]?.currentHealth===bird.health&&rebirth.some(e=>e.type==="astralPhoenixRebirth"),"Air 07: rinascita");
+        const chain=astralEngine(["astral_air_08"],["astral_fire_02"]); const chainTarget=placeAstralUnit(chain,"enemy","astral_fire_02",0,20); chain.state.player.power.air=8; chain.playMove("player",{type:"play",cardId:"astral_air_08"}); assert(chainTarget.currentHealth===13&&chain.state.enemy.hp===43,"Air 08: Aria-1 su eroe e creature");
+        const tornado=astralEngine(["astral_air_09"],["astral_fire_02","astral_water_07"]); placeAstralUnit(tornado,"enemy","astral_fire_02",0,8); placeAstralUnit(tornado,"enemy","astral_water_07",1,20); tornado.state.player.power.air=9; tornado.playMove("player",{type:"play",cardId:"astral_air_09"}); assert(tornado.state.enemy.board[0]&&tornado.state.enemy.board[1]===null,"Air 09: distruzione creatura con piu vita");
+        const airElemental=astralEngine(["astral_air_10"],["astral_fire_02"]); airElemental.state.player.power.air=10; airElemental.playMove("player",{type:"play",cardId:"astral_air_10",slot:0}); assert(airElemental.state.enemy.hp===43&&A.astralEffectiveAttack(airElemental,"player",airElemental.state.player.board[0])===0&&airElemental.state.player.powerGain.air===2,"Air 10: ingresso, attacco dinamico e crescita");
+        const cloud=astralEngine(["astral_air_11"],["astral_fire_02","astral_water_02"]); cloud.state.player.power.air=11; cloud.playMove("player",{type:"play",cardId:"astral_air_11",slot:0}); assert(cloud.state.player.powerGain.air===0,"Air 11: penalita crescita"); placeAstralUnit(cloud,"enemy","astral_fire_02",0,20); placeAstralUnit(cloud,"enemy","astral_water_02",1,20); const cloudStep=cloud.attackUnitFromEffect("player",0); assert(cloudStep.event?.multiTarget&&cloud.state.enemy.hp===45&&cloud.state.enemy.board[0].currentHealth===15&&cloud.state.enemy.board[1].currentHealth===15,`Air 11: attacco multiplo ${cloudStep.event?.multiTarget}/${cloud.state.enemy.hp}/${cloud.state.enemy.board.map(u=>u?.currentHealth)}`);
+        const archangel=astralEngine(["astral_air_12"],["astral_fire_02"]); const ally=placeAstralUnit(archangel,"player","astral_fire_02",1,5); archangel.state.player.power.air=12; archangel.playMove("player",{type:"play",cardId:"astral_air_12",slot:0}); assert(ally.currentHealth===ally.health,"Air 12: cura completa alleati");
+        const titan=astralEngine(["astral_air_13"],["astral_fire_02"]); titan.state.player.power.air=13; titan.playMove("player",{type:"play",cardId:"astral_air_13",slot:0}); assert(titan.state.enemy.hp===35,"Air 13: 15 danni d'ingresso");
+      }
+    },
+    {
+      name: "Terra 01–13 — matrice semantica completa",
+      run() {
+        const healer=astralEngine(["astral_earth_01"],["astral_fire_02"]); placeAstralUnit(healer,"player","astral_earth_01",0); healer.state.player.hp=40; healer.state.phase=A.PHASES.PLAYER_ATTACK; healer.attackNext("player"); assert(healer.state.player.hp===42,"Earth 01: cura pre-attacco");
+        const armorer=astralEngine(["astral_earth_02"],["astral_fire_02"]); placeAstralUnit(armorer,"player","astral_earth_02",0); const armorEvents=[]; A.astralApplyHeroDamage(armorer,"enemy","player",5,{sourceKind:"spell"},armorEvents); assert(armorer.state.player.hp===46&&armorEvents[0].resolvedAmount===4,"Earth 02: riduzione danno");
+        const forest=astralEngine(["astral_earth_03"],["astral_fire_02","astral_water_02"]); forest.state.player.power.nature=3; forest.playMove("player",{type:"play",cardId:"astral_earth_03",slot:0}); placeAstralUnit(forest,"enemy","astral_fire_02",0,10); placeAstralUnit(forest,"enemy","astral_water_02",1,10); const forestStep=forest.attackUnitFromEffect("player",0); assert(forestStep.event?.multiTarget&&forest.state.enemy.hp===49&&forest.state.enemy.board.every(unit=>!unit||unit.currentHealth===9),`Earth 03: attacco multiplo ${forestStep.event?.multiTarget}/${forest.state.enemy.hp}/${forest.state.enemy.board.map(u=>u?.currentHealth)}`);
+        const ritual=astralEngine(["astral_earth_04"],["astral_fire_02"]); const ritualAlly=placeAstralUnit(ritual,"player","astral_fire_02",0,5); ritual.state.player.hp=40; ritual.state.player.power.nature=4; ritual.playMove("player",{type:"play",cardId:"astral_earth_04"}); assert(ritual.state.player.hp===45&&ritualAlly.currentHealth===10,"Earth 04: cura eroe e alleati");
+        const hermit=astralEngine(["astral_earth_05"],["astral_fire_02"]); hermit.state.player.power.nature=5; hermit.playMove("player",{type:"play",cardId:"astral_earth_05",slot:0}); assert(hermit.state.player.powerGain.nature===3,"Earth 05: +2 crescita Terra");
+        const rejuvenation=astralEngine(["astral_earth_06"],["astral_fire_02"]); rejuvenation.state.player.power.nature=6; rejuvenation.playMove("player",{type:"play",cardId:"astral_earth_06"}); assert(rejuvenation.state.player.hp===62,"Earth 06: cura Terra*2");
+        const nightElf=astralEngine(["astral_earth_07"],["astral_fire_02"]); nightElf.state.player.power.nature=7; nightElf.playMove("player",{type:"play",cardId:"astral_earth_07",slot:0}); assert(nightElf.state.player.powerGain.death===3&&nightElf.state.player.powerGain.nature===0,"Earth 07: modificatori incrociati");
+        const troll=astralEngine(["astral_earth_08"],["astral_fire_02"]); const trollUnit=placeAstralUnit(troll,"player","astral_earth_08",0,10); troll.state.phase=A.PHASES.PLAYER_ATTACK; troll.attackNext("player"); assert(trollUnit.currentHealth===13,"Earth 08: rigenerazione 3");
+        const master=astralEngine(["astral_earth_09"],["astral_fire_02"]); const masterUnit=placeAstralUnit(master,"player","astral_earth_09",0,10); const masterAlly=placeAstralUnit(master,"player","astral_fire_02",1,5); master.state.player.hp=40; master.state.phase=A.PHASES.PLAYER_ATTACK; master.attackNext("player"); assert(master.state.player.hp===42&&masterUnit.currentHealth===12&&masterAlly.currentHealth===7,"Earth 09: cura di gruppo pre-attacco");
+        const lowRain=astralEngine(["astral_earth_10"],["astral_fire_02"]); const lowOwn=placeAstralUnit(lowRain,"player","astral_fire_02",0,30); const lowEnemy=placeAstralUnit(lowRain,"enemy","astral_fire_02",0,30); lowRain.state.player.power.nature=10; lowRain.playMove("player",{type:"play",cardId:"astral_earth_10"}); assert(lowOwn.currentHealth===10&&lowEnemy.currentHealth===10,"Earth 10: sotto soglia colpisce entrambi");
+        const earthElemental=astralEngine(["astral_earth_11"],["astral_fire_02"]); earthElemental.state.player.power.nature=11; earthElemental.playMove("player",{type:"play",cardId:"astral_earth_11",slot:0}); assert(A.astralEffectiveAttack(earthElemental,"player",earthElemental.state.player.board[0])===0&&earthElemental.state.player.powerGain.nature===2,"Earth 11: attacco dinamico e crescita");
+        const hydra=astralEngine(["astral_earth_12"],["astral_fire_02"]); hydra.state.player.power.nature=12; hydra.playMove("player",{type:"play",cardId:"astral_earth_12",slot:0}); hydra.state.player.board[0].currentHealth=30; placeAstralUnit(hydra,"enemy","astral_fire_02",0,10); const hydraStep=hydra.attackUnitFromEffect("player",0); assert(hydraStep.event?.multiTarget&&hydra.state.player.board[0].currentHealth===34&&hydra.state.enemy.hp===47&&hydra.state.enemy.board[0].currentHealth===7,"Earth 12: rigenerazione e attacco multiplo");
+        const giant=astralEngine(["astral_earth_13"],["astral_fire_02","astral_water_07"]); const giantWeak=placeAstralUnit(giant,"enemy","astral_fire_02",0,15); placeAstralUnit(giant,"enemy","astral_water_07",1,20); giant.state.player.power.nature=13; giant.playMove("player",{type:"play",cardId:"astral_earth_13",slot:0}); assert(giantWeak.currentHealth===15&&giant.state.enemy.board[1].currentHealth===2,"Earth 13: 18 alla creatura con piu vita");
+      }
+    },
+    {
+      name: "Morte 01–13 — matrice semantica completa",
+      run() {
+        const skeleton=astralEngine(["astral_death_01"],["astral_fire_02"]); skeleton.state.player.power.death=1; skeleton.playMove("player",{type:"play",cardId:"astral_death_01",slot:0}); assert(skeleton.state.player.hp===49,"Death 01: un danno al proprietario");
+        const zombie=astralEngine(["astral_death_02"],["astral_fire_02"]); const zombieUnit=placeAstralUnit(zombie,"player","astral_death_02",0,5); zombie.state.phase=A.PHASES.PLAYER_ATTACK; zombie.attackNext("player"); assert(zombieUnit.currentHealth===7,"Death 02: rigenerazione 2");
+        const curse=astralEngine(["astral_death_03"],["astral_fire_02"]); A.SCHOOLS.forEach(s=>curse.state.enemy.power[s.id]=3); curse.state.player.power.death=3; curse.playMove("player",{type:"play",cardId:"astral_death_03"}); assert(curse.state.enemy.hp===49&&A.SCHOOLS.every(s=>curse.state.enemy.power[s.id]===2),"Death 03: danno e riduzione poteri");
+        const keeper=astralEngine(["astral_death_04"],["astral_fire_02"]); placeAstralUnit(keeper,"player","astral_death_04",0); const doomed=placeAstralUnit(keeper,"enemy","astral_fire_02",0,1); keeper.state.player.power.death=4; doomed.currentHealth=0; A.astralCleanupDeaths(keeper,[],"player"); assert(keeper.state.player.power.death===5,"Death 04: guadagno alla morte");
+        const demon=astralEngine(["astral_death_05"],["astral_fire_02"]); demon.state.player.power.death=5; demon.playMove("player",{type:"play",cardId:"astral_death_05",slot:0}); assert(demon.state.player.powerGain.fire===2,"Death 05: crescita Fuoco");
+        const ghost=astralEngine(["astral_death_06"],["astral_fire_02"]); A.SCHOOLS.forEach(s=>ghost.state.enemy.power[s.id]=3); ghost.state.player.power.death=6; ghost.playMove("player",{type:"play",cardId:"astral_death_06",slot:0}); assert(A.SCHOOLS.every(s=>ghost.state.enemy.power[s.id]===2),"Death 06: riduzione poteri nemici");
+        const assassin=astralEngine(["astral_death_07"],["astral_fire_02"]); assassin.state.player.power.death=7; assassin.playMove("player",{type:"play",cardId:"astral_death_07",slot:0}); assert(assassin.state.enemy.hp===41,"Death 07: 9 danni d'ingresso");
+        const drain=astralEngine(["astral_death_08"],["astral_water_06"]); placeAstralUnit(drain,"enemy","astral_water_06",0); drain.state.player.hp=35; drain.state.player.power.death=10; drain.playMove("player",{type:"play",cardId:"astral_death_08"}); assert(drain.state.enemy.hp===45&&drain.state.player.hp===40,"Death 08: risucchio sul danno effettivo");
+        const wall=astralEngine(["astral_death_09"],["astral_fire_02"]); placeAstralUnit(wall,"player","astral_death_09",0); const wallVictim=placeAstralUnit(wall,"enemy","astral_fire_02",0,1); wall.state.player.hp=40; wallVictim.currentHealth=0; A.astralCleanupDeaths(wall,[],"player"); assert(wall.state.player.hp===43,"Death 09: cura alla morte");
+        const lich=astralEngine(["astral_death_10"],["astral_fire_02","astral_water_02"]); const lichA=placeAstralUnit(lich,"enemy","astral_fire_02",0,10); const lichB=placeAstralUnit(lich,"enemy","astral_water_02",1,10); lich.state.player.power.death=10; lich.playMove("player",{type:"play",cardId:"astral_death_10",slot:0}); assert(lichA.currentHealth===6&&lichB.currentHealth===6&&lich.state.enemy.hp===46,"Death 10: 4 a tutti i nemici");
+        const vampire=astralEngine(["astral_death_11"],["astral_fire_02"]); const vampireUnit=placeAstralUnit(vampire,"player","astral_death_11",0,20); placeAstralUnit(vampire,"enemy","astral_fire_02",0,20); vampire.state.phase=A.PHASES.PLAYER_ATTACK; vampire.attackNext("player"); assert(vampireUnit.currentHealth===24,"Death 11: cura meta danno");
+        const souls=astralEngine(["astral_death_12"],["astral_fire_02"]); placeAstralUnit(souls,"player","astral_fire_02",0); placeAstralUnit(souls,"enemy","astral_fire_02",0); souls.state.player.hp=40; souls.state.player.power.death=12; souls.playMove("player",{type:"play",cardId:"astral_death_12"}); assert(souls.state.player.hp===48&&souls.state.player.board[0]===null&&souls.state.enemy.board[0]===null,"Death 12: distruzione totale e cura per conteggio");
+        const greater=astralEngine(["astral_death_13"],["astral_fire_02"]); A.SCHOOLS.forEach(s=>greater.state.player.power[s.id]=5); greater.state.player.power.death=13; greater.playMove("player",{type:"play",cardId:"astral_death_13",slot:0}); assert(greater.state.player.power.fire===4&&greater.state.player.power.water===4&&greater.state.player.power.air===4&&greater.state.player.power.nature===4&&greater.state.player.power.death===0,"Death 13: riduzione di tutti i poteri prima del costo");
       }
     },
     {

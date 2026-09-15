@@ -11,6 +11,46 @@
     master: 20,
     grandmaster: 20
   });
+  const SPELLBOOK_CACHE_LIMIT = 24;
+  const spellbookCache = new Map();
+  const spellbookCacheStats = { hits: 0, misses: 0 };
+
+  function cacheKey(cards, options) {
+    const powers = value => value ? SCHOOL_ORDER.map(school => Number(value[school] || 0)) : null;
+    return JSON.stringify({
+      cards: (cards || []).map(card => [card.id, card.school, card.level, card.type]),
+      allowedCardIds: options?.allowedCardIds ? [...options.allowedCardIds].map(String).sort() : null,
+      seed: String(options?.seed || "astral-recovered-spellbook"),
+      mode: options?.mode || "duel",
+      enemyDifficulty: options?.enemyDifficulty || "advanced",
+      playerSpecialization: options?.playerSpecialization || null,
+      enemySpecialization: options?.enemySpecialization || null,
+      playerAbilities: [...(options?.playerAbilities || [])].map(Number).sort((a, b) => a - b),
+      enemyAbilities: [...(options?.enemyAbilities || [])].map(Number).sort((a, b) => a - b),
+      playerInitialPowers: powers(options?.playerInitialPowers),
+      enemyInitialPowers: powers(options?.enemyInitialPowers),
+      restrictedMode: Boolean(options?.restrictedMode),
+      maxGenerationAttempts: Number(options?.maxGenerationAttempts || 2000000)
+    });
+  }
+
+  function readCachedSpellbook(key) {
+    if (!spellbookCache.has(key)) {
+      spellbookCacheStats.misses += 1;
+      return null;
+    }
+    const value = spellbookCache.get(key);
+    spellbookCache.delete(key);
+    spellbookCache.set(key, value);
+    spellbookCacheStats.hits += 1;
+    return A.deepClone(value);
+  }
+
+  function cacheSpellbook(key, value) {
+    spellbookCache.set(key, A.deepClone(value));
+    while (spellbookCache.size > SPELLBOOK_CACHE_LIMIT) spellbookCache.delete(spellbookCache.keys().next().value);
+    return value;
+  }
 
   const ABILITY = Object.freeze({
     ELEMENTAL_KNOWLEDGE: 29,
@@ -388,6 +428,9 @@
   };
 
   A.generateRecoveredAstralHands = function generateRecoveredAstralHands(cards, options) {
+    const key = cacheKey(cards, options);
+    const cached = readCachedSpellbook(key);
+    if (cached) return cached;
     const rng = A.createRng(options?.seed || "astral-recovered-spellbook");
     const numeric = buildNumericIndex(cards, options?.allowedCardIds);
     const playerAbilities = options?.playerAbilities || [];
@@ -414,7 +457,7 @@
       maxGenerationAttempts: options?.maxGenerationAttempts
     });
 
-    return {
+    return cacheSpellbook(key, {
       player: player.hand,
       enemy: enemy.hand,
       playerPowers: player.powers,
@@ -426,6 +469,9 @@
         { side: "player", ...player },
         { side: "enemy", ...enemy }
       ]
-    };
+    });
+  };
+  A.getAstralSpellbookCacheStats = function getAstralSpellbookCacheStats() {
+    return { ...spellbookCacheStats, size: spellbookCache.size, limit: SPELLBOOK_CACHE_LIMIT };
   };
 })(window.Arcane = window.Arcane || {});

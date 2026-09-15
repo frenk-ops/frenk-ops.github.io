@@ -20,18 +20,18 @@
       switch (effect.action) {
         case "damage_enemy_hero":
           enemy.hp = Math.max(0, enemy.hp - amount);
-          events.push({ type: "heroDamage", side: enemySide, amount, source: card.name });
+          events.push({ type: "heroDamage", side: enemySide, sourceSide: side, targetSide: enemySide, sourceKind: card.type, sourceId: card.id, amount, source: card.name });
           break;
         case "heal_self_hero":
           self.hp += amount;
-          events.push({ type: "heroHeal", side, amount, source: card.name });
+          events.push({ type: "heroHeal", side, sourceSide: side, targetSide: side, sourceKind: card.type, sourceId: card.id, amount, source: card.name });
           break;
         case "damage_all_enemy_creatures":
           enemy.board.forEach((unit, slot) => {
             if (!unit) return;
             unit.currentHealth -= amount;
             const died = unit.currentHealth <= 0;
-            events.push({ type: "creatureDamage", side: enemySide, slot, amount, died, source: card.name });
+            events.push({ type: "creatureDamage", side: enemySide, sourceSide: side, targetSide: enemySide, sourceKind: card.type, sourceId: card.id, slot, amount, died, source: card.name });
             if (died) enemy.board[slot] = null;
           });
           break;
@@ -52,7 +52,7 @@
             events.push({ type: "statChange", side, slot: target.slot, stat: "health", delta: amount });
           } else {
             self.hp += amount;
-            events.push({ type: "heroHeal", side, amount, source: card.name });
+            events.push({ type: "heroHeal", side, sourceSide: side, targetSide: side, sourceKind: card.type, sourceId: card.id, amount, source: card.name });
           }
           break;
         }

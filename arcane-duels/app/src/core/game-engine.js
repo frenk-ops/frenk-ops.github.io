@@ -1,6 +1,125 @@
 (function (A) {
   "use strict";
 
+  const CURRENT_STATE_VERSION = 2;
+  const EVENT_CONTRACT_VERSION = 1;
+
+  const EVENT_CATEGORIES = Object.freeze({
+    cardPlayed: "card", summon: "summon", spell: "spell", pass: "turn",
+    laneAttack: "damage", directAttack: "damage", heroDamage: "damage", creatureDamage: "damage",
+    astralHeroDamage: "damage", astralCreatureDamage: "damage", heroHeal: "heal", astralHealHero: "heal",
+    astralUnitHeal: "heal", astralVampireHeal: "heal", statChange: "stat", powerChange: "power",
+    astralPowerChange: "power", astralPowerReduction: "power", astralPowerGrowth: "power",
+    astralDeathKeeper: "power", astralDeath: "death", astralPhoenixRebirth: "resurrection"
+  });
+
+  function normalizeEngineEvent(event) {
+    if (!event || typeof event !== "object") return event;
+    const normalized = { schemaVersion: EVENT_CONTRACT_VERSION, ...event };
+    normalized.category = normalized.category || EVENT_CATEGORIES[normalized.type] || "effect";
+    if (!normalized.targetKind) {
+      if (["heroDamage", "astralHeroDamage", "heroHeal", "astralHealHero", "directAttack"].includes(normalized.type)) normalized.targetKind = "hero";
+      else if (["creatureDamage", "astralCreatureDamage", "astralUnitHeal", "laneAttack", "astralDeath", "astralPhoenixRebirth"].includes(normalized.type)) normalized.targetKind = "creature";
+      else if (["powerChange", "astralPowerChange", "astralPowerReduction", "astralPowerGrowth", "astralDeathKeeper"].includes(normalized.type)) normalized.targetKind = "power";
+    }
+    if (!normalized.targetSide && normalized.side && ["damage", "heal", "death", "resurrection"].includes(normalized.category)) normalized.targetSide = normalized.side;
+    return normalized;
+  }
+
+  function normalizeEngineEvents(events) {
+    return (events || []).map(normalizeEngineEvent);
+  }
+
+  function snapshotError(message) {
+    throw new Error(`Snapshot non valido: ${message}`);
+  }
+
+  function migrateSnapshotState(rawState, rules) {
+    const state = A.deepClone(rawState);
+    const sourceVersion = state.version === undefined ? 1 : Number(state.version);
+    if (!Number.isInteger(sourceVersion) || sourceVersion < 1) snapshotError("versione assente o non riconosciuta");
+    if (sourceVersion > CURRENT_STATE_VERSION) snapshotError(`versione futura ${sourceVersion}`);
+
+    if (sourceVersion < 2) {
+      const enemyPhase = [A.PHASES.ENEMY_THINK, A.PHASES.ENEMY_PLAY, A.PHASES.ENEMY_ATTACK].includes(state.phase);
+      state.activeSide = state.activeSide === "enemy" || enemyPhase ? "enemy" : "player";
+      const round = Math.max(1, Math.trunc(Number(state.round || 1)));
+      state.turnCounters = state.turnCounters || {
+        player: round,
+        enemy: Math.max(0, round - (state.activeSide === "player" ? 1 : 0))
+      };
+      ["player", "enemy"].forEach(side => {
+        const fighter = state[side];
+        if (!fighter || typeof fighter !== "object") return;
+        fighter.maxHp = Number.isFinite(Number(fighter.maxHp)) ? Number(fighter.maxHp) : Number(rules.startingHp);
+        fighter.revealedCards = Array.isArray(fighter.revealedCards) ? fighter.revealedCards : [];
+        fighter.flags = {
+          cardPlayedThisTurn: false,
+          arcaneReserveUsed: false,
+          battleInstinctUsed: false,
+          ...(fighter.flags || {})
+        };
+        if (Array.isArray(fighter.board)) fighter.board.forEach(unit => {
+          if (unit && !Array.isArray(unit.astralPowerModifiers)) unit.astralPowerModifiers = [];
+        });
+      });
+    }
+    state.version = CURRENT_STATE_VERSION;
+    return state;
+  }
+
+  function validateSnapshotState(state, rules) {
+    if (!state || typeof state !== "object" || Array.isArray(state)) snapshotError("stato mancante");
+    if (state.version !== CURRENT_STATE_VERSION) snapshotError(`versione ${state.version}`);
+    if (!Object.values(A.PHASES).includes(state.phase)) snapshotError(`fase sconosciuta ${state.phase}`);
+    if (!Number.isInteger(state.round) || state.round < 1) snapshotError("round non valido");
+    if (!["player", "enemy"].includes(state.activeSide)) snapshotError("lato attivo non valido");
+    if (!Number.isInteger(state.attackCursor) || state.attackCursor < 0 || state.attackCursor > rules.boardSize) snapshotError("cursore di attacco non valido");
+    if (!state.turnCounters || !["player", "enemy"].every(side => Number.isInteger(state.turnCounters[side]) && state.turnCounters[side] >= 0)) snapshotError("contatori turno non validi");
+    if (![null, "player", "enemy", "draw"].includes(state.winner ?? null)) snapshotError("vincitore non valido");
+    if (typeof state.gameOver !== "boolean") snapshotError("indicatore fine partita non valido");
+    if (state.gameOver && (state.phase !== A.PHASES.GAME_OVER || !state.winner)) snapshotError("fine partita incoerente");
+
+    ["player", "enemy"].forEach(side => {
+      const fighter = state[side];
+      if (!fighter || typeof fighter !== "object" || Array.isArray(fighter)) snapshotError(`combattente ${side} mancante`);
+      if (!Number.isFinite(fighter.hp) || fighter.hp < 0) snapshotError(`vita ${side} non valida`);
+      if (!Number.isFinite(fighter.maxHp) || fighter.maxHp < 1) snapshotError(`vita iniziale ${side} non valida`);
+      if (!Array.isArray(fighter.hand)) snapshotError(`mano ${side} non valida`);
+      if (!Array.isArray(fighter.board) || fighter.board.length !== rules.boardSize) snapshotError(`campo ${side} non valido`);
+      if (!fighter.power || !fighter.powerGain) snapshotError(`poteri ${side} mancanti`);
+      A.SCHOOLS.forEach(school => {
+        const power = fighter.power[school.id];
+        const gain = fighter.powerGain[school.id];
+        if (!Number.isFinite(power) || power < 0 || power > rules.maxPower) snapshotError(`potere ${side}/${school.id} non valido`);
+        if (!Number.isFinite(gain)) snapshotError(`crescita ${side}/${school.id} non valida`);
+      });
+      if (!fighter.flags || typeof fighter.flags !== "object") snapshotError(`flag ${side} mancanti`);
+      if (!Array.isArray(fighter.revealedCards)) snapshotError(`carte rivelate ${side} non valide`);
+      fighter.board.forEach((unit, slot) => {
+        if (!unit) return;
+        if (typeof unit.id !== "string" || !unit.id) snapshotError(`creatura ${side}/${slot} senza id`);
+        if (!Number.isFinite(unit.currentHealth) || unit.currentHealth <= 0) snapshotError(`vita creatura ${side}/${slot} non valida`);
+        if (!Number.isFinite(unit.health) || unit.health <= 0) snapshotError(`vita massima creatura ${side}/${slot} non valida`);
+      });
+    });
+    if (state.pendingCardId !== null && state.pendingCardId !== undefined) {
+      if (typeof state.pendingCardId !== "string" || !state.player.hand.some(card => card.id === state.pendingCardId)) snapshotError("carta selezionata non valida");
+    }
+    return state;
+  }
+
+  function restoreSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) snapshotError("contenuto mancante");
+    const rawRules = snapshot.rules && typeof snapshot.rules === "object" ? snapshot.rules : {};
+    const rules = { ...A.DEFAULT_RULESET, ...A.deepClone(rawRules) };
+    if (!Number.isInteger(rules.boardSize) || rules.boardSize < 1 || rules.boardSize > 20) snapshotError("dimensione campo non valida");
+    if (!Number.isFinite(rules.maxPower) || rules.maxPower < 1) snapshotError("limite potere non valido");
+    const rawState = snapshot.state || snapshot;
+    const state = validateSnapshotState(migrateSnapshotState(rawState, rules), rules);
+    return { rules, state };
+  }
+
   function makePower(rules) {
     const power = {};
     const powerGain = {};
@@ -105,7 +224,7 @@
       this.cards = cards;
       this.rules = rules;
       this.state = {
-        version: 2,
+        version: CURRENT_STATE_VERSION,
         rulesetId: rules.id,
         seed,
         round: 1,
@@ -127,10 +246,11 @@
     }
 
     static fromSnapshot(snapshot, cards) {
+      const restored = restoreSnapshot(snapshot);
       const engine = Object.create(GameEngine.prototype);
-      engine.rules = { ...A.DEFAULT_RULESET, ...(snapshot.rules || {}) };
+      engine.rules = restored.rules;
       engine.cards = (cards || []).map(A.normalizeCard);
-      engine.state = A.deepClone(snapshot.state || snapshot);
+      engine.state = restored.state;
       return engine;
     }
 
@@ -343,7 +463,7 @@
       this.state.attackCursor = 0;
       this.state.phase = sideAttackPhase(side);
       this.checkWinner();
-      return { ok: true, events, card: A.deepClone(card), phase: this.state.phase };
+      return { ok: true, events: normalizeEngineEvents(events), card: A.deepClone(card), phase: this.state.phase };
     }
 
     pass(side) {
@@ -355,7 +475,7 @@
       this.state.attackCursor = 0;
       this.state.phase = sideAttackPhase(side);
       this.addLog(`${side === "player" ? "Tu passi" : "L'avversario passa"}.`);
-      return { ok: true, events: [{ type: "pass", side }], phase: this.state.phase };
+      return { ok: true, events: normalizeEngineEvents([{ type: "pass", side }]), phase: this.state.phase };
     }
 
     _resolveAttackAtSlot(side, slot, options = {}) {
@@ -379,11 +499,11 @@
       const recoveredAstral = typeof A.isRecoveredAstralEngine === "function" && A.isRecoveredAstralEngine(this);
       if (recoveredAstral && typeof A.astralAttackUnit === "function") {
         const result = A.astralAttackUnit(this, side, slot, { forcedByEffect });
-        if (result.skipped || !result.event) return { ok: true, done: false, skipped: true, events: result.events || [] };
+        if (result.skipped || !result.event) return { ok: true, done: false, skipped: true, events: normalizeEngineEvents(result.events) };
         this.addLog(result.multiTarget
           ? `${unit.name} colpisce tutti i nemici.`
           : `${unit.name} infligge ${result.event.damage} danni${result.event.type === "directAttack" ? " diretti" : ""}.`);
-        return { ok: true, done: false, event: result.event, events: result.events || [] };
+        return { ok: true, done: false, event: normalizeEngineEvent(result.event), events: normalizeEngineEvents(result.events) };
       }
 
       const target = defender.board[slot];
@@ -424,7 +544,7 @@
         };
         this.addLog(`${unit.name} infligge ${unit.attack} danni diretti.`);
 
-        if (defender.passives.includes("fire_aura")) {
+        if (unit.attack > 0 && defender.passives.includes("fire_aura")) {
           unit.currentHealth -= 2;
           const died = unit.currentHealth <= 0;
           event.retaliation = { amount: 2, died, health: Math.max(0, unit.currentHealth) };
@@ -433,7 +553,7 @@
       }
 
       this.checkWinner();
-      return { ok: true, done: false, event };
+      return { ok: true, done: false, event: normalizeEngineEvent(event), events: normalizeEngineEvents([event]) };
     }
 
     attackNext(side) {
@@ -473,7 +593,8 @@
       const recoveredAstral = typeof A.isRecoveredAstralEngine === "function" && A.isRecoveredAstralEngine(this);
       if (recoveredAstral && typeof A.astralGrowPowers === "function") {
         const nextSide = this.getOpponentSide(side);
-        A.astralGrowPowers(this, nextSide, []);
+        const events = [];
+        A.astralGrowPowers(this, nextSide, events);
         this.beginSideTurn(nextSide);
         this.state.pendingCardId = null;
         if (side === "player") {
@@ -484,7 +605,7 @@
           this.state.phase = A.PHASES.PLAYER_SELECT;
           this.addLog(`Round ${this.state.round}: i tuoi poteri elementali aumentano.`);
         }
-        return { ok: true, phase: this.state.phase };
+        return { ok: true, events: normalizeEngineEvents(events), phase: this.state.phase };
       }
 
       if (side === "player") {
@@ -544,4 +665,9 @@
   }
 
   A.GameEngine = GameEngine;
+  A.GAME_STATE_VERSION = CURRENT_STATE_VERSION;
+  A.ENGINE_EVENT_CONTRACT_VERSION = EVENT_CONTRACT_VERSION;
+  A.normalizeEngineEvent = normalizeEngineEvent;
+  A.normalizeEngineEvents = normalizeEngineEvents;
+  A.restoreGameSnapshot = restoreSnapshot;
 })(window.Arcane = window.Arcane || {});
