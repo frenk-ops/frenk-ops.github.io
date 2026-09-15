@@ -106,6 +106,36 @@
     });
   }
 
+  function goldenStateProjection(engine, expected) {
+    const projectBoard = board => board.map(unit => unit ? `${unit.id}:${unit.currentHealth}` : null);
+    const projection = {
+      phase: engine.state.phase,
+      playerHp: engine.state.player.hp,
+      enemyHp: engine.state.enemy.hp
+    };
+    if (expected.playerPowers) projection.playerPowers = Object.fromEntries(Object.keys(expected.playerPowers).map(school => [school, engine.state.player.power[school]]));
+    if (expected.enemyPowers) projection.enemyPowers = Object.fromEntries(Object.keys(expected.enemyPowers).map(school => [school, engine.state.enemy.power[school]]));
+    if (expected.playerPowerGain) projection.playerPowerGain = Object.fromEntries(Object.keys(expected.playerPowerGain).map(school => [school, engine.state.player.powerGain[school]]));
+    if (expected.enemyPowerGain) projection.enemyPowerGain = Object.fromEntries(Object.keys(expected.enemyPowerGain).map(school => [school, engine.state.enemy.powerGain[school]]));
+    if (expected.playerBoard) projection.playerBoard = projectBoard(engine.state.player.board);
+    if (expected.enemyBoard) projection.enemyBoard = projectBoard(engine.state.enemy.board);
+    return projection;
+  }
+
+  function buildGoldenReplayEngine(scenario) {
+    const engine = astralEngine(scenario.playerIds, scenario.enemyIds, { seed: `golden:${scenario.id}` });
+    Object.entries(scenario.setup?.hp || {}).forEach(([side, hp]) => { engine.state[side].hp = hp; });
+    Object.entries(scenario.setup?.powers || {}).forEach(([side, powers]) => {
+      Object.entries(powers).forEach(([school, value]) => { engine.state[side].power[school] = value; });
+    });
+    (scenario.setup?.units || []).forEach(unit => placeAstralUnit(engine, unit.side, unit.cardId, unit.slot, unit.health));
+    if (scenario.setup?.phase) engine.state.phase = scenario.setup.phase;
+    const enemyPhases = [A.PHASES.ENEMY_THINK, A.PHASES.ENEMY_PLAY, A.PHASES.ENEMY_ATTACK];
+    engine.state.activeSide = scenario.setup?.activeSide || (enemyPhases.includes(engine.state.phase) ? "enemy" : "player");
+    engine.state.attackCursor = scenario.setup?.attackCursor || 0;
+    return engine;
+  }
+
   const tests = [
     {
       name: "Protocollo multiplayer: comandi e replay producono lo stesso stato",
@@ -179,6 +209,29 @@
         const left = { b: 2, a: { d: 4, c: 3 } };
         const right = { a: { c: 3, d: 4 }, b: 2 };
         assert(A.stableStringify(left) === A.stableStringify(right), "La serializzazione deve essere canonica");
+      }
+    },
+    {
+      name: "Replay golden: le catene tra scuole mantengono eventi, stato e checksum",
+      run() {
+        assert(Array.isArray(A.GOLDEN_REPLAY_SCENARIOS) && A.GOLDEN_REPLAY_SCENARIOS.length >= 3, "Fixture golden mancanti");
+        A.GOLDEN_REPLAY_SCENARIOS.forEach(scenario => {
+          const engine = buildGoldenReplayEngine(scenario);
+          const session = new A.CommandSession(engine, { matchId: `golden:${scenario.id}` });
+          const eventTypes = [];
+          scenario.commands.forEach(spec => {
+            const command = session.createCommand(spec.actor, A.MULTIPLAYER_COMMANDS[spec.type], spec.payload || {});
+            const outcome = session.dispatch(command);
+            assert(outcome.ok, `${scenario.id}: comando ${spec.type} rifiutato: ${outcome.reason}`);
+            (outcome.result.events || []).forEach(event => eventTypes.push(event.type));
+          });
+          assert(JSON.stringify(eventTypes) === JSON.stringify(scenario.expected.eventTypes), `${scenario.id}: eventi ${JSON.stringify(eventTypes)}`);
+          const projection = goldenStateProjection(engine, scenario.expected.state);
+          assert(A.stableStringify(projection) === A.stableStringify(scenario.expected.state), `${scenario.id}: stato ${A.stableStringify(projection)}`);
+          assert(session.checksum === scenario.expected.checksum, `${scenario.id}: checksum ${session.checksum}`);
+          const replayed = A.replayCommands(session.exportReplay(), engine.cards);
+          assert(replayed.checksum === session.checksum, `${scenario.id}: replay non deterministico`);
+        });
       }
     },
     {
