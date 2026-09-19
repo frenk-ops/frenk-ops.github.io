@@ -28,10 +28,12 @@
     if (parsed === 2.75) return 1.5;
     return [0.55, 0.8, 1.2, 1.5].includes(parsed) ? parsed : 1.2;
   };
+  const defaultBoardCreatureNames = !(window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
   let animationSpeed = normalizeAnimationSpeed(preference("animationSpeed", "1.2"));
   let cardArtStyle = "new";
   let parchmentSpellFrames = preference("parchmentSpellFrames", "0") === "1";
   let soundEnabled = preference("soundEnabled", "1") !== "0";
+  let boardCreatureNames = preference("boardCreatureNames", defaultBoardCreatureNames ? "1" : "0") !== "0";
   let busy = false;
   let audioContext = null;
   const originalSoundCache = new Map();
@@ -44,6 +46,7 @@
   document.body.classList.toggle("ui-essential", UI_MODE === "essential");
   document.body.classList.toggle("ui-classic", UI_MODE === "classic");
   document.body.dataset.uiMode = UI_MODE;
+  document.body.dataset.boardCreatureNames = boardCreatureNames ? "show" : "hide";
   let inspectedCardId = null;
   let inspectedCardSide = null;
   let inspectedCardInstanceId = null;
@@ -385,6 +388,20 @@
       return playFallbackSound(name, volume);
     }
   }
+
+  function menuClickControlFromEvent(target) {
+    const control = target?.closest?.("button, summary");
+    if (!control) return null;
+    if (control.disabled || control.getAttribute("aria-disabled") === "true") return null;
+    if (control.matches("#endTurnBtn, .unit, .slot, .game-card, .collection-tile, .revealed-chip")) return null;
+    if (control.closest(".classic-board-column, .classic-hand-grid, .classic-enemy-book, .page-grid")) return null;
+    return control;
+  }
+
+  document.addEventListener("click", event => {
+    if (!menuClickControlFromEvent(event.target)) return;
+    playOriginalSound("click", 0.28);
+  }, true);
 
   function playSchoolSelectionSound() {
     return playSyntheticCue({ type: "triangle", frequency: 560, secondFrequency: 780, duration: 0.16, volume: 0.045 });
@@ -2559,6 +2576,16 @@
     if (bgmEnabled) startBackgroundMusic();
   } catch (e) {}
 
+  function setBoardCreatureNames(enabled, { persist = true } = {}) {
+    boardCreatureNames = Boolean(enabled);
+    document.body.dataset.boardCreatureNames = boardCreatureNames ? "show" : "hide";
+    if (persist) {
+      try { localStorage.setItem("arcane.boardCreatureNames", boardCreatureNames ? "1" : "0"); } catch (e) {}
+    }
+    if ($("#optionsBoardCreatureNames")) $("#optionsBoardCreatureNames").checked = boardCreatureNames;
+    if ($("#duelOptionsBoardCreatureNames")) $("#duelOptionsBoardCreatureNames").checked = boardCreatureNames;
+  }
+
   function syncOptionsPage() {
     if ($("#optionsLanguageSelect")) $("#optionsLanguageSelect").value = A.i18n?.getLanguage?.() || "it";
     if ($("#optionsAnimationSpeed")) $("#optionsAnimationSpeed").value = String(animationSpeed);
@@ -2566,6 +2593,7 @@
     if ($("#optionsSoundEnabled")) $("#optionsSoundEnabled").checked = soundEnabled;
     if ($("#optionsBgmEnabled")) $("#optionsBgmEnabled").checked = bgmEnabled;
     if ($("#optionsParchmentSpells")) $("#optionsParchmentSpells").checked = parchmentSpellFrames;
+    if ($("#optionsBoardCreatureNames")) $("#optionsBoardCreatureNames").checked = boardCreatureNames;
     if ($("#optionsBgmVolume")) $("#optionsBgmVolume").value = String(Math.round(bgmVolume * 100));
   }
 
@@ -2574,6 +2602,7 @@
     if ($("#duelOptionsSoundEnabled")) $("#duelOptionsSoundEnabled").checked = soundEnabled;
     if ($("#duelOptionsBgmEnabled")) $("#duelOptionsBgmEnabled").checked = bgmEnabled;
     if ($("#duelOptionsParchmentSpells")) $("#duelOptionsParchmentSpells").checked = parchmentSpellFrames;
+    if ($("#duelOptionsBoardCreatureNames")) $("#duelOptionsBoardCreatureNames").checked = boardCreatureNames;
     const volume = String(Math.round(bgmVolume * 100));
     if ($("#duelOptionsBgmVolume")) $("#duelOptionsBgmVolume").value = volume;
     if ($("#duelOptionsBgmVolumeValue")) $("#duelOptionsBgmVolumeValue").textContent = `${volume}%`;
@@ -2609,6 +2638,8 @@
   }
   $("#optionsParchmentSpells")?.addEventListener("change", event => setParchmentSpellFrames(event.target.checked));
   $("#duelOptionsParchmentSpells")?.addEventListener("change", event => setParchmentSpellFrames(event.target.checked));
+  $("#optionsBoardCreatureNames")?.addEventListener("change", event => setBoardCreatureNames(event.target.checked));
+  $("#duelOptionsBoardCreatureNames")?.addEventListener("change", event => setBoardCreatureNames(event.target.checked));
   $("#optionsBgmVolume")?.addEventListener("input", event => {
     const battleVolume = $("#bgmVolume");
     battleVolume.value = event.target.value;
@@ -2642,6 +2673,7 @@
     localStorage.removeItem("bgmEnabled");
     localStorage.removeItem("bgmVolume");
     localStorage.removeItem("arcane.parchmentSpellFrames");
+    localStorage.removeItem("arcane.boardCreatureNames");
     animationSpeed = 1.2;
     cardArtStyle = "new";
     soundEnabled = true;
@@ -2659,6 +2691,7 @@
     $("#bgmVolume").value = "12";
     $("#bgmVolume").dispatchEvent(new Event("input"));
     setParchmentSpellFrames(false);
+    setBoardCreatureNames(defaultBoardCreatureNames, { persist: false });
     A.i18n?.setLanguage("it");
     syncOptionsPage();
   });

@@ -2999,6 +2999,9 @@ body[data-animation-speed="slow"] .turn-banner { transition-duration:.65s, .9s; 
   z-index:3;top:auto;bottom:27px;padding:3px 5px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.82),transparent);
   text-transform:none;font-size:.65rem;
 }
+body[data-board-creature-names="hide"] .classic-board-column .unit-art > small {
+  display:none !important;
+}
 .classic-board-column .unit-stats {
   position:absolute;z-index:4;left:3px;right:3px;bottom:3px;min-height:23px;
   background:linear-gradient(180deg,transparent,rgba(0,0,0,.92));

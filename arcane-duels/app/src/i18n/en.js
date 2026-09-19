@@ -78,7 +78,7 @@
     "cards.rarity": "Rarity", "cards.common": "Common", "cards.rare": "Rare", "cards.legendary": "Legendary",
     "cards.cardText": "Card text", "cards.shown": "Showing {shown} of {total} cards",
     "options.title": "Options", "options.intro": "Preferences are saved in this browser and applied to future duels.",
-    "options.language": "Language", "options.animationSpeed": "Animation speed", "options.soundEffects": "Sound effects", "options.music": "Background music", "options.musicVolume": "Music volume", "options.parchmentSpells": "Parchment frame for spells",
+    "options.language": "Language", "options.animationSpeed": "Animation speed", "options.soundEffects": "Sound effects", "options.music": "Background music", "options.musicVolume": "Music volume", "options.parchmentSpells": "Parchment frame for spells", "options.boardCreatureNames": "Show creature names on battlefield",
     "options.resetPreferences": "Reset preferences", "options.resetProgress": "Reset progress and tournaments",
     "options.confirmResetProgress": "Reset profile, trophies and the active tournament?",
     "speed.fastest": "Fastest", "speed.fast": "Fast", "speed.normal": "Normal", "speed.slow": "Slow",

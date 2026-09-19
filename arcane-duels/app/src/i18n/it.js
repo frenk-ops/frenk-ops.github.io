@@ -78,7 +78,7 @@
     "cards.rarity": "Rarità", "cards.common": "Comune", "cards.rare": "Rara", "cards.legendary": "Leggendaria",
     "cards.cardText": "Testo carta", "cards.shown": "{shown} carte mostrate su {total}",
     "options.title": "Opzioni", "options.intro": "Le preferenze vengono salvate in questo browser e applicate anche ai prossimi duelli.",
-    "options.language": "Lingua", "options.animationSpeed": "Velocità animazioni", "options.soundEffects": "Effetti sonori", "options.music": "Musica di sottofondo", "options.musicVolume": "Volume musica", "options.parchmentSpells": "Cornice pergamena per le magie",
+    "options.language": "Lingua", "options.animationSpeed": "Velocità animazioni", "options.soundEffects": "Effetti sonori", "options.music": "Musica di sottofondo", "options.musicVolume": "Volume musica", "options.parchmentSpells": "Cornice pergamena per le magie", "options.boardCreatureNames": "Mostra nomi creature sul campo",
     "options.resetPreferences": "Ripristina preferenze", "options.resetProgress": "Azzera progressi e tornei",
     "options.confirmResetProgress": "Azzerare profilo, trofei e torneo attivo?",
     "speed.fastest": "Molto veloce", "speed.fast": "Veloce", "speed.normal": "Standard", "speed.slow": "Lenta",

@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.22">
+  <link rel="stylesheet" href="styles.css?v=3.0.23">
   <link rel="stylesheet" href="pwa.css?v=1.2.0">
 </head>
 <body class="pages-static-profile">
@@ -189,6 +189,7 @@
                   <label class="duel-pause-check"><input id="duelOptionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
                   <label class="duel-pause-check"><input id="duelOptionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
                   <label class="duel-pause-check"><input id="duelOptionsParchmentSpells" type="checkbox"> <span data-i18n="options.parchmentSpells">Cornice pergamena per le magie</span></label>
+                  <label class="duel-pause-check"><input id="duelOptionsBoardCreatureNames" type="checkbox"> <span data-i18n="options.boardCreatureNames">Mostra nomi creature sul campo</span></label>
                   <label><span><span data-i18n="options.musicVolume">Volume musica</span> <output id="duelOptionsBgmVolumeValue">12%</output></span>
                     <input id="duelOptionsBgmVolume" type="range" min="0" max="100" value="12">
                   </label>
@@ -311,6 +312,7 @@
             <label class="options-check"><input id="optionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
             <label class="options-check"><input id="optionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
             <label class="options-check"><input id="optionsParchmentSpells" type="checkbox"> <span data-i18n="options.parchmentSpells">Cornice pergamena per le magie</span></label>
+            <label class="options-check"><input id="optionsBoardCreatureNames" type="checkbox"> <span data-i18n="options.boardCreatureNames">Mostra nomi creature sul campo</span></label>
             <label><span data-i18n="options.musicVolume">Volume musica</span>
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
@@ -362,8 +364,8 @@
   <script src="src/core/rng.js?v=3.0.0"></script>
   <script src="src/data/cards.js?v=3.0.0"></script>
   <script src="src/data/original-cards.js?v=3.0.0"></script>
-  <script src="src/i18n/en.js?v=3.0.22"></script>
-  <script src="src/i18n/it.js?v=3.0.22"></script>
+  <script src="src/i18n/en.js?v=3.0.23"></script>
+  <script src="src/i18n/it.js?v=3.0.23"></script>
   <script src="src/i18n/index.js?v=3.0.0"></script>
   <script src="src/core/card-schema.js?v=3.0.0"></script>
   <script src="src/data/astral-ai-card-metadata.js?v=3.0.0"></script>
@@ -385,7 +387,7 @@
   <script src="src/ui/navigation.js?v=3.0.0"></script>
   <script src="src/ui/pause-menu.js?v=3.0.16"></script>
   <script src="src/ui/tournament-view.js?v=3.0.18"></script>
-  <script src="src/ui/app.js?v=3.0.27"></script>
+  <script src="src/ui/app.js?v=3.0.28"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
