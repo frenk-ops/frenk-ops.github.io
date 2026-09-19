@@ -1,7 +1,102 @@
 /*
- * PWA-only viewport adjustments.
- * The base UI remains unchanged in a normal browser tab.
+ * PWA viewport and install affordance.
+ * Normal browser rendering stays unchanged except for the optional install button.
  */
+
+.pwa-install-entry[hidden],\n.pwa-install-overlay[hidden] {\n  display: none !important;\n}\n\nbody.pwa-install-dialog-open {\n  overflow: hidden;\n}\n\n.pwa-install-entry {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.pwa-install-button {
+  appearance: none;
+  border: 1px solid rgba(139, 92, 246, .38);
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, .72);
+  color: #e2e8f0;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 5px 18px rgba(2, 6, 23, .22);
+}
+
+.pwa-install-button:hover,
+.pwa-install-button:focus-visible {
+  border-color: rgba(167, 139, 250, .8);
+  outline: none;
+}
+
+.pwa-install-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+  background: rgba(2, 6, 23, .72);
+  backdrop-filter: blur(8px);
+}
+
+.pwa-install-dialog {
+  position: relative;
+  width: min(100%, 360px);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 20px;
+  padding: 22px 20px 18px;
+  background: #101827;
+  color: #f8fafc;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+}
+
+.pwa-install-dialog h2 {
+  margin: 0 28px 10px 0;
+  font-size: 1.15rem;
+}
+
+.pwa-install-dialog p {
+  margin: 0 0 14px;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.pwa-install-steps {
+  margin: 0 0 18px;
+  padding-left: 22px;
+  color: #f8fafc;
+  line-height: 1.55;
+}
+
+.pwa-install-close {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 1.45rem;
+  cursor: pointer;
+}
+
+.pwa-install-confirm {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #334155;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 @media (display-mode: standalone), (display-mode: fullscreen) {
   html,
   body {
@@ -12,19 +107,53 @@
 
   .shell {
     min-height: 100dvh;
-    padding-left: max(12px, env(safe-area-inset-left));
+    padding-top: max(14px, env(safe-area-inset-top));
     padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: max(22px, env(safe-area-inset-bottom));
+    padding-left: max(12px, env(safe-area-inset-left));
+  }
+
+  body:has(#battlePanel:not(.hidden)) {
+    background: #01030d;
   }
 
   body:has(#battlePanel:not(.hidden)) .shell {
-    padding-left: env(safe-area-inset-left);
+    min-height: 100dvh;
+    padding-top: env(safe-area-inset-top);
     padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    background: #01030d;
+  }
+
+  /* The base duel layout deliberately removes shell padding. Restore the
+     hardware safe area in standalone mode so header/footer never sit below
+     the iPhone status area, Dynamic Island or Home indicator. */
+  body:has(#battlePanel:not(.hidden)) .classic-duel-screen {
+    min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 821px) {
+    body:has(#battlePanel:not(.hidden)) .classic-duel-frame {
+      height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+  }
+
+  .pwa-install-entry {
+    display: none !important;
   }
 
   @media (max-width: 480px) {
     .shell {
-      padding-left: max(8px, env(safe-area-inset-left));
       padding-right: max(8px, env(safe-area-inset-right));
+      padding-left: max(8px, env(safe-area-inset-left));
+    }
+
+    body:has(#battlePanel:not(.hidden)) .shell {
+      padding-right: env(safe-area-inset-right);
+      padding-left: env(safe-area-inset-left);
     }
   }
 }

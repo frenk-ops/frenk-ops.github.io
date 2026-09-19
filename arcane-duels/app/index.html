@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <title>Arcane Duels — Astral Classic 3.0</title>
   <link rel="stylesheet" href="styles.css?v=3.0.22">
-  <link rel="stylesheet" href="pwa.css?v=1.0.0">
+  <link rel="stylesheet" href="pwa.css?v=1.1.0">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -80,6 +80,9 @@
               </details>
               <h3 id="talentChoiceHeading" class="visually-hidden">Scegli partita</h3>
               <div id="talentChoices" class="talent-grid classic-start-buttons"></div>
+              <div id="pwaInstallEntry" class="pwa-install-entry" hidden>
+                <button id="pwaInstallBtn" class="pwa-install-button" type="button">⇩ Installa app</button>
+              </div>
               <section class="online-lobby dev-only hidden" aria-labelledby="onlineLobbyTitle">
                 <h3 id="onlineLobbyTitle" data-i18n="online.title">Partita online</h3><p class="pages-static-note">Il multiplayer richiede la versione con server e non è disponibile su GitHub Pages.</p>
                 <div id="onlineLobbyActions" class="hidden">
@@ -342,6 +345,19 @@
   <div id="duelFxLayer" class="duel-fx-layer" aria-hidden="true"></div>
   <div id="turnBanner" class="turn-banner" aria-live="polite"></div>
 
+  <div id="pwaInstallOverlay" class="pwa-install-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pwaInstallTitle">
+    <div class="pwa-install-dialog">
+      <button class="pwa-install-close" type="button" data-pwa-install-close aria-label="Chiudi">×</button>
+      <h2 id="pwaInstallTitle">Installa Arcane Duels</h2>
+      <p id="pwaInstallIntro">Su iPhone l’installazione richiede un passaggio nel menu Condividi.</p>
+      <ol class="pwa-install-steps">
+        <li id="pwaInstallStep1">Tocca <strong>Condividi</strong> nel browser.</li>
+        <li id="pwaInstallStep2">Scegli <strong>Aggiungi alla schermata Home</strong>.</li>
+      </ol>
+      <button class="pwa-install-confirm" type="button" data-pwa-install-close>Ho capito</button>
+    </div>
+  </div>
+
   <script src="src/core/constants.js?v=3.0.0"></script>
   <script src="src/core/rng.js?v=3.0.0"></script>
   <script src="src/data/cards.js?v=3.0.0"></script>
@@ -370,6 +386,7 @@
   <script src="src/ui/pause-menu.js?v=3.0.16"></script>
   <script src="src/ui/tournament-view.js?v=3.0.18"></script>
   <script src="src/ui/app.js?v=3.0.27"></script>
+  <script src="pwa-install.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
