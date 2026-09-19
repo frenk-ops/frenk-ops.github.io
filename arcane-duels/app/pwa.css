@@ -1,0 +1,30 @@
+/*
+ * PWA-only viewport adjustments.
+ * The base UI remains unchanged in a normal browser tab.
+ */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    min-height: 100%;
+    min-height: 100dvh;
+    overscroll-behavior: none;
+  }
+
+  .shell {
+    min-height: 100dvh;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  body:has(#battlePanel:not(.hidden)) .shell {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  @media (max-width: 480px) {
+    .shell {
+      padding-left: max(8px, env(safe-area-inset-left));
+      padding-right: max(8px, env(safe-area-inset-right));
+    }
+  }
+}

@@ -4,8 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
+  <meta name="application-name" content="Arcane Duels">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Arcane Duels">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <title>Arcane Duels — Astral Classic 3.0</title>
   <link rel="stylesheet" href="styles.css?v=3.0.22">
+  <link rel="stylesheet" href="pwa.css?v=1.0.0">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -363,5 +370,14 @@
   <script src="src/ui/pause-menu.js?v=3.0.16"></script>
   <script src="src/ui/tournament-view.js?v=3.0.18"></script>
   <script src="src/ui/app.js?v=3.0.27"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(error => {
+          console.warn("Arcane Duels service worker non disponibile:", error);
+        });
+      });
+    }
+  </script>
 </body>
 </html>
