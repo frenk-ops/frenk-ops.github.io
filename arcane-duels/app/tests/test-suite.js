@@ -161,6 +161,28 @@
       }
     },
     {
+      name: "Una creatura richiede una casella libera esplicita e non sostituisce quella occupata",
+      run() {
+        const engine = engineWithHands();
+        const card = engine.state.player.hand[0];
+        const occupant = { ...A.deepClone(card), instanceId: "existing-creature", currentHealth: card.health, owner: "player" };
+        engine.state.player.board[0] = occupant;
+        const session = new A.CommandSession(engine, { matchId: "creature-slot-regression" });
+        const selection = session.dispatch(session.createCommand("player", A.MULTIPLAYER_COMMANDS.SELECT, { cardId: card.id }));
+        assert(selection.ok && engine.state.phase === A.PHASES.PLAYER_TARGET, "La creatura deve restare selezionata in attesa del campo");
+        const before = session.checksum;
+        for (const slot of [null, 0, -1, 1.5]) {
+          const rejected = session.dispatch(session.createCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: card.id, slot }));
+          assert(!rejected.ok, `La casella ${slot} non deve essere accettata`);
+          assert(session.checksum === before && engine.state.player.board[0]?.instanceId === "existing-creature", `La casella ${slot} ha mutato il campo`);
+          assert(engine.state.pendingCardId === card.id && engine.state.phase === A.PHASES.PLAYER_TARGET, "La selezione deve restare attiva dopo il rifiuto");
+        }
+        const played = session.dispatch(session.createCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: card.id, slot: 1 }));
+        assert(played.ok, "La casella libera selezionata deve accettare la creatura");
+        assert(engine.state.player.board[0]?.instanceId === "existing-creature" && engine.state.player.board[1]?.id === card.id, "La creatura esistente deve rimanere intatta");
+      }
+    },
+    {
       name: "Protocollo multiplayer: rifiuta sequenze vecchie e desincronizzate senza mutare lo stato",
       run() {
         const engine = engineWithHands();

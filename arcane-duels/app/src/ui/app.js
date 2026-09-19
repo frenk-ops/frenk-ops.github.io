@@ -788,7 +788,8 @@
         cell.addEventListener("focus", inspectUnit);
         cell.addEventListener("click", inspectUnit);
       } else {
-        const isValidTarget = side === "player" && engine.state.phase === A.PHASES.PLAYER_TARGET;
+        const pendingCard = side === "player" ? engine.getCard("player", engine.state.pendingCardId) : null;
+        const isValidTarget = side === "player" && engine.state.phase === A.PHASES.PLAYER_TARGET && pendingCard?.type === "creature";
         cell.textContent = isValidTarget ? "Evoca qui" : `${slot + 1}`;
         cell.classList.toggle("valid-target", isValidTarget);
         if (side === "player") cell.addEventListener("click", () => onPlayerSlot(slot));
@@ -1562,6 +1563,9 @@
       const card = engine.getCard("player", cardId);
       if (!card) return;
       if (card.type === "creature") {
+        if (engine.state.pendingCardId === cardId && engine.state.phase === A.PHASES.PLAYER_TARGET) {
+          return setMessage(t("status.selectSlot", { card: cardName(card) }));
+        }
         const selected = engine.selectCard(cardId);
         if (!selected.ok) return setMessage(selected.reason);
         renderGame();
@@ -1571,7 +1575,9 @@
       return;
     }
 
-    const isSpellConfirmTap = !supportsHoverPreview
+    const pendingCard = engine.getCard("player", cardId);
+    const isSpellConfirmTap = pendingCard?.type === "spell"
+      && !supportsHoverPreview
       && engine.state.phase === A.PHASES.PLAYER_TARGET
       && engine.state.pendingCardId === cardId;
 
@@ -1596,6 +1602,10 @@
 
     if (engine.state.phase === A.PHASES.PLAYER_TARGET) {
       const sameCard = engine.state.pendingCardId === cardId;
+      if (sameCard && pendingCard?.type === "creature") {
+        setMessage(t("status.selectSlot", { card: cardName(pendingCard) }));
+        return;
+      }
       issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.CANCEL_SELECTION);
       if (sameCard) {
         setMessage(t("status.selectionCancelled"));
@@ -1640,12 +1650,14 @@
   }
 
   async function onPlayerSlot(slot) {
+    if (!engine || busy || engine.state.phase !== A.PHASES.PLAYER_TARGET) return;
+    const pendingCard = engine.getCard("player", engine.state.pendingCardId);
+    if (pendingCard?.type !== "creature" || engine.state.player.board[slot]) return;
     if (remoteDuelActive) {
       const cardId = engine.state.pendingCardId;
       if (cardId) await resolveRemoteMove(A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot });
       return;
     }
-    if (!engine || busy || engine.state.phase !== A.PHASES.PLAYER_TARGET) return;
     const healthBefore = captureHealthState();
     const result = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, {
       cardId: engine.state.pendingCardId,

@@ -417,6 +417,15 @@
       if (move?.type === "pass") return this.pass(side);
       const card = this.getCard(side, move?.cardId);
       if (!card) return { ok: false, reason: "Carta non trovata." };
+      if (card.type === "creature") {
+        const slot = move?.slot;
+        if (!Number.isInteger(slot) || slot < 0 || slot >= this.rules.boardSize) {
+          return { ok: false, reason: "Seleziona una casella libera sul campo per evocare la creatura." };
+        }
+        if (this.getFighter(side).board[slot]) {
+          return { ok: false, reason: "La casella selezionata è già occupata." };
+        }
+      }
       const playable = this.getPlayability(side, card, move.slot ?? null);
       if (!playable.ok) {
         if (side === "player") this.state.phase = A.PHASES.PLAYER_SELECT;
