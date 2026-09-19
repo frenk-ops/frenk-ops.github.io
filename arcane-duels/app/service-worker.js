@@ -1,14 +1,14 @@
 "use strict";
 
-const SHELL_CACHE = "arcane-duels-shell-v3";
-const RUNTIME_CACHE = "arcane-duels-runtime-v3";
+const SHELL_CACHE = "arcane-duels-shell-v4";
+const RUNTIME_CACHE = "arcane-duels-runtime-v4";
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./pwa.css",
-  "./pwa-install.js",
+  "./pwa-install-v2.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

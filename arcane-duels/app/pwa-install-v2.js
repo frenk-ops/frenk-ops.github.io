@@ -19,29 +19,45 @@
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-  const showEntry = () => {
-    if (!isStandalone()) entry.hidden = false;
-  };
-
   const hideEntry = () => {
     entry.hidden = true;
+    entry.style.display = "none";
   };
 
-  const openInstructions = () => {
-    overlay.hidden = false;
-    document.body.classList.add("pwa-install-dialog-open");
+  const showEntry = () => {
+    if (isStandalone()) {
+      hideEntry();
+      return;
+    }
+    entry.hidden = false;
+    entry.style.display = "flex";
   };
 
   const closeInstructions = () => {
     overlay.hidden = true;
+    overlay.style.display = "none";
+    overlay.setAttribute("aria-hidden", "true");
     document.body.classList.remove("pwa-install-dialog-open");
   };
 
-  if (isStandalone()) {
-    hideEntry();
-    return;
-  }
+  const openInstructions = () => {
+    if (isStandalone()) {
+      closeInstructions();
+      hideEntry();
+      return;
+    }
+    overlay.hidden = false;
+    overlay.style.display = "grid";
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.classList.add("pwa-install-dialog-open");
+  };
 
+  // Fail-safe: the install UI must never be visible just because CSS failed
+  // to load or an older stylesheet is still cached.
+  hideEntry();
+  closeInstructions();
+
+  if (isStandalone()) return;
   if (isIOS) showEntry();
 
   window.addEventListener("beforeinstallprompt", event => {
@@ -56,7 +72,23 @@
     closeInstructions();
   });
 
+  const standaloneMedia = window.matchMedia("(display-mode: standalone)");
+  if (typeof standaloneMedia.addEventListener === "function") {
+    standaloneMedia.addEventListener("change", () => {
+      if (isStandalone()) {
+        hideEntry();
+        closeInstructions();
+      }
+    });
+  }
+
   button.addEventListener("click", async () => {
+    if (isStandalone()) {
+      hideEntry();
+      closeInstructions();
+      return;
+    }
+
     if (deferredPrompt) {
       deferredPrompt.prompt();
       try {
@@ -80,6 +112,8 @@
   });
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && !overlay.hidden) closeInstructions();
+    if (event.key === "Escape") closeInstructions();
   });
+
+  window.addEventListener("pagehide", closeInstructions);
 })();

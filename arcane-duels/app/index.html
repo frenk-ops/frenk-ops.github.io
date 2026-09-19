@@ -80,7 +80,7 @@
               </details>
               <h3 id="talentChoiceHeading" class="visually-hidden">Scegli partita</h3>
               <div id="talentChoices" class="talent-grid classic-start-buttons"></div>
-              <div id="pwaInstallEntry" class="pwa-install-entry" hidden>
+              <div id="pwaInstallEntry" class="pwa-install-entry" hidden style="display:none">
                 <button id="pwaInstallBtn" class="pwa-install-button" type="button">⇩ Installa app</button>
               </div>
               <section class="online-lobby dev-only hidden" aria-labelledby="onlineLobbyTitle">
@@ -345,7 +345,7 @@
   <div id="duelFxLayer" class="duel-fx-layer" aria-hidden="true"></div>
   <div id="turnBanner" class="turn-banner" aria-live="polite"></div>
 
-  <div id="pwaInstallOverlay" class="pwa-install-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pwaInstallTitle">
+  <div id="pwaInstallOverlay" class="pwa-install-overlay" hidden style="display:none" role="dialog" aria-modal="true" aria-labelledby="pwaInstallTitle">
     <div class="pwa-install-dialog">
       <button class="pwa-install-close" type="button" data-pwa-install-close aria-label="Chiudi">×</button>
       <h2 id="pwaInstallTitle">Installa Arcane Duels</h2>
@@ -386,7 +386,7 @@
   <script src="src/ui/pause-menu.js?v=3.0.16"></script>
   <script src="src/ui/tournament-view.js?v=3.0.18"></script>
   <script src="src/ui/app.js?v=3.0.27"></script>
-  <script src="pwa-install.js?v=1.0.0"></script>
+  <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
