@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <title>Arcane Duels — Astral Classic 3.0</title>
   <link rel="stylesheet" href="styles.css?v=3.0.23">
-  <link rel="stylesheet" href="pwa.css?v=1.2.0">
+  <link rel="stylesheet" href="pwa.css?v=1.3.0">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -20,6 +20,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
+        <small class="app-version-badge" data-arcane-version>v0.19.0 · build 4127d05</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -30,6 +31,9 @@
         <button class="tab dev-only hidden" data-view="editor" data-i18n="nav.editor">Editor</button>
       </nav>
       <span class="classic-topbar-balance" aria-hidden="true"></span>
+      <div id="pwaInstallEntry" class="pwa-install-entry pwa-install-entry-topbar" hidden style="display:none">
+        <button id="pwaInstallBtn" class="pwa-install-button" type="button">⇩ Installa app</button>
+      </div>
     </header>
 
     <main>
@@ -80,9 +84,6 @@
               </details>
               <h3 id="talentChoiceHeading" class="visually-hidden">Scegli partita</h3>
               <div id="talentChoices" class="talent-grid classic-start-buttons"></div>
-              <div id="pwaInstallEntry" class="pwa-install-entry" hidden style="display:none">
-                <button id="pwaInstallBtn" class="pwa-install-button" type="button">⇩ Installa app</button>
-              </div>
               <section class="online-lobby dev-only hidden" aria-labelledby="onlineLobbyTitle">
                 <h3 id="onlineLobbyTitle" data-i18n="online.title">Partita online</h3><p class="pages-static-note">Il multiplayer richiede la versione con server e non è disponibile su GitHub Pages.</p>
                 <div id="onlineLobbyActions" class="hidden">
@@ -317,6 +318,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.19.0 · build 4127d05</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
