@@ -118,7 +118,7 @@
     "ability.life_knowledge.name": "Sapienza Vitale", "ability.life_knowledge.description": "Inizi con +20 Vita.",
     "nav.editor": "Editor", "nav.help": "Aiuto", "nav.options": "Opzioni",
     "pause.title": "Pausa", "pause.continue": "Continua", "pause.restart": "Ricomincia il duello",
-    "pause.restartHint": "Stessi grimori e stesso seed", "pause.newDuel": "Nuovo duello", "pause.newDuelHint": "Torna alla configurazione",
+    "pause.restartHint": "Stessi grimori e stesso seed", "pause.newDuel": "Nuovo duello", "pause.newDuelHint": "Stesse regole, nuova partita",
     "pause.abandonToMenu": "Abbandona e torna al menu", "pause.abandonMatch": "Abbandona incontro",
     "pause.unsaved": "Il duello corrente viene salvato automaticamente su questo dispositivo.",
     "pause.duelSubtitle": "Duello contro {opponent}", "pause.multiplayerSubtitle": "Partita online contro {opponent}", "pause.tournamentSubtitle": "Incontro di torneo contro {opponent}",

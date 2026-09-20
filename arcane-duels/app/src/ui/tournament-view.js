@@ -79,7 +79,7 @@
         <div class="specialization-select-control">
           <span class="specialization-select-icon is-random" aria-hidden="true">🎲</span>
           <select id="tournamentTalentSelect">
-            <option value="random">🎲 ${t("menu.randomSpecialization")}</option>
+            <option value="random">${t("menu.randomSpecialization")}</option>
             ${specializations.map(item => `<option value="${item.id}">${specializationName(item.id)}</option>`).join("")}
           </select>
         </div>
@@ -114,7 +114,7 @@
   }
 
   function renderActive(context) {
-    const { tournament, t, specialization, specializationName, schoolIconMarkup, leagueLabel, difficultyLabel, tournamentModeLabel, escapeHtml } = context;
+    const { tournament, t, specialization, specializationName, specializationIconMarkup, leagueLabel, difficultyLabel, tournamentModeLabel, escapeHtml } = context;
     const current = tournament.opponents[tournament.currentMatch];
     const remainingWins = Math.max(0, tournament.winTarget - tournament.wins);
     const playerSpecialization = tournament.specialization ? specialization(tournament.specialization) : null;
@@ -136,7 +136,7 @@
           <div><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
           <div><small>${t("tournament.losses")}</small><strong>${tournament.losses}</strong></div>
           <div><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
-          <div><small>${t("tournament.specialization")}</small><strong class="tournament-specialization-value">${playerSpecialization ? `${schoolIconMarkup(playerSpecialization.talent, "school-icon-svg tournament-school-icon")}<span>${escapeHtml(specializationName(tournament.specialization))}</span>` : t("tournament.noSpecialization")}</strong></div>
+          <div><small>${t("tournament.specialization")}</small><strong class="tournament-specialization-value">${playerSpecialization ? `${specializationIconMarkup(tournament.specialization, "school-icon-svg tournament-school-icon")}<span>${escapeHtml(specializationName(tournament.specialization))}</span>` : t("tournament.noSpecialization")}</strong></div>
         </div>
 
         <div class="passive-list">

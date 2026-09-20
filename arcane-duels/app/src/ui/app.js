@@ -1509,14 +1509,22 @@
   }
 
   function specializationLabel(choice) {
-    if (choice === "random") return `🎲 ${t("menu.randomSpecialization")}`;
+    if (choice === "random") return t("menu.randomSpecialization");
     const spec = A.getAstralSpecialization?.(choice);
     return spec ? t(`specialization.${spec.id}`) : t("menu.randomSpecialization");
+  }
+
+  function arcaneWizardIconMarkup(className = "school-icon-svg specialization-school-icon") {
+    return `<svg class="${className} specialization-wizard-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"></path>
+      <path d="M5 3v4M3 5h4M19 17v4M17 19h4"></path>
+    </svg>`;
   }
 
   function specializationIconMarkup(choice, className = "school-icon-svg specialization-school-icon") {
     if (choice === "random") return '<span class="specialization-random-icon" aria-hidden="true">🎲</span>';
     const spec = A.getAstralSpecialization?.(choice);
+    if (spec?.id === "wizard") return arcaneWizardIconMarkup(className);
     return spec?.talent ? schoolIconMarkup(spec.talent, className) : "";
   }
 
@@ -1538,6 +1546,7 @@
     }
     const choice = select.value || "random";
     icon.classList.toggle("is-random", choice === "random");
+    icon.classList.toggle("is-wizard", choice === "wizard");
     icon.innerHTML = specializationIconMarkup(choice);
   }
 
@@ -1545,7 +1554,7 @@
     if (!select) return;
     const current = select.value;
     select.innerHTML = [
-      `<option value="random">🎲 ${t("menu.randomSpecialization")}</option>`,
+      `<option value="random">${t("menu.randomSpecialization")}</option>`,
       ...A.ASTRAL_SPECIALIZATIONS.map(item => `<option value="${item.id}">${t(`specialization.${item.id}`)}</option>`)
     ].join("");
     const valid = current === "random" || A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current);
@@ -1769,7 +1778,6 @@
 
   async function abandonCurrentDuel() {
     const online = remoteDuelActive;
-    if (!confirm(t(online ? "pause.confirmAbandonOnline" : "pause.confirmAbandonDuel"))) return reopenPauseAfterCancelledAction();
     if (online) {
       stopRemoteTimers();
       await remoteRoomClient?.forfeit().catch(() => {});
@@ -1801,7 +1809,18 @@
       const launch = currentDuelLaunch;
       startDuel(launch.playerTalent, launch.fromTournament, launch.selectedSpecialization, launch.requestedMode, launch.seed, launch.enemySpecializationChoice);
     },
-    onNewDuel: () => { restartDuel(); switchView("game"); },
+    onNewDuel: () => {
+      if (!currentDuelLaunch || busy || remoteDuelActive || tournamentMatch) return;
+      const launch = currentDuelLaunch;
+      startDuel(
+        launch.playerTalent,
+        false,
+        launch.selectedSpecialization,
+        launch.requestedMode,
+        createDuelSeed(),
+        launch.enemySpecializationChoice
+      );
+    },
     onOptions: syncDuelPauseOptions,
     onAbandonDuel: abandonCurrentDuel,
     onAbandonTournamentMatch: abandonTournamentEncounter
@@ -2438,6 +2457,13 @@
     return cards.find(card => card.id === inspectedCardId) || null;
   }
 
+  function printedCardAttack(card) {
+    if (!card || card.type === "spell") return 0;
+    const printedCard = allAstralCards().find(item => item.id === card.id);
+    const value = printedCard?.attack ?? card.attack ?? 0;
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
   function getInspectedBoardUnit() {
     if (!engine || !inspectedCardSide || !inspectedCardInstanceId) return null;
     return engine.state[inspectedCardSide]?.board?.find(unit =>
@@ -2705,7 +2731,7 @@
     }
     const inspectedUnit = getInspectedBoardUnit();
     const displayedCard = inspectedUnit || card;
-    const displayedAttack = inspectedUnit ? displayedUnitAttack(inspectedCardSide, inspectedUnit) : card.attack;
+    const printedAttack = printedCardAttack(card);
     renderPreviewInto(target, displayedCard, inspectedUnit ? inspectedCardSide : null);
     const inspectedUnitIsSick = inspectedUnit && typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(inspectedUnit, inspectedCardSide);
     if (inspectedUnitIsSick) {
@@ -2718,7 +2744,7 @@
     $("#inspectCardTitle").textContent = cardName(card);
     $("#inspectCardAbility").innerHTML = cardDescriptionHtml(card, inspectedCardSide);
     const combatDetails = card.type === "spell" ? "" : `
-      <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(displayedAttack)}</b></span>
+      <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(printedAttack)}</b></span>
       <span class="detail-combat-stat detail-health"><small><i aria-hidden="true">♥</i> ${t("ui.life")}</small><b>${escapeHtml(displayedCard.currentHealth ?? displayedCard.health)}</b></span>`;
     $("#inspectCardDetails").innerHTML = `
       <span class="detail-school"><small>${t("ui.school")}</small><b>${escapeHtml(schoolName(card.school))}</b></span>
@@ -2726,7 +2752,7 @@
       <span class="detail-cost"><small>${t("ui.cost")}</small><b>${escapeHtml(card.level)}</b></span>
       ${combatDetails}`;
     const previewCombatMeta = card.type === "spell" ? "" : `
-        <div><small>${t("ui.attack")}</small><strong>${escapeHtml(displayedAttack)}</strong></div>
+        <div><small>${t("ui.attack")}</small><strong>${escapeHtml(printedAttack)}</strong></div>
         <div><small>${t("cards.health")}</small><strong>${escapeHtml(displayedCard.currentHealth ?? displayedCard.health)}</strong></div>`;
     const rarity = card.level >= 8 ? t("cards.legendary") : card.level >= 6 ? t("cards.rare") : t("cards.common");
     $("#inspectCardMeta").innerHTML = `
@@ -2899,9 +2925,7 @@
     $("#mobileCardInspectText").textContent = cardDescription(card, side);
 
     const cost = engine && side ? engine.effectiveCost(side, card) : card.level;
-    const attack = side && card.instanceId && card.type !== "spell"
-      ? displayedUnitAttack(side, card)
-      : card.attack;
+    const attack = printedCardAttack(card);
     const health = card.currentHealth ?? card.health ?? 0;
     const stats = $("#mobileCardInspectStats");
     if (stats) {
@@ -3905,9 +3929,7 @@
 
     const meta = document.createElement("div");
     meta.className = "preview-meta";
-    const attack = side && card.instanceId && card.type !== "spell"
-      ? displayedUnitAttack(side, card)
-      : card.attack;
+    const attack = printedCardAttack(card);
     const blocks = [
       { key: "cost", value: cost, label: t("cards.levelCost") },
       { key: "attack", value: card.type === "spell" ? "—" : attack, label: t("ui.attack") },
@@ -3958,7 +3980,7 @@
     const newButton = $("#newTournamentBtn");
     const abandonButton = $("#abandonTournamentBtn");
     const context = {
-      tournament, t, school, schoolName, schoolIconMarkup, escapeHtml, abilityName, abilityDescription, spellbookModeLabel,
+      tournament, t, school, schoolName, schoolIconMarkup, specializationIconMarkup, escapeHtml, abilityName, abilityDescription, spellbookModeLabel,
       specializations: A.ASTRAL_SPECIALIZATIONS,
       specialization: id => A.getAstralSpecialization?.(id),
       specializationName: id => t(`specialization.${A.getAstralSpecialization?.(id)?.id || id}`),

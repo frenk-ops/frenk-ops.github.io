@@ -118,7 +118,7 @@
     "ability.life_knowledge.name": "Life Knowledge", "ability.life_knowledge.description": "Start with +20 Life.",
     "nav.editor": "Editor", "nav.help": "Help", "nav.options": "Options",
     "pause.title": "Pause", "pause.continue": "Continue", "pause.restart": "Restart duel",
-    "pause.restartHint": "Same spellbooks and seed", "pause.newDuel": "New duel", "pause.newDuelHint": "Return to setup",
+    "pause.restartHint": "Same spellbooks and seed", "pause.newDuel": "New duel", "pause.newDuelHint": "Same rules, fresh match",
     "pause.abandonToMenu": "Abandon and return to menu", "pause.abandonMatch": "Abandon match",
     "pause.unsaved": "The current duel is saved automatically on this device.",
     "pause.duelSubtitle": "Duel against {opponent}", "pause.multiplayerSubtitle": "Online game against {opponent}", "pause.tournamentSubtitle": "Tournament match against {opponent}",
