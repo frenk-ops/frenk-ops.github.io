@@ -918,7 +918,7 @@
         const cards=A.getCardSet("astral-original");
         const result=A.generateRecoveredAstralHands(cards,{seed:"knowledge-ability",enemyDifficulty:"novice",playerAbilities:[29,30]});
         const names=new Set(result.player.map(card=>card.name));
-        ["Fire elemental","Water elemental","Air elemental","Earth elemental","Efreet"].forEach(name=>assert(names.has(name),`Carta Knowledge mancante: ${name}`));
+        ["Fire Elemental","Water Elemental","Air Elemental","Earth Elemental","Efreet"].forEach(name=>assert(names.has(name),`Carta Knowledge mancante: ${name}`));
         assert(result.player.length===25,`Conteggio dopo Knowledge: ${result.player.length}`);
       }
     },
