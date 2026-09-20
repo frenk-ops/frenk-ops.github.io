@@ -83,7 +83,9 @@
   let remoteRenderedSnapshotKey = "";
   let remoteRefreshBusy = false;
   let multiplayerServerStatus = "idle";
+  let multiplayerServerVersion = "";
   let multiplayerServerCheckPromise = null;
+  let multiplayerServerRetryTimer = null;
   let multiplayerControlsLocked = false;
   let multiplayerUpdateRequested = false;
   let inspectedRemoteRoomCode = "";
@@ -271,6 +273,7 @@
     return new A.RemoteRoomClient({
       baseUrl: A.MULTIPLAYER_API_URL,
       clientVersion: APP_VERSION,
+      compatibilityVersion: multiplayerServerVersion || APP_VERSION,
       protocolVersion: A.MULTIPLAYER_PROTOCOL_VERSION
     });
   }
@@ -366,21 +369,41 @@
     if (!activationRequested) window.setTimeout(() => location.reload(), 1000);
   }
 
+  function scheduleMultiplayerServerRetry(delay = 4000) {
+    if (multiplayerServerRetryTimer) window.clearTimeout(multiplayerServerRetryTimer);
+    multiplayerServerRetryTimer = window.setTimeout(() => {
+      multiplayerServerRetryTimer = null;
+      checkMultiplayerServer({ force: true });
+    }, delay);
+  }
+
   function acceptMultiplayerCompatibility(payload) {
     const serverVersion = String(payload?.appVersion || "");
     const serverProtocol = Number(payload?.protocolVersion);
     const clientProtocol = Number(A.MULTIPLAYER_PROTOCOL_VERSION);
-    if (serverVersion === APP_VERSION && serverProtocol === clientProtocol) return true;
+    if (serverVersion) multiplayerServerVersion = serverVersion;
 
-    const clientIsOlder = serverVersion && APP_VERSION
-      ? compareAppVersions(APP_VERSION, serverVersion) < 0
-      : serverProtocol > clientProtocol;
-    if (clientIsOlder) {
-      requestLatestAppVersion();
-    } else {
-      setMultiplayerServerState("connecting", t("online.serverUpdating"));
+    if (!Number.isFinite(serverProtocol)) {
+      setMultiplayerServerState("offline");
+      return false;
     }
-    return false;
+
+    if (serverProtocol !== clientProtocol) {
+      if (serverProtocol > clientProtocol) {
+        requestLatestAppVersion();
+      } else {
+        setMultiplayerServerState("connecting", t("online.serverUpdating"));
+        scheduleMultiplayerServerRetry();
+      }
+      return false;
+    }
+
+    if (serverVersion && APP_VERSION && compareAppVersions(APP_VERSION, serverVersion) < 0) {
+      requestLatestAppVersion();
+      return false;
+    }
+
+    return true;
   }
 
   function handleMultiplayerCompatibilityError(error) {
@@ -397,14 +420,23 @@
       setMultiplayerServerState("offline", t("online.notConfigured"));
       return false;
     }
-    if (multiplayerServerCheckPromise && !options.force) return multiplayerServerCheckPromise;
+    if (multiplayerServerCheckPromise) return multiplayerServerCheckPromise;
     setMultiplayerServerState("connecting");
-    multiplayerServerCheckPromise = fetch(`${A.MULTIPLAYER_API_URL}/health`, { cache: "no-store" })
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+    multiplayerServerCheckPromise = fetch(`${A.MULTIPLAYER_API_URL}/health`, {
+      cache: "no-store",
+      signal: controller.signal
+    })
       .then(async response => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const payload = await response.json();
         if (!payload?.ok) throw new Error("Health check failed");
         if (!acceptMultiplayerCompatibility(payload)) return false;
+        if (multiplayerServerRetryTimer) {
+          window.clearTimeout(multiplayerServerRetryTimer);
+          multiplayerServerRetryTimer = null;
+        }
         setMultiplayerServerState("online");
         return true;
       })
@@ -413,6 +445,7 @@
         return false;
       })
       .finally(() => {
+        window.clearTimeout(timeoutId);
         multiplayerServerCheckPromise = null;
       });
     return multiplayerServerCheckPromise;

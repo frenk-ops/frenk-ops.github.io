@@ -11,13 +11,15 @@
       this.checksum = null;
       this.state = null;
       this.clientVersion = String(options.clientVersion || "");
+      this.compatibilityVersion = String(options.compatibilityVersion || this.clientVersion);
       this.protocolVersion = Number(options.protocolVersion || A.MULTIPLAYER_PROTOCOL_VERSION || 0);
     }
 
     compatibility(options = {}) {
       return {
         ...options,
-        clientVersion: this.clientVersion,
+        clientVersion: this.compatibilityVersion,
+        gameVersion: this.clientVersion,
         protocolVersion: this.protocolVersion
       };
     }
@@ -31,7 +33,8 @@
 
     async inspect(code) {
       const params = new URLSearchParams({
-        clientVersion: this.clientVersion,
+        clientVersion: this.compatibilityVersion,
+        gameVersion: this.clientVersion,
         protocolVersion: String(this.protocolVersion)
       });
       return this.request(`/api/rooms/${encodeURIComponent(code)}/info?${params}`);

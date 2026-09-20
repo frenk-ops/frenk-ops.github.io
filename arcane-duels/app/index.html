@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
-  <meta name="arcane-app-version" content="0.21.9">
+  <meta name="arcane-app-version" content="0.21.10">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
@@ -22,7 +22,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.21.9 · build 56dcfc1</small>
+        <small class="app-version-badge" data-arcane-version>v0.21.10 · build af3eb37</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -445,7 +445,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.9 · build 56dcfc1</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.10 · build af3eb37</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -508,7 +508,7 @@
   <script src="src/core/astral-card-effects-re.js?v=3.0.24"></script>
   <script src="src/core/game-engine.js?v=3.0.27"></script>
   <script src="src/core/multiplayer-protocol.js?v=3.0.25"></script>
-  <script src="src/multiplayer/remote-room-client.js?v=3.0.2"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=3.0.3"></script>
   <script src="src/core/ai.js?v=3.0.0"></script>
   <script src="src/core/astral-ai-re.js?v=3.0.0"></script>
   <script src="src/core/tournament.js?v=3.0.19"></script>
@@ -517,7 +517,7 @@
   <script src="src/ui/navigation.js?v=3.0.2"></script>
   <script src="src/ui/pause-menu.js?v=3.0.17"></script>
   <script src="src/ui/tournament-view.js?v=3.0.19"></script>
-  <script src="src/ui/app.js?v=3.0.44"></script>
+  <script src="src/ui/app.js?v=3.0.45"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
@@ -531,7 +531,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=24", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=25", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {
