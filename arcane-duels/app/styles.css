@@ -1868,7 +1868,8 @@ body {
 .cast-card.school-fire { --cast-accent: #e75b2b; }
 .cast-card.school-water { --cast-accent: #3ba8ef; }
 .cast-card.school-air { --cast-accent: #39cfc3; }
-.cast-card.school-earth { --cast-accent: #86ad35; }
+.cast-card.school-earth,
+.cast-card.school-nature { --cast-accent: #86ad35; }
 .cast-card.school-death { --cast-accent: #a66bc4; }
 .cast-card-art { height: 230px; border-radius: 12px; overflow: hidden; background: #07111b; }
 .cast-card strong { display: block; padding: 9px 6px 4px; color: #fff0c9; font-family: Georgia, serif; text-align: center; text-transform: uppercase; letter-spacing: .045em; }
@@ -1918,7 +1919,8 @@ body {
 #battlePanel.spell-impact-fire .board-frame { animation: fireSpellFlash .48s ease both; }
 #battlePanel.spell-impact-water .board-frame { animation: waterSpellFlash .48s ease both; }
 #battlePanel.spell-impact-air .board-frame { animation: airSpellFlash .48s ease both; }
-#battlePanel.spell-impact-earth .board-frame { animation: earthSpellFlash .48s ease both; }
+#battlePanel.spell-impact-earth .board-frame,
+#battlePanel.spell-impact-nature .board-frame { animation: earthSpellFlash .48s ease both; }
 #battlePanel.spell-impact-death .board-frame { animation: deathSpellFlash .48s ease both; }
 #battlePanel.summon-impact .board-frame { animation: summonBoardPulse .42s ease both; }
 @keyframes fireSpellFlash { 45% { box-shadow: inset 0 0 90px rgba(231,91,43,.25), 0 0 26px rgba(231,91,43,.22); } }
@@ -1927,6 +1929,254 @@ body {
 @keyframes earthSpellFlash { 45% { box-shadow: inset 0 0 90px rgba(134,173,53,.22), 0 0 26px rgba(134,173,53,.18); } }
 @keyframes deathSpellFlash { 45% { box-shadow: inset 0 0 90px rgba(166,107,196,.24), 0 0 26px rgba(166,107,196,.2); } }
 @keyframes summonBoardPulse { 45% { transform: scale(1.004); filter: brightness(1.08); } }
+
+/* ===== Spell identity FX — showcase set ===== */
+.cast-card[class*="spell-identity-"]::before {
+  content:"";
+  position:absolute;
+  inset:-10px;
+  z-index:-1;
+  border-radius:24px;
+  opacity:.9;
+  pointer-events:none;
+  animation:spellIdentityCastAura .78s ease-out both;
+}
+.cast-card.spell-identity-fire-spikes::before {
+  background:radial-gradient(circle at 50% 88%,rgba(255,201,84,.55),rgba(235,62,21,.32) 38%,transparent 70%);
+  box-shadow:0 0 34px rgba(255,82,24,.44);
+}
+.cast-card.spell-identity-cure::before {
+  background:radial-gradient(circle,rgba(129,255,218,.34),rgba(76,174,255,.22) 46%,transparent 72%);
+  box-shadow:0 0 36px rgba(105,235,255,.42);
+}
+.cast-card.spell-identity-lightning::before {
+  background:repeating-linear-gradient(112deg,transparent 0 16px,rgba(236,250,255,.28) 17px 20px,transparent 21px 36px);
+  box-shadow:0 0 42px rgba(190,232,255,.55);
+}
+.cast-card.spell-identity-tornado::before {
+  border:2px solid rgba(188,235,255,.5);
+  box-shadow:0 0 34px rgba(151,219,255,.38),inset 0 0 28px rgba(185,240,255,.16);
+  animation:spellIdentityCastAura .78s ease-out both,spellIdentitySpin .85s linear both;
+}
+.cast-card.spell-identity-drain-life::before {
+  background:radial-gradient(circle,rgba(215,91,255,.32),rgba(84,16,121,.28) 45%,transparent 72%);
+  box-shadow:0 0 40px rgba(175,63,224,.48);
+}
+.cast-card.spell-identity-drain-souls::before {
+  background:radial-gradient(circle,rgba(224,175,255,.26),rgba(47,7,73,.42) 48%,transparent 74%);
+  box-shadow:0 0 48px rgba(159,68,204,.55);
+}
+@keyframes spellIdentityCastAura {
+  0% { opacity:0;filter:brightness(.8) blur(5px); }
+  42% { opacity:1;filter:brightness(1.55) blur(0); }
+  100% { opacity:0;filter:brightness(1) blur(2px); }
+}
+@keyframes spellIdentitySpin {
+  from { rotate:0deg; }
+  to { rotate:180deg; }
+}
+
+.spell-identity-marker {
+  position:fixed;
+  z-index:98;
+  transform:translate(-50%,-50%);
+  border-radius:18px;
+  pointer-events:none;
+  isolation:isolate;
+}
+.spell-fire-spikes-marker::before,
+.spell-fire-spikes-marker::after {
+  content:"";
+  position:absolute;
+  left:8%;
+  right:8%;
+  bottom:-4%;
+  height:92%;
+  opacity:0;
+  transform-origin:50% 100%;
+  clip-path:polygon(0 100%,12% 52%,22% 100%,38% 10%,50% 100%,66% 36%,76% 100%,91% 0,100% 100%);
+  background:linear-gradient(180deg,#fff4a7 0%,#ff9b38 42%,#d52614 76%,rgba(99,12,4,.1) 100%);
+  filter:drop-shadow(0 0 9px rgba(255,86,22,.95));
+  animation:spellFireSpikes .82s cubic-bezier(.2,.8,.25,1) both;
+  animation-delay:calc(var(--spell-index,0) * 55ms);
+}
+.spell-fire-spikes-marker::after {
+  inset:auto 18% -8% 12%;
+  height:75%;
+  filter:blur(2px) drop-shadow(0 0 12px rgba(255,166,55,.7));
+  animation-delay:calc(70ms + var(--spell-index,0) * 55ms);
+}
+@keyframes spellFireSpikes {
+  0% { opacity:0;transform:scaleY(.08) translateY(24px); }
+  26% { opacity:1;transform:scaleY(1.14) translateY(-4px); }
+  66% { opacity:.92;transform:scaleY(.98) translateY(0); }
+  100% { opacity:0;transform:scaleY(.74) translateY(-15px); }
+}
+
+.spell-cure-marker {
+  border:2px solid rgba(158,255,214,.75);
+  background:radial-gradient(circle,rgba(177,255,218,.28),rgba(99,220,255,.08) 54%,transparent 72%);
+  box-shadow:0 0 24px rgba(106,255,196,.72),inset 0 0 20px rgba(156,255,222,.38);
+  animation:spellCureBloom 1s ease-out both;
+}
+.spell-cure-marker::before,
+.spell-cure-marker::after {
+  content:"";
+  position:absolute;
+  inset:12%;
+  border:1px solid rgba(212,255,235,.8);
+  border-radius:50%;
+  animation:spellCureRing 1s ease-out both;
+}
+.spell-cure-marker::after { inset:25%;animation-delay:.12s; }
+@keyframes spellCureBloom {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.55);filter:brightness(.8); }
+  30% { opacity:1;transform:translate(-50%,-50%) scale(1.08);filter:brightness(1.6); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.28);filter:brightness(1); }
+}
+@keyframes spellCureRing {
+  from { opacity:.95;transform:scale(.45); }
+  to { opacity:0;transform:scale(1.55); }
+}
+
+.spell-identity-line {
+  position:fixed;
+  z-index:99;
+  height:5px;
+  transform-origin:0 50%;
+  border-radius:999px;
+  pointer-events:none;
+}
+.spell-lightning-line {
+  background:linear-gradient(90deg,rgba(255,255,255,.12),#f7fdff 12%,#99ddff 45%,#fff 72%,rgba(140,213,255,.1));
+  box-shadow:0 0 9px #fff,0 0 18px rgba(115,207,255,.95),0 0 30px rgba(87,152,255,.62);
+  clip-path:polygon(0 25%,13% 0,24% 65%,38% 18%,51% 82%,67% 8%,79% 62%,100% 26%,100% 74%,80% 96%,68% 42%,52% 100%,38% 47%,25% 91%,13% 42%,0 75%);
+  animation:spellLightningStrike .68s steps(3,end) both;
+}
+.spell-lightning-marker {
+  border:2px solid rgba(225,250,255,.86);
+  box-shadow:0 0 0 4px rgba(112,205,255,.16),0 0 35px rgba(142,220,255,.88),inset 0 0 30px rgba(229,252,255,.4);
+  animation:spellLightningTarget .72s ease-out both;
+}
+@keyframes spellLightningStrike {
+  0% { opacity:0;clip-path:inset(0 100% 0 0);filter:brightness(2); }
+  15% { opacity:1;clip-path:inset(0 0 0 0);filter:brightness(2.8); }
+  28% { opacity:.18; }
+  42% { opacity:1;filter:brightness(3.2); }
+  100% { opacity:0;filter:brightness(1); }
+}
+@keyframes spellLightningTarget {
+  0%,100% { opacity:0;transform:translate(-50%,-50%) scale(.8); }
+  20%,46% { opacity:1;transform:translate(-50%,-50%) scale(1.08);filter:brightness(2); }
+  32%,58% { opacity:.25; }
+}
+
+.spell-tornado-marker {
+  width:max(78px,calc(var(--marker-width,0px) + 30px));
+  height:max(78px,calc(var(--marker-height,0px) + 30px));
+  border:3px solid rgba(213,246,255,.72);
+  box-shadow:0 0 28px rgba(152,226,255,.65),inset 0 0 25px rgba(188,238,255,.28);
+  animation:spellTornadoFade 1.12s ease-in-out both;
+}
+.spell-tornado-marker::before,
+.spell-tornado-marker::after {
+  content:"";
+  position:absolute;
+  inset:8%;
+  border-radius:48% 52% 45% 55%;
+  border:4px solid rgba(221,249,255,.72);
+  border-left-color:transparent;
+  border-bottom-color:rgba(121,204,239,.25);
+  animation:spellTornadoSpin .36s linear infinite;
+}
+.spell-tornado-marker::after {
+  inset:24%;
+  border-width:3px;
+  animation-direction:reverse;
+  animation-duration:.24s;
+}
+@keyframes spellTornadoSpin { to { transform:rotate(360deg); } }
+@keyframes spellTornadoFade {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.55); }
+  24% { opacity:1;transform:translate(-50%,-50%) scale(1.02); }
+  72% { opacity:.95;transform:translate(-50%,-50%) scale(.92); }
+  100% { opacity:0;transform:translate(-50%,-66%) scale(.36);filter:blur(4px); }
+}
+
+.spell-drain-life-line {
+  height:7px;
+  background:linear-gradient(90deg,rgba(110,20,140,.15),#ca62ff 18%,#7d1ba6 48%,#e397ff 78%,rgba(99,255,180,.35));
+  box-shadow:0 0 12px rgba(211,92,255,.8),0 0 28px rgba(118,37,170,.64);
+  animation:spellDrainFlow 1s ease-in-out both;
+}
+.spell-drain-source-marker {
+  border:2px solid rgba(211,102,255,.68);
+  box-shadow:0 0 30px rgba(166,53,220,.65),inset 0 0 24px rgba(71,5,96,.55);
+  animation:spellDrainSource .9s ease-in both;
+}
+.spell-drain-target-marker {
+  border:2px solid rgba(125,255,187,.65);
+  box-shadow:0 0 30px rgba(93,245,169,.6),inset 0 0 24px rgba(67,198,146,.28);
+  animation:spellDrainTarget 1.05s ease-out both;
+}
+@keyframes spellDrainFlow {
+  0% { opacity:0;clip-path:inset(0 100% 0 0);filter:brightness(.8); }
+  24% { opacity:1;clip-path:inset(0 0 0 0);filter:brightness(1.5); }
+  72% { opacity:.9;filter:brightness(1.15); }
+  100% { opacity:0;clip-path:inset(0 0 0 100%); }
+}
+@keyframes spellDrainSource {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(1.2); }
+  35% { opacity:1;transform:translate(-50%,-50%) scale(.92);filter:brightness(.72); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(.72);filter:brightness(.45); }
+}
+@keyframes spellDrainTarget {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.68); }
+  52% { opacity:1;transform:translate(-50%,-50%) scale(1.12);filter:brightness(1.5); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.3); }
+}
+
+.spell-soul-wisp {
+  position:fixed;
+  z-index:100;
+  width:14px;
+  height:20px;
+  margin:-10px 0 0 -7px;
+  border-radius:50% 50% 45% 45%;
+  background:radial-gradient(circle at 50% 35%,#fff 0 12%,#d8a6ff 28%,rgba(146,63,202,.84) 52%,transparent 74%);
+  box-shadow:0 0 12px rgba(211,154,255,.88),0 0 26px rgba(111,33,162,.72);
+  opacity:0;
+  pointer-events:none;
+  animation:spellSoulTravel 1.18s cubic-bezier(.2,.68,.22,1) both;
+  animation-delay:calc(var(--spell-index,0) * 45ms);
+}
+.spell-soul-source-marker {
+  border:1px solid rgba(195,117,235,.64);
+  box-shadow:inset 0 0 26px rgba(46,0,67,.72),0 0 22px rgba(135,47,180,.44);
+  animation:spellSoulCollapse .86s ease-in both;
+}
+.spell-soul-target-marker {
+  border:2px solid rgba(230,180,255,.7);
+  background:radial-gradient(circle,rgba(174,85,220,.25),transparent 65%);
+  box-shadow:0 0 36px rgba(171,79,221,.72);
+  animation:spellSoulGather 1.2s ease-out both;
+}
+@keyframes spellSoulTravel {
+  0% { opacity:0;transform:translate(0,0) scale(.45) rotate(-12deg); }
+  18% { opacity:1;transform:translate(0,-10px) scale(1.05) rotate(8deg); }
+  76% { opacity:.95; }
+  100% { opacity:0;transform:translate(var(--soul-dx),var(--soul-dy)) scale(.28) rotate(22deg); }
+}
+@keyframes spellSoulCollapse {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(1.1); }
+  30% { opacity:1;filter:brightness(.55) grayscale(.5); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(.62);filter:brightness(.2) grayscale(1); }
+}
+@keyframes spellSoulGather {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.5); }
+  62% { opacity:1;transform:translate(-50%,-50%) scale(1.16);filter:brightness(1.4); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.34); }
+}
 
 #battlePanel.enemy-active .compact-battle-bar { border-color: rgba(218,78,55,.35); }
 #battlePanel[data-phase="playerSelect"] .compact-battle-bar,

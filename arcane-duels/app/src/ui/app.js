@@ -58,6 +58,90 @@
   let busy = false;
   let audioContext = null;
   const originalSoundCache = new Map();
+
+  // UI-only spell identity registry. Engine events remain the source of truth;
+  // these profiles only decide how a resolved spell is presented.
+  const SPELL_FX_REGISTRY = Object.freeze({
+    astral_fire_01: Object.freeze({
+      vfx: "fire-spikes",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "triangle", frequency: 170, secondFrequency: 620, duration: 0.28, volume: 0.055 },
+          { type: "sawtooth", frequency: 420, secondFrequency: 980, duration: 0.18, volume: 0.025, delay: 0.08 }
+        ]),
+        impact: Object.freeze([
+          { type: "sawtooth", frequency: 260, secondFrequency: 90, duration: 0.20, volume: 0.052 },
+          { type: "triangle", frequency: 740, secondFrequency: 310, duration: 0.17, volume: 0.035, delay: 0.07 }
+        ])
+      })
+    }),
+    astral_water_01: Object.freeze({
+      vfx: "cure",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 480, secondFrequency: 900, duration: 0.34, volume: 0.045 },
+          { type: "triangle", frequency: 720, secondFrequency: 1320, duration: 0.28, volume: 0.026, delay: 0.10 }
+        ]),
+        impact: Object.freeze([
+          { type: "sine", frequency: 620, secondFrequency: 1180, duration: 0.42, volume: 0.045 }
+        ])
+      })
+    }),
+    astral_air_06: Object.freeze({
+      vfx: "lightning",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "square", frequency: 1320, secondFrequency: 2480, duration: 0.12, volume: 0.032 },
+          { type: "sawtooth", frequency: 860, secondFrequency: 1720, duration: 0.16, volume: 0.025, delay: 0.08 }
+        ]),
+        impact: Object.freeze([
+          { type: "square", frequency: 260, secondFrequency: 72, duration: 0.25, volume: 0.060 },
+          { type: "triangle", frequency: 1120, secondFrequency: 180, duration: 0.18, volume: 0.038, delay: 0.025 }
+        ])
+      })
+    }),
+    astral_air_09: Object.freeze({
+      vfx: "tornado",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sawtooth", frequency: 120, secondFrequency: 720, duration: 0.52, volume: 0.042 },
+          { type: "sine", frequency: 260, secondFrequency: 960, duration: 0.44, volume: 0.025, delay: 0.07 }
+        ]),
+        impact: Object.freeze([
+          { type: "triangle", frequency: 760, secondFrequency: 160, duration: 0.40, volume: 0.045 }
+        ])
+      })
+    }),
+    astral_death_08: Object.freeze({
+      vfx: "drain-life",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 390, secondFrequency: 145, duration: 0.45, volume: 0.040 },
+          { type: "triangle", frequency: 680, secondFrequency: 230, duration: 0.34, volume: 0.024, delay: 0.08 }
+        ]),
+        impact: Object.freeze([
+          { type: "sine", frequency: 210, secondFrequency: 520, duration: 0.48, volume: 0.046 }
+        ])
+      })
+    }),
+    astral_death_12: Object.freeze({
+      vfx: "drain-souls",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 105, secondFrequency: 58, duration: 0.62, volume: 0.052 },
+          { type: "triangle", frequency: 390, secondFrequency: 118, duration: 0.48, volume: 0.028, delay: 0.12 }
+        ]),
+        impact: Object.freeze([
+          { type: "sine", frequency: 92, secondFrequency: 230, duration: 0.66, volume: 0.055 },
+          { type: "triangle", frequency: 510, secondFrequency: 155, duration: 0.46, volume: 0.026, delay: 0.10 }
+        ])
+      })
+    })
+  });
+
+  function spellFxProfile(card) {
+    return card?.id ? SPELL_FX_REGISTRY[card.id] || null : null;
+  }
   let profile = A.loadProfile();
   let tournament = A.loadTournament();
   let tournamentMatch = false;
@@ -965,7 +1049,7 @@
     loadRemoteEngine(response.state);
 
     if (type === A.MULTIPLAYER_COMMANDS.PLAY && result?.ok && result.card) {
-      if (result.card.type === "spell") spellSound();
+      if (result.card.type === "spell") spellSound(result.card);
       if (result.card.type === "creature") playOriginalSound("summon2", 0.36);
       await animateCardPlay(result, actor, slot, before);
       await presentResolutionBeforeUpdate(result, before);
@@ -1250,7 +1334,7 @@
   function playSyntheticCue(options = {}) {
     const ctx = ensureAudio();
     if (!ctx) return false;
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + Math.max(0, Number(options.delay || 0));
     const duration = Math.max(0.08, Number(options.duration || 0.22));
     const volume = Math.max(0.0001, Math.min(0.18, Number(options.volume || 0.05)));
     const osc = ctx.createOscillator();
@@ -1267,6 +1351,16 @@
     osc.start(now);
     osc.stop(now + duration + 0.01);
     return true;
+  }
+
+  function playSpellFxSound(card, phase = "cast") {
+    const cues = spellFxProfile(card)?.sfx?.[phase];
+    if (!Array.isArray(cues) || cues.length === 0) return false;
+    let played = false;
+    cues.forEach(cue => {
+      if (playSyntheticCue(cue)) played = true;
+    });
+    return played;
   }
 
   function playFallbackSound(name, volume = 0.45) {
@@ -1391,7 +1485,8 @@
     osc.stop(now + 0.28);
   }
 
-  function spellSound() {
+  function spellSound(card = null) {
+    if (playSpellFxSound(card, "cast")) return;
     if (playOriginalSound("spelldamaged", 0.42)) return;
     const ctx = ensureAudio();
     if (!ctx) return;
@@ -1757,6 +1852,133 @@
     return trail;
   }
 
+  function spellActorSide(result) {
+    const spellEvent = (result?.events || []).find(event => event.type === "spell" || event.type === "cardPlayed");
+    return spellEvent?.side === "enemy" ? "enemy" : "player";
+  }
+
+  function spellHeroAnchor(side) {
+    return $(`#${side}HpBattle`)?.parentElement || null;
+  }
+
+  function spellElementCenter(element) {
+    if (!element?.getBoundingClientRect) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
+  function addSpellMarker(element, className, duration = 900, index = 0) {
+    if (reducedMotion || !element) return null;
+    const layer = $("#duelFxLayer");
+    const point = spellElementCenter(element);
+    if (!layer || !point) return null;
+    const marker = document.createElement("div");
+    marker.className = `spell-identity-marker ${className}`;
+    marker.style.left = `${point.x}px`;
+    marker.style.top = `${point.y}px`;
+    marker.style.width = `${Math.max(44, point.width)}px`;
+    marker.style.height = `${Math.max(44, point.height)}px`;
+    marker.style.setProperty("--spell-index", String(index));
+    layer.appendChild(marker);
+    setTimeout(() => marker.remove(), fxDuration(duration) || 40);
+    return marker;
+  }
+
+  function addSpellLine(from, to, className, duration = 900) {
+    if (reducedMotion) return null;
+    const layer = $("#duelFxLayer");
+    const a = from?.x !== undefined ? from : spellElementCenter(from);
+    const b = to?.x !== undefined ? to : spellElementCenter(to);
+    if (!layer || !a || !b) return null;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const line = document.createElement("div");
+    line.className = `spell-identity-line ${className}`;
+    line.style.left = `${a.x}px`;
+    line.style.top = `${a.y}px`;
+    line.style.width = `${Math.max(1, Math.hypot(dx, dy))}px`;
+    line.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+    layer.appendChild(line);
+    setTimeout(() => line.remove(), fxDuration(duration) || 40);
+    return line;
+  }
+
+  function addSoulWisp(fromElement, toElement, index = 0) {
+    if (reducedMotion) return null;
+    const layer = $("#duelFxLayer");
+    const from = spellElementCenter(fromElement);
+    const to = spellElementCenter(toElement);
+    if (!layer || !from || !to) return null;
+    const wisp = document.createElement("div");
+    wisp.className = "spell-soul-wisp";
+    wisp.style.left = `${from.x}px`;
+    wisp.style.top = `${from.y}px`;
+    wisp.style.setProperty("--soul-dx", `${to.x - from.x}px`);
+    wisp.style.setProperty("--soul-dy", `${to.y - from.y}px`);
+    wisp.style.setProperty("--spell-index", String(index));
+    layer.appendChild(wisp);
+    setTimeout(() => wisp.remove(), fxDuration(1250) || 40);
+    return wisp;
+  }
+
+  function showSpellResolutionIdentityFx(result) {
+    const profile = spellFxProfile(result?.card);
+    if (!profile) return false;
+    playSpellFxSound(result.card, "impact");
+    if (reducedMotion) return false;
+
+    const events = result?.events || [];
+    const side = spellActorSide(result);
+    const enemySide = side === "player" ? "enemy" : "player";
+    const ownHero = spellHeroAnchor(side);
+    const enemyHero = spellHeroAnchor(enemySide);
+    let shown = false;
+
+    const damageTargets = events
+      .filter(event => ["astralCreatureDamage", "creatureDamage"].includes(event.type))
+      .map(event => $(`#${event.targetSide || event.side}Board [data-slot="${event.slot}"]`))
+      .filter(Boolean);
+
+    if (profile.vfx === "fire-spikes") {
+      damageTargets.forEach((target, index) => {
+        if (addSpellMarker(target, "spell-fire-spikes-marker", 880, index)) shown = true;
+      });
+    } else if (profile.vfx === "cure") {
+      if (addSpellMarker(ownHero, "spell-cure-marker", 1050)) shown = true;
+    } else if (profile.vfx === "lightning") {
+      const target = enemyHero;
+      const targetPoint = spellElementCenter(target);
+      if (targetPoint) {
+        const origin = { x: targetPoint.x + Math.min(90, window.innerWidth * 0.08), y: Math.max(18, targetPoint.y - 190) };
+        if (addSpellLine(origin, targetPoint, "spell-lightning-line", 720)) shown = true;
+        addSpellMarker(target, "spell-lightning-marker", 760);
+      }
+    } else if (profile.vfx === "tornado") {
+      const death = events.find(event => event.type === "astralDeath" && (event.side === enemySide || !event.side));
+      const target = death ? $(`#${death.side || enemySide}Board [data-slot="${death.slot}"]`) : damageTargets[0];
+      if (addSpellMarker(target, "spell-tornado-marker", 1150)) shown = true;
+    } else if (profile.vfx === "drain-life") {
+      if (addSpellLine(enemyHero, ownHero, "spell-drain-life-line", 1050)) shown = true;
+      addSpellMarker(enemyHero, "spell-drain-source-marker", 900);
+      addSpellMarker(ownHero, "spell-drain-target-marker", 1050);
+    } else if (profile.vfx === "drain-souls") {
+      const deaths = events.filter(event => event.type === "astralDeath");
+      deaths.forEach((event, index) => {
+        const target = $(`#${event.side}Board [data-slot="${event.slot}"]`);
+        if (addSoulWisp(target, ownHero, index)) shown = true;
+        addSpellMarker(target, "spell-soul-source-marker", 900, index);
+      });
+      addSpellMarker(ownHero, "spell-soul-target-marker", 1250);
+    }
+
+    return shown;
+  }
+
   function stageSummonedUnitBeforeResolution(result, side, slot) {
     const card = result?.card;
     if (!card || card.type !== "creature" || slot === null) return;
@@ -1792,7 +2014,8 @@
     const layer = $("#duelFxLayer");
     if (!reducedMotion && layer) {
       const cast = document.createElement("div");
-      cast.className = `cast-card school-${card.school} ${card.type === "spell" ? "spell-cast" : "creature-cast"} side-${side}`;
+      const identityFx = card.type === "spell" ? spellFxProfile(card) : null;
+      cast.className = `cast-card school-${card.school} ${card.type === "spell" ? "spell-cast" : "creature-cast"} side-${side}${identityFx ? ` spell-identity-${identityFx.vfx}` : ""}`;
       const art = document.createElement("div");
       art.className = "cast-card-art";
       art.appendChild(buildArtBlock(card, "cast"));
@@ -3114,7 +3337,7 @@
       const healthBefore = captureHealthState();
       const play = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       if (play.ok) {
-        spellSound();
+        spellSound(play.card);
         await animateCardPlay(play, "player", null, healthBefore);
         await presentResolutionBeforeUpdate(play, healthBefore);
         renderGame();
@@ -3164,7 +3387,7 @@
       const healthBefore = captureHealthState();
       const play = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, { cardId, slot: null });
       if (play.ok) {
-        spellSound();
+        spellSound(play.card);
         await animateCardPlay(play, "player", null, healthBefore);
         await presentResolutionBeforeUpdate(play, healthBefore);
         renderGame();
@@ -3258,7 +3481,7 @@
   }
 
   function appendDamageBadge(parent, amount, options = {}) {
-    if (!parent || amount <= 0) return;
+    if (!parent || (amount <= 0 && !options.lethal)) return;
     const badge = document.createElement("span");
     badge.className = `damage-number${options.lethal ? " lethal" : ""}${options.hero ? " hero-damage" : ""}${options.collateral ? " collateral" : ""}`;
     badge.textContent = options.lethal
@@ -3454,6 +3677,7 @@
   }
 
   async function presentResolutionBeforeUpdate(result, before) {
+    const spellIdentityShown = showSpellResolutionIdentityFx(result);
     showResolvedEffectDamage(result);
     showResolutionDeaths(result);
     (result?.events || []).filter(event => event.type === "astralFireAura").forEach(event => {
@@ -3472,7 +3696,7 @@
     const healingShown = showHealingChanges(before, result);
     const powerShown = showResolutionPowerChanges(result, before);
     const attackShown = showUnitAttackChanges(before);
-    const hasVisibleEffect = healingShown + powerShown + attackShown > 0 || (result?.events || []).some(event => [
+    const hasVisibleEffect = spellIdentityShown || healingShown + powerShown + attackShown > 0 || (result?.events || []).some(event => [
       "astralCreatureDamage", "astralHeroDamage", "creatureDamage", "heroDamage", "astralDeath", "astralFireAura", "astralNets"
     ].includes(event.type));
     if (hasVisibleEffect) await sleep(reducedMotion ? 0 : 620);
@@ -3612,7 +3836,7 @@
       const result = move.type === "pass"
         ? issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PASS)
         : issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: move.cardId, slot: move.slot ?? null });
-      if (result.ok && result.card?.type === "spell") spellSound();
+      if (result.ok && result.card?.type === "spell") spellSound(result.card);
       if (result.ok && result.card?.type === "creature") playOriginalSound("summon2", 0.36);
       if (result.ok && result.card) await animateCardPlay(result, "enemy", move?.slot ?? null, healthBefore);
       if (result.ok) {
