@@ -174,6 +174,9 @@
       const cards = (options?.cards || A.getCardSet("classic")).map(A.normalizeCard);
       const seed = String(options?.seed || `duel-${Date.now()}`);
       const requestedPlayerTalent = options?.playerTalent || "fire";
+      const spellbookDistribution = ["arcane", "free", "mirror"].includes(options?.spellbookDistribution || options?.distributionMode)
+        ? (options.spellbookDistribution || options.distributionMode)
+        : "arcane";
       const useRecoveredAstralSpellbook = rules.id === A.ASTRAL_ORIGINAL_RULESET?.id && typeof A.generateRecoveredAstralHands === "function";
       const astralLeagueStage = typeof A.normalizeAstralLeagueStage === "function"
         ? A.normalizeAstralLeagueStage(options?.astralLeague || options?.astralLeagueStage || "starting")
@@ -203,6 +206,7 @@
         ? A.generateRecoveredAstralHands(cards, {
             seed,
             mode: options?.astralMode || "duel",
+            distributionMode: spellbookDistribution,
             enemyDifficulty: options?.aiDifficulty || "advanced",
             playerTalent,
             enemyTalent: options?.enemyTalent || enemySpecializationRecord?.talent,
@@ -226,6 +230,7 @@
       this.state = {
         version: CURRENT_STATE_VERSION,
         rulesetId: rules.id,
+        spellbookDistribution,
         seed,
         round: 1,
         turnCounters: { player: 1, enemy: 0 },

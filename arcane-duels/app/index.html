@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
-  <meta name="arcane-app-version" content="0.21.10">
+  <meta name="arcane-app-version" content="0.22.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
-  <title>Arcane Duels — Astral Classic 3.0</title>
+  <title>Arcane Duels</title>
   <link rel="stylesheet" href="styles.css?v=3.0.32">
   <link rel="stylesheet" href="pwa.css?v=1.3.0">
 </head>
@@ -22,7 +22,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.21.10 · build af3eb37</small>
+        <small class="app-version-badge" data-arcane-version>v0.22.0 · build 0754e80</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -80,8 +80,16 @@
                 </label>
                 <label><span data-i18n="menu.mode">Modalità</span>
                   <select id="duelModeSelect">
-                    <option value="normal" selected data-i18n="menu.classicDuel">Duello classico</option>
-                    <option value="specializations" data-i18n="menu.specializedDuel">Duello con specializzazioni</option>
+                    <option value="arcane" selected data-i18n="menu.arcaneDuel">Duello Arcano</option>
+                    <option value="free" data-i18n="menu.freeDuel">Duello Libero</option>
+                    <option value="mirror" data-i18n="menu.mirrorDuel">Duello Speculare</option>
+                  </select>
+                  <small id="duelModeDescription" data-i18n="menu.arcaneDuelDescription">I due grimori non condividono carte della generazione base.</small>
+                </label>
+                <label><span data-i18n="menu.specializations">Specializzazioni</span>
+                  <select id="duelSpecializationsSelect">
+                    <option value="off" selected data-i18n="menu.specializationsOff">Disattivate</option>
+                    <option value="on" data-i18n="menu.specializationsOn">Attivate</option>
                   </select>
                 </label>
                 <input id="cardSetSelect" type="hidden" value="astral-original">
@@ -296,8 +304,16 @@
                       <label>
                         <span data-i18n="menu.mode">Modalità</span>
                         <select id="onlineDuelModeSelect">
-                          <option value="normal" selected data-i18n="menu.classicDuel">Duello classico</option>
-                          <option value="specializations" data-i18n="menu.specializedDuel">Duello con specializzazioni</option>
+                          <option value="arcane" selected data-i18n="menu.arcaneDuel">Duello Arcano</option>
+                          <option value="free" data-i18n="menu.freeDuel">Duello Libero</option>
+                          <option value="mirror" data-i18n="menu.mirrorDuel">Duello Speculare</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span data-i18n="menu.specializations">Specializzazioni</span>
+                        <select id="onlineSpecializationsSelect">
+                          <option value="off" selected data-i18n="menu.specializationsOff">Disattivate</option>
+                          <option value="on" data-i18n="menu.specializationsOn">Attivate</option>
                         </select>
                       </label>
                       <label id="onlineSpecializationField" class="hidden">
@@ -445,7 +461,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.10 · build af3eb37</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.22.0 · build 0754e80</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -489,35 +505,35 @@
     </div>
   </div>
 
-  <script src="src/core/constants.js?v=3.0.0"></script>
+  <script src="src/core/constants.js?v=3.0.1"></script>
   <script src="src/core/rng.js?v=3.0.0"></script>
   <script src="src/data/cards.js?v=3.0.0"></script>
   <script src="src/data/original-cards.js?v=3.0.0"></script>
-  <script src="src/i18n/en.js?v=3.0.28"></script>
-  <script src="src/i18n/it.js?v=3.0.28"></script>
-  <script src="src/i18n/ui-labels.js?v=1.0.0"></script>
+  <script src="src/i18n/en.js?v=3.0.29"></script>
+  <script src="src/i18n/it.js?v=3.0.29"></script>
+  <script src="src/i18n/ui-labels.js?v=1.1.0"></script>
   <script src="src/i18n/index.js?v=3.0.0"></script>
   <script src="src/core/card-schema.js?v=3.0.0"></script>
   <script src="src/data/astral-ai-card-metadata.js?v=3.0.0"></script>
   <script src="src/core/original-rules.js?v=3.0.0"></script>
   <script src="src/core/generator.js?v=3.0.0"></script>
   <script src="src/core/astral-abilities-re.js?v=3.0.0"></script>
-  <script src="src/core/astral-spellbook-re.js?v=3.0.23"></script>
+  <script src="src/core/astral-spellbook-re.js?v=3.0.24"></script>
   <script src="src/core/passives.js?v=3.0.0"></script>
   <script src="src/core/effects.js?v=3.0.23"></script>
   <script src="src/core/astral-card-effects-re.js?v=3.0.24"></script>
-  <script src="src/core/game-engine.js?v=3.0.27"></script>
-  <script src="src/core/multiplayer-protocol.js?v=3.0.25"></script>
+  <script src="src/core/game-engine.js?v=3.0.28"></script>
+  <script src="src/core/multiplayer-protocol.js?v=3.0.26"></script>
   <script src="src/multiplayer/remote-room-client.js?v=3.0.3"></script>
   <script src="src/core/ai.js?v=3.0.0"></script>
   <script src="src/core/astral-ai-re.js?v=3.0.0"></script>
-  <script src="src/core/tournament.js?v=3.0.19"></script>
+  <script src="src/core/tournament.js?v=3.0.20"></script>
   <script src="tests/golden-replay-fixtures.js?v=3.0.26"></script>
-  <script src="tests/test-suite.js?v=3.0.27"></script>
+  <script src="tests/test-suite.js?v=3.0.28"></script>
   <script src="src/ui/navigation.js?v=3.0.2"></script>
   <script src="src/ui/pause-menu.js?v=3.0.17"></script>
-  <script src="src/ui/tournament-view.js?v=3.0.19"></script>
-  <script src="src/ui/app.js?v=3.0.45"></script>
+  <script src="src/ui/tournament-view.js?v=3.0.20"></script>
+  <script src="src/ui/app.js?v=3.0.46"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {

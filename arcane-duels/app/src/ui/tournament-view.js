@@ -3,16 +3,71 @@
 
   const portraitFor = index => index % 2 === 0 ? "assets/ui/portraits/alice.png" : "assets/ui/portraits/cooler.png";
 
+  function specializationProgression(specId, context) {
+    const { t, specialization, abilityName, abilityDescription, escapeHtml } = context;
+    const spec = specialization(specId);
+    if (!spec) return "";
+    const stages = ["starting", "advanced", "major"];
+    const panels = stages.map((league, index) => {
+      const abilities = A.getAstralAbilityRecords?.(spec.groups[index] || []) || [];
+      return `<article class="tournament-specialization-stage">
+        <strong>${t(`league.${league}`)}</strong>
+        <ul>${abilities.map(ability => `<li><b>${escapeHtml(abilityName(ability))}</b><small>${escapeHtml(abilityDescription(ability))}</small></li>`).join("")}</ul>
+      </article>`;
+    }).join("");
+    return `<div class="tournament-specialization-progression">
+      <div class="tournament-path-heading"><h3>${t("tournament.specializationProgression")}</h3><small>${t("tournament.progressionNote")}</small></div>
+      <div class="tournament-rules-grid">${panels}</div>
+    </div>`;
+  }
+
   function renderEmpty(context) {
     const { t, specializations, specializationName } = context;
     return `<div class="tournament-create tournament-create-redesigned classic-config-grid">
       <div class="tournament-intro"><strong>${t("tournament.introTitle")}</strong><span>${t("tournament.intro")}</span></div>
+
+      <label>${t("tournament.mode")}
+        <select id="tournamentModeSelect">
+          <option value="league" selected>${t("tournament.mode.league")}</option>
+          <option value="evolution">${t("tournament.mode.evolution")}</option>
+          <option value="custom">${t("tournament.mode.custom")}</option>
+        </select>
+        <small id="tournamentModeDescription">${t("tournament.mode.league.description")}</small>
+      </label>
+
       <div class="tournament-rules-grid">
         <span><b>${t("league.starting")}</b><small>${t("tournament.matches12")}</small></span>
         <span><b>${t("league.advanced")}</b><small>${t("tournament.matches34")}</small></span>
         <span><b>${t("league.major")}</b><small>${t("tournament.matches57")}</small></span>
       </div>
-      <label>${t("tournament.playerSpecialization")} <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${item.icon} ${specializationName(item.id)}</option>`).join("")}</select></label>
+
+      <div id="tournamentCustomRules" class="classic-config-grid hidden">
+        <label>${t("tournament.customDistribution")}
+          <select id="tournamentCustomDistribution">
+            <option value="arcane">${t("menu.arcaneDuel")}</option>
+            <option value="free">${t("menu.freeDuel")}</option>
+            <option value="mirror">${t("menu.mirrorDuel")}</option>
+          </select>
+        </label>
+        <label>${t("tournament.customSpecializations")}
+          <select id="tournamentCustomSpecializations">
+            <option value="on" selected>${t("menu.specializationsOn")}</option>
+            <option value="off">${t("menu.specializationsOff")}</option>
+          </select>
+        </label>
+        <label>${t("tournament.customEvolution")}
+          <select id="tournamentCustomEvolution">
+            <option value="off" selected>${t("menu.specializationsOff")}</option>
+            <option value="on">${t("menu.specializationsOn")}</option>
+          </select>
+        </label>
+      </div>
+
+      <label id="tournamentSpecializationField">${t("tournament.playerSpecialization")}
+        <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${item.icon} ${specializationName(item.id)}</option>`).join("")}</select>
+      </label>
+      <div id="tournamentSpecializationPreview"></div>
+
       <details class="tournament-advanced"><summary>${t("menu.advancedSettings")}</summary><label>${t("tournament.seed")} <input id="tournamentSeedInput" placeholder="${t("tournament.randomSeed")}"></label></details>
       <button id="createTournamentConfirm" class="classic-stone-button tournament-primary-action">${t("tournament.startNew")}</button>
     </div>`;
@@ -28,11 +83,20 @@
     </li>`;
   }
 
+  function activeAbilityChips(specId, league, context) {
+    if (!specId) return `<span class="passive-chip">${context.t("tournament.noSpecialization")}</span>`;
+    const spec = context.specialization(specId);
+    const ids = A.getAstralAbilityLoadout?.(specId, league, spec?.talent) || [];
+    const abilities = A.getAstralAbilityRecords?.(ids) || [];
+    return abilities.map(ability => `<span class="passive-chip" title="${context.escapeHtml(context.abilityDescription(ability))}">${context.escapeHtml(context.abilityName(ability))}</span>`).join("");
+  }
+
   function renderActive(context) {
-    const { tournament, t, specialization, specializationName, leagueLabel, difficultyLabel, escapeHtml } = context;
+    const { tournament, t, specialization, specializationName, leagueLabel, difficultyLabel, tournamentModeLabel, escapeHtml } = context;
     const current = tournament.opponents[tournament.currentMatch];
     const remainingWins = Math.max(0, tournament.winTarget - tournament.wins);
-    const playerSpecialization = specialization(tournament.specialization);
+    const playerSpecialization = tournament.specialization ? specialization(tournament.specialization) : null;
+    const opponentPowerups = A.getTournamentOpponentPassives?.(tournament, tournament.currentMatch) || [];
     return `<div class="tournament-hub">
       <aside class="tournament-next-opponent">
         <span>${t("tournament.nextOpponent")}</span>
@@ -40,6 +104,8 @@
         <h3>${escapeHtml(current.name)}</h3>
         <p>${t(`tournament.rank.${tournament.currentMatch}`)} · ${leagueLabel(current.league)}</p>
         <small>${t("tournament.aiDifficulty")}: ${escapeHtml(difficultyLabel(current.difficulty))}</small>
+        <small>${t("tournament.mode")}: ${escapeHtml(tournamentModeLabel(tournament.tournamentMode))}</small>
+        ${tournament.evolutionEnabled ? `<small>${t("tournament.opponentPowerups")}: ${opponentPowerups.length}</small>` : ""}
         <button id="continueTournamentBtn" class="primary tournament-primary-action">${t("tournament.resume")}</button>
       </aside>
       <section class="tournament-progress-panel">
@@ -48,11 +114,18 @@
           <div><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
           <div><small>${t("tournament.losses")}</small><strong>${tournament.losses}</strong></div>
           <div><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
-          <div><small>${t("tournament.specialization")}</small><strong>${playerSpecialization?.icon || "✦"} ${specializationName(tournament.specialization)}</strong></div>
+          <div><small>${t("tournament.specialization")}</small><strong>${playerSpecialization ? `${playerSpecialization.icon} ${specializationName(tournament.specialization)}` : t("tournament.noSpecialization")}</strong></div>
         </div>
+
+        <div class="passive-list">
+          <h3>${t("tournament.activeAbilities")} · ${leagueLabel(current.league)}</h3>
+          ${activeAbilityChips(tournament.specialization, current.league, context)}
+        </div>
+
         <div class="tournament-path-heading"><h3>${t("tournament.path")}</h3><small>${t("tournament.winsNeeded", { value: remainingWins })}</small></div>
         <ol class="tournament-opponent-path">${tournament.opponents.map((opponent, index) => opponentMedallion(opponent, index, tournament.currentMatch, t, escapeHtml)).join("")}</ol>
-        <div class="passive-list"><h3>${t("tournament.passives")}</h3>${tournament.selectedPassives.length ? tournament.selectedPassives.map(id => `<span class="passive-chip">${escapeHtml(A.getPassive(id)?.name || id)}</span>`).join("") : `<p>${t("tournament.noPassives")}</p>`}</div>
+
+        ${tournament.evolutionEnabled ? `<div class="passive-list"><h3>${t("tournament.powerups")}</h3>${tournament.selectedPassives.length ? tournament.selectedPassives.map(id => `<span class="passive-chip">${escapeHtml(A.getPassive(id)?.name || id)}</span>`).join("") : `<p>${t("tournament.noPowerups")}</p>`}</div>` : ""}
         <div id="tournamentActions"></div>
       </section>
     </div>`;
@@ -68,5 +141,5 @@
     </div>`;
   }
 
-  A.UITournamentView = Object.freeze({ renderEmpty, renderActive, renderCompleted });
+  A.UITournamentView = Object.freeze({ renderEmpty, renderActive, renderCompleted, specializationProgression });
 })(window.Arcane = window.Arcane || {});

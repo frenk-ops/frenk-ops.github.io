@@ -57,13 +57,13 @@
   });
 
   A.RANKS = Object.freeze([
-    "Apprendista",
+    "Aspirante",
     "Adepto",
+    "Duellante",
     "Evocatore",
-    "Mago da battaglia",
-    "Maestro",
-    "Arcimago",
-    "Campione astrale"
+    "Custode Arcano",
+    "Arcanista",
+    "Campione Astrale"
   ]);
 
   A.deepClone = function deepClone(value) {

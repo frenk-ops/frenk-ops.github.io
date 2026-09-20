@@ -22,6 +22,7 @@
       allowedCardIds: options?.allowedCardIds ? [...options.allowedCardIds].map(String).sort() : null,
       seed: String(options?.seed || "astral-recovered-spellbook"),
       mode: options?.mode || "duel",
+      distributionMode: options?.distributionMode || "free",
       enemyDifficulty: options?.enemyDifficulty || "advanced",
       playerSpecialization: options?.playerSpecialization || null,
       enemySpecialization: options?.enemySpecialization || null,
@@ -123,6 +124,7 @@
       const specialization = side === "player" ? options.playerSpecialization : options.enemySpecialization;
       return specialization === "wizard" ? 24 : 20;
     }
+    if (options?.mode === "multiplayer") return 20;
     if (options?.mode === "network-equalized") return side === "player" ? 20 : 19;
     if (side === "player") return 20;
     return AI_CARD_COUNTS[options?.enemyDifficulty] || 17;
@@ -134,6 +136,7 @@
       const table = { necromancer: 1, battlemage: 2, druid: 3, thundermage: 4, stormmage: 5, wizard: 6 };
       return table[specialization] || 1;
     }
+    if (options?.mode === "multiplayer") return 0;
     return side === "player" ? 0 : difficultyLevel(options?.enemyDifficulty);
   }
 
@@ -217,6 +220,9 @@
     const ordinal = options.ordinal;
     const actorClassValue = options.actorClassValue;
     const abilities = normalizeAbilities(options.abilities);
+    const excludedBaseIds = options.excludedBaseIds instanceof Set
+      ? options.excludedBaseIds
+      : new Set(options.excludedBaseIds || []);
     const powers = options.powers || generateBasePowers(rng, ordinal, abilities);
     const powerValues = SCHOOL_ORDER.map(school => Number(powers[school] || 0));
     const maxPerSchool = Math.floor(cardCount / 5) + 1;
@@ -279,6 +285,7 @@
 
           globalId = schoolIndex * 13 + level;
           if (!numeric.cardByGlobalId[globalId] || !numeric.allowed[globalId]) continue;
+          if (excludedBaseIds.has(globalId)) continue;
           if (selectedStamp[globalId] === stamp) continue;
           if (schoolCounts[schoolIndex] >= maxPerSchool) continue;
           found = true;
@@ -383,7 +390,8 @@
       }
       if (invalid) continue;
 
-      const bookIds = Array.from(chosen.slice(0, cardCount));
+      const baseIds = Array.from(chosen.slice(0, cardCount));
+      const bookIds = [...baseIds];
       addAbilityCards(bookIds, numeric, abilities);
       bookIds.sort((left, right) => {
         const leftSchool = Math.floor(left / 13);
@@ -395,6 +403,7 @@
       return {
         hand,
         powers,
+        baseIds,
         baseCardCount: cardCount,
         finalCardCount: hand.length,
         generationAttempt,
@@ -427,6 +436,26 @@
     return spellbookCount(options || {}, side || "player");
   };
 
+  function handFromBaseIds(baseIds, numeric, abilities) {
+    const bookIds = [...baseIds];
+    addAbilityCards(bookIds, numeric, normalizeAbilities(abilities));
+    bookIds.sort((left, right) => {
+      const leftSchool = Math.floor(left / 13);
+      const rightSchool = Math.floor(right / 13);
+      return leftSchool === rightSchool ? (left % 13) - (right % 13) : leftSchool - rightSchool;
+    });
+    return bookIds.map(globalId => A.deepClone(numeric.cardByGlobalId[globalId]));
+  }
+
+  function bySchoolFromBaseIds(baseIds) {
+    const counts = Object.fromEntries(SCHOOL_ORDER.map(school => [school, 0]));
+    baseIds.forEach(globalId => {
+      const school = SCHOOL_ORDER[Math.floor(globalId / 13) - 1];
+      if (school) counts[school] += 1;
+    });
+    return counts;
+  }
+
   A.generateRecoveredAstralHands = function generateRecoveredAstralHands(cards, options) {
     const key = cacheKey(cards, options);
     const cached = readCachedSpellbook(key);
@@ -436,7 +465,11 @@
     const playerAbilities = options?.playerAbilities || [];
     const enemyAbilities = options?.enemyAbilities || [];
     const playerCount = spellbookCount(options, "player");
-    const enemyCount = spellbookCount(options, "enemy");
+    const distributionMode = ["arcane", "free", "mirror"].includes(options?.distributionMode)
+      ? options.distributionMode
+      : "free";
+    const enemyCount = distributionMode === "mirror" ? playerCount : spellbookCount(options, "enemy");
+    const multiplayer = options?.mode === "multiplayer";
 
     const player = generateOne(numeric, rng, {
       cardCount: playerCount,
@@ -447,15 +480,38 @@
       restrictedMode: options?.restrictedMode,
       maxGenerationAttempts: options?.maxGenerationAttempts
     });
-    const enemy = generateOne(numeric, rng, {
-      cardCount: enemyCount,
-      ordinal: 2,
-      actorClassValue: actorClass(options, "enemy"),
-      abilities: enemyAbilities,
-      powers: options?.enemyInitialPowers,
-      restrictedMode: options?.restrictedMode,
-      maxGenerationAttempts: options?.maxGenerationAttempts
-    });
+
+    let enemy;
+    if (distributionMode === "mirror") {
+      const enemyOrdinal = multiplayer ? 1 : 2;
+      const enemyPowers = options?.enemyInitialPowers || generateBasePowers(rng, enemyOrdinal, normalizeAbilities(enemyAbilities));
+      const enemyBaseIds = player.baseIds.slice(0, enemyCount);
+      enemy = {
+        hand: handFromBaseIds(enemyBaseIds, numeric, enemyAbilities),
+        powers: enemyPowers,
+        baseIds: enemyBaseIds,
+        baseCardCount: enemyBaseIds.length,
+        finalCardCount: enemyBaseIds.length + handFromBaseIds(enemyBaseIds, numeric, enemyAbilities).length - enemyBaseIds.length,
+        generationAttempt: player.generationAttempt,
+        bySchool: bySchoolFromBaseIds(enemyBaseIds),
+        stats: { ...player.stats, mirrored: true }
+      };
+    } else {
+      enemy = generateOne(numeric, rng, {
+        cardCount: enemyCount,
+        ordinal: multiplayer ? 1 : 2,
+        actorClassValue: actorClass(options, "enemy"),
+        abilities: enemyAbilities,
+        powers: options?.enemyInitialPowers,
+        excludedBaseIds: distributionMode === "arcane" ? new Set(player.baseIds) : undefined,
+        restrictedMode: options?.restrictedMode,
+        maxGenerationAttempts: options?.maxGenerationAttempts
+      });
+    }
+
+    const playerBase = new Set(player.baseIds);
+    const enemyBase = new Set(enemy.baseIds);
+    const baseOverlap = [...playerBase].filter(id => enemyBase.has(id));
 
     return cacheSpellbook(key, {
       player: player.hand,
@@ -465,9 +521,10 @@
       enemyTalent: options?.enemyTalent || "water",
       seed: rng.seed,
       recovered: true,
+      distributionMode,
       diagnostics: [
-        { side: "player", ...player },
-        { side: "enemy", ...enemy }
+        { side: "player", distributionMode, baseOverlap: baseOverlap.length, ...player },
+        { side: "enemy", distributionMode, baseOverlap: baseOverlap.length, ...enemy }
       ]
     });
   };

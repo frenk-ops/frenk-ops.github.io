@@ -244,6 +244,37 @@
     return t(`schools.${id}`);
   }
 
+  const SPELLBOOK_MODE_KEYS = Object.freeze({
+    arcane: ["menu.arcaneDuel", "menu.arcaneDuelDescription"],
+    free: ["menu.freeDuel", "menu.freeDuelDescription"],
+    mirror: ["menu.mirrorDuel", "menu.mirrorDuelDescription"]
+  });
+
+  function normalizeSpellbookMode(value) {
+    return SPELLBOOK_MODE_KEYS[value] ? value : "arcane";
+  }
+
+  function spellbookModeLabel(value) {
+    return t(SPELLBOOK_MODE_KEYS[normalizeSpellbookMode(value)][0]);
+  }
+
+  function spellbookModeDescription(value) {
+    return t(SPELLBOOK_MODE_KEYS[normalizeSpellbookMode(value)][1]);
+  }
+
+  function abilityName(ability) {
+    return ability ? t(`ability.${ability.key}.name`) : "";
+  }
+
+  function abilityDescription(ability) {
+    return ability ? t(`ability.${ability.key}.description`) : "";
+  }
+
+  function updateDuelModeDescription() {
+    const mode = normalizeSpellbookMode($("#duelModeSelect")?.value);
+    if ($("#duelModeDescription")) $("#duelModeDescription").textContent = spellbookModeDescription(mode);
+  }
+
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms * animationSpeed));
   }
@@ -280,7 +311,7 @@
 
   function setMultiplayerControlsDisabled(disabled) {
     multiplayerControlsLocked = Boolean(disabled);
-    ["#onlineRoomCode", "#onlineSpecializationSelect", "#onlineJoinSpecializationSelect", "#onlineDuelModeSelect"]
+    ["#onlineRoomCode", "#onlineSpecializationSelect", "#onlineJoinSpecializationSelect", "#onlineDuelModeSelect", "#onlineSpecializationsSelect"]
       .forEach(selector => {
         const control = $(selector);
         if (control) control.disabled = multiplayerControlsLocked;
@@ -474,9 +505,11 @@
   }
 
   function roomModeLabel(settings) {
-    return t(settings?.duelMode === "specializations"
-      ? "online.roomModeSpecializations"
-      : "online.roomModeClassic");
+    const mode = spellbookModeLabel(settings?.spellbookDistribution || "arcane");
+    const specializations = settings?.specializationsEnabled
+      ? t("online.specializationsEnabled")
+      : t("online.specializationsDisabled");
+    return `${mode} · ${specializations}`;
   }
 
   function renderRemoteRoomPreview(code, info) {
@@ -484,7 +517,7 @@
     inspectedRemoteRoomSettings = info?.settings || null;
     $("#onlineJoinRoomInfo")?.classList.remove("hidden");
     if ($("#onlineJoinRoomMode")) $("#onlineJoinRoomMode").textContent = roomModeLabel(inspectedRemoteRoomSettings);
-    $("#onlineJoinSpecializationField")?.classList.toggle("hidden", inspectedRemoteRoomSettings?.duelMode !== "specializations");
+    $("#onlineJoinSpecializationField")?.classList.toggle("hidden", !inspectedRemoteRoomSettings?.specializationsEnabled);
   }
 
   async function inspectRemoteRoom(code, options = {}) {
@@ -1063,26 +1096,29 @@
 
   function renderTalentChoices() {
     const root = $("#talentChoices");
-    const mode = $("#duelModeSelect")?.value || "normal";
-    const withSpecializations = mode === "specializations";
+    const distribution = normalizeSpellbookMode($("#duelModeSelect")?.value);
+    const withSpecializations = $("#duelSpecializationsSelect")?.value === "on";
+    const league = $("#astralLeagueSelect")?.value || "starting";
     root.innerHTML = "";
-    $("#talentChoiceHeading").textContent = withSpecializations ? t("menu.chooseSpecialization") : t("menu.normalDuel");
+    updateDuelModeDescription();
+    $("#talentChoiceHeading").textContent = withSpecializations ? t("menu.chooseSpecialization") : t("menu.startDuel");
     $("#astralLeagueLabel").classList.toggle("hidden", !withSpecializations);
     $("#enemySpecializationLabel").classList.toggle("hidden", !withSpecializations);
     if (!withSpecializations) {
       const button = document.createElement("button");
       button.className = "talent";
-      button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${t("menu.startDuelHint")}</small>`;
-      button.addEventListener("click", () => startDuel("fire", false, null, "normal"));
+      button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${spellbookModeDescription(distribution)}</small>`;
+      button.addEventListener("click", () => startDuel("fire", false, null, distribution));
       root.appendChild(button);
       return;
     }
     A.ASTRAL_SPECIALIZATIONS.forEach(item => {
       const button = document.createElement("button");
       button.className = "talent";
-      const starting = A.getAstralAbilityRecords(item.groups[0]).map(ability => ability.name).join(" · ");
-      button.innerHTML = `<span>${item.icon}</span><strong>${t(`specialization.${item.id}`)}</strong><small>${starting}</small>`;
-      button.addEventListener("click", () => startDuel(item.talent, false, item.id, "specializations"));
+      const ids = A.getAstralAbilityLoadout?.(item.id, league, item.talent) || [];
+      const active = A.getAstralAbilityRecords(ids).map(abilityName).join(" · ");
+      button.innerHTML = `<span>${item.icon}</span><strong>${t(`specialization.${item.id}`)}</strong><small>${t("menu.activeAbilities")}: ${active}</small>`;
+      button.addEventListener("click", () => startDuel(item.talent, false, item.id, distribution));
       root.appendChild(button);
     });
   }
@@ -1112,17 +1148,23 @@
   }
 
   function syncOnlineDuelMode() {
-    const specialized = $("#onlineDuelModeSelect")?.value === "specializations";
+    const specialized = $("#onlineSpecializationsSelect")?.value === "on";
     $("#onlineSpecializationField")?.classList.toggle("hidden", !specialized);
   }
 
   function onlineDuelOptions() {
-    const duelMode = $("#onlineDuelModeSelect")?.value === "specializations" ? "specializations" : "normal";
-    if (duelMode !== "specializations") return { duelMode };
+    const spellbookDistribution = normalizeSpellbookMode($("#onlineDuelModeSelect")?.value);
+    const specializationsEnabled = $("#onlineSpecializationsSelect")?.value === "on";
+    const result = {
+      spellbookDistribution,
+      specializationsEnabled,
+      duelMode: specializationsEnabled ? "specializations" : "normal"
+    };
+    if (!specializationsEnabled) return result;
     const specializationId = $("#onlineSpecializationSelect")?.value || "battlemage";
     const specialization = A.getAstralSpecialization?.(specializationId);
     return {
-      duelMode,
+      ...result,
       playerTalent: specialization?.talent || "fire",
       playerSpecialization: specialization?.id || specializationId
     };
@@ -1139,8 +1181,12 @@
 
   function startDuel(playerTalent, fromTournament, selectedSpecialization, requestedMode, seedOverride = null) {
     const setId = "astral-original";
-    const duelMode = fromTournament ? "specializations" : (requestedMode || $("#duelModeSelect")?.value || "normal");
-    const withSpecializations = duelMode === "specializations";
+    const spellbookDistribution = fromTournament
+      ? normalizeSpellbookMode(tournament?.spellbookDistribution)
+      : normalizeSpellbookMode(requestedMode || $("#duelModeSelect")?.value);
+    const withSpecializations = fromTournament
+      ? Boolean(tournament?.specializationsEnabled)
+      : Boolean(selectedSpecialization);
     const opponent = fromTournament ? tournament.opponents[tournament.currentMatch] : null;
     const requestedSeed = $("#seedInput").value.trim();
     const seed = fromTournament
@@ -1157,7 +1203,7 @@
     const specializationRecord = playerSpecialization && A.getAstralSpecialization
       ? A.getAstralSpecialization(playerSpecialization, playerTalent)
       : null;
-    const effectivePlayerTalent = specializationRecord?.talent || playerTalent;
+    const effectivePlayerTalent = specializationRecord?.talent || playerTalent || "fire";
     tournamentMatch = Boolean(fromTournament);
     matchRecorded = false;
     matchStartedAt = Date.now();
@@ -1173,14 +1219,19 @@
       seed,
       playerTalent: effectivePlayerTalent,
       enemyTalent: opponent?.talent,
-      playerPassives: fromTournament ? tournament.selectedPassives : [],
-      enemyPassives: opponent?.passives || [],
+      playerPassives: fromTournament && tournament?.evolutionEnabled ? tournament.selectedPassives : [],
+      enemyPassives: fromTournament ? (A.getTournamentOpponentPassives?.(tournament, tournament.currentMatch) || []) : [],
       rules: duelRules,
       aiDifficulty: difficulty,
       astralMode: fromTournament ? "tournament" : "duel",
-      astralLeague: originalMode ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting")) : undefined,
+      spellbookDistribution,
+      astralLeague: originalMode
+        ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting"))
+        : undefined,
       playerSpecialization,
-      enemySpecialization: withSpecializations ? (fromTournament ? opponent?.specialization : ($("#enemySpecializationSelect")?.value || undefined)) : undefined,
+      enemySpecialization: withSpecializations
+        ? (fromTournament ? opponent?.specialization : ($("#enemySpecializationSelect")?.value || undefined))
+        : undefined,
       playerAstralAbilities: withSpecializations ? undefined : [],
       enemyAstralAbilities: withSpecializations ? undefined : []
     });
@@ -1190,7 +1241,7 @@
       playerTalent: effectivePlayerTalent,
       fromTournament: Boolean(fromTournament),
       selectedSpecialization,
-      requestedMode: duelMode,
+      requestedMode: spellbookDistribution,
       seed
     };
     enemySchool = engine.state.enemy.talent;
@@ -1200,7 +1251,7 @@
     $("#setupPanel").classList.add("hidden");
     $("#battlePanel").classList.remove("hidden");
     const generation = engine.state.generationDiagnostics?.[0];
-    $("#seedBadge").textContent = generation ? `seed: ${seed} · libro: ${generation.generationAttempt} tentativi` : `seed: ${seed}`;
+    $("#seedBadge").textContent = generation ? `seed: ${seed} · grimorio: ${generation.generationAttempt} tentativi` : `seed: ${seed}`;
     $("#duelSessionActions")?.classList.add("hidden");
     $("#duelMenuBtn")?.setAttribute("aria-expanded", "false");
     busy = false;
@@ -1965,8 +2016,13 @@
     });
   }
 
+  function visibleCardKeyword(card) {
+    const value = String(card?.keyword || "").trim();
+    return /^originale$/i.test(value) ? "" : value;
+  }
+
   function cardDescription(card, side = inspectedCardSide) {
-    const raw = cardText(card) || card?.keyword || t("ui.selectCardForDetails");
+    const raw = cardText(card) || visibleCardKeyword(card) || t("ui.selectCardForDetails");
     const dynamic = integrateCurrentValue(raw, currentCardPreview(card, side));
     const separated = dynamic.startsWith("+")
       ? dynamic.replace(/\s+([+-]\d+\b)/g, ". $1")
@@ -2050,7 +2106,7 @@
         <div><small>${t("cards.rarity")}</small><strong>${rarity}</strong></div>
         ${previewCombatMeta}
       </div>
-      <div class="inspect-ability-block"><small>${t("ui.ability")}</small><p><strong>${escapeHtml(card.keyword || t("ui.original"))}</strong></p><p>${escapeHtml(cardText(card))}</p></div>`;
+      <div class="inspect-ability-block">${visibleCardKeyword(card) ? `<small>${t("ui.ability")}</small><p><strong>${escapeHtml(visibleCardKeyword(card))}</strong></p>` : ""}<p>${escapeHtml(cardText(card))}</p></div>`;
     $("#illustrationProgress").textContent = `${getIllustratedTotal()} / ${allAstralCards().length}`;
   }
 
@@ -2177,7 +2233,7 @@
       meta.innerHTML = `
         <div class="inspect-meta-grid collection-page-stats">
           ${combatDetails}
-          <div><small>${t("cards.keyword")}</small><strong>${escapeHtml(card.keyword || t("ui.original"))}</strong></div>
+          ${visibleCardKeyword(card) ? `<div><small>${t("cards.keyword")}</small><strong>${escapeHtml(visibleCardKeyword(card))}</strong></div>` : ""}
         </div>
         <div class="inspect-ability-block"><small>${t("cards.cardText")}</small><p>${escapeHtml(cardText(card))}</p></div>`;
     }
@@ -2381,7 +2437,7 @@
       artNode.appendChild(buildArtBlock(card, "hand"));
       clone.querySelector(".name").textContent = cardName(card);
       clone.querySelector(".text").textContent = cardText(card);
-      clone.querySelector(".keyword").textContent = card.keyword || "—";
+      clone.querySelector(".keyword").textContent = visibleCardKeyword(card);
       clone.querySelector(".stats").textContent = card.type === "spell" ? `Lv ${card.level} · ✨` : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
       const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; inspectedCardInstanceId = null; renderCollectionPanels(); };
       clone.addEventListener("mouseenter", inspectHandCard);
@@ -3220,21 +3276,61 @@
     const newButton = $("#newTournamentBtn");
     const abandonButton = $("#abandonTournamentBtn");
     const context = {
-      tournament, t, school, schoolName, escapeHtml,
+      tournament, t, school, schoolName, escapeHtml, abilityName, abilityDescription, spellbookModeLabel,
       specializations: A.ASTRAL_SPECIALIZATIONS,
       specialization: id => A.getAstralSpecialization?.(id),
       specializationName: id => t(`specialization.${A.getAstralSpecialization?.(id)?.id || id}`),
       leagueLabel: id => t(`league.${id}`),
-      difficultyLabel: id => t(`difficulty.${id}`)
+      difficultyLabel: id => t(`difficulty.${id}`),
+      tournamentModeLabel: id => t(`tournament.mode.${id || "league"}`)
     };
     newButton?.classList.toggle("hidden", !tournament);
     abandonButton?.classList.toggle("hidden", !tournament || tournament.completed);
+
     if (!tournament) {
       root.innerHTML = A.UITournamentView.renderEmpty(context);
+
+      const selectedTournamentRules = () => {
+        const tournamentMode = $("#tournamentModeSelect")?.value || "league";
+        return A.getTournamentModeRules?.(tournamentMode, {
+          spellbookDistribution: $("#tournamentCustomDistribution")?.value || "arcane",
+          specializationsEnabled: $("#tournamentCustomSpecializations")?.value !== "off",
+          evolutionEnabled: $("#tournamentCustomEvolution")?.value === "on"
+        }) || {
+          tournamentMode,
+          spellbookDistribution: "arcane",
+          specializationsEnabled: true,
+          evolutionEnabled: tournamentMode === "evolution"
+        };
+      };
+
+      const syncTournamentCreate = () => {
+        const rules = selectedTournamentRules();
+        const mode = rules.tournamentMode || "league";
+        $("#tournamentCustomRules")?.classList.toggle("hidden", mode !== "custom");
+        $("#tournamentSpecializationField")?.classList.toggle("hidden", !rules.specializationsEnabled);
+        if ($("#tournamentModeDescription")) $("#tournamentModeDescription").textContent = t(`tournament.mode.${mode}.description`);
+        const preview = $("#tournamentSpecializationPreview");
+        if (preview) {
+          preview.innerHTML = rules.specializationsEnabled
+            ? A.UITournamentView.specializationProgression($("#tournamentTalentSelect")?.value || "battlemage", context)
+            : `<p>${t("tournament.noSpecializationDescription")}</p>`;
+        }
+      };
+
+      ["#tournamentModeSelect", "#tournamentCustomDistribution", "#tournamentCustomSpecializations", "#tournamentCustomEvolution", "#tournamentTalentSelect"]
+        .forEach(selector => $(selector)?.addEventListener("change", syncTournamentCreate));
+      syncTournamentCreate();
+
       $("#createTournamentConfirm")?.addEventListener("click", () => {
+        const rules = selectedTournamentRules();
         tournament = A.startTournament(profile, {
-          specialization: $("#tournamentTalentSelect").value,
-          seed: $("#tournamentSeedInput").value,
+          tournamentMode: rules.tournamentMode,
+          spellbookDistribution: rules.spellbookDistribution,
+          specializationsEnabled: rules.specializationsEnabled,
+          evolutionEnabled: rules.evolutionEnabled,
+          specialization: rules.specializationsEnabled ? $("#tournamentTalentSelect")?.value : undefined,
+          seed: $("#tournamentSeedInput")?.value,
           setId: "astral-original"
         });
         profile = A.loadProfile();
@@ -3249,17 +3345,27 @@
       : A.UITournamentView.renderActive(context);
 
     const actions = $("#tournamentActions");
-    if (tournament.pendingPassiveChoice) {
-      actions.innerHTML = `<h3>${t("tournament.choosePassive")}</h3><div class="passive-choice-grid">${tournament.offeredPassives.map(id => { const p = A.getPassive(id); return `<button class="passive-choice" data-passive="${id}"><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.description)}</small></button>`; }).join("")}</div>`;
+    if (tournament.pendingPassiveChoice && actions) {
+      actions.innerHTML = `<h3>${t("tournament.choosePowerup")}</h3><div class="passive-choice-grid">${tournament.offeredPassives.map(id => {
+        const p = A.getPassive(id);
+        return `<button class="passive-choice" data-passive="${id}"><strong>${escapeHtml(p?.name || id)}</strong><small>${escapeHtml(p?.description || "")}</small></button>`;
+      }).join("")}</div>`;
       actions.querySelectorAll("[data-passive]").forEach(button => button.addEventListener("click", () => {
         A.selectTournamentPassive(tournament, button.dataset.passive);
         A.saveTournament(tournament);
         renderTournament();
       }));
     } else if (tournament.completed) {
-      $("#archiveTournamentBtn")?.addEventListener("click", () => { tournament = null; A.saveTournament(null); renderTournament(); });
+      $("#archiveTournamentBtn")?.addEventListener("click", () => {
+        tournament = null;
+        A.saveTournament(null);
+        renderTournament();
+      });
     } else {
-      $("#continueTournamentBtn")?.addEventListener("click", () => startDuel(tournament.specialization, true));
+      $("#continueTournamentBtn")?.addEventListener("click", () => {
+        const spec = tournament.specialization ? A.getAstralSpecialization?.(tournament.specialization) : null;
+        startDuel(spec?.talent || "fire", true, tournament.specialization, tournament.spellbookDistribution);
+      });
     }
   }
 
@@ -3777,6 +3883,7 @@
   $("#retryMultiplayerServerBtn")?.addEventListener("click", () => checkMultiplayerServer({ force: true }));
   $("#onlinePlayerNameInput")?.addEventListener("change", event => savePlayerName(event.currentTarget));
   $("#onlineDuelModeSelect")?.addEventListener("change", syncOnlineDuelMode);
+  $("#onlineSpecializationsSelect")?.addEventListener("change", syncOnlineDuelMode);
   $("#onlineRoomCode")?.addEventListener("input", event => {
     const allowed = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
     const normalized = String(event.currentTarget.value || "").toUpperCase().split("").filter(char => allowed.includes(char)).join("").slice(0, 6);
@@ -3822,7 +3929,7 @@
       ? { code: roomCode, settings: inspectedRemoteRoomSettings }
       : await inspectRemoteRoom(roomCode, { force: true });
     if (!preview) return;
-    const specializedRoom = preview.settings?.duelMode === "specializations";
+    const specializedRoom = Boolean(preview.settings?.specializationsEnabled);
     if (specializedRoom && !previewWasReady) {
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = t("online.chooseSpecializationBeforeJoin");
       return;
@@ -3896,6 +4003,8 @@
   setupAstralSpecializationOptions();
   syncOnlineDuelMode();
   $("#duelModeSelect").addEventListener("change", renderTalentChoices);
+  $("#duelSpecializationsSelect")?.addEventListener("change", renderTalentChoices);
+  $("#astralLeagueSelect")?.addEventListener("change", renderTalentChoices);
   $("#cardArtStyleSelect").addEventListener("change", event => {
     cardArtStyle = event.target.value === "new" ? "new" : "original";
     localStorage.setItem("arcane.cardArtStyle", cardArtStyle);
@@ -3932,7 +4041,7 @@
   } catch { localStorage.removeItem("arcane.remoteRoom"); }
   if (urlParams.get("qa") === "duel") {
     clearPersistedLocalDuel();
-    setTimeout(() => startDuel("fire", false, null, "normal"), 30);
+    setTimeout(() => startDuel("fire", false, null, "arcane"), 30);
   } else if (!restoredRemoteRoom) {
     restorePersistedLocalDuel();
   }

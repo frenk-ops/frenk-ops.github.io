@@ -6,10 +6,38 @@
   const REWARD_WINS = [2, 4, 6];
   const WIN_TARGET = 5;
   const LEAGUE_BY_MATCH = ["starting", "starting", "advanced", "advanced", "major", "major", "major"];
+  const TOURNAMENT_MODES = Object.freeze({
+    league: Object.freeze({ id: "league", spellbookDistribution: "arcane", specializationsEnabled: true, evolutionEnabled: false }),
+    evolution: Object.freeze({ id: "evolution", spellbookDistribution: "arcane", specializationsEnabled: true, evolutionEnabled: true }),
+    custom: Object.freeze({ id: "custom", spellbookDistribution: "arcane", specializationsEnabled: true, evolutionEnabled: false })
+  });
+  const PASSIVE_PRIORITY_BY_SPECIALIZATION = Object.freeze({
+    battlemage: Object.freeze(["fire_aura", "elemental_focus", "battle_instinct", "arcane_reserve", "vitality"]),
+    stormmage: Object.freeze(["elemental_focus", "vitality", "arcane_reserve", "battle_instinct", "fire_aura"]),
+    thundermage: Object.freeze(["battle_instinct", "elemental_focus", "arcane_reserve", "vitality", "fire_aura"]),
+    druid: Object.freeze(["vitality", "elemental_focus", "arcane_reserve", "battle_instinct", "fire_aura"]),
+    necromancer: Object.freeze(["vitality", "battle_instinct", "elemental_focus", "arcane_reserve", "fire_aura"]),
+    wizard: Object.freeze(["arcane_reserve", "vitality", "battle_instinct", "elemental_focus", "fire_aura"])
+  });
   const SPECIALIZATION_BY_TALENT = Object.freeze({
     fire: "battlemage", water: "stormmage", air: "thundermage", nature: "druid", death: "necromancer"
   });
   const normalizePlayerSpecialization = value => SPECIALIZATION_BY_TALENT[value] || value || "battlemage";
+  const normalizeTournamentMode = value => TOURNAMENT_MODES[value] ? value : "league";
+  const normalizeDistribution = value => ["arcane", "free", "mirror"].includes(value) ? value : "arcane";
+
+  function resolveTournamentRules(options = {}) {
+    const tournamentMode = normalizeTournamentMode(options.tournamentMode || options.mode);
+    const preset = TOURNAMENT_MODES[tournamentMode];
+    if (tournamentMode !== "custom") return { tournamentMode, ...preset };
+    return {
+      tournamentMode,
+      id: "custom",
+      spellbookDistribution: normalizeDistribution(options.spellbookDistribution),
+      specializationsEnabled: options.specializationsEnabled !== false,
+      evolutionEnabled: Boolean(options.evolutionEnabled)
+    };
+  }
 
   function memoryStorage() {
     const values = {};
@@ -218,28 +246,34 @@
   A.createTournament = function createTournament(options) {
     const seed = String(options?.seed || `tournament-${Date.now()}`);
     const rng = A.createRng(seed);
+    const tournamentRules = resolveTournamentRules(options || {});
     const difficultyOrder = ["novice", "intermediate", "intermediate", "advanced", "advanced", "master", "grandmaster"];
     const opponents = A.RANKS.map((rank, index) => {
       const talent = rng.pick(A.SCHOOLS).id;
+      const specialization = SPECIALIZATION_BY_TALENT[talent] || "battlemage";
       return {
         id: `opponent-${index + 1}`,
         name: ["Mira", "Orion", "Kael", "Selene", "Vargos", "Ilyra", "Asterion"][index],
         rank,
         talent,
-        specialization: SPECIALIZATION_BY_TALENT[talent] || "battlemage",
+        specialization: tournamentRules.specializationsEnabled ? specialization : undefined,
         difficulty: difficultyOrder[index],
         league: LEAGUE_BY_MATCH[index],
-        passives: index < 2 ? [] : rng.shuffle(A.PASSIVES).slice(0, Math.min(2, Math.floor(index / 2))).map(p => p.id),
+        passives: [],
         defeated: false,
         result: null,
         score: 0
       };
     });
     return {
-      version: 2,
+      version: 3,
       id: seed,
       seed,
-      specialization: normalizePlayerSpecialization(options?.specialization),
+      tournamentMode: tournamentRules.tournamentMode,
+      spellbookDistribution: tournamentRules.spellbookDistribution,
+      specializationsEnabled: tournamentRules.specializationsEnabled,
+      evolutionEnabled: tournamentRules.evolutionEnabled,
+      specialization: tournamentRules.specializationsEnabled ? normalizePlayerSpecialization(options?.specialization) : null,
       setId: "astral-original",
       currentMatch: 0,
       points: 0,
@@ -259,15 +293,34 @@
 
   function normalizeTournament(tournament) {
     if (!tournament) return null;
-    tournament.version = 2;
+    const legacyEvolution = Number(tournament.version || 0) < 3;
+    const tournamentMode = normalizeTournamentMode(tournament.tournamentMode || (legacyEvolution ? "evolution" : "league"));
+    const preset = TOURNAMENT_MODES[tournamentMode];
+    tournament.version = 3;
     tournament.setId = "astral-original";
-    tournament.specialization = normalizePlayerSpecialization(tournament.specialization);
+    tournament.tournamentMode = tournamentMode;
+    tournament.spellbookDistribution = normalizeDistribution(tournament.spellbookDistribution || preset.spellbookDistribution);
+    tournament.specializationsEnabled = tournament.specializationsEnabled !== undefined
+      ? Boolean(tournament.specializationsEnabled)
+      : preset.specializationsEnabled;
+    tournament.evolutionEnabled = tournament.evolutionEnabled !== undefined
+      ? Boolean(tournament.evolutionEnabled)
+      : (legacyEvolution || preset.evolutionEnabled);
+    tournament.specialization = tournament.specializationsEnabled
+      ? normalizePlayerSpecialization(tournament.specialization)
+      : null;
     tournament.winTarget = WIN_TARGET;
+    tournament.selectedPassives = Array.isArray(tournament.selectedPassives) ? tournament.selectedPassives : [];
+    tournament.pendingPassiveChoice = tournament.evolutionEnabled && Boolean(tournament.pendingPassiveChoice);
+    tournament.offeredPassives = tournament.evolutionEnabled && Array.isArray(tournament.offeredPassives) ? tournament.offeredPassives : [];
     tournament.results = Array.isArray(tournament.results) ? tournament.results : [];
     tournament.opponents = (tournament.opponents || []).map((opponent, index) => ({
       ...opponent,
       league: opponent.league || LEAGUE_BY_MATCH[index] || "major",
-      specialization: opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage",
+      specialization: tournament.specializationsEnabled
+        ? (opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage")
+        : undefined,
+      passives: [],
       result: opponent.result || (opponent.defeated ? "win" : null),
       score: Number(opponent.score || 0)
     }));
@@ -312,6 +365,11 @@
   };
 
   A.offerTournamentPassives = function offerTournamentPassives(tournament) {
+    if (!tournament?.evolutionEnabled) {
+      tournament.pendingPassiveChoice = false;
+      tournament.offeredPassives = [];
+      return [];
+    }
     const rng = A.createRng(`${tournament.seed}-reward-${tournament.wins}`);
     const available = A.PASSIVES.filter(passive => !tournament.selectedPassives.includes(passive.id));
     tournament.offeredPassives = rng.shuffle(available).slice(0, 3).map(passive => passive.id);
@@ -320,7 +378,7 @@
   };
 
   A.selectTournamentPassive = function selectTournamentPassive(tournament, passiveId) {
-    if (!tournament.pendingPassiveChoice || !tournament.offeredPassives.includes(passiveId)) return false;
+    if (!tournament?.evolutionEnabled || !tournament.pendingPassiveChoice || !tournament.offeredPassives.includes(passiveId)) return false;
     tournament.selectedPassives.push(passiveId);
     tournament.pendingPassiveChoice = false;
     tournament.offeredPassives = [];
@@ -361,7 +419,7 @@
     });
 
     tournament.currentMatch += 1;
-    if (won && REWARD_WINS.includes(tournament.wins)) A.offerTournamentPassives(tournament);
+    if (tournament.evolutionEnabled && won && REWARD_WINS.includes(tournament.wins)) A.offerTournamentPassives(tournament);
     if (tournament.currentMatch >= tournament.opponents.length) {
       tournament.completed = true;
       tournament.won = tournament.wins >= WIN_TARGET;
@@ -381,11 +439,30 @@
     return { profile, tournament };
   };
 
+  A.getTournamentOpponentPassives = function getTournamentOpponentPassives(tournament, matchIndex) {
+    if (!tournament?.evolutionEnabled) return [];
+    const index = Math.max(0, Math.min(Number(matchIndex ?? tournament.currentMatch) || 0, (tournament.opponents?.length || 1) - 1));
+    const opponent = tournament.opponents?.[index];
+    const count = Math.min(
+      Array.isArray(tournament.selectedPassives) ? tournament.selectedPassives.length : 0,
+      A.PASSIVES.length
+    );
+    if (!count) return [];
+    const specialization = opponent?.specialization || SPECIALIZATION_BY_TALENT[opponent?.talent] || "battlemage";
+    const priority = PASSIVE_PRIORITY_BY_SPECIALIZATION[specialization] || A.PASSIVES.map(passive => passive.id);
+    return priority.filter(id => A.getPassive(id)).slice(0, count);
+  };
+
+  A.getTournamentModeRules = function getTournamentModeRules(value, options = {}) {
+    return resolveTournamentRules({ ...options, tournamentMode: value });
+  };
+
   A.resetProgress = function resetProgress(storage) {
     const target = storage || A.getStorage();
     target.removeItem(PROFILE_KEY);
     target.removeItem(TOURNAMENT_KEY);
   };
 
+  A.TOURNAMENT_MODES = TOURNAMENT_MODES;
   A.TOURNAMENT_RULES = Object.freeze({ matches: 7, winTarget: WIN_TARGET, rewardWins: Object.freeze([...REWARD_WINS]), leagues: Object.freeze([...LEAGUE_BY_MATCH]) });
 })(window.Arcane = window.Arcane || {});

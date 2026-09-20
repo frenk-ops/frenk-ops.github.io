@@ -261,6 +261,7 @@
       name: "Replay golden: le catene tra scuole mantengono eventi, stato e checksum",
       run() {
         assert(Array.isArray(A.GOLDEN_REPLAY_SCENARIOS) && A.GOLDEN_REPLAY_SCENARIOS.length >= 3, "Fixture golden mancanti");
+        const checksumMismatches = [];
         A.GOLDEN_REPLAY_SCENARIOS.forEach(scenario => {
           const engine = buildGoldenReplayEngine(scenario);
           const session = new A.CommandSession(engine, { matchId: `golden:${scenario.id}` });
@@ -274,10 +275,13 @@
           assert(JSON.stringify(eventTypes) === JSON.stringify(scenario.expected.eventTypes), `${scenario.id}: eventi ${JSON.stringify(eventTypes)}`);
           const projection = goldenStateProjection(engine, scenario.expected.state);
           assert(A.stableStringify(projection) === A.stableStringify(scenario.expected.state), `${scenario.id}: stato ${A.stableStringify(projection)}`);
-          assert(session.checksum === scenario.expected.checksum, `${scenario.id}: checksum ${session.checksum}`);
+          if (session.checksum !== scenario.expected.checksum) {
+            checksumMismatches.push(`${scenario.id}=${session.checksum}`);
+          }
           const replayed = A.replayCommands(session.exportReplay(), engine.cards);
           assert(replayed.checksum === session.checksum, `${scenario.id}: replay non deterministico`);
         });
+        assert(checksumMismatches.length === 0, `Golden checksum updates: ${checksumMismatches.join(", ")}`);
       }
     },
     {
@@ -540,35 +544,64 @@
       }
     },
     {
-      name: "Progressione torneo e ricompensa passiva",
+      name: "Torneo Evolutivo: propone Potenziamenti e bilancia gli avversari",
       run() {
         const profile = A.createDefaultProfile();
-        const tournament = A.createTournament({ seed: "cup", specialization: "fire" });
+        const tournament = A.createTournament({ seed: "cup", tournamentMode: "evolution", specialization: "fire" });
         A.recordTournamentDuel(profile, tournament, true, 100);
         A.recordTournamentDuel(profile, tournament, true, 100);
         assert(tournament.wins === 2, "Vittorie torneo errate");
-        assert(tournament.pendingPassiveChoice, "Scelta passiva non proposta");
+        assert(tournament.pendingPassiveChoice, "Scelta Potenziamento non proposta");
         const selected = A.selectTournamentPassive(tournament, tournament.offeredPassives[0]);
-        assert(selected && tournament.selectedPassives.length === 1, "Passiva non salvata");
+        assert(selected && tournament.selectedPassives.length === 1, "Potenziamento non salvato");
+        assert(A.getTournamentOpponentPassives(tournament, tournament.currentMatch).length === 1, "L'avversario deve ricevere un Potenziamento equivalente");
+      }
+    },
+    {
+      name: "Torneo delle Leghe: non assegna Potenziamenti extra",
+      run() {
+        const profile = A.createDefaultProfile();
+        const tournament = A.createTournament({ seed: "league-no-powerups", tournamentMode: "league", specialization: "water" });
+        A.recordTournamentDuel(profile, tournament, true, 100);
+        A.recordTournamentDuel(profile, tournament, true, 100);
+        assert(!tournament.evolutionEnabled && !tournament.pendingPassiveChoice,"Il Torneo delle Leghe non deve proporre Potenziamenti");
+        assert(A.getTournamentOpponentPassives(tournament, tournament.currentMatch).length===0,"Gli avversari del Torneo delle Leghe non devono avere Potenziamenti extra");
       }
     },
     {
       name: "Il torneo usa una sola collezione e avanza tra le tre leghe",
       run() {
-        const tournament = A.createTournament({ seed: "league-ladder", specialization: "fire", setId: "classic" });
+        const tournament = A.createTournament({ seed: "league-ladder", tournamentMode: "league", specialization: "fire", setId: "classic" });
         assert(tournament.setId === "astral-original", `Set torneo ambiguo: ${tournament.setId}`);
+        assert(tournament.tournamentMode === "league" && tournament.spellbookDistribution === "arcane" && tournament.specializationsEnabled, "Preset Torneo delle Leghe errato");
         assert(tournament.specialization === "battlemage", `Specializzazione legacy non migrata: ${tournament.specialization}`);
         assert(JSON.stringify(tournament.opponents.map(item => item.league)) === JSON.stringify(["starting", "starting", "advanced", "advanced", "major", "major", "major"]), "Progressione leghe errata");
         assert(tournament.opponents.every(item => A.getAstralSpecialization(item.specialization, item.talent).talent === item.talent), "Specializzazione avversario incoerente");
       }
     },
     {
-      name: "Il torneo accetta tutte le specializzazioni, incluso Mago",
+      name: "Il torneo accetta tutte le specializzazioni, incluso Mago Arcano",
       run() {
         const wizard = A.createTournament({ seed: "wizard-cup", specialization: "wizard" });
         assert(wizard.specialization === "wizard", `Specializzazione Mago persa: ${wizard.specialization}`);
         assert(A.ASTRAL_SPECIALIZATIONS.length === 6, `Specializzazioni disponibili: ${A.ASTRAL_SPECIALIZATIONS.length}`);
         assert(A.ASTRAL_SPECIALIZATIONS.some(item => item.id === "wizard"), "Mago non disponibile nel torneo");
+      }
+    },
+    {
+      name: "Torneo Personalizzato: conserva distribuzione e assi scelti",
+      run() {
+        const tournament=A.createTournament({
+          seed:"custom-cup",
+          tournamentMode:"custom",
+          spellbookDistribution:"mirror",
+          specializationsEnabled:false,
+          evolutionEnabled:true
+        });
+        assert(tournament.tournamentMode==="custom","Modalita personalizzata persa");
+        assert(tournament.spellbookDistribution==="mirror","Distribuzione speculare persa");
+        assert(!tournament.specializationsEnabled && tournament.specialization===null,"Le specializzazioni dovevano essere disattivate");
+        assert(tournament.evolutionEnabled,"I Potenziamenti evolutivi dovevano essere attivi");
       }
     },
     {
@@ -767,6 +800,54 @@
         assert(new Set(result.player.map(card=>card.id)).size===20,"Duplicati nel libro umano");
         assert(result.player.filter(card=>card.level===12).length===1,"Il libro deve avere esattamente un livello 12");
         assert(result.player.every(card=>card.level<=12),"Un livello 13 è stato estratto casualmente");
+      }
+    },
+    {
+      name: "Duello Arcano: i Grimori base sono mutuamente esclusivi",
+      run() {
+        const cards=A.getCardSet("astral-original");
+        const result=A.generateRecoveredAstralHands(cards,{seed:"arcane-exclusive",enemyDifficulty:"master",distributionMode:"arcane"});
+        const playerIds=new Set(result.player.map(card=>card.id));
+        assert(!result.enemy.some(card=>playerIds.has(card.id)),"Il Duello Arcano ha condiviso una carta base");
+        assert(result.diagnostics.every(item=>item.baseOverlap===0),"La diagnostica segnala overlap nel Duello Arcano");
+      }
+    },
+    {
+      name: "Duello Libero: i Grimori indipendenti possono condividere carte",
+      run() {
+        const cards=A.getCardSet("astral-original");
+        let overlap=0;
+        for(let index=0;index<8 && overlap===0;index+=1){
+          const result=A.generateRecoveredAstralHands(cards,{seed:`free-overlap-${index}`,enemyDifficulty:"master",distributionMode:"free"});
+          overlap=result.diagnostics[0].baseOverlap;
+        }
+        assert(overlap>0,"Il Duello Libero non ha mai prodotto carte condivise");
+      }
+    },
+    {
+      name: "Duello Speculare: entrambi ricevono lo stesso Grimorio base",
+      run() {
+        const cards=A.getCardSet("astral-original");
+        const result=A.generateRecoveredAstralHands(cards,{seed:"mirror-book",mode:"multiplayer",distributionMode:"mirror",playerAbilities:[],enemyAbilities:[]});
+        assert(result.player.length===20 && result.enemy.length===20,"Il Duello Speculare deve usare 20 carte per entrambi");
+        assert(JSON.stringify(result.player.map(card=>card.id))===JSON.stringify(result.enemy.map(card=>card.id)),"I Grimori speculari non coincidono");
+      }
+    },
+    {
+      name: "Duello Arcano: Knowledge puo creare eccezioni dopo l'esclusivita base",
+      run() {
+        const cards=A.getCardSet("astral-original");
+        const result=A.generateRecoveredAstralHands(cards,{
+          seed:"arcane-knowledge-overlap",
+          mode:"tournament",
+          distributionMode:"arcane",
+          playerSpecialization:"battlemage",
+          enemySpecialization:"battlemage",
+          playerAbilities:[30],
+          enemyAbilities:[30]
+        });
+        assert(result.diagnostics.every(item=>item.baseOverlap===0),"Le carte base del torneo devono restare esclusive");
+        assert(result.player.some(card=>card.id==="astral_fire_13") && result.enemy.some(card=>card.id==="astral_fire_13"),"La Sapienza degli Efreet deve poter aggiungere la stessa carta a entrambi");
       }
     },
     {

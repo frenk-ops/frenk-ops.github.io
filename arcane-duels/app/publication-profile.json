@@ -8,6 +8,6 @@
   "staticHosting": true,
   "multiplayerServerIncluded": false,
   "multiplayerApiConfigured": true,
-  "version": "0.21.10",
-  "build": "af3eb37"
+  "version": "0.22.0",
+  "build": "0754e80"
 }
