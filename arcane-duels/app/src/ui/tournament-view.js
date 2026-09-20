@@ -125,18 +125,20 @@
         <div class="tournament-current-portrait"><img src="${portraitFor(tournament.currentMatch)}" alt="${escapeHtml(current.name)}"></div>
         <h3>${escapeHtml(current.name)}</h3>
         <p>${t(`tournament.rank.${tournament.currentMatch}`)} · ${leagueLabel(current.league)}</p>
-        <small>${t("tournament.aiDifficulty")}: ${escapeHtml(difficultyLabel(current.difficulty))}</small>
-        <small>${t("tournament.mode")}: ${escapeHtml(tournamentModeLabel(tournament.tournamentMode))}</small>
-        ${tournament.evolutionEnabled ? `<small>${t("tournament.opponentPowerups")}: ${opponentPowerups.length}</small>` : ""}
+        <div class="tournament-opponent-meta">
+          <span>${t("tournament.aiDifficulty")}: <b>${escapeHtml(difficultyLabel(current.difficulty))}</b></span>
+          <span>${t("tournament.mode")}: <b>${escapeHtml(tournamentModeLabel(tournament.tournamentMode))}</b></span>
+          ${tournament.evolutionEnabled ? `<span>${t("tournament.opponentPowerups")}: <b>${opponentPowerups.length}</b></span>` : ""}
+        </div>
         <button id="continueTournamentBtn" class="primary tournament-primary-action">${t("tournament.resume")}</button>
       </aside>
       <section class="tournament-progress-panel">
         <div class="tournament-summary">
-          <div><small>${t("tournament.match")}</small><strong>${tournament.currentMatch + 1} / ${tournament.opponents.length}</strong></div>
-          <div><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
-          <div><small>${t("tournament.losses")}</small><strong>${tournament.losses}</strong></div>
-          <div><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
-          <div><small>${t("tournament.specialization")}</small><strong class="tournament-specialization-value">${playerSpecialization ? `${specializationIconMarkup(tournament.specialization, "school-icon-svg tournament-school-icon")}<span>${escapeHtml(specializationName(tournament.specialization))}</span>` : t("tournament.noSpecialization")}</strong></div>
+          <div class="tournament-summary-stat"><small>${t("tournament.match")}</small><strong>${tournament.currentMatch + 1} / ${tournament.opponents.length}</strong></div>
+          <div class="tournament-summary-stat"><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
+          <div class="tournament-summary-stat"><small>${t("tournament.losses")}</small><strong>${tournament.losses}</strong></div>
+          <div class="tournament-summary-stat"><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
+          <div class="tournament-summary-specialization"><small>${t("tournament.specialization")}</small><strong class="tournament-specialization-value">${playerSpecialization ? `${specializationIconMarkup(tournament.specialization, "school-icon-svg tournament-school-icon")}<span>${escapeHtml(specializationName(tournament.specialization))}</span>` : t("tournament.noSpecialization")}</strong></div>
         </div>
 
         <div class="passive-list">
