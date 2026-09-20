@@ -7324,10 +7324,10 @@ body:has(#battlePanel:not(.hidden)) .classic-duel-frame {
     padding-inline:8px !important;
   }
   #playerHand.hand-showcase[data-card-count="1"] { --hand-overlap:0px; }
-  #playerHand.hand-showcase[data-card-count="2"] { --hand-overlap:-6px; }
-  #playerHand.hand-showcase[data-card-count="3"] { --hand-overlap:-10px; }
-  #playerHand.hand-showcase[data-card-count="4"] { --hand-overlap:-18px; }
-  #playerHand.hand-showcase[data-card-count="5"] { --hand-overlap:-24px; }
+  #playerHand.hand-showcase[data-card-count="2"] { --hand-overlap:-8px; }
+  #playerHand.hand-showcase[data-card-count="3"] { --hand-overlap:-26px; }
+  #playerHand.hand-showcase[data-card-count="4"] { --hand-overlap:-31px; }
+  #playerHand.hand-showcase[data-card-count="5"] { --hand-overlap:-34px; }
   #playerHand.hand-showcase .game-card:not(:first-child) {
     margin-left:var(--hand-overlap) !important;
   }
@@ -7438,9 +7438,9 @@ body:has(#battlePanel:not(.hidden)) .classic-duel-frame {
 }
 
 @media (max-width:390px) {
-  #playerHand.hand-showcase[data-card-count="3"] { --hand-overlap:-13px; }
-  #playerHand.hand-showcase[data-card-count="4"] { --hand-overlap:-21px; }
-  #playerHand.hand-showcase[data-card-count="5"] { --hand-overlap:-27px; }
+  #playerHand.hand-showcase[data-card-count="3"] { --hand-overlap:-30px; }
+  #playerHand.hand-showcase[data-card-count="4"] { --hand-overlap:-34px; }
+  #playerHand.hand-showcase[data-card-count="5"] { --hand-overlap:-38px; }
   .duel-footer-actions {
     grid-template-columns:minmax(70px,1fr) minmax(78px,auto) minmax(70px,1fr) !important;
     gap:4px !important;
