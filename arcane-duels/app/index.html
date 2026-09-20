@@ -6,16 +6,16 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
-  <meta name="arcane-app-version" content="0.22.23">
+  <meta name="arcane-app-version" content="0.22.24">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <title>Arcane Duels</title>
-  <link rel="stylesheet" href="styles.css?v=0.22.23-2f204c1">
-  <link rel="stylesheet" href="pwa.css?v=0.22.23-2f204c1">
+  <link rel="stylesheet" href="styles.css?v=0.22.24-d5e62e3">
+  <link rel="stylesheet" href="pwa.css?v=0.22.24-d5e62e3">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -23,7 +23,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.22.23 · build 2f204c1</small>
+        <small class="app-version-badge" data-arcane-version>v0.22.24 · build d5e62e3</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -147,7 +147,7 @@
                 <div id="schoolFilters" class="school-status-grid classic-power-stack player-grid"></div>
                 <div id="activeSchoolLabel" class="active-school-label school-fire" aria-live="polite">Fuoco</div>
                 <div class="classic-mini-settings dev-only hidden">
-                  <label><span data-i18n="ui.speed">Velocità</span><select id="animationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.2" selected data-i18n="speed.normal">Standard</option><option value="1.5" data-i18n="speed.slow">Lenta</option></select></label>
+                  <label><span data-i18n="ui.speed">Velocità</span><select id="animationSpeed"><option value="0.55" data-i18n="speed.fastest">No animazioni carte</option><option value="0.8" data-i18n="speed.fast">Molto veloce</option><option value="1.2" data-i18n="speed.normal">Veloce</option><option value="1.5" selected data-i18n="speed.slow">Standard</option><option value="2" data-i18n="speed.slower">Lenta</option></select></label>
                   <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> <span data-i18n="ui.sound">Suono</span></label>
                   <span id="seedBadge" class="seed-badge"></span>
                 </div>
@@ -216,7 +216,7 @@
                 <header class="duel-pause-header"><span aria-hidden="true">⚙</span><h2 id="duelPauseOptionsTitle" data-i18n="options.title">Opzioni</h2><small data-i18n="pause.optionsSubtitle">Impostazioni del duello</small></header>
                 <div class="duel-pause-options-grid">
                   <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
-                    <select id="duelOptionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.2" data-i18n="speed.normal">Standard</option><option value="1.5" data-i18n="speed.slow">Lenta</option></select>
+                    <select id="duelOptionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">No animazioni carte</option><option value="0.8" data-i18n="speed.fast">Molto veloce</option><option value="1.2" data-i18n="speed.normal">Veloce</option><option value="1.5" data-i18n="speed.slow">Standard</option><option value="2" data-i18n="speed.slower">Lenta</option></select>
                   </label>
                   <label class="duel-pause-check"><input id="duelOptionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
                   <label class="duel-pause-check"><input id="duelOptionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
@@ -234,7 +234,7 @@
             </nav>
 
             <div class="classic-hidden-ui-support" aria-hidden="true">
-              <select id="animationSpeedMenu"><option value="0.55">Fastest</option><option value="0.8">Fast</option><option value="1.2">Normal</option><option value="1.5">Slow</option></select>
+              <select id="animationSpeedMenu"><option value="0.55">Minimal</option><option value="0.8">Very fast</option><option value="1.2">Fast</option><option value="1.5">Standard</option><option value="2">Slow</option></select>
               <input id="bgmEnabled" type="checkbox"><input id="bgmVolume" type="range" min="0" max="100" value="12">
               <select id="languageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
             </div>
@@ -502,7 +502,7 @@
               <select id="optionsLanguageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
             </label>
             <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
-              <select id="optionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.2" data-i18n="speed.normal">Standard</option><option value="1.5" data-i18n="speed.slow">Lenta</option></select>
+              <select id="optionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">No animazioni carte</option><option value="0.8" data-i18n="speed.fast">Molto veloce</option><option value="1.2" data-i18n="speed.normal">Veloce</option><option value="1.5" data-i18n="speed.slow">Standard</option><option value="2" data-i18n="speed.slower">Lenta</option></select>
             </label>
             <select id="optionsCardArtStyle" class="hidden" aria-hidden="true"><option value="new">Nuovo</option></select>
             <label class="options-check"><input id="optionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
@@ -513,7 +513,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.22.23 · build 2f204c1</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.22.24 · build d5e62e3</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -560,36 +560,36 @@
     </div>
   </div>
 
-  <script src="src/core/constants.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/rng.js?v=0.22.23-2f204c1"></script>
-  <script src="src/data/cards.js?v=0.22.23-2f204c1"></script>
-  <script src="src/data/original-cards.js?v=0.22.23-2f204c1"></script>
-  <script src="src/i18n/en.js?v=0.22.23-2f204c1"></script>
-  <script src="src/i18n/it.js?v=0.22.23-2f204c1"></script>
-  <script src="src/i18n/ui-labels.js?v=0.22.23-2f204c1"></script>
-  <script src="src/i18n/index.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/card-schema.js?v=0.22.23-2f204c1"></script>
-  <script src="src/data/astral-ai-card-metadata.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/original-rules.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/generator.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/astral-abilities-re.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/astral-spellbook-re.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/passives.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/effects.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/astral-card-effects-re.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/game-engine.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/multiplayer-protocol.js?v=0.22.23-2f204c1"></script>
-  <script src="src/multiplayer/remote-room-client.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/ai.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/astral-ai-re.js?v=0.22.23-2f204c1"></script>
-  <script src="src/core/tournament.js?v=0.22.23-2f204c1"></script>
-  <script src="tests/golden-replay-fixtures.js?v=0.22.23-2f204c1"></script>
-  <script src="tests/test-suite.js?v=0.22.23-2f204c1"></script>
-  <script src="src/ui/navigation.js?v=0.22.23-2f204c1"></script>
-  <script src="src/ui/pause-menu.js?v=0.22.23-2f204c1"></script>
-  <script src="src/ui/tournament-view.js?v=0.22.23-2f204c1"></script>
-  <script src="src/ui/app.js?v=0.22.23-2f204c1"></script>
-  <script src="pwa-install-v2.js?v=0.22.23-2f204c1"></script>
+  <script src="src/core/constants.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/rng.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/data/cards.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/data/original-cards.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/i18n/en.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/i18n/it.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/i18n/ui-labels.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/i18n/index.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/card-schema.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/data/astral-ai-card-metadata.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/original-rules.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/generator.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/astral-abilities-re.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/astral-spellbook-re.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/passives.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/effects.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/astral-card-effects-re.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/game-engine.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/multiplayer-protocol.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/ai.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/astral-ai-re.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/core/tournament.js?v=0.22.24-d5e62e3"></script>
+  <script src="tests/golden-replay-fixtures.js?v=0.22.24-d5e62e3"></script>
+  <script src="tests/test-suite.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/ui/navigation.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/ui/pause-menu.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/ui/tournament-view.js?v=0.22.24-d5e62e3"></script>
+  <script src="src/ui/app.js?v=0.22.24-d5e62e3"></script>
+  <script src="pwa-install-v2.js?v=0.22.24-d5e62e3"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -608,7 +608,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=0.22.23-2f204c1", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=0.22.24-d5e62e3", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {

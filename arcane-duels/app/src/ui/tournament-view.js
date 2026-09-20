@@ -11,23 +11,17 @@
     const panels = stages.map((league, index) => {
       const abilities = A.getAstralAbilityRecords?.(spec.groups[index] || []) || [];
       const names = abilities.map(ability => escapeHtml(abilityName(ability))).join(" · ");
-      return `<details class="tournament-specialization-stage">
-        <summary>
-          <span><strong>${t(`league.${league}`)}</strong><small>${names}</small></span>
-          <b aria-hidden="true">⌄</b>
-        </summary>
+      return `<section class="tournament-league-detail hidden" data-league-detail="${league}">
+        <header>
+          <strong>${t(`league.${league}`)}</strong>
+          <small>${names}</small>
+        </header>
         <div class="tournament-ability-details">
           ${abilities.map(ability => `<div><strong>${escapeHtml(abilityName(ability))}</strong><p>${escapeHtml(abilityDescription(ability))}</p></div>`).join("")}
         </div>
-      </details>`;
+      </section>`;
     }).join("");
-    return `<section class="tournament-specialization-progression">
-      <div class="tournament-progression-heading">
-        <h3>${t("tournament.specializationProgression")}</h3>
-        <small>${t("tournament.progressionNote")}</small>
-      </div>
-      <div class="tournament-specialization-accordion">${panels}</div>
-    </section>`;
+    return `<div class="tournament-league-details hidden" aria-live="polite">${panels}</div>`;
   }
 
   function renderEmpty(context) {
@@ -48,9 +42,9 @@
       </label>
 
       <div class="tournament-league-strip" aria-label="${t("tournament.path")}">
-        <span class="tournament-league-chip"><b>${t("league.starting")}</b><small>${t("tournament.matches12")}</small></span>
-        <span class="tournament-league-chip"><b>${t("league.advanced")}</b><small>${t("tournament.matches34")}</small></span>
-        <span class="tournament-league-chip"><b>${t("league.major")}</b><small>${t("tournament.matches57")}</small></span>
+        <button type="button" class="tournament-league-chip" data-league-stage="starting" aria-expanded="false"><b>${t("league.starting")}</b><small>${t("tournament.matches12")}</small></button>
+        <button type="button" class="tournament-league-chip" data-league-stage="advanced" aria-expanded="false"><b>${t("league.advanced")}</b><small>${t("tournament.matches34")}</small></button>
+        <button type="button" class="tournament-league-chip" data-league-stage="major" aria-expanded="false"><b>${t("league.major")}</b><small>${t("tournament.matches57")}</small></button>
       </div>
 
       <div id="tournamentCustomRules" class="classic-config-grid hidden">

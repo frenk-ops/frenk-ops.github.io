@@ -33,11 +33,25 @@
   let activeSchool = "fire";
   let enemySchool = "fire";
   let enemyRevealedModalOpen = false;
+  const ANIMATION_SPEEDS = Object.freeze([0.55, 0.8, 1.2, 1.5, 2]);
   const normalizeAnimationSpeed = value => {
     const parsed = Number(value);
     if (parsed === 1.15) return 1.2;
     if (parsed === 2.75) return 1.5;
-    return [0.55, 0.8, 1.2, 1.5].includes(parsed) ? parsed : 1.2;
+    return ANIMATION_SPEEDS.includes(parsed) ? parsed : 1.5;
+  };
+  const animationSpeedMode = value => {
+    const speed = Number(value);
+    if (speed <= 0.55) return "minimal";
+    if (speed <= 0.8) return "very-fast";
+    if (speed <= 1.2) return "fast";
+    if (speed <= 1.5) return "standard";
+    return "slow";
+  };
+  const presentationDuration = ms => {
+    const value = Math.max(0, Number(ms || 0));
+    if (reducedMotion || animationSpeed <= 0.55) return Math.min(150, Math.max(55, value * 0.16));
+    return value * animationSpeed;
   };
   const isMobileLayout = Boolean(window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
   const defaultBoardCreatureNames = !isMobileLayout;
@@ -50,7 +64,7 @@
       }
     } catch {}
   }
-  let animationSpeed = normalizeAnimationSpeed(preference("animationSpeed", "1.2"));
+  let animationSpeed = normalizeAnimationSpeed(preference("animationSpeed", "1.5"));
   let cardArtStyle = "new";
   let parchmentSpellFrames = preference("parchmentSpellFrames", "0") === "1";
   let soundEnabled = preference("soundEnabled", "1") !== "0";
@@ -574,6 +588,7 @@
       switchView("game");
       setMessage(t("status.duelRestored"));
       renderGame();
+      warmVisibleDuelArt();
       resumeBackgroundMusic();
       resumeRestoredLocalDuelFlow();
       return true;
@@ -685,7 +700,7 @@
   }
 
   function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms * animationSpeed));
+    return new Promise(resolve => setTimeout(resolve, presentationDuration(ms)));
   }
 
   function normalizedPlayerName(value, fallback = t("ui.player")) {
@@ -1349,7 +1364,7 @@
       renderGame();
       showResolutionAfterUpdate(result);
       recordCardResolution(result);
-      await sleep(reducedMotion ? 0 : 100);
+      await sleep(100);
       return true;
     }
 
@@ -1360,7 +1375,7 @@
         && event.sourceKind === "effect"
       );
       if (triggeredDamageEvents.length) showResolvedEffectDamage({ events: triggeredDamageEvents });
-      if (healingShown > 0 || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 460);
+      if (healingShown > 0 || triggeredDamageEvents.length > 0) await sleep(460);
       const hasAttackDamage = Number(result.event?.damage || 0) > 0;
       if (hasAttackDamage) {
         await animateAttack(result.event);
@@ -1368,7 +1383,7 @@
       }
       showCollateralDamage(result.events);
       showResolutionDeaths(result);
-      if (hasAttackDamage || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 520);
+      if (hasAttackDamage || triggeredDamageEvents.length > 0) await sleep(520);
       renderGame();
       showResolutionAfterUpdate(result);
       const structuredDamage = (result.events || []).find(event =>
@@ -1385,7 +1400,7 @@
       });
       recordAttackSecondaryEffects(result);
       recordAttackRegeneration(result);
-      await sleep(reducedMotion ? 0 : 260);
+      await sleep(260);
       return true;
     }
 
@@ -1393,7 +1408,7 @@
       const healingShown = showHealingChanges(before, result);
       const powerShown = showPowerGrowthFeedback(result, before);
       const attackShown = showUnitAttackChanges(before);
-      if (healingShown + powerShown + attackShown > 0) await sleep(reducedMotion ? 0 : 520);
+      if (healingShown + powerShown + attackShown > 0) await sleep(520);
       renderGame();
       recordPowerGrowth(result);
       return true;
@@ -1711,7 +1726,7 @@
     setTimeout(() => target?.classList.remove("battle-cry-pulse"), fxDuration(900) || 40);
 
     const line = localizedBattleCry(card);
-    if (line && !reducedMotion) {
+    if (line) {
       const layer = $("#duelFxLayer");
       const point = spellElementCenter(target || spellHeroAnchor(side));
       if (layer && point) {
@@ -2143,6 +2158,7 @@
     setMessage("");
     renderGame();
     persistLocalDuelState();
+    warmVisibleDuelArt();
     resumeBackgroundMusic();
     showTurnBanner(t("turn.yours"), "player", 900);
   }
@@ -2227,8 +2243,7 @@
   $("#duelMenuBtn")?.addEventListener("click", () => pauseMenu?.toggle({ tournamentMode: tournamentMatch, onlineMode: remoteDuelActive, subtitle: pauseSubtitle() }));
 
   function fxDuration(ms) {
-    if (reducedMotion) return 0;
-    return Math.max(0, ms * animationSpeed);
+    return presentationDuration(ms);
   }
 
   function showTurnBanner(text, tone = "player", duration = 950) {
@@ -2248,7 +2263,7 @@
   }
 
   function createAttackTrail(attacker, target, side, options = {}) {
-    if (reducedMotion || !attacker || !target) return null;
+    if (!attacker || !target) return null;
     const layer = $("#duelFxLayer");
     if (!layer) return null;
     const a = attacker.getBoundingClientRect();
@@ -2297,7 +2312,7 @@
   }
 
   function addSpellMarker(element, className, duration = 900, index = 0) {
-    if (reducedMotion || !element) return null;
+    if (!element) return null;
     const layer = $("#duelFxLayer");
     const point = spellElementCenter(element);
     if (!layer || !point) return null;
@@ -2314,7 +2329,6 @@
   }
 
   function addSpellLine(from, to, className, duration = 900) {
-    if (reducedMotion) return null;
     const layer = $("#duelFxLayer");
     const a = from?.x !== undefined ? from : spellElementCenter(from);
     const b = to?.x !== undefined ? to : spellElementCenter(to);
@@ -2333,7 +2347,6 @@
   }
 
   function addScorchingOrb(fromElement, toElement, index = 0) {
-    if (reducedMotion) return null;
     const layer = $("#duelFxLayer");
     const from = spellElementCenter(fromElement);
     const to = spellElementCenter(toElement);
@@ -2351,7 +2364,6 @@
   }
 
   function addIceBolt(fromElement, toElement) {
-    if (reducedMotion) return null;
     const layer = $("#duelFxLayer");
     const from = spellElementCenter(fromElement);
     const to = spellElementCenter(toElement);
@@ -2371,7 +2383,6 @@
   }
 
   function addDrainMote(fromElement, toElement, index = 0) {
-    if (reducedMotion) return null;
     const layer = $("#duelFxLayer");
     const from = spellElementCenter(fromElement);
     const to = spellElementCenter(toElement);
@@ -2391,7 +2402,6 @@
   }
 
   function addSoulWisp(fromElement, toElement, index = 0) {
-    if (reducedMotion) return null;
     const layer = $("#duelFxLayer");
     const from = spellElementCenter(fromElement);
     const to = spellElementCenter(toElement);
@@ -2412,7 +2422,7 @@
     const profile = cardFxProfile(result?.card);
     if (!profile) return false;
     playCardFxSound(result.card, "impact");
-    if (reducedMotion || !profile.vfx) return false;
+    if (!profile.vfx) return false;
 
     const events = result?.events || [];
     const side = spellActorSide(result);
@@ -2558,7 +2568,7 @@
       stageSummonedUnitBeforeResolution(result, side, slot);
     }
     const layer = $("#duelFxLayer");
-    if (!reducedMotion && layer) {
+    if (layer) {
       const cast = document.createElement("div");
       const identityFx = card.type === "spell" ? spellFxProfile(card) : null;
       cast.className = `cast-card cast-splash school-${card.school} ${card.type === "spell" ? "spell-cast" : "creature-cast"} side-${side}${identityFx ? ` spell-identity-${identityFx.vfx}` : ""}`;
@@ -2602,7 +2612,7 @@
     }
     // Complete the card preview before damage/healing feedback is allowed to
     // enter the battlefield. The cast removes itself at 820ms.
-    await sleep(reducedMotion ? 0 : 860);
+    await sleep(860);
   }
 
   function updatePhaseVisual(state) {
@@ -2744,7 +2754,7 @@
     }
     unitName.textContent = cardName(unit);
 
-    syncBoardUnitBadge(cell, "multi-target-badge", isMultiTargetAttacker, "Attacca tutti i nemici", "Attacco multiplo: colpisce tutti i nemici", multiTargetAttackIconMarkup());
+    syncBoardUnitBadge(cell, "multi-target-badge", isMultiTargetAttacker, t("ability.multiAttack"), t("ability.multiAttackDescription"), multiTargetAttackIconMarkup());
     syncBoardUnitBadge(cell, "summoning-sickness-badge", hasSummoningSickness, "Debolezza da evocazione — potrà attaccare dal prossimo turno", "Debolezza da evocazione — potrà attaccare dal prossimo turno", '<span aria-hidden="true">Zz</span>');
 
     let stats = cell.querySelector(".unit-stats");
@@ -2922,15 +2932,25 @@
     return `${number >= 0 ? "+" : ""}${number}/turno`;
   }
 
+  const cardArtPreloadCache = new Map();
+
+  function remasteredCardImage(card) {
+    const id = card?.id || "";
+    if (!id || cardArtStyle !== "new") return "";
+    if (!["fire", "water", "air", "earth", "nature", "death"].includes(card.school)) return "";
+    return `assets/cards/remastered/${id}.png`;
+  }
+
+  function originalCardImage(card) {
+    return card?.id ? `assets/cards/original/${card.id}.png` : "";
+  }
+
   function getCardImageCandidates(card) {
     const id = card?.id || "";
     if (!id) return [];
-    const candidates = [];
-    if (cardArtStyle === "new" && ["fire", "water", "air", "nature", "death"].includes(card.school)) {
-      candidates.push(`assets/cards/remastered/${id}.png`);
-    }
-    candidates.push(
-      `assets/cards/original/${id}.png`,
+    return [
+      remasteredCardImage(card),
+      originalCardImage(card),
       window.ArcaneCardArt?.[id],
       `assets/cards/${id}.webp`,
       `assets/cards/${id}.png`,
@@ -2938,8 +2958,36 @@
       `../shared/assets/cards/${id}.webp`,
       `../shared/assets/cards/${id}.svg`,
       `../shared/assets/cards/${id}.png`
-    );
-    return candidates.filter(Boolean);
+    ].filter(Boolean);
+  }
+
+  function preloadCardArt(card) {
+    const src = remasteredCardImage(card);
+    if (!src) return Promise.resolve("");
+    if (cardArtPreloadCache.has(src)) return cardArtPreloadCache.get(src);
+    const promise = new Promise(resolve => {
+      const preload = new Image();
+      preload.decoding = "async";
+      preload.onload = async () => {
+        try { await preload.decode?.(); } catch (e) {}
+        resolve(src);
+      };
+      preload.onerror = () => resolve("");
+      preload.src = src;
+    });
+    cardArtPreloadCache.set(src, promise);
+    return promise;
+  }
+
+  function warmVisibleDuelArt() {
+    if (!engine) return;
+    const cards = [
+      ...(engine.state.player?.hand || []),
+      ...(engine.state.player?.board || []).filter(Boolean),
+      ...(engine.state.enemy?.board || []).filter(Boolean)
+    ];
+    const unique = [...new Map(cards.filter(Boolean).map(card => [card.id, card])).values()];
+    unique.slice(0, 14).forEach(card => { preloadCardArt(card); });
   }
 
   function buildArtBlock(card, variant = "hand") {
@@ -2974,28 +3022,40 @@
       return wrapper;
     }
 
-    const candidates = getCardImageCandidates(card);
-    let index = 0;
-    const tryNext = () => {
-      if (index >= candidates.length) {
+    const originalSrc = originalCardImage(card);
+    const candidates = getCardImageCandidates(card).filter(src => src !== remasteredCardImage(card) && src !== originalSrc);
+    let fallbackIndex = 0;
+
+    const markLoaded = () => {
+      wrapper.classList.add("has-image");
+      wrapper.classList.remove("art-error");
+      status.textContent = "";
+    };
+    const loadFallbackCandidate = () => {
+      if (fallbackIndex >= candidates.length) {
         wrapper.classList.add("art-error");
         status.textContent = "Errore caricamento immagine";
         return;
       }
-      const nextSrc = candidates[index++];
-      img.onload = () => {
-        wrapper.classList.add("has-image");
-        wrapper.classList.remove("art-error");
-        status.textContent = "";
-      };
-      img.onerror = () => tryNext();
-      img.src = nextSrc;
+      img.onload = markLoaded;
+      img.onerror = loadFallbackCandidate;
+      img.src = candidates[fallbackIndex++];
     };
-    if (candidates.length) tryNext();
-    else {
-      wrapper.classList.add("art-error");
-      status.textContent = "Immagine non disponibile";
+
+    if (originalSrc) {
+      img.onload = markLoaded;
+      img.onerror = loadFallbackCandidate;
+      img.src = originalSrc;
+    } else {
+      loadFallbackCandidate();
     }
+
+    preloadCardArt(card).then(highRes => {
+      if (!highRes || !img.isConnected || cardArtStyle !== "new") return;
+      img.onload = markLoaded;
+      img.onerror = () => {};
+      img.src = highRes;
+    });
     return wrapper;
   }
 
@@ -4456,7 +4516,7 @@
     const hasVisibleEffect = cardIdentityShown || healingShown + powerShown + attackShown > 0 || (result?.events || []).some(event => [
       "astralCreatureDamage", "astralHeroDamage", "creatureDamage", "heroDamage", "astralDeath", "astralFireAura", "astralNets"
     ].includes(event.type));
-    if (hasVisibleEffect) await sleep(reducedMotion ? 0 : 620);
+    if (hasVisibleEffect) await sleep(620);
   }
 
   function captureHealthState() {
@@ -4538,7 +4598,7 @@
         && event.sourceKind === "effect"
       );
       if (triggeredDamageEvents.length) showResolvedEffectDamage({ events: triggeredDamageEvents });
-      if (healingShown > 0 || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 460);
+      if (healingShown > 0 || triggeredDamageEvents.length > 0) await sleep(460);
       const hasAttackDamage = Number(step.event?.damage || 0) > 0;
       if (hasAttackDamage) {
         await animateAttack(step.event);
@@ -4546,7 +4606,7 @@
       }
       showCollateralDamage(step.events);
       showResolutionDeaths(step);
-      if (hasAttackDamage || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 520);
+      if (hasAttackDamage || triggeredDamageEvents.length > 0) await sleep(520);
       renderGame();
       showResolutionAfterUpdate(step);
       const structuredDamage = (step.events || []).find(event =>
@@ -4570,7 +4630,7 @@
     const finishHealingShown = showHealingChanges(finishHealthBefore, finishResult);
     const finishPowerShown = showPowerGrowthFeedback(finishResult, finishHealthBefore);
     const finishAttackShown = showUnitAttackChanges(finishHealthBefore);
-    if (finishHealingShown + finishPowerShown + finishAttackShown > 0) await sleep(reducedMotion ? 0 : 520);
+    if (finishHealingShown + finishPowerShown + finishAttackShown > 0) await sleep(520);
     renderGame();
     recordPowerGrowth(finishResult);
 
@@ -4742,6 +4802,26 @@
         };
       };
 
+      const leagueButtons = [...root.querySelectorAll("[data-league-stage]")];
+      const resetLeagueDisclosure = () => {
+        leagueButtons.forEach(button => button.setAttribute("aria-expanded", "false"));
+        const container = root.querySelector(".tournament-league-details");
+        container?.classList.add("hidden");
+        root.querySelectorAll("[data-league-detail]").forEach(panel => panel.classList.add("hidden"));
+      };
+      leagueButtons.forEach(button => button.addEventListener("click", () => {
+        const stage = button.dataset.leagueStage;
+        const container = root.querySelector(".tournament-league-details");
+        const panel = root.querySelector(`[data-league-detail="${stage}"]`);
+        if (!container || !panel) return;
+        const closing = button.getAttribute("aria-expanded") === "true";
+        resetLeagueDisclosure();
+        if (closing) return;
+        button.setAttribute("aria-expanded", "true");
+        container.classList.remove("hidden");
+        panel.classList.remove("hidden");
+      }));
+
       const syncTournamentCreate = () => {
         const rules = selectedTournamentRules();
         const mode = rules.tournamentMode || "league";
@@ -4758,6 +4838,12 @@
               ? `<p class="tournament-random-specialization">🎲 ${escapeHtml(t("menu.randomSpecialization"))}</p>`
               : A.UITournamentView.specializationProgression(selectedSpecialization, context))
             : `<p>${t("tournament.noSpecializationDescription")}</p>`;
+          resetLeagueDisclosure();
+          const canInspectLeagues = rules.specializationsEnabled && selectedSpecialization !== "random";
+          leagueButtons.forEach(button => {
+            button.disabled = !canInspectLeagues;
+            button.title = canInspectLeagues ? t("tournament.tapLeagueDetails") : t("tournament.chooseSpecializationForDetails");
+          });
         }
       };
 
@@ -5046,9 +5132,9 @@
   });
 
   $("#animationSpeed").addEventListener("change", event => {
-    animationSpeed = Number(event.target.value || 1);
-    localStorage.setItem("arcane.animationSpeed", String(event.target.value));
-    document.body.dataset.animationSpeed = animationSpeed >= 1.4 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+    animationSpeed = normalizeAnimationSpeed(event.target.value);
+    localStorage.setItem("arcane.animationSpeed", String(animationSpeed));
+    document.body.dataset.animationSpeed = animationSpeedMode(animationSpeed);
     // keep menu selector in sync if present
     try { const m = $("#animationSpeedMenu"); if (m && m.value !== String(event.target.value)) m.value = String(event.target.value); } catch (e) {}
     const optionsSpeed = $("#optionsAnimationSpeed");
@@ -5064,9 +5150,9 @@
       const v = e.target.value;
       const main = $("#animationSpeed");
       if (main && main.value !== v) main.value = v;
-      animationSpeed = Number(v || 1);
-      localStorage.setItem("arcane.animationSpeed", v);
-      document.body.dataset.animationSpeed = animationSpeed >= 1.4 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+      animationSpeed = normalizeAnimationSpeed(v);
+      localStorage.setItem("arcane.animationSpeed", String(animationSpeed));
+      document.body.dataset.animationSpeed = animationSpeedMode(animationSpeed);
     });
   }
   // If on narrow screens, default to slow animations
@@ -5090,14 +5176,15 @@
     if (menuSpeed && menuSpeed.value !== cur) menuSpeed.value = cur;
     const mainSel = $("#animationSpeed");
     if (mainSel && mainSel.value !== cur) mainSel.value = cur;
-    document.body.dataset.animationSpeed = animationSpeed >= 1.4 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
+    document.body.dataset.animationSpeed = animationSpeedMode(animationSpeed);
   } catch (e) {}
 
   // Central background-music manager. The saved preference is intentionally
   // separate from the browser's temporary autoplay permission.
   let bgmEnabled = false;
   let bgmVolume = 0.12;
-  const MUSIC_CROSSFADE_MS = 1200;
+  const MUSIC_FADE_OUT_MS = 520;
+  const MUSIC_FADE_IN_MS = 720;
   let originalMenuThemeUrl = "";
   function createOriginalMenuThemeUrl() {
     if (originalMenuThemeUrl) return originalMenuThemeUrl;
@@ -5194,7 +5281,7 @@
     // Menu is the loudness reference. Duel is deliberately attenuated because
     // its master has denser passages and otherwise sounds louder at the same slider value.
     menu: Object.freeze({ createSrc: createOriginalMenuThemeUrl, gain: 0.72, playbackRate: 1 }),
-    duel: Object.freeze({ src: "assets/audio/bgm.ogg", gain: 0.62, playbackRate: 1 })
+    duel: Object.freeze({ src: "assets/audio/bgm.ogg", gain: 0.55, playbackRate: 1 })
   });
 
   let musicUnlockListenersArmed = false;
@@ -5222,6 +5309,7 @@
     let playRequestId = 0;
     let foregroundResumeTimer = 0;
     let foregroundRetryTimer = 0;
+    let transitioningScene = null;
 
     function desiredScene() {
       const gameVisible = $("#gameView")?.classList.contains("active");
@@ -5279,6 +5367,7 @@
     function pauseChannels() {
       transitionId += 1;
       playRequestId += 1;
+      transitioningScene = null;
       channels.forEach(({ audio }) => {
         try { if (!audio.paused) audio.pause(); } catch (e) {}
       });
@@ -5298,6 +5387,7 @@
       if (!next) return;
       const sameScene = activeScene === scene;
       const previous = activeScene ? channels.get(activeScene) : null;
+      if (transitioningScene === scene) return;
       if (sameScene && !next.audio.paused) {
         next.audio.volume = sceneVolume(scene);
         return;
@@ -5324,16 +5414,30 @@
         }
 
         const token = ++transitionId;
-        const duration = sameScene ? 220 : MUSIC_CROSSFADE_MS;
-        activeScene = scene;
-        if (previous && previous !== next) {
-          fade(previous, 0, duration, token, () => {
-            try { previous.audio.pause(); } catch (e) {}
+        if (sameScene || !previous || previous === next) {
+          activeScene = scene;
+          transitioningScene = scene;
+          fade(next, sceneVolume(scene), sameScene ? 220 : MUSIC_FADE_IN_MS, token, () => {
+            if (token === transitionId) transitioningScene = null;
           });
+          return;
         }
-        fade(next, sceneVolume(scene), duration, token);
+
+        // Bridge fade: the incoming track is already playing silently (important on iOS),
+        // but it remains inaudible until the outgoing scene has faded away.
+        transitioningScene = scene;
+        next.audio.volume = 0;
+        fade(previous, 0, MUSIC_FADE_OUT_MS, token, () => {
+          if (token !== transitionId) return;
+          try { previous.audio.pause(); } catch (e) {}
+          activeScene = scene;
+          fade(next, sceneVolume(scene), MUSIC_FADE_IN_MS, token, () => {
+            if (token === transitionId) transitioningScene = null;
+          });
+        });
       }).catch(err => {
         if (requestId !== playRequestId) return;
+        transitioningScene = null;
         if (err?.name === "NotAllowedError") {
           unlocked = false;
           armMusicUnlock();
@@ -5574,13 +5678,13 @@
     localStorage.removeItem("bgmVolume");
     localStorage.removeItem("arcane.parchmentSpellFrames");
     localStorage.removeItem("arcane.boardCreatureNames");
-    animationSpeed = 1.2;
+    animationSpeed = 1.5;
     cardArtStyle = "new";
     soundEnabled = true;
     bgmEnabled = false;
     bgmVolume = 0.12;
     parchmentSpellFrames = false;
-    $("#animationSpeed").value = "1.2";
+    $("#animationSpeed").value = "1.5";
     $("#animationSpeed").dispatchEvent(new Event("change"));
     $("#cardArtStyleSelect").value = "new";
     $("#cardArtStyleSelect").dispatchEvent(new Event("change"));
