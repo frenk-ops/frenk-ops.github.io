@@ -5,7 +5,7 @@
 
   function renderEmpty(context) {
     const { t, specializations, specializationName } = context;
-    return `<div class="tournament-create tournament-create-redesigned">
+    return `<div class="tournament-create tournament-create-redesigned classic-config-grid">
       <div class="tournament-intro"><strong>${t("tournament.introTitle")}</strong><span>${t("tournament.intro")}</span></div>
       <div class="tournament-rules-grid">
         <span><b>${t("league.starting")}</b><small>${t("tournament.matches12")}</small></span>
@@ -14,7 +14,7 @@
       </div>
       <label>${t("tournament.playerSpecialization")} <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${item.icon} ${specializationName(item.id)}</option>`).join("")}</select></label>
       <details class="tournament-advanced"><summary>${t("menu.advancedSettings")}</summary><label>${t("tournament.seed")} <input id="tournamentSeedInput" placeholder="${t("tournament.randomSeed")}"></label></details>
-      <button id="createTournamentConfirm" class="primary tournament-primary-action">${t("tournament.startNew")}</button>
+      <button id="createTournamentConfirm" class="classic-stone-button tournament-primary-action">${t("tournament.startNew")}</button>
     </div>`;
   }
 
@@ -64,7 +64,7 @@
       <span class="tournament-trophy" aria-hidden="true">${tournament.won ? "♛" : "✦"}</span>
       <h3>${tournament.won ? t("tournament.won") : t("tournament.notWon")}</h3>
       <p>${t("tournament.result", { wins: tournament.wins, matches: tournament.opponents.length, points: tournament.points })}</p>
-      <button id="archiveTournamentBtn" class="ghost">${t("tournament.archive")}</button>
+      <button id="archiveTournamentBtn" class="classic-stone-button">${t("tournament.archive")}</button>
     </div>`;
   }
 

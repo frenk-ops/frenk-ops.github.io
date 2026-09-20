@@ -1786,7 +1786,7 @@
     const allCards = allAstralCards();
     const filtered = applyCollectionFilters(allCards);
     root.innerHTML = `
-      <div class="collection-page-filters collection-page-filters-top ornate-subpanel">
+      <div class="collection-page-filters collection-page-filters-top ornate-subpanel classic-config-grid">
         <div class="collection-page-filter-row">
           <span>${t("ui.school")}</span>
           <div id="collectionPageSchoolFilters" class="mini-filter-grid horizontal-school-filters"></div>
@@ -2779,9 +2779,9 @@
     const storedName = profile.playerName || localStorage.getItem("arcane.playerName") || t("ui.player");
     const achievements = A.PROFILE_ACHIEVEMENTS || [];
     root.innerHTML = `
-      <section class="profile-identity-card ornate-subpanel">
+      <section class="profile-identity-card ornate-subpanel classic-config-grid">
         <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
-        <button id="saveProfileNameBtn" type="button" class="multiplayer-primary-action">${t("profile.saveName")}</button>
+        <button id="saveProfileNameBtn" type="button" class="classic-stone-button">${t("profile.saveName")}</button>
       </section>
       <div class="profile-mode-grid">
         <article class="profile-mode-card"><span>${t("profile.singlePlayer")}</span><strong>${t("profile.record", { wins: single.wins || 0, losses: single.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: single.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(single.fastestWinMs)}</small></article>
@@ -2815,8 +2815,8 @@
         </div>
       </section>
       <div class="profile-secondary-actions">
-        <button type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>
-        <button type="button" data-view-jump="diagnostics">${t("nav.options")}</button>
+        <button class="classic-stone-button" type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>
+        <button class="classic-stone-button" type="button" data-view-jump="diagnostics">${t("nav.options")}</button>
       </div>`;
     $("#saveProfileNameBtn")?.addEventListener("click", () => {
       const name = normalizedPlayerName($("#profilePlayerNameInput")?.value, t("ui.player"));

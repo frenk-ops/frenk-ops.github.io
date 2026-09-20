@@ -5752,3 +5752,255 @@ body.ui-classic[data-board-creature-names="hide"] .unit-name {
     width: 100%;
   }
 }
+
+
+/* 0.21.2 — all player menus reuse the Play screen component language. */
+.multiplayer-screen {
+  padding:18px 24px 86px;
+}
+.multiplayer-stage,
+#profileView .unified-menu-stage,
+#rulesView .unified-menu-stage,
+#diagnosticsView .unified-menu-stage {
+  width:min(760px,calc(100vw - 48px));
+  margin-inline:auto;
+}
+#tournamentView .unified-menu-stage {
+  width:min(980px,calc(100vw - 48px));
+  margin-inline:auto;
+}
+#cardsView .unified-menu-stage {
+  width:min(1440px,calc(100vw - 48px));
+  margin-inline:auto;
+}
+
+.multiplayer-panel.classic-menu-config,
+.unified-menu-panel.classic-menu-config {
+  color:#1a1720;
+}
+.multiplayer-panel.classic-menu-config > h2,
+.unified-menu-panel.classic-menu-config > h2,
+.unified-menu-panel.classic-menu-config .section-heading h2 {
+  margin:0;
+  color:#783f23;
+  text-align:center;
+  font-size:2rem;
+  line-height:1.1;
+}
+.multiplayer-panel.classic-menu-config > p,
+.unified-menu-panel.classic-menu-config > p,
+.unified-menu-panel.classic-menu-config .section-heading p {
+  color:#4b382c !important;
+  text-align:center;
+  line-height:1.45;
+}
+.unified-menu-panel.classic-menu-config .section-heading {
+  display:block;
+  text-align:center;
+}
+.unified-menu-panel.classic-menu-config .section-heading > div {
+  max-width:680px;
+  margin:0 auto;
+}
+
+.multiplayer-panel.classic-menu-config label,
+.unified-menu-panel.classic-menu-config label,
+.tournament-create.classic-config-grid > label,
+.tournament-advanced label {
+  color:#3b2c22;
+  font-weight:700;
+}
+.multiplayer-panel.classic-menu-config input:not([type="checkbox"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
+.multiplayer-panel.classic-menu-config select,
+.unified-menu-panel.classic-menu-config input:not([type="checkbox"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
+.unified-menu-panel.classic-menu-config select {
+  width:100%;
+  min-width:0;
+  min-height:44px;
+  padding:7px 10px;
+  border:3px inset #9e7b47;
+  border-radius:4px;
+  background:#ecdfb8;
+  color:#23180f;
+  font:inherit;
+  box-shadow:none;
+}
+.multiplayer-panel.classic-menu-config input::placeholder,
+.unified-menu-panel.classic-menu-config input::placeholder {
+  color:#725d42;
+  opacity:.82;
+}
+
+.multiplayer-panel.classic-menu-config .multiplayer-identity label,
+.unified-menu-panel.classic-menu-config .options-grid label,
+.unified-menu-panel.classic-menu-config .profile-identity-card label,
+.tournament-create.classic-config-grid > label {
+  min-height:92px;
+  display:grid;
+  align-content:center;
+  gap:7px;
+  padding:11px;
+  border:1px solid #342f2a;
+  border-radius:10px;
+  background:#41443f;
+  color:#f4dfaa;
+}
+.unified-menu-panel.classic-menu-config .options-grid .options-check {
+  min-height:64px;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  color:#f4dfaa;
+}
+.unified-menu-panel.classic-menu-config .options-grid .options-check input {
+  width:auto;
+  min-height:0;
+}
+
+.multiplayer-panel.classic-menu-config .multiplayer-choice-card,
+.multiplayer-panel.classic-menu-config .multiplayer-server-state,
+.multiplayer-panel.classic-menu-config .multiplayer-room-status,
+.unified-menu-panel.classic-menu-config .ornate-subpanel,
+.unified-menu-panel.classic-menu-config .profile-mode-card,
+.unified-menu-panel.classic-menu-config .player-help-grid article,
+.unified-menu-panel.classic-menu-config .help-round-flow,
+.unified-menu-panel.classic-menu-config .help-tournament,
+.unified-menu-panel.classic-menu-config .advanced-diagnostics,
+.unified-menu-panel.classic-menu-config .tournament-next-opponent,
+.unified-menu-panel.classic-menu-config .tournament-progress-panel,
+.unified-menu-panel.classic-menu-config .tournament-rules-grid > span,
+.unified-menu-panel.classic-menu-config .tournament-summary > div,
+.unified-menu-panel.classic-menu-config .passive-list,
+.unified-menu-panel.classic-menu-config .tournament-intro {
+  border:1px solid rgba(151,111,55,.55);
+  border-radius:8px;
+  background:rgba(255,245,207,.42);
+  color:#4b382c;
+  box-shadow:inset 0 0 12px rgba(92,52,12,.08);
+}
+.multiplayer-panel.classic-menu-config .multiplayer-choice-card h3,
+.multiplayer-panel.classic-menu-config .multiplayer-choice-card p,
+.multiplayer-panel.classic-menu-config .multiplayer-server-state strong,
+.multiplayer-panel.classic-menu-config .multiplayer-server-state small,
+.unified-menu-panel.classic-menu-config .profile-mode-card span,
+.unified-menu-panel.classic-menu-config .profile-mode-card strong,
+.unified-menu-panel.classic-menu-config .profile-mode-card small,
+.unified-menu-panel.classic-menu-config .player-help-grid h3,
+.unified-menu-panel.classic-menu-config .player-help-grid p,
+.unified-menu-panel.classic-menu-config .help-round-flow h3,
+.unified-menu-panel.classic-menu-config .help-tournament h3,
+.unified-menu-panel.classic-menu-config .help-tournament p,
+.unified-menu-panel.classic-menu-config .collection-page-card-heading h3,
+.unified-menu-panel.classic-menu-config .collection-page-card-heading p,
+.unified-menu-panel.classic-menu-config .collection-page-card-heading > strong,
+.unified-menu-panel.classic-menu-config .inspect-ability-block p,
+.unified-menu-panel.classic-menu-config .inspect-ability-block small {
+  color:#4b382c !important;
+}
+.unified-menu-panel.classic-menu-config .profile-mode-card strong,
+.unified-menu-panel.classic-menu-config .collection-page-card-heading h3 {
+  color:#59331f !important;
+}
+
+.multiplayer-panel.classic-menu-config .classic-stone-button,
+.unified-menu-panel.classic-menu-config .classic-stone-button,
+.classic-tournament-actions .classic-stone-button,
+.tournament-create .classic-stone-button,
+.tournament-hub .classic-stone-button,
+.tournament-complete .classic-stone-button {
+  min-height:46px;
+  padding:9px 14px;
+  border:3px ridge #c0c7d1;
+  border-radius:2px 10px 2px 10px;
+  background:linear-gradient(180deg,#626a7a,#222b3b 52%,#5d6673);
+  color:#8dff62;
+  font-family:Georgia,serif;
+  font-weight:700;
+  text-shadow:0 2px 2px #000;
+  box-shadow:0 4px 0 #10141c,inset 0 0 10px rgba(255,255,255,.2);
+}
+.multiplayer-panel.classic-menu-config .classic-stone-button:active,
+.unified-menu-panel.classic-menu-config .classic-stone-button:active,
+.classic-tournament-actions .classic-stone-button:active {
+  transform:translateY(2px);
+  box-shadow:0 2px 0 #10141c,inset 0 0 10px rgba(255,255,255,.2);
+}
+.multiplayer-panel.classic-menu-config .classic-stone-button:disabled,
+.unified-menu-panel.classic-menu-config .classic-stone-button:disabled {
+  opacity:.48;
+  cursor:not-allowed;
+}
+
+.unified-menu-panel.classic-menu-config .mini-filter-btn {
+  min-height:38px;
+  padding:6px 9px;
+  border:3px ridge #c0c7d1;
+  border-radius:2px 8px 2px 8px;
+  background:linear-gradient(180deg,#626a7a,#222b3b 52%,#5d6673);
+  color:#dfffc9;
+  font-family:Georgia,serif;
+  font-weight:700;
+  text-shadow:0 1px 2px #000;
+  box-shadow:0 3px 0 #10141c,inset 0 0 8px rgba(255,255,255,.16);
+}
+.unified-menu-panel.classic-menu-config .mini-filter-btn.active {
+  color:#fff277;
+  background:linear-gradient(180deg,#85743b,#3a321a 52%,#76642d);
+  box-shadow:0 3px 0 #111,inset 0 0 9px rgba(255,239,138,.25);
+}
+
+/* Cards can be wider than Play, but never wider than their centered stage. */
+#cardsView .collection-page-shell {
+  width:100%;
+  max-width:100%;
+  margin:0 auto;
+  box-sizing:border-box;
+}
+#cardsView #cardsContent,
+#cardsView .collection-page-layout,
+#cardsView .collection-page-main,
+#cardsView .collection-page-filters-top {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+#cardsView .collection-page-layout {
+  grid-template-columns:minmax(300px,360px) minmax(0,1fr);
+}
+#cardsView .collection-page-inspector {
+  background:rgba(255,245,207,.42);
+}
+#cardsView .collection-page-stats > div,
+#cardsView .inspect-ability-block {
+  border:1px solid rgba(151,111,55,.45);
+  background:rgba(255,255,255,.24);
+  color:#4b382c;
+}
+
+@media (max-width:1200px) {
+  #cardsView .collection-page-layout {
+    grid-template-columns:1fr;
+  }
+  #cardsView .collection-page-inspector {
+    position:static;
+    max-width:520px;
+    width:100%;
+    margin:0 auto;
+  }
+}
+@media (max-width:820px) {
+  .multiplayer-screen {
+    padding:14px 8px calc(86px + env(safe-area-inset-bottom));
+  }
+  .multiplayer-stage,
+  #profileView .unified-menu-stage,
+  #rulesView .unified-menu-stage,
+  #diagnosticsView .unified-menu-stage,
+  #tournamentView .unified-menu-stage,
+  #cardsView .unified-menu-stage {
+    width:100%;
+  }
+}

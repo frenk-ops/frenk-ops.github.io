@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.26">
+  <link rel="stylesheet" href="styles.css?v=3.0.27">
   <link rel="stylesheet" href="pwa.css?v=1.3.0">
 </head>
 <body class="pages-static-profile">
@@ -21,7 +21,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.21.1 · build 078dde4</small>
+        <small class="app-version-badge" data-arcane-version>v0.21.2 · build ca7e5fa</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -253,7 +253,7 @@
       <section id="multiplayerView" class="view">
         <section class="multiplayer-screen classic-menu-screen">
           <div class="multiplayer-stage">
-            <div class="multiplayer-panel parchment-panel">
+            <div class="multiplayer-panel parchment-panel classic-menu-config">
               <span class="classic-menu-kicker" data-i18n="nav.multiplayer">Multiplayer</span>
               <h2 data-i18n="online.title">Partita online</h2>
               <p class="multiplayer-intro" data-i18n="online.intro">Crea una stanza privata oppure entra con il codice ricevuto da un altro giocatore.</p>
@@ -264,11 +264,11 @@
                   <strong id="multiplayerServerStateTitle" data-i18n="online.serverConnecting">Connessione al server…</strong>
                   <small id="multiplayerServerStateDetail" data-i18n="online.serverWakeHint">La connessione può richiedere qualche secondo al primo avvio.</small>
                 </div>
-                <button id="retryMultiplayerServerBtn" class="hidden" type="button" data-i18n="online.retry">Riprova</button>
+                <button id="retryMultiplayerServerBtn" class="classic-stone-button hidden" type="button" data-i18n="online.retry">Riprova</button>
               </div>
 
               <div id="onlineLobbyActions" class="multiplayer-lobby-actions">
-                <div class="multiplayer-identity multiplayer-config-grid">
+                <div class="multiplayer-identity multiplayer-config-grid classic-config-grid classic-config-essential">
                   <label>
                     <span data-i18n="menu.playerName">Nome giocatore</span>
                     <input id="onlinePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="Giocatore">
@@ -301,7 +301,7 @@
                     <span class="multiplayer-choice-icon" aria-hidden="true">✦</span>
                     <h3 data-i18n="online.createTitle">Crea una partita</h3>
                     <p data-i18n="online.createHint">Genera una stanza e condividi il codice con il tuo avversario.</p>
-                    <button id="createOnlineRoomBtn" class="multiplayer-primary-action" type="button" data-i18n="online.create">Crea partita online</button>
+                    <button id="createOnlineRoomBtn" class="classic-stone-button multiplayer-primary-action" type="button" data-i18n="online.create">Crea partita online</button>
                   </article>
                   <article class="multiplayer-choice-card">
                     <span class="multiplayer-choice-icon" aria-hidden="true">⌁</span>
@@ -309,7 +309,7 @@
                     <p data-i18n="online.joinHint">Inserisci il codice della stanza che ti è stato inviato.</p>
                     <div class="online-join-row">
                       <input id="onlineRoomCode" maxlength="8" autocomplete="off" data-i18n-placeholder="online.codePlaceholder" placeholder="Codice stanza">
-                      <button id="joinOnlineRoomBtn" type="button" data-i18n="online.join">Entra</button>
+                      <button id="joinOnlineRoomBtn" class="classic-stone-button" type="button" data-i18n="online.join">Entra</button>
                     </div>
                   </article>
                 </div>
@@ -324,7 +324,7 @@
                   <div><small data-i18n="online.playerOne">Giocatore 1</small><strong id="onlinePlayerOneName">—</strong></div>
                   <div><small data-i18n="online.playerTwo">Giocatore 2</small><strong id="onlinePlayerTwoName">—</strong></div>
                 </div>
-                <button id="leaveOnlineRoomBtn" type="button" data-i18n="online.leave">Esci dalla stanza</button>
+                <button id="leaveOnlineRoomBtn" class="classic-stone-button" type="button" data-i18n="online.leave">Esci dalla stanza</button>
               </div>
             </div>
           </div>
@@ -334,7 +334,7 @@
       <section id="tournamentView" class="view classic-tournament-view">
         <section class="classic-menu-screen unified-menu-screen">
           <div class="unified-menu-stage">
-          <div class="classic-tournament-board parchment-panel unified-menu-panel">
+          <div class="classic-tournament-board parchment-panel unified-menu-panel classic-menu-config">
             <span class="classic-menu-kicker" data-i18n="nav.tournament">Torneo</span>
             <h2 data-i18n="tournament.title">Torneo Arcane Duels</h2>
             <div id="tournamentContent"></div>
@@ -351,7 +351,7 @@
       <section id="cardsView" class="view">
         <section class="classic-menu-screen unified-menu-screen">
           <div class="unified-menu-stage">
-            <div class="parchment-panel unified-menu-panel collection-page-shell">
+            <div class="parchment-panel unified-menu-panel classic-menu-config collection-page-shell">
               <span class="classic-menu-kicker" data-i18n="nav.cards">Carte</span>
               <h2 data-i18n="cards.title">Carte</h2>
               <p class="unified-menu-intro" data-i18n="cards.intro">Consulta tutte le 65 carte e confronta caratteristiche e illustrazioni.</p>
@@ -364,7 +364,7 @@
       <section id="profileView" class="view">
         <section class="classic-menu-screen unified-menu-screen">
           <div class="unified-menu-stage">
-            <div class="parchment-panel unified-menu-panel player-profile-shell">
+            <div class="parchment-panel unified-menu-panel classic-menu-config player-profile-shell">
               <span class="classic-menu-kicker" data-i18n="nav.profile">Profilo</span>
               <h2 data-i18n="profile.title">Profilo giocatore</h2>
               <p class="unified-menu-intro" data-i18n="profile.intro">Personalizza il tuo nome, consulta statistiche e trofei.</p>
@@ -412,13 +412,13 @@
       </section>
 
       <section id="rulesView" class="view">
-        <section class="classic-menu-screen unified-menu-screen"><div class="unified-menu-stage"><section class="parchment-panel unified-menu-panel rules player-help-page"><span class="classic-menu-kicker" data-i18n="nav.howToPlay">Come si gioca</span><h2 data-i18n="help.title">Come si gioca</h2><div id="rulesetContent"></div></section></div></section>
+        <section class="classic-menu-screen unified-menu-screen"><div class="unified-menu-stage"><section class="parchment-panel unified-menu-panel classic-menu-config rules player-help-page"><span class="classic-menu-kicker" data-i18n="nav.howToPlay">Come si gioca</span><h2 data-i18n="help.title">Come si gioca</h2><div id="rulesetContent"></div></section></div></section>
       </section>
 
       <section id="diagnosticsView" class="view">
-        <section class="classic-menu-screen unified-menu-screen"><div class="unified-menu-stage"><section class="parchment-panel unified-menu-panel options-page-shell">
+        <section class="classic-menu-screen unified-menu-screen"><div class="unified-menu-stage"><section class="parchment-panel unified-menu-panel classic-menu-config options-page-shell">
           <div class="section-heading"><div><h2 data-i18n="options.title">Opzioni</h2><p data-i18n="options.intro">Le preferenze vengono salvate in questo browser e applicate anche ai prossimi duelli.</p></div></div>
-          <div class="options-grid">
+          <div class="options-grid classic-config-grid">
             <label><span data-i18n="options.language">Lingua</span>
               <select id="optionsLanguageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
             </label>
@@ -434,8 +434,8 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.1 · build 078dde4</span></p>
-          <div class="options-actions"><button id="resetPreferencesBtn" class="ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.2 · build ca7e5fa</span></p>
+          <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
             <div class="section-heading"><div><h3>Test del motore</h3><p>Controlla motore, generatore e IA nel browser.</p></div><button id="runTestsBtn" class="primary">Esegui test</button></div>
@@ -504,8 +504,8 @@
   <script src="tests/test-suite.js?v=3.0.27"></script>
   <script src="src/ui/navigation.js?v=3.0.2"></script>
   <script src="src/ui/pause-menu.js?v=3.0.17"></script>
-  <script src="src/ui/tournament-view.js?v=3.0.18"></script>
-  <script src="src/ui/app.js?v=3.0.36"></script>
+  <script src="src/ui/tournament-view.js?v=3.0.19"></script>
+  <script src="src/ui/app.js?v=3.0.37"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
@@ -519,7 +519,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=15", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=16", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {
