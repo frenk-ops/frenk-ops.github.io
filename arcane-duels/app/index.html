@@ -21,7 +21,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.21.5 · build 3a0d7e4</small>
+        <small class="app-version-badge" data-arcane-version>v0.21.6 · build 62b7d49</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -423,7 +423,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.5 · build 3a0d7e4</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.6 · build 62b7d49</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -508,7 +508,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=19", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=20", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {
