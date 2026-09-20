@@ -6113,3 +6113,233 @@ body.ui-classic .classic-topbar .classic-nav .tab.active {
     font-size:.92rem;
   }
 }
+
+
+/* 0.21.4 — one form language everywhere + legacy tournament/cards cleanup. */
+
+/* Gioca uses softly rounded fields: enforce that same control shape everywhere. */
+.multiplayer-panel.classic-menu-config input:not([type="checkbox"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
+.multiplayer-panel.classic-menu-config select,
+.multiplayer-panel.classic-menu-config textarea,
+.unified-menu-panel.classic-menu-config input:not([type="checkbox"]):not([type="range"]):not([type="hidden"]):not([type="file"]),
+.unified-menu-panel.classic-menu-config select,
+.unified-menu-panel.classic-menu-config textarea,
+#tournamentView input:not([type="checkbox"]):not([type="range"]),
+#tournamentView select,
+#tournamentView textarea {
+  width:100%;
+  min-width:0;
+  min-height:44px;
+  padding:7px 10px;
+  border:3px inset #9e7b47;
+  border-radius:10px;
+  background:#ecdfb8;
+  color:#23180f;
+  font:inherit;
+  box-shadow:none;
+  box-sizing:border-box;
+}
+.multiplayer-panel.classic-menu-config textarea,
+.unified-menu-panel.classic-menu-config textarea,
+#tournamentView textarea {
+  min-height:92px;
+  resize:vertical;
+}
+
+/* Multiplayer room code: readable input, compact action, monospace output. */
+.online-join-row {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 132px;
+  gap:10px;
+  align-items:stretch;
+  margin-top:auto;
+}
+.online-join-row #onlineRoomCode {
+  width:100%;
+  min-width:0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  font-size:1.05rem;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.multiplayer-panel.classic-menu-config #joinOnlineRoomBtn {
+  width:100%;
+  min-width:0 !important;
+  padding-inline:10px;
+}
+.multiplayer-room-code {
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace !important;
+  font-variant-numeric:slashed-zero tabular-nums;
+  letter-spacing:.18em;
+}
+
+/* Tournament: remove the old blue legacy board and reuse the parchment/config language. */
+#tournamentView .unified-menu-stage {
+  width:min(860px,calc(100vw - 48px));
+}
+#tournamentView .classic-tournament-board {
+  width:100%;
+  min-height:0;
+  padding:26px;
+  overflow:visible;
+  color:#4b382c;
+  background:linear-gradient(180deg,rgba(239,224,177,.98),rgba(215,190,132,.98));
+}
+#tournamentView .classic-tournament-board > h2 {
+  margin:2px 0 18px;
+  padding:0;
+  border:0;
+  background:none;
+  color:#783f23;
+  text-align:center;
+  font-size:2rem;
+}
+#tournamentView .classic-tournament-board #tournamentContent {
+  padding:0;
+  color:#4b382c;
+  font-size:1rem;
+}
+#tournamentView .tournament-create-redesigned {
+  max-width:720px;
+  margin:0 auto;
+}
+#tournamentView .tournament-intro,
+#tournamentView .tournament-rules-grid > span,
+#tournamentView .tournament-summary > div {
+  border:1px solid #342f2a;
+  border-radius:10px;
+  background:#41443f;
+  color:#f4dfaa;
+  box-shadow:none;
+}
+#tournamentView .tournament-intro strong,
+#tournamentView .tournament-intro p,
+#tournamentView .tournament-rules-grid > span,
+#tournamentView .tournament-rules-grid strong,
+#tournamentView .tournament-rules-grid small,
+#tournamentView .tournament-summary strong,
+#tournamentView .tournament-summary small {
+  color:#f4dfaa !important;
+}
+#tournamentView .tournament-advanced {
+  padding:0;
+  border:2px solid #8a6335;
+  border-radius:10px;
+  background:rgba(243,227,182,.72);
+}
+#tournamentView .tournament-advanced summary {
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  padding:8px 14px;
+  color:#59331f;
+}
+#tournamentView .tournament-advanced label {
+  margin:0;
+  padding:12px;
+  color:#59331f;
+}
+#tournamentView .tournament-hub {
+  gap:14px;
+}
+#tournamentView .tournament-next-opponent,
+#tournamentView .tournament-progress-panel,
+#tournamentView .tournament-opponent-path,
+#tournamentView .passive-list {
+  border:1px solid rgba(151,111,55,.55);
+  border-radius:10px;
+  background:rgba(255,245,207,.42);
+  color:#4b382c;
+  box-shadow:inset 0 0 12px rgba(92,52,12,.08);
+}
+#tournamentView .tournament-next-opponent > span,
+#tournamentView .tournament-next-opponent h3,
+#tournamentView .tournament-next-opponent p,
+#tournamentView .tournament-path-heading h3,
+#tournamentView .tournament-path-heading small {
+  color:#4b382c;
+}
+#tournamentView .classic-tournament-actions {
+  width:100%;
+  max-width:720px;
+  margin:14px auto 0;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+#tournamentView .classic-tournament-actions .classic-stone-button {
+  min-width:0;
+  flex:1 1 210px;
+}
+
+/* Cards: same centered card/panel scale, same rounded filter language. */
+#cardsView .unified-menu-stage {
+  width:min(1180px,calc(100vw - 48px));
+}
+#cardsView .collection-page-shell {
+  padding:26px;
+}
+#cardsView .collection-page-filters-top {
+  padding:14px;
+  border:1px solid rgba(151,111,55,.55);
+  border-radius:10px;
+  background:rgba(255,245,207,.42);
+  box-shadow:inset 0 0 12px rgba(92,52,12,.08);
+}
+#cardsView .mini-filter-btn {
+  min-height:38px;
+  padding:7px 11px;
+  border:1px solid #342f2a !important;
+  border-radius:10px !important;
+  background:#41443f !important;
+  color:#f4dfaa !important;
+  font-family:Georgia,serif;
+  font-weight:700;
+  text-shadow:none;
+  box-shadow:none !important;
+}
+#cardsView .mini-filter-btn:hover {
+  border-color:#a9873e !important;
+  background:#50534d !important;
+}
+#cardsView .mini-filter-btn.active {
+  border:2px solid #d1af59 !important;
+  background:linear-gradient(180deg,#8a6d2b,#503a17) !important;
+  color:#fff2a4 !important;
+}
+#cardsView .collection-page-filter-search input {
+  border-radius:10px;
+}
+#cardsView .collection-page-layout {
+  gap:18px;
+}
+#cardsView .collection-page-inspector {
+  border-radius:10px;
+}
+
+/* Profile cards use the same radius as Play configuration blocks. */
+#profileView .profile-identity-card,
+#profileView .profile-mode-card,
+#profileView .profile-fun-stats,
+#profileView .profile-trophies,
+#rulesView .player-help-grid article,
+#diagnosticsView .options-grid label {
+  border-radius:10px;
+}
+
+@media (max-width:820px) {
+  .online-join-row {
+    grid-template-columns:minmax(0,1fr) 108px;
+    gap:7px;
+  }
+  #tournamentView .classic-tournament-board,
+  #cardsView .collection-page-shell {
+    padding:14px 10px;
+  }
+  #tournamentView .classic-tournament-actions {
+    flex-direction:column;
+  }
+  #tournamentView .classic-tournament-actions .classic-stone-button {
+    width:100%;
+  }
+}
