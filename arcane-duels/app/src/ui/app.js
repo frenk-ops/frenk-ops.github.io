@@ -197,7 +197,7 @@
   }
 
   function syncMultiplayerAvailability() {
-    $(".multiplayer-nav").forEach(tab => tab.classList.toggle("hidden", !multiplayerEnabled));
+    $$(".multiplayer-nav").forEach(tab => tab.classList.toggle("hidden", !multiplayerEnabled));
     if (!multiplayerEnabled) setMultiplayerServerState("offline", t("online.notConfigured"));
   }
 
@@ -358,7 +358,7 @@
   }
 
   function switchView(name) {
-    $(".view").forEach(view => view.classList.remove("active"));
+    $$(".view").forEach(view => view.classList.remove("active"));
     $(`#${name}View`)?.classList.add("active");
     navigation?.setActive(name);
     if (name === "multiplayer") checkMultiplayerServer();
