@@ -5,6 +5,7 @@
     const root = options.root;
     if (!root) return null;
     let tournamentMode = false;
+    let onlineMode = false;
 
     const normalActions = root.querySelector("#normalDuelPauseActions");
     const normalAbandon = root.querySelector(".normal-pause-action");
@@ -40,7 +41,8 @@
 
     function open(config = {}) {
       tournamentMode = Boolean(config.tournamentMode);
-      normalActions?.classList.toggle("hidden", tournamentMode);
+      onlineMode = Boolean(config.onlineMode);
+      normalActions?.classList.toggle("hidden", tournamentMode || onlineMode);
       normalAbandon?.classList.toggle("hidden", tournamentMode);
       tournamentAbandon?.classList.toggle("hidden", !tournamentMode);
       if (subtitle) subtitle.textContent = config.subtitle || "";
@@ -79,7 +81,8 @@
       toggle,
       isOpen: () => !root.classList.contains("hidden"),
       isOptionsOpen: () => !optionsView?.classList.contains("hidden"),
-      isTournamentMode: () => tournamentMode
+      isTournamentMode: () => tournamentMode,
+      isOnlineMode: () => onlineMode
     });
   }
 
