@@ -10310,3 +10310,12 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     letter-spacing:.035em;
   }
 }
+
+
+/* 0.22.23 — pause overlays own the mobile interaction layer. */
+@media (max-width:820px) {
+  body.duel-paused .classic-combat-log {
+    display:none !important;
+    pointer-events:none !important;
+  }
+}

@@ -15,6 +15,7 @@
     const mainView = root.querySelector("#duelPauseMainView");
     const optionsView = root.querySelector("#duelPauseOptionsView");
     const optionsButton = root.querySelector("#openDuelOptionsBtn");
+    const optionsTitle = root.querySelector("#duelPauseOptionsTitle");
 
     function showMain(focus = false) {
       mainView?.classList.remove("hidden");
@@ -28,7 +29,11 @@
       optionsView?.classList.remove("hidden");
       root.setAttribute("aria-labelledby", "duelPauseOptionsTitle");
       options.onOptions?.();
-      root.querySelector("#duelOptionsAnimationSpeed")?.focus({ preventScroll: true });
+      // Keep focus inside the dialog without triggering the native mobile select.
+      if (optionsTitle) {
+        optionsTitle.setAttribute("tabindex", "-1");
+        optionsTitle.focus({ preventScroll: true });
+      }
     }
 
     function close() {

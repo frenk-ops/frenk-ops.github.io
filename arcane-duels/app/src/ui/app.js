@@ -5097,7 +5097,7 @@
   // separate from the browser's temporary autoplay permission.
   let bgmEnabled = false;
   let bgmVolume = 0.12;
-  const MUSIC_CROSSFADE_MS = 900;
+  const MUSIC_CROSSFADE_MS = 1200;
   let originalMenuThemeUrl = "";
   function createOriginalMenuThemeUrl() {
     if (originalMenuThemeUrl) return originalMenuThemeUrl;
@@ -5191,8 +5191,10 @@
   }
 
   const MUSIC_TRACKS = Object.freeze({
+    // Menu is the loudness reference. Duel is deliberately attenuated because
+    // its master has denser passages and otherwise sounds louder at the same slider value.
     menu: Object.freeze({ createSrc: createOriginalMenuThemeUrl, gain: 0.72, playbackRate: 1 }),
-    duel: Object.freeze({ src: "assets/audio/bgm.ogg", gain: 1, playbackRate: 1 })
+    duel: Object.freeze({ src: "assets/audio/bgm.ogg", gain: 0.62, playbackRate: 1 })
   });
 
   let musicUnlockListenersArmed = false;
@@ -5218,6 +5220,8 @@
     let suspended = document.visibilityState === "hidden";
     let transitionId = 0;
     let playRequestId = 0;
+    let foregroundResumeTimer = 0;
+    let foregroundRetryTimer = 0;
 
     function desiredScene() {
       const gameVisible = $("#gameView")?.classList.contains("active");
@@ -5264,7 +5268,8 @@
       const step = now => {
         if (token !== transitionId) return;
         const progress = Math.min(1, Math.max(0, (now - startedAt) / duration));
-        audio.volume = from + ((to - from) * progress);
+        const eased = 0.5 - (Math.cos(Math.PI * progress) / 2);
+        audio.volume = from + ((to - from) * eased);
         if (progress < 1) requestAnimationFrame(step);
         else onDone?.();
       };
@@ -5351,18 +5356,26 @@
       pause: pauseChannels,
       suspend() {
         suspended = true;
+        window.clearTimeout(foregroundResumeTimer);
+        window.clearTimeout(foregroundRetryTimer);
         pauseChannels();
       },
       resume() {
         suspended = document.visibilityState === "hidden";
         if (suspended) return;
-        sync();
-        // iOS/PWA can report visibility before its media stack is fully awake.
-        // A short second attempt resumes automatically when Safari allows it;
-        // otherwise the next trusted tap re-unlocks playback.
-        window.setTimeout(() => {
-          if (document.visibilityState !== "hidden") sync();
-        }, 160);
+
+        // iOS may emit visibilitychange, pageshow and focus for the same foreground
+        // transition. Collapse them into one resume sequence so overlapping play()
+        // calls cannot fight each other.
+        window.clearTimeout(foregroundResumeTimer);
+        window.clearTimeout(foregroundRetryTimer);
+        foregroundResumeTimer = window.setTimeout(() => {
+          if (document.visibilityState === "hidden") return;
+          sync();
+          foregroundRetryTimer = window.setTimeout(() => {
+            if (document.visibilityState !== "hidden") sync();
+          }, 220);
+        }, 70);
       },
       unlock() {
         unlocked = true;
