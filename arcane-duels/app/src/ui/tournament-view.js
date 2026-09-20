@@ -76,7 +76,7 @@
       </div>
 
       <label id="tournamentSpecializationField">${t("tournament.playerSpecialization")}
-        <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${item.icon} ${specializationName(item.id)}</option>`).join("")}</select>
+        <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${specializationName(item.id)}</option>`).join("")}</select>
       </label>
 
       <div id="tournamentSpecializationPreview"></div>
@@ -108,7 +108,7 @@
   }
 
   function renderActive(context) {
-    const { tournament, t, specialization, specializationName, leagueLabel, difficultyLabel, tournamentModeLabel, escapeHtml } = context;
+    const { tournament, t, specialization, specializationName, schoolIconMarkup, leagueLabel, difficultyLabel, tournamentModeLabel, escapeHtml } = context;
     const current = tournament.opponents[tournament.currentMatch];
     const remainingWins = Math.max(0, tournament.winTarget - tournament.wins);
     const playerSpecialization = tournament.specialization ? specialization(tournament.specialization) : null;
@@ -130,7 +130,7 @@
           <div><small>${t("tournament.wins")}</small><strong>${tournament.wins} / ${tournament.winTarget}</strong></div>
           <div><small>${t("tournament.losses")}</small><strong>${tournament.losses}</strong></div>
           <div><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
-          <div><small>${t("tournament.specialization")}</small><strong>${playerSpecialization ? `${playerSpecialization.icon} ${specializationName(tournament.specialization)}` : t("tournament.noSpecialization")}</strong></div>
+          <div><small>${t("tournament.specialization")}</small><strong class="tournament-specialization-value">${playerSpecialization ? `${schoolIconMarkup(playerSpecialization.talent, "school-icon-svg tournament-school-icon")}<span>${escapeHtml(specializationName(tournament.specialization))}</span>` : t("tournament.noSpecialization")}</strong></div>
         </div>
 
         <div class="passive-list">

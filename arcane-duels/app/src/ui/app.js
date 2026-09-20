@@ -1133,7 +1133,7 @@
   function specializationLabel(choice) {
     if (choice === "random") return `🎲 ${t("menu.randomSpecialization")}`;
     const spec = A.getAstralSpecialization?.(choice);
-    return spec ? `${spec.icon} ${t(`specialization.${spec.id}`)}` : t("menu.randomSpecialization");
+    return spec ? t(`specialization.${spec.id}`) : t("menu.randomSpecialization");
   }
 
   function populateSpecializationSelect(select, fallback = "random") {
@@ -1141,7 +1141,7 @@
     const current = select.value;
     select.innerHTML = [
       `<option value="random">🎲 ${t("menu.randomSpecialization")}</option>`,
-      ...A.ASTRAL_SPECIALIZATIONS.map(item => `<option value="${item.id}">${item.icon} ${t(`specialization.${item.id}`)}</option>`)
+      ...A.ASTRAL_SPECIALIZATIONS.map(item => `<option value="${item.id}">${t(`specialization.${item.id}`)}</option>`)
     ].join("");
     const valid = current === "random" || A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current);
     select.value = valid ? current : fallback;
@@ -1563,10 +1563,14 @@
     };
     cell.addEventListener("mouseenter", inspectUnit);
     cell.addEventListener("focus", inspectUnit);
+    cell.addEventListener("pointerdown", event => {
+      const currentUnit = engine?.state?.[side]?.board?.[slot];
+      if (currentUnit) startMobileHoldPreview(event, currentUnit, side);
+    });
     cell.addEventListener("click", () => {
       inspectUnit();
       const currentUnit = engine?.state?.[side]?.board?.[slot];
-      if (currentUnit) openDuelCardZoom(currentUnit, side);
+      if (currentUnit && !isMobileDuelLayout()) openDuelCardZoom(currentUnit, side);
     });
     return cell;
   }
@@ -1824,7 +1828,7 @@
 
     const fallback = document.createElement("div");
     fallback.className = "art-fallback";
-    fallback.innerHTML = `<span>${escapeHtml(card.art || school(card.school).icon)}</span><small>${card.type === "spell" ? "MAGIA" : "CREATURA"}</small>`;
+    fallback.innerHTML = `<span>${card.art ? escapeHtml(card.art) : schoolIconMarkup(card.school, "school-icon-svg art-fallback-school-icon")}</span><small>${card.type === "spell" ? "MAGIA" : "CREATURA"}</small>`;
 
     const status = document.createElement("div");
     status.className = "art-status";
@@ -2191,13 +2195,13 @@
   }
 
   function buildCollectionFilterButtons() {
-    const schoolFilters = [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon}` }))];
+    const schoolFilters = [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: schoolIconMarkup(item.id, "school-icon-svg school-filter-icon") }))];
     const typeFilters = [{ id: "all", label: t("cards.allMasculine") }, { id: "creature", label: t("ui.creature") }, { id: "spell", label: t("ui.spell") }];
     const levelFilters = [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 13 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }))];
     renderFilterGroup("#collectionSchoolFilters", "school", schoolFilters);
     renderFilterGroup("#collectionTypeFilters", "type", typeFilters);
     renderFilterGroup("#collectionLevelFilters", "level", levelFilters);
-    renderFilterGroup("#collectionPageSchoolFilters", "school", [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon} ${schoolName(item.id)}` }))]);
+    renderFilterGroup("#collectionPageSchoolFilters", "school", [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${schoolIconMarkup(item.id, "school-icon-svg school-filter-icon")} ${escapeHtml(schoolName(item.id))}` }))]);
     renderFilterGroup("#collectionPageTypeFilters", "type", typeFilters);
     renderFilterGroup("#collectionPageLevelFilters", "level", [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 13 }, (_, i) => ({ id: String(i + 1), label: `${t("cards.level")} ${i + 1}` }))]);
   }
@@ -2315,20 +2319,115 @@
   let renderedHandSignature = "";
   let renderedHandEngine = null;
   let mobileHandGesture = null;
+  let mobileHoldGesture = null;
 
   function isMobileDuelLayout() {
     return window.matchMedia?.("(max-width: 820px)").matches && !$("#battlePanel")?.classList.contains("hidden");
   }
 
+  function hideMobileCardInspect() {
+    const inspect = $("#mobileCardInspect");
+    inspect?.classList.add("hidden");
+    inspect?.setAttribute("aria-hidden", "true");
+  }
+
+  function showMobileCardInspect(card, side = "player") {
+    const inspect = $("#mobileCardInspect");
+    if (!inspect || !card) return;
+    $("#mobileCardInspectArt")?.replaceChildren(buildArtBlock(card, "mobileInspect"));
+    $("#mobileCardInspectName").textContent = cardName(card);
+    $("#mobileCardInspectKind").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg mobile-inspect-school-icon")}<span>${escapeHtml(schoolName(card.school))} · ${escapeHtml(card.type === "spell" ? t("ui.spell") : t("ui.creature"))}</span>`;
+    $("#mobileCardInspectText").textContent = cardDescription(card, side);
+
+    const cost = engine && side ? engine.effectiveCost(side, card) : card.level;
+    const attack = side && card.instanceId && card.type !== "spell"
+      ? displayedUnitAttack(side, card)
+      : card.attack;
+    const health = card.currentHealth ?? card.health ?? 0;
+    const stats = $("#mobileCardInspectStats");
+    if (stats) {
+      stats.innerHTML = card.type === "creature"
+        ? `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>
+           <span class="mobile-inspect-stat mobile-inspect-attack"><small>⚔ ${escapeHtml(t("ui.attack"))}</small><b>${escapeHtml(attack)}</b></span>
+           <span class="mobile-inspect-stat mobile-inspect-health"><small>♥ ${escapeHtml(t("ui.life"))}</small><b>${escapeHtml(health)}</b></span>`
+        : `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>`;
+    }
+    const currentValue = currentValueData(card, side);
+    const currentValueNode = $("#mobileCardInspectCurrentValue");
+    if (currentValueNode) {
+      currentValueNode.classList.toggle("hidden", !currentValue);
+      currentValueNode.innerHTML = currentValue
+        ? `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`
+        : "";
+    }
+    inspect.classList.remove("hidden");
+    inspect.setAttribute("aria-hidden", "false");
+  }
+
+  function clearMobileHoldPreview() {
+    const gesture = mobileHoldGesture;
+    if (!gesture) {
+      hideMobileCardInspect();
+      return;
+    }
+    clearTimeout(gesture.holdTimer);
+    document.removeEventListener("pointermove", gesture.move);
+    document.removeEventListener("pointerup", gesture.end);
+    document.removeEventListener("pointercancel", gesture.cancel);
+    hideMobileCardInspect();
+    mobileHoldGesture = null;
+  }
+
+  function startMobileHoldPreview(event, card, side = "player") {
+    if (!isMobileDuelLayout() || event.button !== 0 || mobileHoldGesture || mobileHandGesture || !card) return;
+    event.preventDefault();
+    const gesture = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      previewing: false,
+      moved: false,
+      holdTimer: null,
+      move: null,
+      end: null,
+      cancel: clearMobileHoldPreview
+    };
+    gesture.holdTimer = setTimeout(() => {
+      if (mobileHoldGesture !== gesture || gesture.moved) return;
+      gesture.previewing = true;
+      showMobileCardInspect(card, side);
+    }, 300);
+    gesture.move = moveEvent => {
+      if (moveEvent.pointerId !== gesture.pointerId) return;
+      const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
+      if (distance < 12 || gesture.previewing) return;
+      gesture.moved = true;
+      clearTimeout(gesture.holdTimer);
+    };
+    gesture.end = endEvent => {
+      if (endEvent.pointerId !== gesture.pointerId) return;
+      clearMobileHoldPreview();
+    };
+    mobileHoldGesture = gesture;
+    document.addEventListener("pointermove", gesture.move, { passive: false });
+    document.addEventListener("pointerup", gesture.end);
+    document.addEventListener("pointercancel", gesture.cancel);
+  }
+
   function clearMobileHandGesture() {
     const gesture = mobileHandGesture;
-    if (!gesture) return;
+    if (!gesture) {
+      hideMobileCardInspect();
+      return;
+    }
+    clearTimeout(gesture.holdTimer);
     document.removeEventListener("pointermove", gesture.move);
     document.removeEventListener("pointerup", gesture.end);
     document.removeEventListener("pointercancel", gesture.cancel);
     $$("#playerBoard .mobile-drop-hover").forEach(node => node.classList.remove("mobile-drop-hover"));
     $("#battlePanel")?.classList.remove("mobile-drag-creature", "mobile-drag-spell");
     $("#mobileDragGhost")?.classList.add("hidden");
+    hideMobileCardInspect();
     mobileHandGesture = null;
   }
 
@@ -2343,19 +2442,29 @@
       startX: event.clientX,
       startY: event.clientY,
       dragging: false,
+      previewing: false,
       canDrag: Boolean(playable),
+      holdTimer: null,
       move: null,
       end: null,
       cancel: clearMobileHandGesture
     };
+    gesture.holdTimer = setTimeout(() => {
+      if (mobileHandGesture !== gesture || gesture.dragging) return;
+      gesture.previewing = true;
+      showMobileCardInspect(card, "player");
+    }, 300);
     gesture.move = moveEvent => {
       if (moveEvent.pointerId !== gesture.pointerId) return;
       const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
       if (!gesture.dragging && distance < 11) return;
       moveEvent.preventDefault();
+      if (gesture.previewing) return;
+      clearTimeout(gesture.holdTimer);
       if (!gesture.canDrag) return;
       if (!gesture.dragging) {
         gesture.dragging = true;
+        hideMobileCardInspect();
         ghost?.replaceChildren(buildArtBlock(card, "mobileDrag"));
         ghost?.classList.remove("hidden");
         panel?.classList.add(card.type === "spell" ? "mobile-drag-spell" : "mobile-drag-creature");
@@ -2373,6 +2482,7 @@
     gesture.end = async endEvent => {
       if (endEvent.pointerId !== gesture.pointerId) return;
       const wasDragging = gesture.dragging;
+      const wasPreviewing = gesture.previewing;
       const canDrag = gesture.canDrag;
       const x = endEvent.clientX;
       const y = endEvent.clientY;
@@ -2385,13 +2495,13 @@
       clearMobileHandGesture();
       if (!engine || !isMobileDuelLayout()) return;
 
-      // Mobile interaction is explicit: tap = read/zoom, drag = play.
+      // Hearthstone-like mobile interaction: hold = preview until release, drag = play.
+      if (wasPreviewing) return;
       if (!wasDragging) {
         inspectedCardId = card.id;
         inspectedCardSide = "player";
         inspectedCardInstanceId = null;
         renderCollectionPanels();
-        openDuelCardZoom(card, "player");
         return;
       }
       if (busy || !canDrag) return;
@@ -2531,9 +2641,10 @@
       };
       chip.addEventListener("mouseenter", inspect);
       chip.addEventListener("focus", inspect);
+      chip.addEventListener("pointerdown", event => startMobileHoldPreview(event, card, "enemy"));
       chip.addEventListener("click", () => {
         inspect();
-        openDuelCardZoom(card, "enemy");
+        if (!isMobileDuelLayout()) openDuelCardZoom(card, "enemy");
       });
       return chip;
     };
@@ -3261,6 +3372,7 @@
   }
 
   function openDuelCardZoom(card, side = null) {
+    if (isMobileDuelLayout()) return;
     const overlay = $("#duelCardZoom");
     const content = $("#duelCardZoomContent");
     if (!overlay || !content || !card) return;
@@ -3289,7 +3401,7 @@
     const newButton = $("#newTournamentBtn");
     const abandonButton = $("#abandonTournamentBtn");
     const context = {
-      tournament, t, school, schoolName, escapeHtml, abilityName, abilityDescription, spellbookModeLabel,
+      tournament, t, school, schoolName, schoolIconMarkup, escapeHtml, abilityName, abilityDescription, spellbookModeLabel,
       specializations: A.ASTRAL_SPECIALIZATIONS,
       specialization: id => A.getAstralSpecialization?.(id),
       specializationName: id => t(`specialization.${A.getAstralSpecialization?.(id)?.id || id}`),
@@ -3449,7 +3561,7 @@
           <div><small>${t("profile.cardsPlayed")}</small><strong>${Number(stats.cardsPlayed || 0)}</strong></div>
         </div>
         <div class="profile-school-stats">
-          ${A.SCHOOLS.map(item => `<span><b>${item.icon}</b><small>${schoolName(item.id)}</small><strong>${Number(stats.cardsBySchool?.[item.id] || 0)}</strong></span>`).join("")}
+          ${A.SCHOOLS.map(item => `<span><b>${schoolIconMarkup(item.id, "school-icon-svg profile-school-icon")}</b><small>${schoolName(item.id)}</small><strong>${Number(stats.cardsBySchool?.[item.id] || 0)}</strong></span>`).join("")}
         </div>
       </section>
       <section class="profile-trophies ornate-subpanel">
@@ -4061,6 +4173,7 @@
 
   window.addEventListener("pageshow", event => {
     clearMobileHandGesture();
+    clearMobileHoldPreview();
     $("#battlePanel")?.classList.remove("mobile-drag-creature", "mobile-drag-spell");
     $("#mobileDragGhost")?.classList.add("hidden");
     if (event.persisted) {
@@ -4074,11 +4187,13 @@
   });
   window.addEventListener("pagehide", () => {
     clearMobileHandGesture();
+    clearMobileHoldPreview();
     persistLocalDuelState();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       clearMobileHandGesture();
+      clearMobileHoldPreview();
       persistLocalDuelState();
       return;
     }

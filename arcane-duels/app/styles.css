@@ -7955,3 +7955,225 @@ body:has(#battlePanel:not(.hidden)) .classic-duel-frame {
     max-width:42px !important;
   }
 }
+
+
+/* 0.22.4 — hold-to-preview and exact mockup school icons. */
+
+/* Superdesign reference icons: Lucide Flame / Droplet / Wind / Leaf / Skull. */
+.school-icon-svg {
+  display:inline-block !important;
+  width:1.15em !important;
+  height:1.15em !important;
+  overflow:visible !important;
+  fill:none !important;
+  stroke:currentColor !important;
+  stroke-width:2 !important;
+  stroke-linecap:round !important;
+  stroke-linejoin:round !important;
+  vertical-align:-.18em;
+  pointer-events:none !important;
+  filter:none !important;
+}
+.school-power-icon {
+  overflow:visible !important;
+}
+.school-power-icon .school-icon-svg {
+  display:block !important;
+  width:25px !important;
+  height:25px !important;
+  margin:auto;
+  filter:drop-shadow(0 1px 2px #000) !important;
+}
+.school-fire .school-icon-svg { color:#ff7a3c; }
+.school-water .school-icon-svg { color:#59c9ff; }
+.school-air .school-icon-svg { color:#dceeff; }
+.school-nature .school-icon-svg,
+.school-earth .school-icon-svg { color:#7be078; }
+.school-death .school-icon-svg { color:#d39be8; }
+.school-filter-icon,
+.profile-school-icon,
+.tournament-school-icon,
+.mobile-inspect-school-icon,
+.preview-school-svg,
+.collection-school-svg,
+.card-school-svg,
+.art-fallback-school-icon {
+  width:1.05em !important;
+  height:1.05em !important;
+}
+.tournament-specialization-value {
+  display:inline-flex !important;
+  align-items:center;
+  gap:7px;
+}
+.tournament-specialization-value .tournament-school-icon {
+  flex:0 0 auto;
+  width:1.15em !important;
+  height:1.15em !important;
+}
+
+/* Hearthstone-like touch inspection: visible only while the pointer is held down. */
+.mobile-card-inspect.hidden { display:none !important; }
+.mobile-card-inspect {
+  position:fixed;
+  z-index:155;
+  inset:0;
+  display:grid;
+  place-items:center;
+  padding:
+    max(12px,env(safe-area-inset-top))
+    12px
+    max(84px,calc(env(safe-area-inset-bottom) + 64px));
+  background:rgba(0,5,18,.62);
+  backdrop-filter:blur(4px);
+  pointer-events:none !important;
+  animation:mobile-hold-preview-in .09s ease-out both;
+}
+@keyframes mobile-hold-preview-in {
+  from { opacity:0; }
+  to { opacity:1; }
+}
+.mobile-card-inspect-card {
+  width:min(94vw,460px);
+  max-height:min(62dvh,430px);
+  display:grid;
+  grid-template-columns:118px minmax(0,1fr);
+  gap:10px;
+  overflow:hidden;
+  padding:11px;
+  border:1px solid rgba(222,187,83,.86);
+  border-radius:17px;
+  background:
+    radial-gradient(circle at 16% 0,rgba(53,174,218,.16),transparent 34%),
+    linear-gradient(155deg,rgba(14,45,65,.98),rgba(5,17,31,.99) 66%,rgba(20,17,43,.98));
+  color:#f7e8c3;
+  box-shadow:
+    inset 0 0 0 2px rgba(3,10,19,.82),
+    0 18px 50px rgba(0,0,0,.72);
+  transform:translateY(-4vh) scale(1.01);
+  animation:mobile-hold-card-in .1s ease-out both;
+}
+@keyframes mobile-hold-card-in {
+  from { opacity:.6; transform:translateY(0) scale(.96); }
+  to { opacity:1; transform:translateY(-4vh) scale(1.01); }
+}
+.mobile-card-inspect-art {
+  width:118px;
+  aspect-ratio:1;
+  overflow:hidden;
+  align-self:start;
+  border:1px solid rgba(222,187,83,.72);
+  border-radius:9px;
+  background:#08101d;
+}
+.mobile-card-inspect-art .art-media,
+.mobile-card-inspect-art .art-image {
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  object-fit:cover !important;
+}
+.mobile-card-inspect-copy {
+  min-width:0;
+  display:grid;
+  align-content:start;
+  gap:6px;
+  text-align:left;
+}
+.mobile-card-inspect-copy > strong {
+  color:#ffe8a4;
+  font:700 1.18rem/1.05 Georgia,serif;
+}
+.mobile-card-inspect-kind {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  color:#bfeeff;
+  font:.76rem/1.1 system-ui,sans-serif;
+}
+#mobileCardInspectStats {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:5px;
+  margin-top:2px;
+}
+.mobile-inspect-stat {
+  min-width:0 !important;
+  display:grid !important;
+  place-items:center;
+  gap:2px;
+  padding:6px 4px !important;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:8px;
+  background:rgba(3,10,22,.8);
+  text-align:center;
+}
+.mobile-inspect-stat small {
+  font-size:.54rem !important;
+  font-weight:800;
+  line-height:1.05;
+}
+.mobile-inspect-stat b {
+  font:900 1.02rem/1 Georgia,serif !important;
+}
+.mobile-inspect-attack {
+  border-color:#d9b94c !important;
+  color:#ffe27a !important;
+}
+.mobile-inspect-health {
+  border-color:#dc5f69 !important;
+  color:#ff9da6 !important;
+}
+.mobile-inspect-attack b,
+.mobile-inspect-health b {
+  font-size:1.35rem !important;
+}
+.mobile-current-value {
+  margin:1px 0 0 !important;
+  padding:6px 8px !important;
+  border:1px solid #51d8f1 !important;
+  border-radius:8px !important;
+  background:linear-gradient(180deg,#17677b,#0a445a) !important;
+  color:#a9f1ff !important;
+}
+.mobile-current-value strong {
+  color:#fff09a !important;
+}
+#mobileCardInspectText {
+  margin:0 !important;
+  padding:7px 8px;
+  max-height:96px;
+  overflow:hidden;
+  border:1px solid rgba(129,201,225,.2);
+  border-radius:8px;
+  background:rgba(2,9,18,.42);
+  color:#f3e5c5;
+  font:.78rem/1.28 Georgia,serif;
+}
+
+/* The persistent X-to-close zoom is desktop-only; mobile uses hold-to-preview. */
+@media (max-width:820px) {
+  .duel-card-zoom { display:none !important; }
+  .mobile-card-inspect {
+    display:grid;
+  }
+  .mobile-card-inspect.hidden {
+    display:none !important;
+  }
+}
+
+@media (max-width:390px) {
+  .mobile-card-inspect-card {
+    grid-template-columns:104px minmax(0,1fr);
+    gap:8px;
+    padding:9px;
+  }
+  .mobile-card-inspect-art {
+    width:104px;
+  }
+  .mobile-card-inspect-copy > strong { font-size:1.05rem; }
+  #mobileCardInspectStats { gap:4px; }
+  .mobile-inspect-stat { padding:5px 2px !important; }
+  .mobile-inspect-stat small { font-size:.49rem !important; }
+  #mobileCardInspectText { font-size:.72rem; }
+}
