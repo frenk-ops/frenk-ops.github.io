@@ -10,19 +10,37 @@
       this.sequence = 0;
       this.checksum = null;
       this.state = null;
+      this.clientVersion = String(options.clientVersion || "");
+      this.protocolVersion = Number(options.protocolVersion || A.MULTIPLAYER_PROTOCOL_VERSION || 0);
+    }
+
+    compatibility(options = {}) {
+      return {
+        ...options,
+        clientVersion: this.clientVersion,
+        protocolVersion: this.protocolVersion
+      };
     }
 
     async create(options = {}) {
       return this.accept(await this.request("/api/rooms", {
         method: "POST",
-        body: options
+        body: this.compatibility(options)
       }));
+    }
+
+    async inspect(code) {
+      const params = new URLSearchParams({
+        clientVersion: this.clientVersion,
+        protocolVersion: String(this.protocolVersion)
+      });
+      return this.request(`/api/rooms/${encodeURIComponent(code)}/info?${params}`);
     }
 
     async join(code, options = {}) {
       return this.accept(await this.request(`/api/rooms/${encodeURIComponent(code)}/join`, {
         method: "POST",
-        body: options
+        body: this.compatibility(options)
       }));
     }
 
@@ -84,6 +102,9 @@
         if (payload.sync) this.accept(payload.sync);
         const error = new Error(payload.error || `Errore HTTP ${response.status}`);
         error.status = response.status;
+        error.code = payload.code;
+        error.expectedVersion = payload.expectedVersion;
+        error.expectedProtocolVersion = payload.expectedProtocolVersion;
         error.sync = payload.sync;
         throw error;
       }

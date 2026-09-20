@@ -6343,3 +6343,46 @@ body.ui-classic .classic-topbar .classic-nav .tab.active {
     width:100%;
   }
 }
+
+
+/* 0.21.7 — host-owned multiplayer rules and readable tournament labels. */
+.multiplayer-identity {
+  grid-template-columns:1fr;
+}
+.multiplayer-host-settings {
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  margin:12px 0 14px;
+}
+.multiplayer-host-settings label,
+.multiplayer-room-preview label {
+  display:grid;
+  gap:7px;
+}
+.multiplayer-room-preview {
+  display:grid;
+  gap:7px;
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(151,111,55,.55);
+  border-radius:10px;
+  background:rgba(255,245,207,.42);
+  color:#4b382c;
+}
+.multiplayer-room-preview > span {
+  font-size:.78rem;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:#6b4a2d;
+}
+.multiplayer-room-preview > strong {
+  color:#59331f;
+  font-size:1.05rem;
+}
+#tournamentView .tournament-intro > span,
+#tournamentView .tournament-intro span,
+#tournamentView .tournament-rules-grid small {
+  color:#f4dfaa !important;
+}

@@ -4,6 +4,8 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const t = (key, vars) => A.i18n?.t(key, vars) ?? key;
+  const APP_VERSION = String(document.querySelector('meta[name="arcane-app-version"]')?.content || "").trim();
+  A.APP_VERSION = APP_VERSION;
   const localizedCard = card => A.i18n?.card(card) || { name: card?.name || "", description: card?.text || "" };
   const cardName = card => localizedCard(card).name;
   const cardText = card => localizedCard(card).description;
@@ -83,6 +85,10 @@
   let multiplayerServerStatus = "idle";
   let multiplayerServerCheckPromise = null;
   let multiplayerControlsLocked = false;
+  let multiplayerUpdateRequested = false;
+  let inspectedRemoteRoomCode = "";
+  let inspectedRemoteRoomSettings = null;
+  let remoteRoomInspectTimer = null;
   let currentPlayerName = "";
   let currentOpponentName = "";
   let matchStartedAt = null;
@@ -262,12 +268,16 @@
 
   function createRemoteRoomClient() {
     if (!multiplayerEnabled) throw new Error("Multiplayer online non configurato.");
-    return new A.RemoteRoomClient({ baseUrl: A.MULTIPLAYER_API_URL });
+    return new A.RemoteRoomClient({
+      baseUrl: A.MULTIPLAYER_API_URL,
+      clientVersion: APP_VERSION,
+      protocolVersion: A.MULTIPLAYER_PROTOCOL_VERSION
+    });
   }
 
   function setMultiplayerControlsDisabled(disabled) {
     multiplayerControlsLocked = Boolean(disabled);
-    ["#onlineRoomCode", "#onlineSpecializationSelect", "#onlineDuelModeSelect"]
+    ["#onlineRoomCode", "#onlineSpecializationSelect", "#onlineJoinSpecializationSelect", "#onlineDuelModeSelect"]
       .forEach(selector => {
         const control = $(selector);
         if (control) control.disabled = multiplayerControlsLocked;
@@ -285,20 +295,101 @@
     const root = $("#multiplayerServerState");
     if (!root) return;
     root.dataset.state = state;
-    root.classList.toggle("is-connecting", state === "connecting");
+    root.classList.toggle("is-connecting", state === "connecting" || state === "updating");
     root.classList.toggle("is-online", state === "online");
     root.classList.toggle("is-offline", state === "offline");
     const titleKey = state === "online"
       ? "online.serverOnline"
       : state === "offline"
         ? "online.serverOffline"
-        : "online.serverConnecting";
+        : state === "updating"
+          ? "online.updateRequired"
+          : "online.serverConnecting";
     $("#multiplayerServerStateTitle").textContent = t(titleKey);
     $("#multiplayerServerStateDetail").textContent = detail || t(
-      state === "online" ? "online.serverOnlineHint" : state === "offline" ? "online.serverOfflineHint" : "online.serverWakeHint"
+      state === "online"
+        ? "online.serverOnlineHint"
+        : state === "offline"
+          ? "online.serverOfflineHint"
+          : state === "updating"
+            ? "online.updatingClient"
+            : "online.serverWakeHint"
     );
     $("#retryMultiplayerServerBtn")?.classList.toggle("hidden", state !== "offline");
     setMultiplayerControlsDisabled(multiplayerControlsLocked);
+  }
+
+  function compareAppVersions(left, right) {
+    const parse = value => String(value || "").split(".").map(part => Number.parseInt(part, 10) || 0);
+    const a = parse(left);
+    const b = parse(right);
+    for (let index = 0; index < Math.max(a.length, b.length, 3); index += 1) {
+      if ((a[index] || 0) !== (b[index] || 0)) return (a[index] || 0) < (b[index] || 0) ? -1 : 1;
+    }
+    return 0;
+  }
+
+  async function requestLatestAppVersion() {
+    if (multiplayerUpdateRequested) return;
+    multiplayerUpdateRequested = true;
+    setMultiplayerServerState("updating", t("online.updatingClient"));
+    let activationRequested = false;
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.update();
+          let worker = registration.waiting;
+          if (!worker && registration.installing) {
+            worker = registration.installing;
+            if (worker.state !== "installed") {
+              await new Promise(resolve => {
+                const timeout = window.setTimeout(resolve, 6000);
+                const onStateChange = () => {
+                  if (!["installed", "redundant"].includes(worker.state)) return;
+                  window.clearTimeout(timeout);
+                  worker.removeEventListener("statechange", onStateChange);
+                  resolve();
+                };
+                worker.addEventListener("statechange", onStateChange);
+              });
+            }
+            worker = registration.waiting || worker;
+          }
+          if (worker?.state === "installed" || registration.waiting === worker) {
+            worker.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
+            activationRequested = true;
+          }
+        }
+      }
+    } catch {}
+    if (!activationRequested) window.setTimeout(() => location.reload(), 1000);
+  }
+
+  function acceptMultiplayerCompatibility(payload) {
+    const serverVersion = String(payload?.appVersion || "");
+    const serverProtocol = Number(payload?.protocolVersion);
+    const clientProtocol = Number(A.MULTIPLAYER_PROTOCOL_VERSION);
+    if (serverVersion === APP_VERSION && serverProtocol === clientProtocol) return true;
+
+    const clientIsOlder = serverVersion && APP_VERSION
+      ? compareAppVersions(APP_VERSION, serverVersion) < 0
+      : serverProtocol > clientProtocol;
+    if (clientIsOlder) {
+      requestLatestAppVersion();
+    } else {
+      setMultiplayerServerState("connecting", t("online.serverUpdating"));
+    }
+    return false;
+  }
+
+  function handleMultiplayerCompatibilityError(error) {
+    if (error?.code !== "VERSION_MISMATCH" && Number(error?.status) !== 426) return false;
+    acceptMultiplayerCompatibility({
+      appVersion: error.expectedVersion,
+      protocolVersion: error.expectedProtocolVersion
+    });
+    return true;
   }
 
   async function checkMultiplayerServer(options = {}) {
@@ -313,6 +404,7 @@
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const payload = await response.json();
         if (!payload?.ok) throw new Error("Health check failed");
+        if (!acceptMultiplayerCompatibility(payload)) return false;
         setMultiplayerServerState("online");
         return true;
       })
@@ -338,6 +430,51 @@
       sequence: remoteRoomClient.sequence, checksum: remoteRoomClient.checksum,
       startedAt: remoteMatchStartedAt || null
     }));
+  }
+
+  function clearRemoteRoomPreview() {
+    inspectedRemoteRoomCode = "";
+    inspectedRemoteRoomSettings = null;
+    $("#onlineJoinRoomInfo")?.classList.add("hidden");
+    $("#onlineJoinSpecializationField")?.classList.add("hidden");
+    if ($("#onlineJoinRoomMode")) $("#onlineJoinRoomMode").textContent = "—";
+  }
+
+  function roomModeLabel(settings) {
+    return t(settings?.duelMode === "specializations"
+      ? "online.roomModeSpecializations"
+      : "online.roomModeClassic");
+  }
+
+  function renderRemoteRoomPreview(code, info) {
+    inspectedRemoteRoomCode = code;
+    inspectedRemoteRoomSettings = info?.settings || null;
+    $("#onlineJoinRoomInfo")?.classList.remove("hidden");
+    if ($("#onlineJoinRoomMode")) $("#onlineJoinRoomMode").textContent = roomModeLabel(inspectedRemoteRoomSettings);
+    $("#onlineJoinSpecializationField")?.classList.toggle("hidden", inspectedRemoteRoomSettings?.duelMode !== "specializations");
+  }
+
+  async function inspectRemoteRoom(code, options = {}) {
+    const normalized = String(code || "").trim().toUpperCase();
+    if (normalized.length !== 6) {
+      clearRemoteRoomPreview();
+      return null;
+    }
+    if (!options.force && inspectedRemoteRoomCode === normalized && inspectedRemoteRoomSettings) {
+      return { code: normalized, settings: inspectedRemoteRoomSettings };
+    }
+    if (multiplayerServerStatus !== "online" && !await checkMultiplayerServer({ force: true })) return null;
+    try {
+      const info = await createRemoteRoomClient().inspect(normalized);
+      renderRemoteRoomPreview(normalized, info);
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
+      return info;
+    } catch (error) {
+      clearRemoteRoomPreview();
+      if (handleMultiplayerCompatibilityError(error)) return null;
+      if (!options.silent && $("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+      return null;
+    }
   }
 
   function renderRemoteLobby(response) {
@@ -794,13 +931,15 @@
     $("#enemySpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
       .map(item => `<option value="${item.id}" ${item.id === "stormmage" ? "selected" : ""}>${item.icon} ${t(`specialization.${item.id}`)}</option>`)
       .join("");
-    if ($("#onlineSpecializationSelect")) {
-      const current = $("#onlineSpecializationSelect").value;
-      $("#onlineSpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
+    ["#onlineSpecializationSelect", "#onlineJoinSpecializationSelect"].forEach(selector => {
+      const select = $(selector);
+      if (!select) return;
+      const current = select.value;
+      select.innerHTML = A.ASTRAL_SPECIALIZATIONS
         .map(item => `<option value="${item.id}">${item.icon} ${t(`specialization.${item.id}`)}</option>`)
         .join("");
-      if (A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current)) $("#onlineSpecializationSelect").value = current;
-    }
+      if (A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current)) select.value = current;
+    });
   }
 
   function syncOnlineDuelMode() {
@@ -3263,8 +3402,18 @@
   $("#retryMultiplayerServerBtn")?.addEventListener("click", () => checkMultiplayerServer({ force: true }));
   $("#onlinePlayerNameInput")?.addEventListener("change", event => savePlayerName(event.currentTarget));
   $("#onlineDuelModeSelect")?.addEventListener("change", syncOnlineDuelMode);
+  $("#onlineRoomCode")?.addEventListener("input", event => {
+    const allowed = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+    const normalized = String(event.currentTarget.value || "").toUpperCase().split("").filter(char => allowed.includes(char)).join("").slice(0, 6);
+    event.currentTarget.value = normalized;
+    window.clearTimeout(remoteRoomInspectTimer);
+    clearRemoteRoomPreview();
+    if (normalized.length === 6) {
+      remoteRoomInspectTimer = window.setTimeout(() => inspectRemoteRoom(normalized, { silent: true }), 250);
+    }
+  });
   $("#createOnlineRoomBtn")?.addEventListener("click", async () => {
-    if (multiplayerServerStatus !== "online" && !await checkMultiplayerServer({ force: true })) return;
+    if (!await checkMultiplayerServer({ force: true })) return;
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
     setMultiplayerControlsDisabled(true);
     try {
@@ -3280,32 +3429,47 @@
       remoteRoomClient = null;
       saveRemoteRoom();
       renderRemoteLobby(null);
+      if (handleMultiplayerCompatibilityError(error)) return;
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
       setMultiplayerControlsDisabled(false);
     }
   });
   $("#joinOnlineRoomBtn")?.addEventListener("click", async () => {
-    if (multiplayerServerStatus !== "online" && !await checkMultiplayerServer({ force: true })) return;
+    if (!await checkMultiplayerServer({ force: true })) return;
     const roomCode = $("#onlineRoomCode")?.value.trim().toUpperCase();
     if (!roomCode) {
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = t("online.codeRequired");
       return;
     }
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
+    const previewWasReady = inspectedRemoteRoomCode === roomCode && Boolean(inspectedRemoteRoomSettings);
+    const preview = previewWasReady
+      ? { code: roomCode, settings: inspectedRemoteRoomSettings }
+      : await inspectRemoteRoom(roomCode, { force: true });
+    if (!preview) return;
+    const specializedRoom = preview.settings?.duelMode === "specializations";
+    if (specializedRoom && !previewWasReady) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = t("online.chooseSpecializationBeforeJoin");
+      return;
+    }
+
     setMultiplayerControlsDisabled(true);
     try {
       remoteRoomClient = createRemoteRoomClient();
       remoteRenderedSnapshotKey = "";
       remoteMatchStartedAt = null;
-      const response = await remoteRoomClient.join(roomCode, {
-        ...onlineDuelOptions(),
+      const joinOptions = {
         playerName: savePlayerName($("#onlinePlayerNameInput"))
-      });
+      };
+      if (specializedRoom) joinOptions.playerSpecialization = $("#onlineJoinSpecializationSelect")?.value || "battlemage";
+      const response = await remoteRoomClient.join(roomCode, joinOptions);
+      clearRemoteRoomPreview();
       saveRemoteRoom(); renderRemoteLobby(response); beginRemotePolling();
     } catch (error) {
       remoteRoomClient = null;
       saveRemoteRoom();
       renderRemoteLobby(null);
+      if (handleMultiplayerCompatibilityError(error)) return;
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
       setMultiplayerControlsDisabled(false);
     }
@@ -3314,6 +3478,7 @@
     clearInterval(remoteRoomPoll); remoteRoomPoll = null;
     await remoteRoomClient?.disconnect().catch(() => {});
     remoteRoomClient = null; remoteRenderedSnapshotKey = ""; remoteMatchStartedAt = null; saveRemoteRoom(); renderRemoteLobby(null);
+    clearRemoteRoomPreview();
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
   });
   window.addEventListener("arcane:languagechange", () => {
@@ -3327,6 +3492,9 @@
     setupDifficultyOptions();
     setupAstralSpecializationOptions();
     syncOnlineDuelMode();
+    if (inspectedRemoteRoomSettings && inspectedRemoteRoomCode) {
+      renderRemoteRoomPreview(inspectedRemoteRoomCode, { settings: inspectedRemoteRoomSettings });
+    }
     renderTalentChoices();
     renderCollectionPanels();
     renderTournament();

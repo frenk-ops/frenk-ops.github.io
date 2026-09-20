@@ -6,13 +6,14 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
+  <meta name="arcane-app-version" content="0.21.7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.29">
+  <link rel="stylesheet" href="styles.css?v=3.0.30">
   <link rel="stylesheet" href="pwa.css?v=1.3.0">
 </head>
 <body class="pages-static-profile">
@@ -21,13 +22,13 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.21.6 · build 62b7d49</small>
+        <small class="app-version-badge" data-arcane-version>v0.21.7 · build 19a60b0</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
         <button class="tab multiplayer-nav hidden" data-view="multiplayer" data-i18n="nav.multiplayer">Multiplayer</button>
         <button class="tab" data-view="tournament" data-i18n="nav.tournament">Torneo</button>
-        <button class="tab" data-view="cards" data-i18n="nav.cards">Carte</button>
+        <button class="tab" data-view="cards" data-i18n="nav.cards">Collezione</button>
         <button class="tab" data-view="profile" data-i18n="nav.profile">Profilo</button>
         <button class="tab" data-view="rules" data-i18n="nav.howToPlay">Come si gioca</button>
         <button class="tab" data-view="diagnostics" data-i18n="nav.options">Opzioni</button>
@@ -54,7 +55,7 @@
       </button>
       <button class="mobile-nav-item tab" data-view="cards" type="button">
         <span class="mobile-nav-icon" aria-hidden="true">▤</span>
-        <span data-i18n="nav.cards">Carte</span>
+        <span data-i18n="nav.cards">Collezione</span>
       </button>
       <button class="mobile-nav-item tab" data-view="profile" type="button">
         <span class="mobile-nav-icon" aria-hidden="true">♙</span>
@@ -73,7 +74,6 @@
             <div class="classic-menu-config parchment-panel">
               <span class="classic-menu-kicker" data-i18n="nav.play">Gioca</span>
               <h2 data-i18n="menu.prepareDuel">Prepara il duello</h2>
-              <p data-i18n="menu.rulesetSummaryRemastered">Regole classiche · 65 carte rimasterizzate.</p>
               <div class="duel-setup foundation-grid classic-config-grid classic-config-essential">
                 <label><span data-i18n="menu.playerName">Nome giocatore</span>
                   <input id="playerNameInput" type="text" maxlength="24" autocomplete="nickname" value="Giocatore">
@@ -268,29 +268,31 @@
               </div>
 
               <div id="onlineLobbyActions" class="multiplayer-lobby-actions">
-                <div class="multiplayer-identity multiplayer-config-grid classic-config-grid classic-config-essential">
+                <div class="multiplayer-identity classic-config-grid classic-config-essential">
                   <label>
                     <span data-i18n="menu.playerName">Nome giocatore</span>
                     <input id="onlinePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="Giocatore">
                   </label>
-                  <label>
-                    <span data-i18n="menu.mode">Modalità</span>
-                    <select id="onlineDuelModeSelect">
-                      <option value="normal" selected data-i18n="menu.classicDuel">Duello classico</option>
-                      <option value="specializations" data-i18n="menu.specializedDuel">Duello con specializzazioni</option>
-                    </select>
-                  </label>
-                  <label id="onlineSpecializationField" class="hidden">
-                    <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
-                    <select id="onlineSpecializationSelect"></select>
-                  </label>
                 </div>
 
                 <div class="multiplayer-choice-grid">
-                  <article class="multiplayer-choice-card">
+                  <article class="multiplayer-choice-card multiplayer-host-card">
                     <span class="multiplayer-choice-icon" aria-hidden="true">✦</span>
                     <h3 data-i18n="online.createTitle">Crea una partita</h3>
                     <p data-i18n="online.createHint">Genera una stanza e condividi il codice con il tuo avversario.</p>
+                    <div class="multiplayer-host-settings classic-config-grid">
+                      <label>
+                        <span data-i18n="menu.mode">Modalità</span>
+                        <select id="onlineDuelModeSelect">
+                          <option value="normal" selected data-i18n="menu.classicDuel">Duello classico</option>
+                          <option value="specializations" data-i18n="menu.specializedDuel">Duello con specializzazioni</option>
+                        </select>
+                      </label>
+                      <label id="onlineSpecializationField" class="hidden">
+                        <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                        <select id="onlineSpecializationSelect"></select>
+                      </label>
+                    </div>
                     <button id="createOnlineRoomBtn" class="classic-stone-button multiplayer-primary-action" type="button" data-i18n="online.create">Crea partita online</button>
                   </article>
                   <article class="multiplayer-choice-card">
@@ -300,6 +302,14 @@
                     <div class="online-join-row">
                       <input id="onlineRoomCode" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" data-i18n-placeholder="online.codePlaceholder" placeholder="Codice stanza">
                       <button id="joinOnlineRoomBtn" class="classic-stone-button" type="button" data-i18n="online.join">Entra</button>
+                    </div>
+                    <div id="onlineJoinRoomInfo" class="multiplayer-room-preview hidden" aria-live="polite">
+                      <span data-i18n="online.hostRules">Regole dell'host</span>
+                      <strong id="onlineJoinRoomMode">—</strong>
+                      <label id="onlineJoinSpecializationField" class="hidden">
+                        <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                        <select id="onlineJoinSpecializationSelect"></select>
+                      </label>
                     </div>
                   </article>
                 </div>
@@ -341,8 +351,8 @@
         <section class="classic-menu-screen unified-menu-screen">
           <div class="unified-menu-stage">
             <div class="parchment-panel unified-menu-panel classic-menu-config collection-page-shell">
-              <span class="classic-menu-kicker" data-i18n="nav.cards">Carte</span>
-              <h2 data-i18n="cards.title">Carte</h2>
+              <span class="classic-menu-kicker" data-i18n="nav.cards">Collezione</span>
+              <h2 data-i18n="cards.title">Collezione</h2>
               <p class="unified-menu-intro" data-i18n="cards.intro">Consulta tutte le 65 carte e confronta caratteristiche e illustrazioni.</p>
               <div id="cardsContent"></div>
             </div>
@@ -423,7 +433,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.6 · build 62b7d49</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.7 · build 19a60b0</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -471,8 +481,9 @@
   <script src="src/core/rng.js?v=3.0.0"></script>
   <script src="src/data/cards.js?v=3.0.0"></script>
   <script src="src/data/original-cards.js?v=3.0.0"></script>
-  <script src="src/i18n/en.js?v=3.0.26"></script>
-  <script src="src/i18n/it.js?v=3.0.26"></script>
+  <script src="src/i18n/en.js?v=3.0.27"></script>
+  <script src="src/i18n/it.js?v=3.0.27"></script>
+  <script src="src/i18n/ui-labels.js?v=1.0.0"></script>
   <script src="src/i18n/index.js?v=3.0.0"></script>
   <script src="src/core/card-schema.js?v=3.0.0"></script>
   <script src="src/data/astral-ai-card-metadata.js?v=3.0.0"></script>
@@ -485,7 +496,7 @@
   <script src="src/core/astral-card-effects-re.js?v=3.0.24"></script>
   <script src="src/core/game-engine.js?v=3.0.27"></script>
   <script src="src/core/multiplayer-protocol.js?v=3.0.25"></script>
-  <script src="src/multiplayer/remote-room-client.js?v=3.0.1"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=3.0.2"></script>
   <script src="src/core/ai.js?v=3.0.0"></script>
   <script src="src/core/astral-ai-re.js?v=3.0.0"></script>
   <script src="src/core/tournament.js?v=3.0.19"></script>
@@ -494,7 +505,7 @@
   <script src="src/ui/navigation.js?v=3.0.2"></script>
   <script src="src/ui/pause-menu.js?v=3.0.17"></script>
   <script src="src/ui/tournament-view.js?v=3.0.19"></script>
-  <script src="src/ui/app.js?v=3.0.40"></script>
+  <script src="src/ui/app.js?v=3.0.41"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
@@ -508,7 +519,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=20", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=21", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {

@@ -1,7 +1,7 @@
 "use strict";
 
-const SHELL_CACHE = "arcane-duels-shell-v20";
-const RUNTIME_CACHE = "arcane-duels-runtime-v20";
+const SHELL_CACHE = "arcane-duels-shell-v21";
+const RUNTIME_CACHE = "arcane-duels-runtime-v21";
 
 const APP_SHELL = [
   "./",
@@ -19,6 +19,7 @@ const APP_SHELL = [
   "./src/data/original-cards.js",
   "./src/i18n/en.js",
   "./src/i18n/it.js",
+  "./src/i18n/ui-labels.js",
   "./src/i18n/index.js",
   "./src/core/card-schema.js",
   "./src/data/astral-ai-card-metadata.js",
