@@ -2162,14 +2162,29 @@
     if (!reducedMotion && layer) {
       const cast = document.createElement("div");
       const identityFx = card.type === "spell" ? spellFxProfile(card) : null;
-      cast.className = `cast-card school-${card.school} ${card.type === "spell" ? "spell-cast" : "creature-cast"} side-${side}${identityFx ? ` spell-identity-${identityFx.vfx}` : ""}`;
+      cast.className = `cast-card cast-splash school-${card.school} ${card.type === "spell" ? "spell-cast" : "creature-cast"} side-${side}${identityFx ? ` spell-identity-${identityFx.vfx}` : ""}`;
       const art = document.createElement("div");
-      art.className = "cast-card-art";
+      art.className = "cast-card-art cast-splash-art";
       art.appendChild(buildArtBlock(card, "cast"));
+      const chrome = document.createElement("div");
+      chrome.className = "cast-splash-chrome";
+      const schoolBadge = document.createElement("span");
+      schoolBadge.className = "cast-splash-school";
+      schoolBadge.innerHTML = schoolIconMarkup(card.school, "school-icon-svg cast-splash-school-icon");
+      const copy = document.createElement("div");
+      copy.className = "cast-splash-copy";
       const label = document.createElement("strong");
+      label.className = "cast-splash-name";
       label.textContent = cardName(card);
+      const kind = document.createElement("small");
+      kind.className = "cast-splash-kind";
+      kind.textContent = t(card.type === "spell" ? "ui.spell" : "ui.creature");
+      copy.appendChild(label);
+      copy.appendChild(kind);
+      chrome.appendChild(schoolBadge);
+      chrome.appendChild(copy);
       cast.appendChild(art);
-      cast.appendChild(label);
+      cast.appendChild(chrome);
       layer.appendChild(cast);
       requestAnimationFrame(() => cast.classList.add("active"));
       setTimeout(() => cast.remove(), fxDuration(820) || 40);
@@ -2207,6 +2222,20 @@
       [A.PHASES.ROUND_END]: t("phase.roundEnd"),
       [A.PHASES.GAME_OVER]: t("phase.gameOver")
     })[phase] || phase;
+  }
+
+  function multiTargetAttackIconMarkup() {
+    return `<svg class="multi-target-attack-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path class="multi-target-stem" d="M12 20V8"></path>
+      <path d="m8.8 10.7 3.2-3.8 3.2 3.8"></path>
+      <path d="M12 15 5.8 9.1"></path>
+      <path d="m5.8 9.1 4.1.2"></path>
+      <path d="m5.8 9.1.4 4"></path>
+      <path d="M12 15 18.2 9.1"></path>
+      <path d="m18.2 9.1-4.1.2"></path>
+      <path d="m18.2 9.1-.4 4"></path>
+      <circle cx="12" cy="20" r="1.4"></circle>
+    </svg>`;
   }
 
   function displayedUnitAttack(side, unit) {
@@ -2313,7 +2342,7 @@
     }
     unitName.textContent = cardName(unit);
 
-    syncBoardUnitBadge(cell, "multi-target-badge", isMultiTargetAttacker, "Attacca tutti i nemici", "Attacco multiplo", "⚔×");
+    syncBoardUnitBadge(cell, "multi-target-badge", isMultiTargetAttacker, "Attacca tutti i nemici", "Attacco multiplo: colpisce tutti i nemici", multiTargetAttackIconMarkup());
     syncBoardUnitBadge(cell, "summoning-sickness-badge", hasSummoningSickness, "Debolezza da evocazione — potrà attaccare dal prossimo turno", "Debolezza da evocazione — potrà attaccare dal prossimo turno", '<span aria-hidden="true">Zz</span>');
 
     let stats = cell.querySelector(".unit-stats");
