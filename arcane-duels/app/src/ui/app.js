@@ -70,8 +70,21 @@
           { type: "sine", frequency: 720, secondFrequency: 1480, duration: 0.18, volume: 0.024, delay: 0.06 }
         ]),
         impact: Object.freeze([
-          { type: "triangle", frequency: 980, secondFrequency: 310, duration: 0.16, volume: 0.042 },
-          { type: "sawtooth", frequency: 510, secondFrequency: 170, duration: 0.13, volume: 0.024, delay: 0.045 }
+          { type: "noise", filterType: "bandpass", filterFrequency: 1450, filterEndFrequency: 620, duration: 0.18, volume: 0.030 },
+          { type: "triangle", frequency: 980, secondFrequency: 310, duration: 0.16, volume: 0.042 }
+        ])
+      })
+    }),
+    astral_fire_03: Object.freeze({
+      vfx: "fire-ritual",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 118, secondFrequency: 196, duration: 0.62, volume: 0.040 },
+          { type: "triangle", frequency: 392, secondFrequency: 784, duration: 0.34, volume: 0.027, delay: 0.12 }
+        ]),
+        impact: Object.freeze([
+          { type: "sine", frequency: 523, secondFrequency: 1046, duration: 0.34, volume: 0.036 },
+          { type: "noise", filterType: "highpass", filterFrequency: 1800, filterEndFrequency: 2800, duration: 0.18, volume: 0.016, delay: 0.05 }
         ])
       })
     }),
@@ -79,8 +92,8 @@
       vfx: "rising-flames",
       sfx: Object.freeze({
         impact: Object.freeze([
-          { type: "sawtooth", frequency: 250, secondFrequency: 82, duration: 0.28, volume: 0.042 },
-          { type: "triangle", frequency: 620, secondFrequency: 210, duration: 0.20, volume: 0.025, delay: 0.04 }
+          { type: "noise", filterType: "lowpass", filterFrequency: 1350, filterEndFrequency: 520, duration: 0.34, volume: 0.034 },
+          { type: "sawtooth", frequency: 250, secondFrequency: 82, duration: 0.28, volume: 0.042 }
         ])
       })
     }),
@@ -88,11 +101,11 @@
       vfx: "rising-flames",
       sfx: Object.freeze({
         cast: Object.freeze([
-          { type: "sawtooth", frequency: 145, secondFrequency: 540, duration: 0.42, volume: 0.045 },
-          { type: "triangle", frequency: 420, secondFrequency: 860, duration: 0.28, volume: 0.024, delay: 0.06 }
+          { type: "noise", filterType: "bandpass", filterFrequency: 900, filterEndFrequency: 1650, duration: 0.46, volume: 0.030 },
+          { type: "sawtooth", frequency: 145, secondFrequency: 540, duration: 0.42, volume: 0.045 }
         ]),
         impact: Object.freeze([
-          { type: "sawtooth", frequency: 320, secondFrequency: 72, duration: 0.31, volume: 0.052 },
+          { type: "noise", filterType: "lowpass", filterFrequency: 1800, filterEndFrequency: 420, duration: 0.35, volume: 0.038 },
           { type: "triangle", frequency: 740, secondFrequency: 180, duration: 0.22, volume: 0.026, delay: 0.05 }
         ])
       })
@@ -101,12 +114,61 @@
       vfx: "rising-flames",
       sfx: Object.freeze({
         cast: Object.freeze([
-          { type: "sawtooth", frequency: 110, secondFrequency: 470, duration: 0.48, volume: 0.052 },
-          { type: "triangle", frequency: 350, secondFrequency: 820, duration: 0.34, volume: 0.027, delay: 0.08 }
+          { type: "noise", filterType: "lowpass", filterFrequency: 1100, filterEndFrequency: 260, duration: 0.62, volume: 0.050 },
+          { type: "sawtooth", frequency: 110, secondFrequency: 470, duration: 0.48, volume: 0.052 }
         ]),
         impact: Object.freeze([
           { type: "sawtooth", frequency: 280, secondFrequency: 58, duration: 0.38, volume: 0.060 },
-          { type: "triangle", frequency: 690, secondFrequency: 135, duration: 0.28, volume: 0.030, delay: 0.05 }
+          { type: "noise", filterType: "lowpass", filterFrequency: 980, filterEndFrequency: 180, duration: 0.46, volume: 0.046, delay: 0.03 }
+        ])
+      })
+    }),
+    astral_fire_09: Object.freeze({
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_fire_09",
+        pitch: 0.72,
+        rate: 0.90,
+        sfx: Object.freeze([
+          { type: "triangle", frequency: 150, secondFrequency: 92, duration: 0.34, volume: 0.036 }
+        ])
+      })
+    }),
+    astral_fire_10: Object.freeze({
+      vfx: "rising-flames",
+      sfx: Object.freeze({
+        impact: Object.freeze([
+          { type: "noise", filterType: "lowpass", filterFrequency: 920, filterEndFrequency: 210, duration: 0.48, volume: 0.050 },
+          { type: "sawtooth", frequency: 170, secondFrequency: 65, duration: 0.42, volume: 0.054 }
+        ])
+      }),
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_fire_10",
+        pitch: 0.68,
+        rate: 0.88,
+        sfx: Object.freeze([
+          { type: "noise", filterType: "bandpass", filterFrequency: 760, filterEndFrequency: 390, duration: 0.36, volume: 0.030 }
+        ])
+      })
+    }),
+    astral_fire_11: Object.freeze({
+      vfx: "armageddon",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 92, secondFrequency: 46, duration: 0.82, volume: 0.060 },
+          { type: "noise", filterType: "lowpass", filterFrequency: 780, filterEndFrequency: 170, duration: 0.78, volume: 0.052, delay: 0.05 }
+        ]),
+        impact: Object.freeze([
+          { type: "sawtooth", frequency: 190, secondFrequency: 42, duration: 0.55, volume: 0.072 },
+          { type: "noise", filterType: "lowpass", filterFrequency: 1300, filterEndFrequency: 120, duration: 0.72, volume: 0.060 }
+        ])
+      })
+    }),
+    astral_fire_12: Object.freeze({
+      battleCry: Object.freeze({
+        kind: "roar",
+        sfx: Object.freeze([
+          { type: "noise", filterType: "lowpass", filterFrequency: 720, filterEndFrequency: 180, duration: 0.72, volume: 0.058 },
+          { type: "sawtooth", frequency: 108, secondFrequency: 54, duration: 0.62, volume: 0.050 }
         ])
       })
     }),
@@ -118,7 +180,21 @@
           { type: "triangle", frequency: 720, secondFrequency: 1320, duration: 0.28, volume: 0.026, delay: 0.10 }
         ]),
         impact: Object.freeze([
-          { type: "sine", frequency: 620, secondFrequency: 1180, duration: 0.42, volume: 0.045 }
+          { type: "sine", frequency: 620, secondFrequency: 1180, duration: 0.42, volume: 0.045 },
+          { type: "noise", filterType: "highpass", filterFrequency: 2400, filterEndFrequency: 3600, duration: 0.22, volume: 0.012 }
+        ])
+      })
+    }),
+    astral_water_03: Object.freeze({
+      vfx: "justice",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "triangle", frequency: 440, secondFrequency: 660, duration: 0.30, volume: 0.034 },
+          { type: "sine", frequency: 880, secondFrequency: 1320, duration: 0.42, volume: 0.026, delay: 0.08 }
+        ]),
+        impact: Object.freeze([
+          { type: "triangle", frequency: 1320, secondFrequency: 420, duration: 0.24, volume: 0.048 },
+          { type: "sine", frequency: 660, secondFrequency: 330, duration: 0.38, volume: 0.026, delay: 0.04 }
         ])
       })
     }),
@@ -130,8 +206,44 @@
           { type: "triangle", frequency: 1320, secondFrequency: 2360, duration: 0.19, volume: 0.024, delay: 0.05 }
         ]),
         impact: Object.freeze([
-          { type: "triangle", frequency: 1900, secondFrequency: 520, duration: 0.22, volume: 0.046 },
-          { type: "sine", frequency: 2460, secondFrequency: 760, duration: 0.18, volume: 0.025, delay: 0.025 }
+          { type: "noise", filterType: "highpass", filterFrequency: 2600, filterEndFrequency: 4800, duration: 0.18, volume: 0.022 },
+          { type: "triangle", frequency: 1900, secondFrequency: 520, duration: 0.22, volume: 0.046 }
+        ])
+      })
+    }),
+    astral_water_08: Object.freeze({
+      vfx: "acid-rain",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "noise", filterType: "highpass", filterFrequency: 2200, filterEndFrequency: 1600, duration: 0.62, volume: 0.030 },
+          { type: "sine", frequency: 310, secondFrequency: 240, duration: 0.48, volume: 0.020 }
+        ]),
+        impact: Object.freeze([
+          { type: "noise", filterType: "bandpass", filterFrequency: 1750, filterEndFrequency: 980, duration: 0.58, volume: 0.042 },
+          { type: "square", frequency: 210, secondFrequency: 130, duration: 0.22, volume: 0.018, delay: 0.12 }
+        ])
+      })
+    }),
+    astral_water_10: Object.freeze({
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_water_10",
+        pitch: 0.86,
+        rate: 0.90,
+        sfx: Object.freeze([
+          { type: "noise", filterType: "bandpass", filterFrequency: 1150, filterEndFrequency: 520, duration: 0.42, volume: 0.025 }
+        ])
+      })
+    }),
+    astral_air_05: Object.freeze({
+      vfx: "hypnosis",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 248, secondFrequency: 372, duration: 0.78, volume: 0.032 },
+          { type: "sine", frequency: 372, secondFrequency: 248, duration: 0.78, volume: 0.020, delay: 0.09 }
+        ]),
+        impact: Object.freeze([
+          { type: "triangle", frequency: 620, secondFrequency: 310, duration: 0.46, volume: 0.028 },
+          { type: "noise", filterType: "bandpass", filterFrequency: 1200, filterEndFrequency: 680, duration: 0.36, volume: 0.014 }
         ])
       })
     }),
@@ -143,8 +255,22 @@
           { type: "sawtooth", frequency: 860, secondFrequency: 1720, duration: 0.16, volume: 0.025, delay: 0.08 }
         ]),
         impact: Object.freeze([
-          { type: "square", frequency: 260, secondFrequency: 72, duration: 0.25, volume: 0.060 },
-          { type: "triangle", frequency: 1120, secondFrequency: 180, duration: 0.18, volume: 0.038, delay: 0.025 }
+          { type: "noise", filterType: "highpass", filterFrequency: 3200, filterEndFrequency: 1100, duration: 0.15, volume: 0.032 },
+          { type: "square", frequency: 260, secondFrequency: 72, duration: 0.25, volume: 0.060 }
+        ])
+      })
+    }),
+    astral_air_08: Object.freeze({
+      vfx: "chain-lightning",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "square", frequency: 980, secondFrequency: 1960, duration: 0.14, volume: 0.026 },
+          { type: "square", frequency: 1220, secondFrequency: 2440, duration: 0.12, volume: 0.024, delay: 0.10 },
+          { type: "square", frequency: 1460, secondFrequency: 2920, duration: 0.10, volume: 0.022, delay: 0.20 }
+        ]),
+        impact: Object.freeze([
+          { type: "noise", filterType: "highpass", filterFrequency: 2800, filterEndFrequency: 900, duration: 0.24, volume: 0.030 },
+          { type: "triangle", frequency: 820, secondFrequency: 205, duration: 0.26, volume: 0.034, delay: 0.08 }
         ])
       })
     }),
@@ -152,11 +278,114 @@
       vfx: "tornado",
       sfx: Object.freeze({
         cast: Object.freeze([
-          { type: "sawtooth", frequency: 120, secondFrequency: 720, duration: 0.52, volume: 0.042 },
-          { type: "sine", frequency: 260, secondFrequency: 960, duration: 0.44, volume: 0.025, delay: 0.07 }
+          { type: "noise", filterType: "bandpass", filterFrequency: 680, filterEndFrequency: 1650, duration: 0.72, volume: 0.038 },
+          { type: "sawtooth", frequency: 120, secondFrequency: 720, duration: 0.52, volume: 0.042 }
         ]),
         impact: Object.freeze([
+          { type: "noise", filterType: "lowpass", filterFrequency: 960, filterEndFrequency: 280, duration: 0.46, volume: 0.030 },
           { type: "triangle", frequency: 760, secondFrequency: 160, duration: 0.40, volume: 0.045 }
+        ])
+      })
+    }),
+    astral_air_10: Object.freeze({
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_air_10",
+        pitch: 1.02,
+        rate: 0.92,
+        sfx: Object.freeze([
+          { type: "noise", filterType: "highpass", filterFrequency: 1300, filterEndFrequency: 2600, duration: 0.34, volume: 0.020 }
+        ])
+      })
+    }),
+    astral_air_12: Object.freeze({
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_air_12",
+        pitch: 1.08,
+        rate: 0.88,
+        sfx: Object.freeze([
+          { type: "sine", frequency: 523, secondFrequency: 1046, duration: 0.52, volume: 0.032 }
+        ])
+      })
+    }),
+    astral_air_13: Object.freeze({
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_air_13",
+        pitch: 0.62,
+        rate: 0.84,
+        sfx: Object.freeze([
+          { type: "noise", filterType: "lowpass", filterFrequency: 620, filterEndFrequency: 160, duration: 0.48, volume: 0.034 },
+          { type: "sawtooth", frequency: 124, secondFrequency: 62, duration: 0.44, volume: 0.036 }
+        ])
+      })
+    }),
+    astral_earth_04: Object.freeze({
+      vfx: "nature-ritual",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "noise", filterType: "bandpass", filterFrequency: 880, filterEndFrequency: 1320, duration: 0.62, volume: 0.018 },
+          { type: "sine", frequency: 294, secondFrequency: 588, duration: 0.54, volume: 0.030 }
+        ]),
+        impact: Object.freeze([
+          { type: "triangle", frequency: 392, secondFrequency: 784, duration: 0.46, volume: 0.032 },
+          { type: "noise", filterType: "highpass", filterFrequency: 1900, filterEndFrequency: 2800, duration: 0.26, volume: 0.012 }
+        ])
+      })
+    }),
+    astral_earth_06: Object.freeze({
+      vfx: "rejuvenation",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 196, secondFrequency: 392, duration: 0.62, volume: 0.032 },
+          { type: "triangle", frequency: 392, secondFrequency: 988, duration: 0.48, volume: 0.024, delay: 0.08 }
+        ]),
+        impact: Object.freeze([
+          { type: "sine", frequency: 330, secondFrequency: 660, duration: 0.56, volume: 0.034 },
+          { type: "noise", filterType: "bandpass", filterFrequency: 1050, filterEndFrequency: 1650, duration: 0.34, volume: 0.014 }
+        ])
+      })
+    }),
+    astral_earth_10: Object.freeze({
+      vfx: "stone-rain",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "noise", filterType: "bandpass", filterFrequency: 520, filterEndFrequency: 1080, duration: 0.58, volume: 0.032 },
+          { type: "sine", frequency: 180, secondFrequency: 110, duration: 0.46, volume: 0.022 }
+        ]),
+        impact: Object.freeze([
+          { type: "noise", filterType: "lowpass", filterFrequency: 820, filterEndFrequency: 180, duration: 0.42, volume: 0.050 },
+          { type: "sawtooth", frequency: 130, secondFrequency: 58, duration: 0.28, volume: 0.045, delay: 0.06 }
+        ])
+      })
+    }),
+    astral_earth_11: Object.freeze({
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_earth_11",
+        pitch: 0.70,
+        rate: 0.82,
+        sfx: Object.freeze([
+          { type: "noise", filterType: "lowpass", filterFrequency: 520, filterEndFrequency: 130, duration: 0.46, volume: 0.032 }
+        ])
+      })
+    }),
+    astral_earth_12: Object.freeze({
+      battleCry: Object.freeze({
+        kind: "roar",
+        sfx: Object.freeze([
+          { type: "noise", filterType: "bandpass", filterFrequency: 540, filterEndFrequency: 180, duration: 0.66, volume: 0.054 },
+          { type: "sawtooth", frequency: 136, secondFrequency: 72, duration: 0.50, volume: 0.042 }
+        ])
+      })
+    }),
+    astral_death_03: Object.freeze({
+      vfx: "curse",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "noise", filterType: "bandpass", filterFrequency: 820, filterEndFrequency: 420, duration: 0.62, volume: 0.020 },
+          { type: "sine", frequency: 310, secondFrequency: 124, duration: 0.58, volume: 0.034 }
+        ]),
+        impact: Object.freeze([
+          { type: "triangle", frequency: 262, secondFrequency: 92, duration: 0.42, volume: 0.036 },
+          { type: "noise", filterType: "lowpass", filterFrequency: 620, filterEndFrequency: 180, duration: 0.34, volume: 0.024, delay: 0.06 }
         ])
       })
     }),
@@ -168,8 +397,8 @@
           { type: "triangle", frequency: 760, secondFrequency: 260, duration: 0.38, volume: 0.022, delay: 0.07 }
         ]),
         impact: Object.freeze([
-          { type: "sine", frequency: 170, secondFrequency: 610, duration: 0.58, volume: 0.044 },
-          { type: "triangle", frequency: 290, secondFrequency: 820, duration: 0.46, volume: 0.022, delay: 0.09 }
+          { type: "noise", filterType: "bandpass", filterFrequency: 840, filterEndFrequency: 360, duration: 0.56, volume: 0.026 },
+          { type: "sine", frequency: 170, secondFrequency: 610, duration: 0.58, volume: 0.044 }
         ])
       })
     }),
@@ -177,12 +406,23 @@
       vfx: "drain-souls",
       sfx: Object.freeze({
         cast: Object.freeze([
-          { type: "sine", frequency: 105, secondFrequency: 58, duration: 0.62, volume: 0.052 },
-          { type: "triangle", frequency: 390, secondFrequency: 118, duration: 0.48, volume: 0.028, delay: 0.12 }
+          { type: "noise", filterType: "bandpass", filterFrequency: 430, filterEndFrequency: 180, duration: 0.82, volume: 0.036 },
+          { type: "sine", frequency: 105, secondFrequency: 58, duration: 0.62, volume: 0.052 }
         ]),
         impact: Object.freeze([
           { type: "sine", frequency: 92, secondFrequency: 230, duration: 0.66, volume: 0.055 },
-          { type: "triangle", frequency: 510, secondFrequency: 155, duration: 0.46, volume: 0.026, delay: 0.10 }
+          { type: "noise", filterType: "highpass", filterFrequency: 1300, filterEndFrequency: 3200, duration: 0.54, volume: 0.022, delay: 0.10 }
+        ])
+      })
+    }),
+    astral_death_13: Object.freeze({
+      battleCry: Object.freeze({
+        textKey: "battleCry.astral_death_13",
+        pitch: 0.56,
+        rate: 0.84,
+        sfx: Object.freeze([
+          { type: "noise", filterType: "lowpass", filterFrequency: 540, filterEndFrequency: 115, duration: 0.52, volume: 0.038 },
+          { type: "sine", frequency: 120, secondFrequency: 62, duration: 0.48, volume: 0.030 }
         ])
       })
     })
@@ -1391,19 +1631,99 @@
     const now = ctx.currentTime + Math.max(0, Number(options.delay || 0));
     const duration = Math.max(0.08, Number(options.duration || 0.22));
     const volume = Math.max(0.0001, Math.min(0.18, Number(options.volume || 0.05)));
-    const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + Math.min(0.02, duration * 0.2));
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    if (options.type === "noise") {
+      const frameCount = Math.max(1, Math.ceil(ctx.sampleRate * duration));
+      const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
+      const channel = buffer.getChannelData(0);
+      for (let index = 0; index < frameCount; index += 1) channel[index] = Math.random() * 2 - 1;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = options.filterType || "bandpass";
+      const initialFrequency = Math.max(40, Number(options.filterFrequency || 1200));
+      const finalFrequency = Math.max(40, Number(options.filterEndFrequency || initialFrequency));
+      filter.frequency.setValueAtTime(initialFrequency, now);
+      if (finalFrequency !== initialFrequency) {
+        filter.frequency.exponentialRampToValueAtTime(finalFrequency, now + duration * 0.82);
+      }
+      filter.Q.setValueAtTime(Math.max(0.1, Number(options.filterQ || 0.8)), now);
+      source.connect(filter).connect(gain).connect(ctx.destination);
+      source.start(now);
+      source.stop(now + duration + 0.01);
+      return true;
+    }
+
+    const osc = ctx.createOscillator();
     osc.type = options.type || "sine";
     osc.frequency.setValueAtTime(options.frequency || 440, now);
     if (options.secondFrequency) {
       osc.frequency.exponentialRampToValueAtTime(options.secondFrequency, now + duration * 0.65);
     }
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(volume, now + Math.min(0.02, duration * 0.2));
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     osc.connect(gain).connect(ctx.destination);
     osc.start(now);
     osc.stop(now + duration + 0.01);
+    return true;
+  }
+
+  function battleCryProfile(card) {
+    return cardFxProfile(card)?.battleCry || null;
+  }
+
+  function localizedBattleCry(card) {
+    const profile = battleCryProfile(card);
+    return profile?.textKey ? t(profile.textKey) : "";
+  }
+
+  function speakBattleCry(card) {
+    const profile = battleCryProfile(card);
+    const line = localizedBattleCry(card);
+    if (!profile || !line || !soundEnabled || UI_MODE === "essential" || !window.speechSynthesis || !window.SpeechSynthesisUtterance) return false;
+    try {
+      const language = A.i18n?.getLanguage?.() === "en" ? "en-US" : "it-IT";
+      const utterance = new SpeechSynthesisUtterance(line);
+      utterance.lang = language;
+      utterance.volume = 0.72;
+      utterance.rate = Math.max(0.65, Math.min(1.2, Number(profile.rate || 0.92)));
+      utterance.pitch = Math.max(0.45, Math.min(1.4, Number(profile.pitch || 0.9)));
+      const voices = window.speechSynthesis.getVoices?.() || [];
+      const matchingVoice = voices.find(voice => String(voice.lang || "").toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
+      if (matchingVoice) utterance.voice = matchingVoice;
+      window.speechSynthesis.speak(utterance);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function showBattleCry(card, side, slot = null) {
+    const profile = battleCryProfile(card);
+    if (!profile || card?.type !== "creature") return false;
+    (profile.sfx || []).forEach(cue => playSyntheticCue(cue));
+
+    const target = Number.isInteger(slot) ? $`#${side}Board [data-slot="${slot}"]` : null;
+    target?.classList.add("battle-cry-pulse");
+    setTimeout(() => target?.classList.remove("battle-cry-pulse"), fxDuration(900) || 40);
+
+    const line = localizedBattleCry(card);
+    if (line && !reducedMotion) {
+      const layer = $("#duelFxLayer");
+      const point = spellElementCenter(target || spellHeroAnchor(side));
+      if (layer && point) {
+        const bubble = document.createElement("div");
+        bubble.className = `battle-cry-bubble side-${side}`;
+        bubble.style.left = `${point.x}px`;
+        bubble.style.top = `${Math.max(42, point.y - point.height * 0.38)}px`;
+        bubble.textContent = line;
+        layer.appendChild(bubble);
+        setTimeout(() => bubble.remove(), fxDuration(1800) || 40);
+      }
+    }
+    speakBattleCry(card);
     return true;
   }
 
@@ -1934,6 +2254,11 @@
     return $(`#${side}HpBattle`)?.parentElement || null;
   }
 
+  function spellPowerAnchor(side, schoolId) {
+    const root = side === "player" ? $("#schoolFilters") : $("#enemySchoolMenu");
+    return root?.querySelector(`[data-school-id="${schoolId}"]`) || null;
+  }
+
   function spellElementCenter(element) {
     if (!element?.getBoundingClientRect) return null;
     const rect = element.getBoundingClientRect();
@@ -2061,52 +2386,100 @@
     const profile = cardFxProfile(result?.card);
     if (!profile) return false;
     playCardFxSound(result.card, "impact");
-    if (reducedMotion) return false;
+    if (reducedMotion || !profile.vfx) return false;
 
     const events = result?.events || [];
     const side = spellActorSide(result);
     const enemySide = side === "player" ? "enemy" : "player";
     const ownHero = spellHeroAnchor(side);
     const enemyHero = spellHeroAnchor(enemySide);
-    const ownBoard = $(`#${side}Board`) || ownHero;
+    const ownBoard = $`#${side}Board` || ownHero;
+    const battlePanel = $("#battlePanel");
     let shown = false;
 
     const damageTargets = events
       .filter(event => ["astralCreatureDamage", "creatureDamage"].includes(event.type))
-      .map(event => $(`#${event.targetSide || event.side}Board [data-slot="${event.slot}"]`))
+      .map(event => $`#${event.targetSide || event.side}Board [data-slot="${event.slot}"]`)
       .filter(Boolean);
+    const uniqueDamageTargets = [...new Set(damageTargets)];
     const enemyHeroDamaged = events.some(event =>
       ["astralHeroDamage", "heroDamage"].includes(event.type)
       && (event.targetSide || event.side || enemySide) === enemySide
     );
 
     if (profile.vfx === "scorching-orbs") {
-      damageTargets.forEach((target, index) => {
+      uniqueDamageTargets.forEach((target, index) => {
         if (addScorchingOrb(ownBoard, target, index)) shown = true;
         addSpellMarker(target, "spell-scorching-impact-marker", 820, index);
       });
     } else if (profile.vfx === "rising-flames") {
-      damageTargets.forEach((target, index) => {
+      uniqueDamageTargets.forEach((target, index) => {
         if (addSpellMarker(target, "spell-rising-flames-marker", 920, index)) shown = true;
       });
-      if (enemyHeroDamaged && addSpellMarker(enemyHero, "spell-rising-flames-marker spell-rising-flames-hero", 920, damageTargets.length)) shown = true;
+      if (enemyHeroDamaged && addSpellMarker(enemyHero, "spell-rising-flames-marker spell-rising-flames-hero", 920, uniqueDamageTargets.length)) shown = true;
+    } else if (profile.vfx === "fire-ritual") {
+      if (addSpellMarker(spellPowerAnchor(side, "fire"), "spell-fire-ritual-marker", 1150)) shown = true;
+      if (addSpellMarker(spellPowerAnchor(enemySide, "water"), "spell-fire-ritual-drain-marker", 1050, 1)) shown = true;
+    } else if (profile.vfx === "armageddon") {
+      if (addSpellMarker(battlePanel, "spell-armageddon-overlay", 1250)) shown = true;
+      uniqueDamageTargets.forEach((target, index) => addSpellMarker(target, "spell-armageddon-impact-marker", 1040, index));
+      if (enemyHeroDamaged) addSpellMarker(enemyHero, "spell-armageddon-impact-marker spell-armageddon-hero", 1080, uniqueDamageTargets.length);
     } else if (profile.vfx === "cure") {
       if (addSpellMarker(ownHero, "spell-cure-marker", 1050)) shown = true;
+    } else if (profile.vfx === "justice") {
+      uniqueDamageTargets.forEach((target, index) => {
+        if (addSpellMarker(target, "spell-justice-marker", 980, index)) shown = true;
+      });
     } else if (profile.vfx === "ice-bolt") {
       if (addIceBolt(ownBoard, enemyHero)) shown = true;
       addSpellMarker(enemyHero, "spell-ice-impact-marker", 880);
+    } else if (profile.vfx === "acid-rain") {
+      if (addSpellMarker(battlePanel, "spell-acid-rain-overlay", 1180)) shown = true;
+      uniqueDamageTargets.forEach((target, index) => addSpellMarker(target, "spell-acid-burn-marker", 980, index));
+      A.SCHOOLS.forEach((school, index) => addSpellMarker(spellPowerAnchor(enemySide, school.id), "spell-acid-power-marker", 1000, index));
+    } else if (profile.vfx === "hypnosis") {
+      const ranked = [...(engine?.state?.[enemySide]?.board || [])]
+        .map((unit, slot) => ({ unit, slot, attack: unit ? displayedUnitAttack(enemySide, unit) : -1 }))
+        .filter(entry => entry.unit && entry.unit.currentHealth > 0)
+        .sort((a, b) => b.attack - a.attack || a.slot - b.slot)
+        .slice(0, 2);
+      ranked.forEach((entry, index) => {
+        const target = $`#${enemySide}Board [data-slot="${entry.slot}"]`;
+        if (addSpellMarker(target, "spell-hypnosis-marker", 1120, index)) shown = true;
+        if (target && enemyHero) addSpellLine(target, enemyHero, "spell-hypnosis-line", 900);
+      });
+      addSpellMarker(enemyHero, "spell-hypnosis-hero-marker", 960);
     } else if (profile.vfx === "lightning") {
-      const target = enemyHero;
-      const targetPoint = spellElementCenter(target);
+      const targetPoint = spellElementCenter(enemyHero);
       if (targetPoint) {
         const origin = { x: targetPoint.x + Math.min(90, window.innerWidth * 0.08), y: Math.max(18, targetPoint.y - 190) };
         if (addSpellLine(origin, targetPoint, "spell-lightning-line", 720)) shown = true;
-        addSpellMarker(target, "spell-lightning-marker", 760);
+        addSpellMarker(enemyHero, "spell-lightning-marker", 760);
       }
+    } else if (profile.vfx === "chain-lightning") {
+      const targets = [...uniqueDamageTargets];
+      if (enemyHeroDamaged && enemyHero) targets.push(enemyHero);
+      let previous = ownBoard;
+      targets.forEach((target, index) => {
+        if (previous && target && addSpellLine(previous, target, "spell-chain-lightning-line", 860 + index * 45)) shown = true;
+        addSpellMarker(target, "spell-chain-lightning-marker", 820, index);
+        previous = target;
+      });
     } else if (profile.vfx === "tornado") {
       const death = events.find(event => event.type === "astralDeath" && (event.side === enemySide || !event.side));
-      const target = death ? $(`#${death.side || enemySide}Board [data-slot="${death.slot}"]`) : damageTargets[0];
+      const target = death ? $`#${death.side || enemySide}Board [data-slot="${death.slot}"]` : uniqueDamageTargets[0];
       if (addSpellMarker(target, "spell-tornado-marker", 1150)) shown = true;
+    } else if (profile.vfx === "nature-ritual") {
+      if (addSpellMarker(ownHero, "spell-nature-ritual-marker spell-nature-ritual-hero", 1180)) shown = true;
+      [...(ownBoard?.querySelectorAll?.(".unit") || [])].forEach((target, index) => addSpellMarker(target, "spell-nature-ritual-marker", 1080, index));
+    } else if (profile.vfx === "rejuvenation") {
+      if (addSpellMarker(ownHero, "spell-rejuvenation-marker", 1220)) shown = true;
+    } else if (profile.vfx === "stone-rain") {
+      if (addSpellMarker(battlePanel, "spell-stone-rain-overlay", 1150)) shown = true;
+      uniqueDamageTargets.forEach((target, index) => addSpellMarker(target, "spell-stone-impact-marker", 980, index));
+    } else if (profile.vfx === "curse") {
+      if (addSpellMarker(enemyHero, "spell-curse-marker", 1120)) shown = true;
+      A.SCHOOLS.forEach((school, index) => addSpellMarker(spellPowerAnchor(enemySide, school.id), "spell-curse-power-marker", 1050, index));
     } else if (profile.vfx === "drain-life") {
       for (let index = 0; index < 7; index += 1) {
         if (addDrainMote(enemyHero, ownHero, index)) shown = true;
@@ -2116,7 +2489,7 @@
     } else if (profile.vfx === "drain-souls") {
       const deaths = events.filter(event => event.type === "astralDeath");
       deaths.forEach((event, index) => {
-        const target = $(`#${event.side}Board [data-slot="${event.slot}"]`);
+        const target = $`#${event.side}Board [data-slot="${event.slot}"]`;
         if (addSoulWisp(target, ownHero, index)) shown = true;
         addSpellMarker(target, "spell-soul-source-marker", 900, index);
       });
@@ -2187,6 +2560,9 @@
       cast.appendChild(chrome);
       layer.appendChild(cast);
       requestAnimationFrame(() => cast.classList.add("active"));
+      if (card.type === "creature" && battleCryProfile(card)) {
+        setTimeout(() => showBattleCry(card, side, slot), fxDuration(160) || 0);
+      }
       setTimeout(() => cast.remove(), fxDuration(820) || 40);
     }
     const panel = $("#battlePanel");

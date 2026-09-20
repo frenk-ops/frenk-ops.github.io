@@ -9772,3 +9772,434 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     font-size:.58rem;
   }
 }
+
+
+/* 0.22.18 — complete audiovisual identity for all spells + iconic summon battle cries. */
+.cast-card.spell-identity-fire-ritual::before {
+  background:conic-gradient(from 0deg,rgba(255,211,96,.08),rgba(255,84,27,.42),rgba(255,211,96,.08),rgba(255,84,27,.42),rgba(255,211,96,.08));
+  box-shadow:0 0 42px rgba(255,92,25,.46),inset 0 0 28px rgba(255,167,62,.18);
+  animation:spellIdentityCastAura .78s ease-out both,spellIdentitySpin .9s linear both;
+}
+.cast-card.spell-identity-armageddon::before {
+  background:radial-gradient(circle,rgba(255,223,126,.38),rgba(222,65,21,.42) 42%,rgba(74,8,2,.18) 68%,transparent 78%);
+  box-shadow:0 0 60px rgba(255,70,18,.68);
+}
+.cast-card.spell-identity-justice::before {
+  background:radial-gradient(circle,rgba(238,250,255,.34),rgba(100,181,231,.16) 48%,transparent 72%);
+  box-shadow:0 0 42px rgba(188,231,255,.5);
+}
+.cast-card.spell-identity-acid-rain::before {
+  background:repeating-linear-gradient(104deg,transparent 0 14px,rgba(157,255,96,.18) 15px 18px,transparent 19px 30px);
+  box-shadow:0 0 42px rgba(99,214,66,.45);
+}
+.cast-card.spell-identity-hypnosis::before {
+  border:2px solid rgba(195,129,255,.5);
+  box-shadow:0 0 42px rgba(154,81,230,.46),inset 0 0 30px rgba(177,97,255,.18);
+  animation:spellIdentityCastAura .78s ease-out both,spellIdentitySpin .95s linear both;
+}
+.cast-card.spell-identity-chain-lightning::before {
+  background:repeating-linear-gradient(112deg,transparent 0 13px,rgba(220,250,255,.34) 14px 17px,transparent 18px 29px);
+  box-shadow:0 0 48px rgba(109,215,255,.64);
+}
+.cast-card.spell-identity-nature-ritual::before,
+.cast-card.spell-identity-rejuvenation::before {
+  background:radial-gradient(circle,rgba(207,255,149,.34),rgba(89,178,79,.24) 44%,transparent 72%);
+  box-shadow:0 0 42px rgba(126,221,95,.46);
+}
+.cast-card.spell-identity-stone-rain::before {
+  background:radial-gradient(circle at 30% 20%,rgba(215,206,176,.32) 0 5%,transparent 6%),
+             radial-gradient(circle at 70% 36%,rgba(177,164,128,.28) 0 6%,transparent 7%),
+             radial-gradient(circle,rgba(119,106,77,.22),transparent 66%);
+  box-shadow:0 0 40px rgba(155,137,96,.38);
+}
+.cast-card.spell-identity-curse::before {
+  background:radial-gradient(circle,rgba(198,105,255,.3),rgba(65,10,91,.4) 48%,transparent 74%);
+  box-shadow:0 0 46px rgba(154,64,210,.52);
+}
+
+/* Fire Ritual — rune blooms on Fire while enemy Water is drained. */
+.spell-fire-ritual-marker {
+  border:2px solid rgba(255,182,61,.85);
+  box-shadow:0 0 24px rgba(255,111,31,.82),inset 0 0 20px rgba(255,170,54,.34);
+  animation:spellRitualPulse 1.08s ease-out both;
+}
+.spell-fire-ritual-marker::before,
+.spell-fire-ritual-marker::after {
+  content:"";
+  position:absolute;
+  inset:10%;
+  border:2px solid rgba(255,227,141,.76);
+  transform:rotate(45deg);
+  animation:spellRitualSpin 1.05s ease-out both;
+}
+.spell-fire-ritual-marker::after {
+  inset:24%;
+  border-radius:50%;
+  transform:none;
+  animation-delay:.08s;
+}
+.spell-fire-ritual-drain-marker {
+  border:2px solid rgba(111,191,255,.72);
+  box-shadow:0 0 18px rgba(77,162,229,.52),inset 0 0 20px rgba(42,109,171,.26);
+  animation:spellRitualDrain 1s ease-in both;
+}
+@keyframes spellRitualPulse {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.55); }
+  32% { opacity:1;transform:translate(-50%,-50%) scale(1.12);filter:brightness(1.7); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.28); }
+}
+@keyframes spellRitualSpin {
+  from { opacity:.9;rotate:-35deg;scale:.55; }
+  to { opacity:0;rotate:120deg;scale:1.2; }
+}
+@keyframes spellRitualDrain {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(1.2); }
+  30% { opacity:1; }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(.45);filter:brightness(.65); }
+}
+
+/* Armageddon — whole-board catastrophic flash + local impacts. */
+.spell-armageddon-overlay {
+  border-radius:22px;
+  background:
+    radial-gradient(circle at 50% 50%,rgba(255,239,154,.18),rgba(255,89,24,.22) 42%,rgba(104,13,4,.36) 78%),
+    repeating-radial-gradient(circle at 22% 28%,rgba(255,182,60,.18) 0 3px,transparent 4px 24px);
+  box-shadow:inset 0 0 80px rgba(255,67,19,.42),0 0 36px rgba(255,74,19,.44);
+  animation:spellArmageddonField 1.2s ease-out both;
+}
+.spell-armageddon-overlay::before,
+.spell-armageddon-overlay::after {
+  content:"";
+  position:absolute;
+  inset:6%;
+  background:
+    radial-gradient(circle at 18% 70%,#ffcf64 0 2px,transparent 3px),
+    radial-gradient(circle at 38% 22%,#ff8e34 0 3px,transparent 4px),
+    radial-gradient(circle at 68% 62%,#ffd56c 0 2px,transparent 3px),
+    radial-gradient(circle at 83% 31%,#ff6b28 0 3px,transparent 4px);
+  animation:spellArmageddonEmbers .92s ease-out both;
+}
+.spell-armageddon-overlay::after {
+  transform:rotate(24deg) scale(.84);
+  animation-delay:.08s;
+}
+.spell-armageddon-impact-marker {
+  border:2px solid rgba(255,177,63,.8);
+  background:radial-gradient(circle,rgba(255,229,138,.32),rgba(226,64,20,.22) 48%,transparent 72%);
+  box-shadow:0 0 26px rgba(255,91,28,.68);
+  animation:spellArmageddonImpact .96s ease-out both;
+  animation-delay:calc(var(--spell-index,0) * 28ms);
+}
+@keyframes spellArmageddonField {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.98);filter:brightness(.7); }
+  25% { opacity:1;filter:brightness(2); }
+  55% { opacity:.78;filter:brightness(1.2); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.01);filter:brightness(.65); }
+}
+@keyframes spellArmageddonEmbers {
+  0% { opacity:0;transform:translateY(30px) scale(.7); }
+  30% { opacity:1; }
+  100% { opacity:0;transform:translateY(-58px) scale(1.35); }
+}
+@keyframes spellArmageddonImpact {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.5); }
+  30% { opacity:1;transform:translate(-50%,-50%) scale(1.08);filter:brightness(1.8); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.35); }
+}
+
+/* Justice — mirrored silver seal on every creature judged. */
+.spell-justice-marker {
+  border:2px solid rgba(215,244,255,.84);
+  background:radial-gradient(circle,rgba(225,250,255,.2),rgba(70,143,197,.08) 56%,transparent 72%);
+  box-shadow:0 0 25px rgba(160,222,255,.62),inset 0 0 18px rgba(220,248,255,.2);
+  animation:spellJusticeFlash .92s ease-out both;
+}
+.spell-justice-marker::before,
+.spell-justice-marker::after {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:12%;
+  width:2px;
+  height:76%;
+  background:rgba(238,253,255,.88);
+  box-shadow:0 0 8px rgba(196,235,255,.9);
+  transform:translateX(-50%) rotate(32deg);
+}
+.spell-justice-marker::after { transform:translateX(-50%) rotate(-32deg); }
+@keyframes spellJusticeFlash {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.7); }
+  24% { opacity:1;transform:translate(-50%,-50%) scale(1.04);filter:brightness(1.8); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.18); }
+}
+
+/* Acid Rain — field rain veil + corrosive target bubbling. */
+.spell-acid-rain-overlay {
+  border-radius:22px;
+  background:repeating-linear-gradient(104deg,transparent 0 13px,rgba(168,255,106,.22) 14px 17px,transparent 18px 28px);
+  box-shadow:inset 0 0 70px rgba(96,190,65,.18);
+  animation:spellAcidRain .98s linear both;
+}
+.spell-acid-burn-marker {
+  border:2px solid rgba(170,255,97,.72);
+  background:radial-gradient(circle,rgba(176,255,105,.26),rgba(78,158,55,.14) 48%,transparent 72%);
+  box-shadow:0 0 22px rgba(117,232,73,.58);
+  animation:spellAcidBurn .94s ease-out both;
+  animation-delay:calc(var(--spell-index,0) * 24ms);
+}
+.spell-acid-burn-marker::before,
+.spell-acid-burn-marker::after {
+  content:"";
+  position:absolute;
+  width:8px;
+  height:8px;
+  border:1px solid rgba(220,255,178,.72);
+  border-radius:50%;
+  left:26%;
+  bottom:18%;
+  animation:spellAcidBubble .74s ease-out both;
+}
+.spell-acid-burn-marker::after { left:62%;bottom:28%;width:6px;height:6px;animation-delay:.12s; }
+.spell-acid-power-marker {
+  border:1px solid rgba(167,255,105,.65);
+  box-shadow:0 0 18px rgba(108,218,66,.45),inset 0 0 14px rgba(85,160,60,.16);
+  animation:spellAcidPower .9s ease-out both;
+}
+@keyframes spellAcidRain {
+  from { opacity:0;background-position:0 -40px;transform:translate(-50%,-50%); }
+  20% { opacity:1; }
+  to { opacity:0;background-position:36px 60px;transform:translate(-50%,-50%); }
+}
+@keyframes spellAcidBurn {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.72); }
+  28% { opacity:1;transform:translate(-50%,-50%) scale(1.04); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.14); }
+}
+@keyframes spellAcidBubble {
+  from { opacity:0;transform:translateY(8px) scale(.55); }
+  35% { opacity:1; }
+  to { opacity:0;transform:translateY(-28px) scale(1.2); }
+}
+@keyframes spellAcidPower {
+  0%,100% { opacity:0;transform:translate(-50%,-50%) scale(.9); }
+  30%,68% { opacity:1;transform:translate(-50%,-50%) scale(1.08); }
+}
+
+/* Hypnosis — spiral control over the two attackers + psychic trails to their hero. */
+.spell-hypnosis-marker {
+  border:2px solid rgba(208,148,255,.72);
+  box-shadow:0 0 24px rgba(158,84,230,.62),inset 0 0 22px rgba(110,44,177,.26);
+  animation:spellHypnosisFade 1.08s ease-in-out both;
+}
+.spell-hypnosis-marker::before,
+.spell-hypnosis-marker::after {
+  content:"";
+  position:absolute;
+  inset:10%;
+  border:3px solid rgba(227,187,255,.76);
+  border-right-color:transparent;
+  border-bottom-color:rgba(170,93,238,.18);
+  border-radius:50%;
+  animation:spellHypnosisSpin .42s linear infinite;
+}
+.spell-hypnosis-marker::after {
+  inset:27%;
+  border-width:2px;
+  animation-direction:reverse;
+  animation-duration:.31s;
+}
+.spell-hypnosis-line {
+  height:4px;
+  background:linear-gradient(90deg,transparent,rgba(205,137,255,.82),rgba(243,213,255,.95),rgba(171,83,232,.7),transparent);
+  box-shadow:0 0 10px rgba(193,118,255,.75),0 0 20px rgba(115,56,183,.42);
+  animation:spellHypnosisTrail .82s ease-in-out both;
+}
+.spell-hypnosis-hero-marker {
+  border:2px solid rgba(212,153,255,.68);
+  box-shadow:0 0 26px rgba(164,78,228,.56),inset 0 0 18px rgba(109,42,164,.2);
+  animation:spellHypnosisFade .92s ease-out both;
+}
+@keyframes spellHypnosisSpin { to { transform:rotate(360deg); } }
+@keyframes spellHypnosisFade {
+  0%,100% { opacity:0;transform:translate(-50%,-50%) scale(.72); }
+  24%,70% { opacity:1;transform:translate(-50%,-50%) scale(1.03); }
+}
+@keyframes spellHypnosisTrail {
+  0% { opacity:0;clip-path:inset(0 100% 0 0); }
+  32% { opacity:1;clip-path:inset(0 0 0 0); }
+  100% { opacity:0;clip-path:inset(0 0 0 100%); }
+}
+
+/* Chain Lightning — sequential electrical jumps. */
+.spell-chain-lightning-line {
+  height:4px;
+  background:linear-gradient(90deg,rgba(255,255,255,.08),#eafdff 15%,#6ed9ff 48%,#fff 72%,rgba(97,203,255,.08));
+  box-shadow:0 0 8px #fff,0 0 16px rgba(92,215,255,.9),0 0 25px rgba(82,139,255,.55);
+  clip-path:polygon(0 25%,12% 0,24% 70%,37% 18%,49% 82%,63% 5%,78% 65%,100% 24%,100% 76%,79% 96%,64% 40%,50% 100%,37% 46%,24% 92%,12% 42%,0 75%);
+  animation:spellChainJump .78s steps(3,end) both;
+}
+.spell-chain-lightning-marker {
+  border:2px solid rgba(213,248,255,.78);
+  box-shadow:0 0 24px rgba(96,215,255,.72),inset 0 0 18px rgba(217,249,255,.24);
+  animation:spellChainTarget .78s ease-out both;
+  animation-delay:calc(var(--spell-index,0) * 42ms);
+}
+@keyframes spellChainJump {
+  0% { opacity:0;clip-path:inset(0 100% 0 0);filter:brightness(2); }
+  18% { opacity:1;clip-path:inset(0 0 0 0);filter:brightness(2.6); }
+  46% { opacity:.25; }
+  62% { opacity:1; }
+  100% { opacity:0; }
+}
+@keyframes spellChainTarget {
+  0%,100% { opacity:0;transform:translate(-50%,-50%) scale(.8); }
+  24%,62% { opacity:1;transform:translate(-50%,-50%) scale(1.05);filter:brightness(1.8); }
+}
+
+/* Nature Ritual + Rejuvenation. */
+.spell-nature-ritual-marker,
+.spell-rejuvenation-marker {
+  border:2px solid rgba(185,245,121,.72);
+  background:radial-gradient(circle,rgba(202,255,144,.22),rgba(88,167,73,.1) 52%,transparent 72%);
+  box-shadow:0 0 24px rgba(124,222,91,.62),inset 0 0 20px rgba(181,241,124,.24);
+  animation:spellNatureBloom 1.08s ease-out both;
+  animation-delay:calc(var(--spell-index,0) * 35ms);
+}
+.spell-nature-ritual-marker::before,
+.spell-rejuvenation-marker::before {
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:8%;
+  width:3px;
+  height:64%;
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(229,255,176,.72),rgba(91,176,68,.42));
+  box-shadow:-14px -12px 0 -1px rgba(151,221,92,.7),14px -22px 0 -1px rgba(190,240,119,.66);
+  transform:translateX(-50%);
+  animation:spellNatureStem 1s ease-out both;
+}
+.spell-rejuvenation-marker {
+  border-width:3px;
+  box-shadow:0 0 32px rgba(134,235,91,.72),inset 0 0 28px rgba(200,255,145,.3);
+}
+@keyframes spellNatureBloom {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.56); }
+  30% { opacity:1;transform:translate(-50%,-50%) scale(1.06);filter:brightness(1.5); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.24); }
+}
+@keyframes spellNatureStem {
+  0% { opacity:0;transform:translateX(-50%) scaleY(.1);transform-origin:bottom; }
+  40% { opacity:1;transform:translateX(-50%) scaleY(1); }
+  100% { opacity:0;transform:translateX(-50%) scaleY(1.12); }
+}
+
+/* Stone Rain — falling stone veil + local impact rings. */
+.spell-stone-rain-overlay {
+  border-radius:22px;
+  background:
+    radial-gradient(circle at 12% 8%,rgba(153,141,110,.62) 0 5px,transparent 6px),
+    radial-gradient(circle at 31% 18%,rgba(117,106,82,.58) 0 7px,transparent 8px),
+    radial-gradient(circle at 55% 4%,rgba(169,154,118,.6) 0 6px,transparent 7px),
+    radial-gradient(circle at 78% 16%,rgba(128,116,91,.6) 0 8px,transparent 9px),
+    radial-gradient(circle at 91% 6%,rgba(179,164,126,.58) 0 5px,transparent 6px);
+  animation:spellStoneRain 1.08s ease-in both;
+}
+.spell-stone-impact-marker {
+  border:2px solid rgba(188,170,128,.62);
+  background:radial-gradient(circle,rgba(211,195,151,.24),rgba(104,91,65,.12) 50%,transparent 70%);
+  box-shadow:0 0 20px rgba(147,126,87,.46);
+  animation:spellStoneImpact .86s ease-out both;
+  animation-delay:calc(var(--spell-index,0) * 26ms);
+}
+@keyframes spellStoneRain {
+  0% { opacity:0;transform:translate(-50%,-70%);filter:blur(1px); }
+  22% { opacity:1; }
+  82% { opacity:.95; }
+  100% { opacity:0;transform:translate(-50%,-34%);filter:blur(.2px); }
+}
+@keyframes spellStoneImpact {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.55); }
+  28% { opacity:1;transform:translate(-50%,-50%) scale(1.02); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.2);filter:blur(1px); }
+}
+
+/* Curse — enemy hero sigil + matching power corruption. */
+.spell-curse-marker {
+  border:2px solid rgba(205,124,255,.7);
+  background:radial-gradient(circle,rgba(180,85,231,.2),rgba(54,7,78,.18) 54%,transparent 72%);
+  box-shadow:0 0 28px rgba(154,60,210,.62),inset 0 0 22px rgba(91,26,129,.3);
+  animation:spellCursePulse 1.06s ease-out both;
+}
+.spell-curse-marker::before {
+  content:"";
+  position:absolute;
+  inset:18%;
+  border:2px solid rgba(229,177,255,.74);
+  clip-path:polygon(50% 0,61% 34%,98% 37%,68% 57%,79% 96%,50% 72%,20% 96%,31% 57%,2% 37%,39% 34%);
+  animation:spellCurseRotate .86s ease-out both;
+}
+.spell-curse-power-marker {
+  border:1px solid rgba(192,108,239,.62);
+  box-shadow:0 0 16px rgba(140,56,196,.45),inset 0 0 12px rgba(83,26,110,.18);
+  animation:spellCursePower .94s ease-out both;
+  animation-delay:calc(var(--spell-index,0) * 30ms);
+}
+@keyframes spellCursePulse {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(1.18); }
+  30% { opacity:1;transform:translate(-50%,-50%) scale(.96);filter:brightness(1.4); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(.78);filter:brightness(.7); }
+}
+@keyframes spellCurseRotate {
+  from { opacity:0;rotate:-30deg;scale:.65; }
+  35% { opacity:1; }
+  to { opacity:0;rotate:70deg;scale:1.12; }
+}
+@keyframes spellCursePower {
+  0%,100% { opacity:0;transform:translate(-50%,-50%) scale(.9); }
+  32%,68% { opacity:1;transform:translate(-50%,-50%) scale(1.05); }
+}
+
+/* Iconic summon battle cries / roars. */
+.battle-cry-bubble {
+  position:fixed;
+  z-index:108;
+  max-width:min(320px,64vw);
+  transform:translate(-50%,-100%);
+  padding:8px 12px;
+  border:1px solid rgba(238,212,159,.72);
+  border-radius:12px;
+  background:linear-gradient(180deg,rgba(18,14,12,.94),rgba(5,8,15,.96));
+  color:#fff2c9;
+  box-shadow:0 8px 24px rgba(0,0,0,.48),0 0 16px rgba(215,170,95,.22);
+  font:700 .82rem/1.25 Georgia,serif;
+  text-align:center;
+  text-shadow:0 1px 2px #000;
+  pointer-events:none;
+  animation:battleCryFloat 1.72s ease-out both;
+}
+.battle-cry-bubble.side-enemy {
+  border-color:rgba(224,127,104,.65);
+  color:#ffd8ce;
+}
+.battle-cry-pulse {
+  animation:battleCryUnitPulse .82s ease-out both !important;
+}
+@keyframes battleCryFloat {
+  0% { opacity:0;transform:translate(-50%,-82%) scale(.92); }
+  16% { opacity:1;transform:translate(-50%,-105%) scale(1.02); }
+  72% { opacity:1;transform:translate(-50%,-112%) scale(1); }
+  100% { opacity:0;transform:translate(-50%,-126%) scale(.98); }
+}
+@keyframes battleCryUnitPulse {
+  0%,100% { filter:none; }
+  30% { filter:brightness(1.28) saturate(1.18);box-shadow:0 0 24px rgba(236,205,132,.52); }
+}
+
+@media (max-width:820px) {
+  .battle-cry-bubble {
+    max-width:72vw;
+    padding:6px 9px;
+    font-size:.7rem;
+  }
+}
