@@ -1406,6 +1406,33 @@
     return spec ? t(`specialization.${spec.id}`) : t("menu.randomSpecialization");
   }
 
+  function specializationIconMarkup(choice, className = "school-icon-svg specialization-school-icon") {
+    if (choice === "random") return '<span class="specialization-random-icon" aria-hidden="true">🎲</span>';
+    const spec = A.getAstralSpecialization?.(choice);
+    return spec?.talent ? schoolIconMarkup(spec.talent, className) : "";
+  }
+
+  function syncSpecializationSelectIcon(select) {
+    if (!select) return;
+    let control = select.closest(".specialization-select-control");
+    if (!control) {
+      control = document.createElement("div");
+      control.className = "specialization-select-control";
+      select.parentNode?.insertBefore(control, select);
+      control.appendChild(select);
+    }
+    let icon = control.querySelector(".specialization-select-icon");
+    if (!icon) {
+      icon = document.createElement("span");
+      icon.className = "specialization-select-icon";
+      icon.setAttribute("aria-hidden", "true");
+      control.insertBefore(icon, select);
+    }
+    const choice = select.value || "random";
+    icon.classList.toggle("is-random", choice === "random");
+    icon.innerHTML = specializationIconMarkup(choice);
+  }
+
   function populateSpecializationSelect(select, fallback = "random") {
     if (!select) return;
     const current = select.value;
@@ -1415,6 +1442,11 @@
     ].join("");
     const valid = current === "random" || A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current);
     select.value = valid ? current : fallback;
+    syncSpecializationSelectIcon(select);
+    if (!select.dataset.specializationIconBound) {
+      select.dataset.specializationIconBound = "true";
+      select.addEventListener("change", () => syncSpecializationSelectIcon(select));
+    }
   }
 
   function resolveSpecializationChoice(choice, seed, side, fallback = "battlemage") {
@@ -1951,12 +1983,23 @@
   function renderBoard(side, visualSnapshot = null) {
     const root = $("#" + side + "Board");
     const fighter = engine.state[side];
-    fighter.board.forEach((unit, slot) => {
-      const existing = root.children[slot] || null;
+    const compactEnemy = side === "enemy" && !window.matchMedia?.("(max-width: 820px)")?.matches;
+    const logicalEntries = fighter.board.map((unit, slot) => ({ unit, slot }));
+    const entries = compactEnemy
+      ? [
+          ...logicalEntries.filter(entry => entry.unit),
+          ...logicalEntries.filter(entry => !entry.unit)
+        ]
+      : logicalEntries;
+
+    entries.forEach((entry, displayIndex) => {
+      const { unit, slot } = entry;
+      const existing = root.children[displayIndex] || null;
       const sameUnit = Boolean(unit
         && existing?.classList.contains("unit")
         && existing.dataset.instanceId === String(unit.instanceId || "")
-        && existing.dataset.cardId === String(unit.id || ""));
+        && existing.dataset.cardId === String(unit.id || "")
+        && existing.dataset.slot === String(slot));
       const sameEmptySlot = Boolean(!unit && existing?.classList.contains("slot"));
 
       if (sameUnit) {
@@ -1974,7 +2017,7 @@
       if (existing) existing.replaceWith(next);
       else root.appendChild(next);
     });
-    while (root.children.length > fighter.board.length) root.lastElementChild?.remove();
+    while (root.children.length > entries.length) root.lastElementChild?.remove();
   }
 
   function isMobileEnemyBookLayout() {
@@ -2039,7 +2082,8 @@
             if (changed) playSchoolSelectionSound();
             renderSchoolButtons();
             renderEnemyRevealed();
-            toggleEnemyRevealedModal(true);
+            if (isMobileEnemyBookLayout()) toggleEnemyRevealedModal(true);
+            else closeEnemyRevealedModal();
           });
           root.appendChild(button);
         }
@@ -2056,6 +2100,11 @@
     };
     updateSide(playerRoot, "player");
     updateSide(enemyRoot, "enemy");
+    const selectedLabel = $("#activeSchoolLabel");
+    if (selectedLabel) {
+      selectedLabel.textContent = schoolName(activeSchool);
+      selectedLabel.className = `active-school-label school-${activeSchool}`;
+    }
   }
 
   function formatGain(value) {
@@ -2375,7 +2424,14 @@
   }
 
   function cardDescriptionHtml(card, side = inspectedCardSide) {
-    return escapeHtml(cardDescription(card, side));
+    const text = cardDescription(card, side);
+    const preview = currentCardPreview(card, side);
+    if (!preview || !Number.isFinite(Number(preview.effective))) return escapeHtml(text);
+    const marker = String(Number(preview.effective));
+    const markerWithSpace = marker + " ";
+    const index = text.indexOf(markerWithSpace);
+    if (index < 0) return escapeHtml(text);
+    return `${escapeHtml(text.slice(0, index))}<strong class="inline-current-value">${escapeHtml(marker)}</strong> ${escapeHtml(text.slice(index + markerWithSpace.length))}`;
   }
 
   function applyCollectionFilters(cards) {
@@ -2428,7 +2484,7 @@
       target.appendChild(status);
     }
     $("#inspectCardTitle").textContent = cardName(card);
-    $("#inspectCardAbility").innerHTML = `${cardDescriptionHtml(card)}${currentValueHtml(card, inspectedCardSide)}`;
+    $("#inspectCardAbility").innerHTML = cardDescriptionHtml(card, inspectedCardSide);
     const combatDetails = card.type === "spell" ? "" : `
       <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(displayedAttack)}</b></span>
       <span class="detail-combat-stat detail-health"><small><i aria-hidden="true">♥</i> ${t("ui.life")}</small><b>${escapeHtml(displayedCard.currentHealth ?? displayedCard.health)}</b></span>`;
@@ -2730,9 +2786,13 @@
       const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
       if (!gesture.dragging && distance < 11) return;
       moveEvent.preventDefault();
-      if (gesture.previewing) return;
+      if (gesture.previewing && !gesture.canDrag) return;
       clearTimeout(gesture.holdTimer);
       if (!gesture.canDrag) return;
+      if (gesture.previewing) {
+        gesture.previewing = false;
+        hideMobileCardInspect();
+      }
       if (!gesture.dragging) {
         gesture.dragging = true;
         hideMobileCardInspect();
@@ -2844,7 +2904,7 @@
       clone.querySelector(".name").textContent = cardName(card);
       clone.querySelector(".text").textContent = cardText(card);
       clone.querySelector(".keyword").textContent = visibleCardKeyword(card);
-      clone.querySelector(".stats").textContent = card.type === "spell" ? `Lv ${card.level} · ✨` : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
+      clone.querySelector(".stats").textContent = card.type === "spell" ? `Lv ${card.level}` : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
       const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; inspectedCardInstanceId = null; renderCollectionPanels(); };
       clone.addEventListener("mouseenter", inspectHandCard);
       clone.addEventListener("focus", inspectHandCard);
@@ -2884,9 +2944,9 @@
     const revealed = [...revealedIds]
       .map(id => hand.find(card => card.id === id) || allCards.find(card => card.id === id))
       .filter(card => card?.school === enemySchool);
-    const summaryText = `${schoolName(enemySchool)} · ${t("cards.revealed")}: ${revealed.length}`;
+    const summaryText = `${schoolName(enemySchool)} · ${revealed.length}`;
     if (summary) summary.textContent = summaryText;
-    if (modalSummary) modalSummary.textContent = summaryText;
+    if (modalSummary) modalSummary.textContent = `${schoolName(enemySchool)} · ${t("cards.revealed")}: ${revealed.length}`;
 
     const createChip = card => {
       const chip = document.createElement("button");
@@ -2926,7 +2986,7 @@
       if (!revealed.length) {
         const empty = document.createElement("span");
         empty.className = "revealed-empty";
-        empty.textContent = `${t("cards.revealed")}: 0`;
+        empty.textContent = "—";
         fragment.appendChild(empty);
       }
       if (includeHidden) {
@@ -2945,7 +3005,7 @@
       if (root) root.replaceChildren();
       return;
     }
-    if (root) root.replaceChildren(buildFragment(true));
+    if (root) root.replaceChildren(buildFragment(false));
   }
 
   function renderGame() {
@@ -3003,6 +3063,7 @@
   });
   window.addEventListener("resize", () => {
     renderEnemyRevealed();
+    if (engine) renderBoard("enemy");
   });
   $("#battlePanel")?.addEventListener("contextmenu", event => {
     if (event.target.closest(".game-card, .art-media, .unit, .mobile-card-inspect, .mobile-drag-ghost")) event.preventDefault();
@@ -3627,16 +3688,8 @@
     });
     article.appendChild(meta);
 
-    const currentValue = currentValueData(card, side || inspectedCardSide);
-    if (currentValue) {
-      const value = document.createElement("div");
-      value.className = "preview-current-value";
-      value.innerHTML = `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`;
-      article.appendChild(value);
-    }
-
     const text = document.createElement("p");
-    text.textContent = cardDescription(card, side || inspectedCardSide);
+    text.innerHTML = cardDescriptionHtml(card, side || inspectedCardSide);
     article.appendChild(text);
 
     target.appendChild(article);
@@ -3706,10 +3759,15 @@
         $("#tournamentCustomRules")?.classList.toggle("hidden", mode !== "custom");
         $("#tournamentSpecializationField")?.classList.toggle("hidden", !rules.specializationsEnabled);
         if ($("#tournamentModeDescription")) $("#tournamentModeDescription").textContent = t(`tournament.mode.${mode}.description`);
+        const tournamentSelect = $("#tournamentTalentSelect");
+        syncSpecializationSelectIcon(tournamentSelect);
         const preview = $("#tournamentSpecializationPreview");
         if (preview) {
+          const selectedSpecialization = tournamentSelect?.value || "random";
           preview.innerHTML = rules.specializationsEnabled
-            ? A.UITournamentView.specializationProgression($("#tournamentTalentSelect")?.value || "battlemage", context)
+            ? (selectedSpecialization === "random"
+              ? `<p class="tournament-random-specialization">🎲 ${escapeHtml(t("menu.randomSpecialization"))}</p>`
+              : A.UITournamentView.specializationProgression(selectedSpecialization, context))
             : `<p>${t("tournament.noSpecializationDescription")}</p>`;
         }
       };

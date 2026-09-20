@@ -586,6 +586,11 @@
         assert(wizard.specialization === "wizard", `Specializzazione Mago persa: ${wizard.specialization}`);
         assert(A.ASTRAL_SPECIALIZATIONS.length === 6, `Specializzazioni disponibili: ${A.ASTRAL_SPECIALIZATIONS.length}`);
         assert(A.ASTRAL_SPECIALIZATIONS.some(item => item.id === "wizard"), "Mago non disponibile nel torneo");
+
+        const randomA = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });
+        const randomB = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });
+        assert(randomA.specialization && randomA.specialization !== "random", "Casuale torneo non risolta in una specializzazione concreta");
+        assert(randomA.specialization === randomB.specialization, "Casuale torneo non stabile rispetto al seed");
       }
     },
     {

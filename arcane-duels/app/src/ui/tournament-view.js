@@ -76,7 +76,13 @@
       </div>
 
       <label id="tournamentSpecializationField">${t("tournament.playerSpecialization")}
-        <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${specializationName(item.id)}</option>`).join("")}</select>
+        <div class="specialization-select-control">
+          <span class="specialization-select-icon is-random" aria-hidden="true">🎲</span>
+          <select id="tournamentTalentSelect">
+            <option value="random">🎲 ${t("menu.randomSpecialization")}</option>
+            ${specializations.map(item => `<option value="${item.id}">${specializationName(item.id)}</option>`).join("")}
+          </select>
+        </div>
       </label>
 
       <div id="tournamentSpecializationPreview"></div>

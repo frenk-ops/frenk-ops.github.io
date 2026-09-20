@@ -265,6 +265,13 @@
         score: 0
       };
     });
+    const requestedSpecialization = options?.specialization;
+    const availableSpecializations = (A.ASTRAL_SPECIALIZATIONS || []).map(item => item.id).filter(Boolean);
+    const resolvedSpecialization = tournamentRules.specializationsEnabled
+      ? (requestedSpecialization === "random"
+        ? (rng.pick(availableSpecializations) || "battlemage")
+        : normalizePlayerSpecialization(requestedSpecialization))
+      : null;
     return {
       version: 3,
       id: seed,
@@ -273,7 +280,7 @@
       spellbookDistribution: tournamentRules.spellbookDistribution,
       specializationsEnabled: tournamentRules.specializationsEnabled,
       evolutionEnabled: tournamentRules.evolutionEnabled,
-      specialization: tournamentRules.specializationsEnabled ? normalizePlayerSpecialization(options?.specialization) : null,
+      specialization: resolvedSpecialization,
       setId: "astral-original",
       currentMatch: 0,
       points: 0,
@@ -307,7 +314,9 @@
       ? Boolean(tournament.evolutionEnabled)
       : (legacyEvolution || preset.evolutionEnabled);
     tournament.specialization = tournament.specializationsEnabled
-      ? normalizePlayerSpecialization(tournament.specialization)
+      ? (tournament.specialization === "random"
+        ? (A.createRng(`${tournament.seed}-player-specialization`).pick((A.ASTRAL_SPECIALIZATIONS || []).map(item => item.id).filter(Boolean)) || "battlemage")
+        : normalizePlayerSpecialization(tournament.specialization))
       : null;
     tournament.winTarget = WIN_TARGET;
     tournament.selectedPassives = Array.isArray(tournament.selectedPassives) ? tournament.selectedPassives : [];
