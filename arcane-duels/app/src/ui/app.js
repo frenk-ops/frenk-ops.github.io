@@ -10,6 +10,15 @@
   const sessionSets = {
     "astral-original": A.getCardSet("astral-original")
   };
+  const configuredMultiplayerApiUrl = String(
+    document.querySelector('meta[name="arcane-multiplayer-api"]')?.content || ""
+  ).trim().replace(/\/$/, "");
+  const localMultiplayerApiUrl = /^https?:$/.test(location.protocol)
+    && ["127.0.0.1", "localhost", "::1"].includes(location.hostname)
+    ? location.origin
+    : "";
+  A.MULTIPLAYER_API_URL = configuredMultiplayerApiUrl || localMultiplayerApiUrl;
+  const multiplayerEnabled = Boolean(A.MULTIPLAYER_API_URL);
   const preference = (key, fallback) => {
     try {
       const value = localStorage.getItem(`arcane.${key}`);
@@ -123,6 +132,16 @@
     if ($("#playerNameInput")) $("#playerNameInput").value = name;
     localStorage.setItem("arcane.playerName", name);
     return name;
+  }
+
+  function createRemoteRoomClient() {
+    if (!multiplayerEnabled) throw new Error("Multiplayer online non configurato.");
+    return new A.RemoteRoomClient({ baseUrl: A.MULTIPLAYER_API_URL });
+  }
+
+  function syncMultiplayerAvailability() {
+    const lobby = document.querySelector(".online-lobby");
+    lobby?.classList.toggle("hidden", !multiplayerEnabled);
   }
 
   function saveRemoteRoom() {
@@ -765,54 +784,171 @@
     return Math.max(0, Math.trunc(Number(attack) || 0));
   }
 
+  function createBoardUnitCell(side, unit, slot) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "unit school-" + unit.school;
+    cell.dataset.slot = String(slot);
+    cell.dataset.instanceId = String(unit.instanceId || "");
+    cell.dataset.cardId = String(unit.id || "");
+    cell.style.setProperty("--slot-index", slot);
+
+    const art = document.createElement("div");
+    art.className = "unit-art";
+    art.appendChild(buildArtBlock(unit, "board"));
+    const name = document.createElement("small");
+    name.textContent = cardName(unit);
+    art.appendChild(name);
+
+    const stats = document.createElement("div");
+    stats.className = "unit-stats";
+    stats.innerHTML = '<strong class="unit-attack" title="' + escapeHtml(t("ui.attack")) + '"><span aria-hidden="true">⚔</span>0</strong><strong class="unit-health" title="' + escapeHtml(t("ui.life")) + '"><span aria-hidden="true">♥</span>0</strong>';
+    cell.appendChild(art);
+    cell.appendChild(stats);
+
+    const inspectUnit = () => {
+      const currentUnit = engine?.state?.[side]?.board?.[slot];
+      if (!currentUnit) return;
+      inspectedCardId = currentUnit.id;
+      inspectedCardSide = side;
+      inspectedCardInstanceId = currentUnit.instanceId;
+      renderCollectionPanels();
+    };
+    cell.addEventListener("mouseenter", inspectUnit);
+    cell.addEventListener("focus", inspectUnit);
+    cell.addEventListener("click", inspectUnit);
+    return cell;
+  }
+
+  function syncBoardUnitBadge(cell, className, enabled, title, ariaLabel, html) {
+    let badge = cell.querySelector("." + className);
+    if (!enabled) {
+      badge?.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = className;
+      cell.insertBefore(badge, cell.querySelector(".unit-stats") || null);
+    }
+    badge.title = title;
+    badge.setAttribute("aria-label", ariaLabel);
+    badge.innerHTML = html;
+  }
+
+  function updateBoardUnitCell(cell, side, unit, slot, visualSnapshot = null) {
+    const previousUnit = visualSnapshot?.units?.[slot];
+    const preservePreviousStats = previousUnit?.instanceId === unit.instanceId;
+    const currentAttack = preservePreviousStats ? previousUnit.attack : displayedUnitAttack(side, unit);
+    const currentHealth = preservePreviousStats ? previousUnit.health : Math.max(0, unit.currentHealth);
+    const isMultiTargetAttacker = Boolean(A.ASTRAL_CARD_AI_METADATA?.[unit.id]?.multiTarget);
+    const hasSummoningSickness = typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(unit, side);
+
+    cell.type = "button";
+    cell.dataset.slot = String(slot);
+    cell.dataset.instanceId = String(unit.instanceId || "");
+    cell.dataset.cardId = String(unit.id || "");
+    cell.style.setProperty("--slot-index", slot);
+    cell.classList.add("unit");
+    cell.classList.remove("slot");
+    [...cell.classList].filter(name => name.startsWith("school-")).forEach(name => cell.classList.remove(name));
+    cell.classList.add("school-" + unit.school);
+    cell.classList.toggle("multi-target-attacker", isMultiTargetAttacker);
+    cell.classList.toggle("summoning-sick", hasSummoningSickness);
+
+    let art = cell.querySelector(".unit-art");
+    if (!art) {
+      art = document.createElement("div");
+      art.className = "unit-art";
+      cell.insertBefore(art, cell.firstChild);
+    }
+    if (!art.querySelector(".art-media")) art.prepend(buildArtBlock(unit, "board"));
+    const artImage = art.querySelector(".art-image");
+    if (artImage) artImage.alt = cardName(unit);
+    let unitName = [...art.children].find(child => child.tagName === "SMALL");
+    if (!unitName) {
+      unitName = document.createElement("small");
+      art.appendChild(unitName);
+    }
+    unitName.textContent = cardName(unit);
+
+    syncBoardUnitBadge(cell, "multi-target-badge", isMultiTargetAttacker, "Attacca tutti i nemici", "Attacco multiplo", "⚔×");
+    syncBoardUnitBadge(cell, "summoning-sickness-badge", hasSummoningSickness, "Debolezza da evocazione — potrà attaccare dal prossimo turno", "Debolezza da evocazione — potrà attaccare dal prossimo turno", '<span aria-hidden="true">Zz</span>');
+
+    let stats = cell.querySelector(".unit-stats");
+    if (!stats) {
+      stats = document.createElement("div");
+      stats.className = "unit-stats";
+      cell.appendChild(stats);
+    }
+    let attack = stats.querySelector(".unit-attack");
+    if (!attack) {
+      attack = document.createElement("strong");
+      attack.className = "unit-attack";
+      stats.appendChild(attack);
+    }
+    attack.title = t("ui.attack");
+    attack.innerHTML = '<span aria-hidden="true">⚔</span>' + currentAttack;
+    let health = stats.querySelector(".unit-health");
+    if (!health) {
+      health = document.createElement("strong");
+      health.className = "unit-health";
+      stats.appendChild(health);
+    }
+    health.title = t("ui.life");
+    health.innerHTML = '<span aria-hidden="true">♥</span>' + currentHealth;
+  }
+
+  function createBoardSlotCell(side, slot) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "slot";
+    cell.dataset.slot = String(slot);
+    cell.style.setProperty("--slot-index", slot);
+    if (side === "player") cell.addEventListener("click", () => onPlayerSlot(slot));
+    return cell;
+  }
+
+  function updateBoardSlotCell(cell, side, slot) {
+    cell.type = "button";
+    cell.className = "slot";
+    cell.dataset.slot = String(slot);
+    delete cell.dataset.instanceId;
+    delete cell.dataset.cardId;
+    cell.style.setProperty("--slot-index", slot);
+    const pendingCard = side === "player" ? engine.getCard("player", engine.state.pendingCardId) : null;
+    const isValidTarget = side === "player" && engine.state.phase === A.PHASES.PLAYER_TARGET && pendingCard?.type === "creature";
+    cell.textContent = isValidTarget ? "Evoca qui" : String(slot + 1);
+    cell.classList.toggle("valid-target", isValidTarget);
+  }
+
   function renderBoard(side, visualSnapshot = null) {
-    const root = $(`#${side}Board`);
+    const root = $("#" + side + "Board");
     const fighter = engine.state[side];
-    root.innerHTML = "";
     fighter.board.forEach((unit, slot) => {
-      const cell = document.createElement("button");
-      cell.type = "button";
-      cell.className = unit ? `unit school-${unit.school}` : "slot";
-      cell.dataset.slot = String(slot);
-      if (unit?.instanceId) cell.dataset.instanceId = unit.instanceId;
-      cell.style.setProperty("--slot-index", slot);
-      if (unit) {
-        const cardSchool = school(unit.school);
-        const previousUnit = visualSnapshot?.units?.[slot];
-        const preservePreviousStats = previousUnit?.instanceId === unit.instanceId;
-        const currentAttack = preservePreviousStats ? previousUnit.attack : displayedUnitAttack(side, unit);
-        const currentHealth = preservePreviousStats ? previousUnit.health : Math.max(0, unit.currentHealth);
-        const isMultiTargetAttacker = Boolean(A.ASTRAL_CARD_AI_METADATA?.[unit.id]?.multiTarget);
-        const hasSummoningSickness = typeof engine.isUnitSummoningSick === "function" && engine.isUnitSummoningSick(unit, side);
-        cell.classList.toggle("multi-target-attacker", isMultiTargetAttacker);
-        cell.classList.toggle("summoning-sick", hasSummoningSickness);
-        cell.innerHTML = `<div class="unit-art"></div>
-          ${isMultiTargetAttacker ? '<span class="multi-target-badge" title="Attacca tutti i nemici" aria-label="Attacco multiplo">⚔×</span>' : ''}
-          ${hasSummoningSickness ? '<span class="summoning-sickness-badge" title="Debolezza da evocazione — potrà attaccare dal prossimo turno" aria-label="Debolezza da evocazione — potrà attaccare dal prossimo turno"><span aria-hidden="true">Zz</span></span>' : ''}
-          <div class="unit-stats"><strong class="unit-attack" title="Attacco"><span aria-hidden="true">⚔</span>${currentAttack}</strong><strong class="unit-health" title="Vita"><span aria-hidden="true">♥</span>${currentHealth}</strong></div>`;
-        const unitArt = cell.querySelector(".unit-art");
-        unitArt.appendChild(buildArtBlock(unit, "board"));
-        const unitName = document.createElement("small");
-        unitName.textContent = cardName(unit);
-        unitArt.appendChild(unitName);
-        const inspectUnit = () => {
-          inspectedCardId = unit.id;
-          inspectedCardSide = side;
-          inspectedCardInstanceId = unit.instanceId;
-          renderCollectionPanels();
-        };
-        cell.addEventListener("mouseenter", inspectUnit);
-        cell.addEventListener("focus", inspectUnit);
-        cell.addEventListener("click", inspectUnit);
-      } else {
-        const pendingCard = side === "player" ? engine.getCard("player", engine.state.pendingCardId) : null;
-        const isValidTarget = side === "player" && engine.state.phase === A.PHASES.PLAYER_TARGET && pendingCard?.type === "creature";
-        cell.textContent = isValidTarget ? "Evoca qui" : `${slot + 1}`;
-        cell.classList.toggle("valid-target", isValidTarget);
-        if (side === "player") cell.addEventListener("click", () => onPlayerSlot(slot));
+      const existing = root.children[slot] || null;
+      const sameUnit = Boolean(unit
+        && existing?.classList.contains("unit")
+        && existing.dataset.instanceId === String(unit.instanceId || "")
+        && existing.dataset.cardId === String(unit.id || ""));
+      const sameEmptySlot = Boolean(!unit && existing?.classList.contains("slot"));
+
+      if (sameUnit) {
+        updateBoardUnitCell(existing, side, unit, slot, visualSnapshot);
+        return;
       }
-      root.appendChild(cell);
+      if (sameEmptySlot) {
+        updateBoardSlotCell(existing, side, slot);
+        return;
+      }
+
+      const next = unit ? createBoardUnitCell(side, unit, slot) : createBoardSlotCell(side, slot);
+      if (unit) updateBoardUnitCell(next, side, unit, slot, visualSnapshot);
+      else updateBoardSlotCell(next, side, slot);
+      if (existing) existing.replaceWith(next);
+      else root.appendChild(next);
     });
+    while (root.children.length > fighter.board.length) root.lastElementChild?.remove();
   }
 
   function isMobileEnemyBookLayout() {
@@ -2708,15 +2844,21 @@
   $("#languageSelect")?.addEventListener("change", event => A.i18n?.setLanguage(event.target.value));
   $("#createOnlineRoomBtn")?.addEventListener("click", async () => {
     try {
-      remoteRoomClient = new A.RemoteRoomClient();
-      const response = await remoteRoomClient.create({ playerTalent: "fire", playerName: savePlayerName() });
+      remoteRoomClient = createRemoteRoomClient();
+      const response = await remoteRoomClient.create({
+        playerTalent: $("#onlineTalentSelect")?.value || "fire",
+        playerName: savePlayerName()
+      });
       saveRemoteRoom(); renderRemoteLobby(response); beginRemotePolling();
     } catch (error) { renderRemoteLobby({ code: "", ready: false }); $("#onlineConnectionMessage").textContent = error.message || t("online.error"); }
   });
   $("#joinOnlineRoomBtn")?.addEventListener("click", async () => {
     try {
-      remoteRoomClient = new A.RemoteRoomClient();
-      const response = await remoteRoomClient.join($("#onlineRoomCode").value.trim().toUpperCase(), { playerName: savePlayerName() });
+      remoteRoomClient = createRemoteRoomClient();
+      const response = await remoteRoomClient.join($("#onlineRoomCode").value.trim().toUpperCase(), {
+        playerTalent: $("#onlineTalentSelect")?.value || "water",
+        playerName: savePlayerName()
+      });
       saveRemoteRoom(); renderRemoteLobby(response); beginRemotePolling();
     } catch (error) { renderRemoteLobby({ code: "", ready: false }); $("#onlineConnectionMessage").textContent = error.message || t("online.error"); }
   });
@@ -2744,6 +2886,7 @@
     if ("caches" in window) caches.keys().then(keys => keys.forEach(key => caches.delete(key))).catch(() => {});
   }
 
+  syncMultiplayerAvailability();
   setupDifficultyOptions();
   if ($("#playerNameInput")) {
     const storedPlayerName = localStorage.getItem("arcane.playerName");
@@ -2778,8 +2921,8 @@
   renderCollectionPanels();
   try {
     const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
-    if (savedRoom?.code && savedRoom?.token) {
-      remoteRoomClient = new A.RemoteRoomClient();
+    if (multiplayerEnabled && savedRoom?.code && savedRoom?.token) {
+      remoteRoomClient = createRemoteRoomClient();
       Object.assign(remoteRoomClient, savedRoom);
       refreshRemoteRoom().then(beginRemotePolling);
     }

@@ -3,7 +3,7 @@
 
   class RemoteRoomClient {
     constructor(options = {}) {
-      this.baseUrl = String(options.baseUrl || "").replace(/\/$/, "");
+      this.baseUrl = String(options.baseUrl || A.MULTIPLAYER_API_URL || "").trim().replace(/\/$/, "");
       this.code = null;
       this.token = null;
       this.side = null;

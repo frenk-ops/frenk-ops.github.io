@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
+  <meta name="arcane-multiplayer-api" content="">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
@@ -20,7 +21,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.19.0 · build 4127d05</small>
+        <small class="app-version-badge" data-arcane-version>v0.19.0 · build 076d2d3</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -84,9 +85,18 @@
               </details>
               <h3 id="talentChoiceHeading" class="visually-hidden">Scegli partita</h3>
               <div id="talentChoices" class="talent-grid classic-start-buttons"></div>
-              <section class="online-lobby dev-only hidden" aria-labelledby="onlineLobbyTitle">
-                <h3 id="onlineLobbyTitle" data-i18n="online.title">Partita online</h3><p class="pages-static-note">Il multiplayer richiede la versione con server e non è disponibile su GitHub Pages.</p>
-                <div id="onlineLobbyActions" class="hidden">
+              <section class="online-lobby hidden" aria-labelledby="onlineLobbyTitle">
+                <h3 id="onlineLobbyTitle" data-i18n="online.title">Partita online</h3>
+                <div id="onlineLobbyActions">
+                  <label class="online-school-choice"><span data-i18n="ui.school">Scuola</span>
+                    <select id="onlineTalentSelect">
+                      <option value="fire" data-i18n="schools.fire">Fuoco</option>
+                      <option value="water" data-i18n="schools.water">Acqua</option>
+                      <option value="air" data-i18n="schools.air">Aria</option>
+                      <option value="nature" data-i18n="schools.nature">Terra</option>
+                      <option value="death" data-i18n="schools.death">Morte</option>
+                    </select>
+                  </label>
                   <button id="createOnlineRoomBtn" type="button" data-i18n="online.create">Crea partita online</button>
                   <div class="online-join-row">
                     <input id="onlineRoomCode" maxlength="8" autocomplete="off" data-i18n-placeholder="online.codePlaceholder" placeholder="Codice stanza">
@@ -318,7 +328,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.19.0 · build 4127d05</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.19.0 · build 076d2d3</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -380,7 +390,7 @@
   <script src="src/core/astral-card-effects-re.js?v=3.0.24"></script>
   <script src="src/core/game-engine.js?v=3.0.27"></script>
   <script src="src/core/multiplayer-protocol.js?v=3.0.25"></script>
-  <script src="src/multiplayer/remote-room-client.js?v=3.0.0"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=3.0.1"></script>
   <script src="src/core/ai.js?v=3.0.0"></script>
   <script src="src/core/astral-ai-re.js?v=3.0.0"></script>
   <script src="src/core/tournament.js?v=3.0.18"></script>
@@ -389,7 +399,7 @@
   <script src="src/ui/navigation.js?v=3.0.0"></script>
   <script src="src/ui/pause-menu.js?v=3.0.16"></script>
   <script src="src/ui/tournament-view.js?v=3.0.18"></script>
-  <script src="src/ui/app.js?v=3.0.28"></script>
+  <script src="src/ui/app.js?v=3.0.30"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
