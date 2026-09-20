@@ -1094,33 +1094,50 @@
     $("#message").textContent = text;
   }
 
+  function specializationLabel(choice) {
+    if (choice === "random") return `🎲 ${t("menu.randomSpecialization")}`;
+    const spec = A.getAstralSpecialization?.(choice);
+    return spec ? `${spec.icon} ${t(`specialization.${spec.id}`)}` : t("menu.randomSpecialization");
+  }
+
+  function populateSpecializationSelect(select, fallback = "random") {
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = [
+      `<option value="random">🎲 ${t("menu.randomSpecialization")}</option>`,
+      ...A.ASTRAL_SPECIALIZATIONS.map(item => `<option value="${item.id}">${item.icon} ${t(`specialization.${item.id}`)}</option>`)
+    ].join("");
+    const valid = current === "random" || A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current);
+    select.value = valid ? current : fallback;
+  }
+
+  function resolveSpecializationChoice(choice, seed, side, fallback = "battlemage") {
+    if (choice && choice !== "random") return A.getAstralSpecialization?.(choice)?.id || fallback;
+    const available = A.ASTRAL_SPECIALIZATIONS || [];
+    if (!available.length) return fallback;
+    const rng = A.createRng(`${seed}-specialization-${side}`);
+    return rng.pick(available)?.id || fallback;
+  }
+
   function renderTalentChoices() {
     const root = $("#talentChoices");
     const distribution = normalizeSpellbookMode($("#duelModeSelect")?.value);
     const withSpecializations = $("#duelSpecializationsSelect")?.value === "on";
-    const league = $("#astralLeagueSelect")?.value || "starting";
     root.innerHTML = "";
     updateDuelModeDescription();
-    $("#talentChoiceHeading").textContent = withSpecializations ? t("menu.chooseSpecialization") : t("menu.startDuel");
-    $("#astralLeagueLabel").classList.toggle("hidden", !withSpecializations);
-    $("#enemySpecializationLabel").classList.toggle("hidden", !withSpecializations);
-    if (!withSpecializations) {
-      const button = document.createElement("button");
-      button.className = "talent";
-      button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${spellbookModeDescription(distribution)}</small>`;
-      button.addEventListener("click", () => startDuel("fire", false, null, distribution));
-      root.appendChild(button);
-      return;
-    }
-    A.ASTRAL_SPECIALIZATIONS.forEach(item => {
-      const button = document.createElement("button");
-      button.className = "talent";
-      const ids = A.getAstralAbilityLoadout?.(item.id, league, item.talent) || [];
-      const active = A.getAstralAbilityRecords(ids).map(abilityName).join(" · ");
-      button.innerHTML = `<span>${item.icon}</span><strong>${t(`specialization.${item.id}`)}</strong><small>${t("menu.activeAbilities")}: ${active}</small>`;
-      button.addEventListener("click", () => startDuel(item.talent, false, item.id, distribution));
-      root.appendChild(button);
+    $("#talentChoiceHeading").textContent = t("menu.startDuel");
+    $("#astralLeagueLabel")?.classList.toggle("hidden", !withSpecializations);
+    $("#playerSpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
+    $("#enemySpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
+
+    const button = document.createElement("button");
+    button.className = "talent";
+    button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${spellbookModeDescription(distribution)}</small>`;
+    button.addEventListener("click", () => {
+      const playerChoice = withSpecializations ? ($("#playerSpecializationSelect")?.value || "random") : null;
+      startDuel("fire", false, playerChoice, distribution);
     });
+    root.appendChild(button);
   }
 
   function setupDifficultyOptions() {
@@ -1133,18 +1150,10 @@
   }
 
   function setupAstralSpecializationOptions() {
-    $("#enemySpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
-      .map(item => `<option value="${item.id}" ${item.id === "stormmage" ? "selected" : ""}>${item.icon} ${t(`specialization.${item.id}`)}</option>`)
-      .join("");
-    ["#onlineSpecializationSelect", "#onlineJoinSpecializationSelect"].forEach(selector => {
-      const select = $(selector);
-      if (!select) return;
-      const current = select.value;
-      select.innerHTML = A.ASTRAL_SPECIALIZATIONS
-        .map(item => `<option value="${item.id}">${item.icon} ${t(`specialization.${item.id}`)}</option>`)
-        .join("");
-      if (A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current)) select.value = current;
-    });
+    populateSpecializationSelect($("#playerSpecializationSelect"), "random");
+    populateSpecializationSelect($("#enemySpecializationSelect"), "random");
+    populateSpecializationSelect($("#onlineSpecializationSelect"), "random");
+    populateSpecializationSelect($("#onlineJoinSpecializationSelect"), "random");
   }
 
   function syncOnlineDuelMode() {
@@ -1161,12 +1170,14 @@
       duelMode: specializationsEnabled ? "specializations" : "normal"
     };
     if (!specializationsEnabled) return result;
-    const specializationId = $("#onlineSpecializationSelect")?.value || "battlemage";
-    const specialization = A.getAstralSpecialization?.(specializationId);
+    const specializationChoice = $("#onlineSpecializationSelect")?.value || "random";
+    const specialization = specializationChoice === "random"
+      ? null
+      : A.getAstralSpecialization?.(specializationChoice);
     return {
       ...result,
-      playerTalent: specialization?.talent || "fire",
-      playerSpecialization: specialization?.id || specializationId
+      playerSpecialization: specialization?.id || specializationChoice,
+      ...(specialization?.talent ? { playerTalent: specialization.talent } : {})
     };
   }
 
@@ -1179,7 +1190,7 @@
     return `duel-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
   }
 
-  function startDuel(playerTalent, fromTournament, selectedSpecialization, requestedMode, seedOverride = null) {
+  function startDuel(playerTalent, fromTournament, selectedSpecialization, requestedMode, seedOverride = null, enemySpecializationOverride = null) {
     const setId = "astral-original";
     const spellbookDistribution = fromTournament
       ? normalizeSpellbookMode(tournament?.spellbookDistribution)
@@ -1197,13 +1208,30 @@
     currentOpponentName = fromTournament
       ? normalizedPlayerName(opponent?.name, t("ui.opponent"))
       : normalizedPlayerName(t(`difficulty.${difficulty}`), t("ui.opponent"));
+
+    const playerSpecializationChoice = withSpecializations
+      ? (fromTournament ? tournament?.specialization : (selectedSpecialization || "random"))
+      : undefined;
+    const enemySpecializationChoice = withSpecializations
+      ? (fromTournament
+        ? opponent?.specialization
+        : (enemySpecializationOverride || $("#enemySpecializationSelect")?.value || "random"))
+      : undefined;
     const playerSpecialization = withSpecializations
-      ? (fromTournament ? tournament?.specialization : selectedSpecialization)
+      ? resolveSpecializationChoice(playerSpecializationChoice, seed, "player", "battlemage")
+      : undefined;
+    const enemySpecialization = withSpecializations
+      ? resolveSpecializationChoice(enemySpecializationChoice, seed, "enemy", "stormmage")
       : undefined;
     const specializationRecord = playerSpecialization && A.getAstralSpecialization
       ? A.getAstralSpecialization(playerSpecialization, playerTalent)
       : null;
+    const enemySpecializationRecord = enemySpecialization && A.getAstralSpecialization
+      ? A.getAstralSpecialization(enemySpecialization, opponent?.talent || "water")
+      : null;
     const effectivePlayerTalent = specializationRecord?.talent || playerTalent || "fire";
+    const effectiveEnemyTalent = enemySpecializationRecord?.talent || opponent?.talent;
+
     tournamentMatch = Boolean(fromTournament);
     matchRecorded = false;
     matchStartedAt = Date.now();
@@ -1218,7 +1246,7 @@
       cards: sessionSets[setId],
       seed,
       playerTalent: effectivePlayerTalent,
-      enemyTalent: opponent?.talent,
+      enemyTalent: effectiveEnemyTalent,
       playerPassives: fromTournament && tournament?.evolutionEnabled ? tournament.selectedPassives : [],
       enemyPassives: fromTournament ? (A.getTournamentOpponentPassives?.(tournament, tournament.currentMatch) || []) : [],
       rules: duelRules,
@@ -1229,9 +1257,7 @@
         ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting"))
         : undefined,
       playerSpecialization,
-      enemySpecialization: withSpecializations
-        ? (fromTournament ? opponent?.specialization : ($("#enemySpecializationSelect")?.value || undefined))
-        : undefined,
+      enemySpecialization,
       playerAstralAbilities: withSpecializations ? undefined : [],
       enemyAstralAbilities: withSpecializations ? undefined : []
     });
@@ -1240,7 +1266,8 @@
     currentDuelLaunch = {
       playerTalent: effectivePlayerTalent,
       fromTournament: Boolean(fromTournament),
-      selectedSpecialization,
+      selectedSpecialization: playerSpecializationChoice,
+      enemySpecializationChoice,
       requestedMode: spellbookDistribution,
       seed
     };
@@ -1325,7 +1352,7 @@
     onRestart: () => {
       if (!currentDuelLaunch || busy) return;
       const launch = currentDuelLaunch;
-      startDuel(launch.playerTalent, launch.fromTournament, launch.selectedSpecialization, launch.requestedMode, launch.seed);
+      startDuel(launch.playerTalent, launch.fromTournament, launch.selectedSpecialization, launch.requestedMode, launch.seed, launch.enemySpecializationChoice);
     },
     onNewDuel: () => { restartDuel(); switchView("game"); },
     onOptions: syncDuelPauseOptions,

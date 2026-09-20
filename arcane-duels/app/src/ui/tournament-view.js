@@ -10,23 +10,35 @@
     const stages = ["starting", "advanced", "major"];
     const panels = stages.map((league, index) => {
       const abilities = A.getAstralAbilityRecords?.(spec.groups[index] || []) || [];
-      return `<article class="tournament-specialization-stage">
-        <strong>${t(`league.${league}`)}</strong>
-        <ul>${abilities.map(ability => `<li><b>${escapeHtml(abilityName(ability))}</b><small>${escapeHtml(abilityDescription(ability))}</small></li>`).join("")}</ul>
-      </article>`;
+      const names = abilities.map(ability => escapeHtml(abilityName(ability))).join(" · ");
+      return `<details class="tournament-specialization-stage">
+        <summary>
+          <span><strong>${t(`league.${league}`)}</strong><small>${names}</small></span>
+          <b aria-hidden="true">⌄</b>
+        </summary>
+        <div class="tournament-ability-details">
+          ${abilities.map(ability => `<div><strong>${escapeHtml(abilityName(ability))}</strong><p>${escapeHtml(abilityDescription(ability))}</p></div>`).join("")}
+        </div>
+      </details>`;
     }).join("");
-    return `<div class="tournament-specialization-progression">
-      <div class="tournament-path-heading"><h3>${t("tournament.specializationProgression")}</h3><small>${t("tournament.progressionNote")}</small></div>
-      <div class="tournament-rules-grid">${panels}</div>
-    </div>`;
+    return `<section class="tournament-specialization-progression">
+      <div class="tournament-progression-heading">
+        <h3>${t("tournament.specializationProgression")}</h3>
+        <small>${t("tournament.progressionNote")}</small>
+      </div>
+      <div class="tournament-specialization-accordion">${panels}</div>
+    </section>`;
   }
 
   function renderEmpty(context) {
     const { t, specializations, specializationName } = context;
     return `<div class="tournament-create tournament-create-redesigned classic-config-grid">
-      <div class="tournament-intro"><strong>${t("tournament.introTitle")}</strong><span>${t("tournament.intro")}</span></div>
+      <div class="tournament-intro">
+        <strong>${t("tournament.introTitle")}</strong>
+        <span>${t("tournament.intro")}</span>
+      </div>
 
-      <label>${t("tournament.mode")}
+      <label class="tournament-mode-field">${t("tournament.mode")}
         <select id="tournamentModeSelect">
           <option value="league" selected>${t("tournament.mode.league")}</option>
           <option value="evolution">${t("tournament.mode.evolution")}</option>
@@ -35,10 +47,10 @@
         <small id="tournamentModeDescription">${t("tournament.mode.league.description")}</small>
       </label>
 
-      <div class="tournament-rules-grid">
-        <span><b>${t("league.starting")}</b><small>${t("tournament.matches12")}</small></span>
-        <span><b>${t("league.advanced")}</b><small>${t("tournament.matches34")}</small></span>
-        <span><b>${t("league.major")}</b><small>${t("tournament.matches57")}</small></span>
+      <div class="tournament-league-strip" aria-label="${t("tournament.path")}">
+        <span class="tournament-league-chip"><b>${t("league.starting")}</b><small>${t("tournament.matches12")}</small></span>
+        <span class="tournament-league-chip"><b>${t("league.advanced")}</b><small>${t("tournament.matches34")}</small></span>
+        <span class="tournament-league-chip"><b>${t("league.major")}</b><small>${t("tournament.matches57")}</small></span>
       </div>
 
       <div id="tournamentCustomRules" class="classic-config-grid hidden">
@@ -66,9 +78,13 @@
       <label id="tournamentSpecializationField">${t("tournament.playerSpecialization")}
         <select id="tournamentTalentSelect">${specializations.map(item => `<option value="${item.id}">${item.icon} ${specializationName(item.id)}</option>`).join("")}</select>
       </label>
+
       <div id="tournamentSpecializationPreview"></div>
 
-      <details class="tournament-advanced"><summary>${t("menu.advancedSettings")}</summary><label>${t("tournament.seed")} <input id="tournamentSeedInput" placeholder="${t("tournament.randomSeed")}"></label></details>
+      <details class="tournament-advanced">
+        <summary>${t("menu.advancedSettings")}</summary>
+        <label>${t("tournament.seed")} <input id="tournamentSeedInput" placeholder="${t("tournament.randomSeed")}"></label>
+      </details>
       <button id="createTournamentConfirm" class="classic-stone-button tournament-primary-action">${t("tournament.startNew")}</button>
     </div>`;
   }
