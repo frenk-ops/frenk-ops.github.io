@@ -477,7 +477,7 @@
     }
   }
 
-  function renderRemoteLobby(response) {
+  function renderRemoteLobby(response, options = {}) {
     $("#onlineLobbyActions")?.classList.toggle("hidden", Boolean(response));
     $("#onlineLobbyStatus")?.classList.toggle("hidden", !response);
     if (!response) {
@@ -492,7 +492,7 @@
       ? normalizedPlayerName(names.enemy, t("online.waitingPlayer"))
       : t("online.waitingPlayer");
     setMultiplayerControlsDisabled(true);
-    if (response.ready) showRemoteBattle(response);
+    if (response.ready && !options.deferBattle) showRemoteBattle(response);
   }
 
   function orientRemoteSnapshot(snapshot, side) {
@@ -514,6 +514,31 @@
     return oriented;
   }
 
+  function orientRemotePresentation(value) {
+    const clone = A.deepClone(value);
+    if (remoteRoomClient?.side !== "enemy") return clone;
+    const swap = item => {
+      if (item === "player") return "enemy";
+      if (item === "enemy") return "player";
+      if (Array.isArray(item)) return item.map(swap);
+      if (item && typeof item === "object") {
+        Object.keys(item).forEach(key => { item[key] = swap(item[key]); });
+      }
+      return item;
+    };
+    return swap(clone);
+  }
+
+  function loadRemoteEngine(snapshot) {
+    engine = A.GameEngine.fromSnapshot(
+      orientRemoteSnapshot(snapshot, remoteRoomClient.side),
+      sessionSets["astral-original"]
+    );
+    remoteDuelActive = true;
+    activeSchool = engine.state.player.talent;
+    enemySchool = engine.state.enemy.talent;
+  }
+
   function remoteSnapshotKey(response) {
     if (!response?.state || !remoteRoomClient) return "";
     return [
@@ -524,18 +549,7 @@
     ].join("|");
   }
 
-  function showRemoteBattle(response, options = {}) {
-    clearPersistedLocalDuel();
-    if (!response?.state) return false;
-    const snapshotKey = remoteSnapshotKey(response);
-    if (!options.force && snapshotKey && snapshotKey === remoteRenderedSnapshotKey) return false;
-    remoteRenderedSnapshotKey = snapshotKey;
-    engine = A.GameEngine.fromSnapshot(
-      orientRemoteSnapshot(response.state, remoteRoomClient.side),
-      sessionSets["astral-original"]
-    );
-    remoteDuelActive = true;
-    if (!remoteMatchStartedAt) remoteMatchStartedAt = Date.now();
+  function updateRemoteBattleIdentity(response) {
     const names = response.playerNames || {};
     currentPlayerName = remoteRoomClient.side === "enemy"
       ? normalizedPlayerName(names.enemy, t("ui.player"))
@@ -544,10 +558,20 @@
       ? normalizedPlayerName(names.player, t("ui.opponent"))
       : normalizedPlayerName(names.enemy, t("ui.opponent"));
     tournamentMatch = false;
-    presentationLog = [];
-    activeSchool = engine.state.player.talent;
-    enemySchool = engine.state.enemy.talent;
-    inspectedCardId = engine.state.player.hand.find(card => !card.hidden)?.id || null;
+  }
+
+  function showRemoteBattle(response, options = {}) {
+    clearPersistedLocalDuel();
+    if (!response?.state) return false;
+    const snapshotKey = remoteSnapshotKey(response);
+    if (!options.force && snapshotKey && snapshotKey === remoteRenderedSnapshotKey) return false;
+    const enteringRemoteBattle = !remoteDuelActive;
+    remoteRenderedSnapshotKey = snapshotKey;
+    loadRemoteEngine(response.state);
+    if (!remoteMatchStartedAt) remoteMatchStartedAt = Date.now();
+    updateRemoteBattleIdentity(response);
+    if (enteringRemoteBattle) presentationLog = [];
+    inspectedCardId = engine.state.player.hand.find(card => !card.hidden)?.id || inspectedCardId || null;
     inspectedCardSide = "player";
     switchView("game");
     $("#setupPanel").classList.add("hidden");
@@ -568,15 +592,125 @@
     return true;
   }
 
+  async function presentRemoteCommandResponse(response) {
+    if (!response?.state) return false;
+    if (!engine || !remoteDuelActive || !response.result) {
+      showRemoteBattle(response, { force: true });
+      return false;
+    }
+
+    const before = captureHealthState();
+    const command = orientRemotePresentation(response.command || {});
+    const result = orientRemotePresentation(response.result);
+    const type = command.type || response.command?.type;
+    const actor = command.actor || "enemy";
+    const slot = command.payload?.slot ?? null;
+
+    loadRemoteEngine(response.state);
+
+    if (type === A.MULTIPLAYER_COMMANDS.PLAY && result?.ok && result.card) {
+      if (result.card.type === "spell") spellSound();
+      if (result.card.type === "creature") playOriginalSound("summon2", 0.36);
+      await animateCardPlay(result, actor, slot, before);
+      await presentResolutionBeforeUpdate(result, before);
+      renderGame();
+      showResolutionAfterUpdate(result);
+      recordCardResolution(result);
+      await sleep(reducedMotion ? 0 : 100);
+      return true;
+    }
+
+    if (type === A.MULTIPLAYER_COMMANDS.ATTACK_NEXT && result?.ok && !result.done && !result.skipped) {
+      const healingShown = showHealingChanges(before, result);
+      const triggeredDamageEvents = (result.events || []).filter(event =>
+        ["astralHeroDamage", "astralCreatureDamage", "heroDamage", "creatureDamage"].includes(event.type)
+        && event.sourceKind === "effect"
+      );
+      if (triggeredDamageEvents.length) showResolvedEffectDamage({ events: triggeredDamageEvents });
+      if (healingShown > 0 || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 460);
+      const hasAttackDamage = Number(result.event?.damage || 0) > 0;
+      if (hasAttackDamage) {
+        await animateAttack(result.event);
+        showDamage(result.event);
+      }
+      showCollateralDamage(result.events);
+      showResolutionDeaths(result);
+      if (hasAttackDamage || triggeredDamageEvents.length > 0) await sleep(reducedMotion ? 0 : 520);
+      renderGame();
+      showResolutionAfterUpdate(result);
+      const structuredDamage = (result.events || []).find(event =>
+        ["astralHeroDamage", "astralCreatureDamage"].includes(event.type)
+        && event.sourceKind === "creature"
+      );
+      pushPresentationLog("log.attack", {
+        sourceCardId: structuredDamage?.sourceId,
+        sourceName: result.event?.attackerName,
+        ...(result.event?.type === "directAttack"
+          ? { targetSide: result.event?.enemySide }
+          : { targetCardId: structuredDamage?.targetId, targetName: result.event?.targetName }),
+        amount: result.event?.damage
+      });
+      recordAttackSecondaryEffects(result);
+      recordAttackRegeneration(result);
+      await sleep(reducedMotion ? 0 : 260);
+      return true;
+    }
+
+    if (type === A.MULTIPLAYER_COMMANDS.FINISH_ATTACK && result?.ok) {
+      const healingShown = showHealingChanges(before, result);
+      const powerShown = showPowerValueChanges(before);
+      const attackShown = showUnitAttackChanges(before);
+      if (healingShown + powerShown + attackShown > 0) await sleep(reducedMotion ? 0 : 460);
+      renderGame();
+      return true;
+    }
+
+    if (type === A.MULTIPLAYER_COMMANDS.PASS && result?.ok) {
+      pushPresentationLog("log.pass", { actorSide: actor });
+      showTurnBanner(t("turn.passed"), actor, 700);
+    }
+    renderGame();
+    return true;
+  }
+
+  async function presentRemoteActions(response) {
+    const actions = Array.isArray(response?.actions) ? response.actions : [];
+    if (!actions.length || !engine || !remoteDuelActive) {
+      showRemoteBattle(response);
+      return;
+    }
+    for (const action of actions) {
+      await presentRemoteCommandResponse({
+        ...response,
+        sequence: action.sequence,
+        command: action.command,
+        result: action.result,
+        state: action.state
+      });
+    }
+    showRemoteBattle(response, { force: true });
+  }
+
   async function refreshRemoteRoom() {
     if (!remoteRoomClient || remoteRefreshBusy || busy) return;
     remoteRefreshBusy = true;
     try {
       let state = await remoteRoomClient.reconnect();
+      const animateMissedActions = Boolean(state.ready && remoteDuelActive && engine && state.actions?.length);
+      renderRemoteLobby(state, { deferBattle: animateMissedActions });
+      if (animateMissedActions) {
+        busy = true;
+        try {
+          await presentRemoteActions(state);
+        } finally {
+          busy = false;
+        }
+      }
       if (state.ready && remoteRoomClient.side === "enemy" && state.state?.state?.phase === A.PHASES.ENEMY_THINK) {
         state = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.BEGIN_PLAY);
+        showRemoteBattle(state);
       }
-      saveRemoteRoom(); renderRemoteLobby(state);
+      saveRemoteRoom();
     }
     catch (error) {
       clearInterval(remoteRoomPoll);
@@ -607,18 +741,20 @@
     try {
       let response = await remoteRoomClient.submit(type, payload);
       trackOwnCommandResult(type, response.result, remoteRoomClient.side === "enemy" ? "player" : "enemy");
-      showRemoteBattle(response);
+      await presentRemoteCommandResponse(response);
       while (response.state?.state?.phase === (remoteRoomClient.side === "player" ? A.PHASES.PLAYER_ATTACK : A.PHASES.ENEMY_ATTACK)) {
         response = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.ATTACK_NEXT);
         trackOwnCommandResult(A.MULTIPLAYER_COMMANDS.ATTACK_NEXT, response.result, remoteRoomClient.side === "enemy" ? "player" : "enemy");
+        await presentRemoteCommandResponse(response);
         if (response.result?.done) {
           response = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
           trackOwnCommandResult(A.MULTIPLAYER_COMMANDS.FINISH_ATTACK, response.result, remoteRoomClient.side === "enemy" ? "player" : "enemy");
+          await presentRemoteCommandResponse(response);
           break;
         }
       }
       saveRemoteRoom();
-      showRemoteBattle(response);
+      showRemoteBattle(response, { force: true });
       return response;
     } catch (error) {
       setMessage(error.message);
