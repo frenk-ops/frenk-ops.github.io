@@ -37,7 +37,17 @@
     if (parsed === 2.75) return 1.5;
     return [0.55, 0.8, 1.2, 1.5].includes(parsed) ? parsed : 1.2;
   };
-  const defaultBoardCreatureNames = !(window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
+  const isMobileLayout = Boolean(window.matchMedia && window.matchMedia("(max-width: 820px)").matches);
+  const defaultBoardCreatureNames = !isMobileLayout;
+  if (isMobileLayout) {
+    try {
+      const migrationKey = "arcane.boardCreatureNamesMobileDefault.v1";
+      if (!localStorage.getItem(migrationKey)) {
+        localStorage.setItem("arcane.boardCreatureNames", "0");
+        localStorage.setItem(migrationKey, "1");
+      }
+    } catch {}
+  }
   let animationSpeed = normalizeAnimationSpeed(preference("animationSpeed", "1.2"));
   let cardArtStyle = "new";
   let parchmentSpellFrames = preference("parchmentSpellFrames", "0") === "1";
@@ -73,6 +83,9 @@
   let multiplayerServerCheckPromise = null;
   let currentPlayerName = "";
   let currentOpponentName = "";
+  let matchStartedAt = null;
+  let remoteMatchStartedAt = null;
+  let currentTurnDamage = 0;
   let navigation = null;
   let pauseMenu = null;
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
@@ -102,6 +115,8 @@
         currentOpponentName,
         tournamentMatch,
         matchRecorded,
+        matchStartedAt,
+        currentTurnDamage,
         activeSchool,
         enemySchool
       }));
@@ -148,6 +163,8 @@
       currentOpponentName = normalizedPlayerName(saved.currentOpponentName, t("ui.opponent"));
       tournamentMatch = Boolean(saved.tournamentMatch);
       matchRecorded = Boolean(saved.matchRecorded);
+      matchStartedAt = Number(saved.matchStartedAt || Date.now());
+      currentTurnDamage = Math.max(0, Number(saved.currentTurnDamage || 0));
       activeSchool = saved.activeSchool || engine.state.player?.talent || "fire";
       enemySchool = saved.enemySchool || engine.state.enemy?.talent || "water";
       inspectedCardId = engine.state.player.hand[0]?.id || allAstralCards()[0]?.id || null;
@@ -234,6 +251,10 @@
     if ($("#playerNameInput")) $("#playerNameInput").value = name;
     if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = name;
     localStorage.setItem("arcane.playerName", name);
+    if (profile) {
+      profile.playerName = name;
+      A.saveProfile?.(profile);
+    }
     return name;
   }
 
@@ -243,7 +264,7 @@
   }
 
   function setMultiplayerControlsDisabled(disabled) {
-    ["#createOnlineRoomBtn", "#joinOnlineRoomBtn", "#onlineRoomCode", "#onlineTalentSelect", "#onlinePlayerNameInput"]
+    ["#createOnlineRoomBtn", "#joinOnlineRoomBtn", "#onlineRoomCode", "#onlineTalentSelect", "#onlineSpecializationSelect", "#onlineDuelModeSelect", "#onlinePlayerNameInput"]
       .forEach(selector => {
         const control = $(selector);
         if (control) control.disabled = Boolean(disabled);
@@ -305,7 +326,8 @@
     if (!remoteRoomClient?.code) return localStorage.removeItem("arcane.remoteRoom");
     localStorage.setItem("arcane.remoteRoom", JSON.stringify({
       code: remoteRoomClient.code, token: remoteRoomClient.token, side: remoteRoomClient.side,
-      sequence: remoteRoomClient.sequence, checksum: remoteRoomClient.checksum
+      sequence: remoteRoomClient.sequence, checksum: remoteRoomClient.checksum,
+      startedAt: remoteMatchStartedAt || null
     }));
   }
 
@@ -341,6 +363,8 @@
     };
     oriented.state.phase = phaseSwap[oriented.state.phase] || oriented.state.phase;
     oriented.state.activeSide = oriented.state.activeSide === "player" ? "enemy" : "player";
+    if (oriented.state.winner === "player") oriented.state.winner = "enemy";
+    else if (oriented.state.winner === "enemy") oriented.state.winner = "player";
     return oriented;
   }
 
@@ -352,6 +376,7 @@
       sessionSets["astral-original"]
     );
     remoteDuelActive = true;
+    if (!remoteMatchStartedAt) remoteMatchStartedAt = Date.now();
     const names = response.playerNames || {};
     currentPlayerName = remoteRoomClient.side === "enemy"
       ? normalizedPlayerName(names.enemy, t("ui.player"))
@@ -371,6 +396,16 @@
     navigation?.setActive("multiplayer");
     $("#seedBadge").textContent = `online · ${response.code || remoteRoomClient.code} · #${response.sequence}`;
     renderGame();
+    if (engine.state.gameOver) {
+      A.recordProfileMatch?.(profile, {
+        matchId: response.matchId || `room:${response.code || remoteRoomClient.code}`,
+        mode: "multiplayer",
+        result: engine.state.winner === "player" ? "win" : engine.state.winner === "enemy" ? "loss" : "draw",
+        durationMs: remoteMatchStartedAt ? Date.now() - remoteMatchStartedAt : null
+      });
+      profile = A.loadProfile();
+      renderPlayerProfile();
+    }
   }
 
   async function refreshRemoteRoom() {
@@ -403,11 +438,14 @@
     busy = true;
     try {
       let response = await remoteRoomClient.submit(type, payload);
+      trackOwnCommandResult(type, response.result, remoteRoomClient.side === "enemy" ? "player" : "enemy");
       showRemoteBattle(response);
       while (response.state?.state?.phase === (remoteRoomClient.side === "player" ? A.PHASES.PLAYER_ATTACK : A.PHASES.ENEMY_ATTACK)) {
         response = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.ATTACK_NEXT);
+        trackOwnCommandResult(A.MULTIPLAYER_COMMANDS.ATTACK_NEXT, response.result, remoteRoomClient.side === "enemy" ? "player" : "enemy");
         if (response.result?.done) {
           response = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
+          trackOwnCommandResult(A.MULTIPLAYER_COMMANDS.FINISH_ATTACK, response.result, remoteRoomClient.side === "enemy" ? "player" : "enemy");
           break;
         }
       }
@@ -424,11 +462,50 @@
     }
   }
 
+  function profileDamageFromResult(result, opponentSide = "enemy") {
+    const events = result?.events || [];
+    const structured = events
+      .filter(event => ["astralHeroDamage", "heroDamage"].includes(event.type))
+      .filter(event => (event.targetSide || event.side) === opponentSide)
+      .reduce((sum, event) => sum + Math.max(0, Number(event.amount || event.damage || 0)), 0);
+    if (structured > 0) return structured;
+    return result?.event?.type === "directAttack" && result.event.enemySide === opponentSide
+      ? Math.max(0, Number(result.event.damage || 0))
+      : 0;
+  }
+
+  function profileDrainFromResult(result) {
+    return (result?.events || [])
+      .filter(event => event.type === "astralVampireHeal")
+      .reduce((sum, event) => sum + Math.max(0, Number(event.amount || 0)), 0);
+  }
+
+  function trackOwnCommandResult(type, result, opponentSide = "enemy") {
+    if (!result?.ok) return;
+    if (type === A.MULTIPLAYER_COMMANDS.PLAY && result.card) {
+      A.recordProfileCardPlay?.(profile, result.card);
+    }
+    const damage = profileDamageFromResult(result, opponentSide);
+    const lifeDrained = profileDrainFromResult(result);
+    if (damage || lifeDrained) {
+      currentTurnDamage += damage;
+      A.recordProfileCombat?.(profile, { damage, lifeDrained });
+    }
+    if (type === A.MULTIPLAYER_COMMANDS.FINISH_ATTACK) {
+      A.recordProfileCombat?.(profile, { turnDamage: currentTurnDamage });
+      currentTurnDamage = 0;
+    }
+    profile = A.loadProfile();
+  }
+
   function issueDuelCommand(actor, type, payload = {}) {
     if (!duelCommandSession) return { ok: false, reason: "Sessione del duello non disponibile." };
     const command = duelCommandSession.createCommand(actor, type, payload);
     const outcome = duelCommandSession.dispatch(command);
-    if (outcome.ok && !remoteDuelActive) persistLocalDuelState();
+    if (outcome.ok && !remoteDuelActive) {
+      if (actor === "player") trackOwnCommandResult(type, outcome.result);
+      persistLocalDuelState();
+    }
     return outcome.ok ? outcome.result : { ok: false, reason: outcome.reason };
   }
 
@@ -465,7 +542,8 @@
     navigation?.setActive(name);
     if (name === "multiplayer") checkMultiplayerServer();
     if (name === "tournament") renderTournament();
-    if (name === "profile") renderProfile();
+    if (name === "cards") renderCollectionPage();
+    if (name === "profile") renderPlayerProfile();
     if (name === "rules") renderRuleset();
   }
 
@@ -595,7 +673,7 @@
 
   document.addEventListener("click", event => {
     if (!menuClickControlFromEvent(event.target)) return;
-    playOriginalSound("click", 0.28);
+    playSchoolSelectionSound();
   }, true);
 
   function playSchoolSelectionSound() {
@@ -685,6 +763,28 @@
     $("#enemySpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
       .map(item => `<option value="${item.id}" ${item.id === "stormmage" ? "selected" : ""}>${item.icon} ${t(`specialization.${item.id}`)}</option>`)
       .join("");
+    if ($("#onlineSpecializationSelect")) {
+      $("#onlineSpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
+        .map(item => `<option value="${item.id}">${item.icon} ${t(`specialization.${item.id}`)}</option>`)
+        .join("");
+    }
+  }
+
+  function syncOnlineDuelMode() {
+    const specialized = $("#onlineDuelModeSelect")?.value === "specializations";
+    $("#onlineTalentField")?.classList.toggle("hidden", specialized);
+    $("#onlineSpecializationField")?.classList.toggle("hidden", !specialized);
+  }
+
+  function onlineDuelOptions() {
+    const duelMode = $("#onlineDuelModeSelect")?.value === "specializations" ? "specializations" : "normal";
+    const specializationId = $("#onlineSpecializationSelect")?.value || "battlemage";
+    const specialization = duelMode === "specializations" ? A.getAstralSpecialization?.(specializationId) : null;
+    return {
+      duelMode,
+      playerTalent: specialization?.talent || $("#onlineTalentSelect")?.value || "fire",
+      playerSpecialization: duelMode === "specializations" ? specializationId : undefined
+    };
   }
 
   function createDuelSeed() {
@@ -719,6 +819,8 @@
     const effectivePlayerTalent = specializationRecord?.talent || playerTalent;
     tournamentMatch = Boolean(fromTournament);
     matchRecorded = false;
+    matchStartedAt = Date.now();
+    currentTurnDamage = 0;
     presentationLog = [];
     activeSchool = effectivePlayerTalent;
     const originalMode = setId === "astral-original";
@@ -777,6 +879,8 @@
     remoteDuelActive = false;
     busy = false;
     tournamentMatch = false;
+    matchStartedAt = null;
+    currentTurnDamage = 0;
     $("#battlePanel").classList.add("hidden");
     $("#setupPanel").classList.remove("hidden");
     clearFxLayer();
@@ -819,7 +923,7 @@
     tournament = A.loadTournament();
     restartDuel();
     renderTournament();
-    renderProfile();
+    renderPlayerProfile();
     switchView("tournament");
   }
 
@@ -1612,13 +1716,13 @@
   function buildCollectionFilterButtons() {
     const schoolFilters = [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon}` }))];
     const typeFilters = [{ id: "all", label: t("cards.allMasculine") }, { id: "creature", label: t("ui.creature") }, { id: "spell", label: t("ui.spell") }];
-    const levelFilters = [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 9 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }))];
+    const levelFilters = [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 13 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }))];
     renderFilterGroup("#collectionSchoolFilters", "school", schoolFilters);
     renderFilterGroup("#collectionTypeFilters", "type", typeFilters);
     renderFilterGroup("#collectionLevelFilters", "level", levelFilters);
     renderFilterGroup("#collectionPageSchoolFilters", "school", [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${item.icon} ${schoolName(item.id)}` }))]);
     renderFilterGroup("#collectionPageTypeFilters", "type", typeFilters);
-    renderFilterGroup("#collectionPageLevelFilters", "level", [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 9 }, (_, i) => ({ id: String(i + 1), label: `${t("cards.level")} ${i + 1}` }))]);
+    renderFilterGroup("#collectionPageLevelFilters", "level", [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 13 }, (_, i) => ({ id: String(i + 1), label: `${t("cards.level")} ${i + 1}` }))]);
   }
 
   function buildCollectionTile(card, compact = false) {
@@ -1662,11 +1766,26 @@
   }
 
   function renderCollectionPage() {
-    const root = $("#profileContent");
+    const root = $("#cardsContent");
     if (!root) return;
     const allCards = allAstralCards();
     const filtered = applyCollectionFilters(allCards);
     root.innerHTML = `
+      <div class="collection-page-filters collection-page-filters-top ornate-subpanel">
+        <div class="collection-page-filter-row">
+          <span>${t("ui.school")}</span>
+          <div id="collectionPageSchoolFilters" class="mini-filter-grid horizontal-school-filters"></div>
+        </div>
+        <div class="collection-page-filter-row">
+          <span>${t("cards.filters")}</span>
+          <div id="collectionPageTypeFilters" class="mini-filter-grid"></div>
+          <div id="collectionPageLevelFilters" class="mini-filter-grid level-filters wide"></div>
+        </div>
+        <div class="collection-page-filter-search">
+          <label class="search-label">${t("cards.search")}<input id="collectionPageSearch" type="search" placeholder="${t("cards.searchPlaceholder")}"></label>
+          <p id="collectionPageStatus" class="collection-page-count">${t("cards.shown", { shown: filtered.length, total: allCards.length })}</p>
+        </div>
+      </div>
       <div class="collection-page-layout">
         <aside class="collection-page-inspector ornate-subpanel">
           <div class="collection-page-featured" id="collectionPageFeatured"></div>
@@ -1679,21 +1798,6 @@
           </div>
         </aside>
         <section class="collection-page-main">
-          <div class="collection-page-filters ornate-subpanel">
-            <div class="collection-page-filter-row">
-              <span>${t("ui.school")}</span>
-              <div id="collectionPageSchoolFilters" class="mini-filter-grid vertical-filters"></div>
-            </div>
-            <div class="collection-page-filter-row">
-              <span>${t("cards.filters")}</span>
-              <div id="collectionPageTypeFilters" class="mini-filter-grid"></div>
-              <div id="collectionPageLevelFilters" class="mini-filter-grid level-filters wide"></div>
-            </div>
-            <div class="collection-page-filter-search">
-              <label class="search-label">${t("cards.search")}<input id="collectionPageSearch" type="search" placeholder="${t("cards.searchPlaceholder")}"></label>
-              <p id="collectionPageStatus" class="collection-page-count">${t("cards.shown", { shown: filtered.length, total: allCards.length })}</p>
-            </div>
-          </div>
           <div id="collectionPageGrid" class="collection-grid page-grid"></div>
         </section>
       </div>`;
@@ -2451,6 +2555,14 @@
     const resultText = winner === "player" ? t("result.victory") : winner === "enemy" ? t("result.defeat") : t("result.draw");
     showTurnBanner(resultText, winner === "player" ? "player" : winner === "enemy" ? "enemy" : "neutral", 1800);
     setMessage(winner === "player" ? t("result.victoryMessage") : winner === "enemy" ? t("result.defeatMessage") : t("result.drawMessage"));
+    A.recordProfileMatch?.(profile, {
+      matchId: duelCommandSession?.matchId || `local:${engine.state.seed}`,
+      mode: "singlePlayer",
+      result: winner === "player" ? "win" : winner === "enemy" ? "loss" : "draw",
+      durationMs: matchStartedAt ? Date.now() - matchStartedAt : null
+    });
+    profile = A.loadProfile();
+    renderPlayerProfile();
     if (tournamentMatch && !matchRecorded) {
       matchRecorded = true;
       const won = winner === "player";
@@ -2459,7 +2571,7 @@
       profile = A.loadProfile();
       tournament = A.loadTournament();
       renderTournament();
-      renderProfile();
+      renderPlayerProfile();
     }
   }
 
@@ -2579,7 +2691,7 @@
           setId: "astral-original"
         });
         profile = A.loadProfile();
-        renderProfile();
+        renderPlayerProfile();
         renderTournament();
       });
       return;
@@ -2617,8 +2729,92 @@
     renderTournament();
   });
 
-  function renderProfile() {
-    renderCollectionPage();
+  function formatProfileDuration(ms) {
+    const value = Number(ms);
+    if (!Number.isFinite(value) || value <= 0) return "—";
+    const totalSeconds = Math.max(1, Math.round(value / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function achievementProgress(achievement) {
+    const stats = profile.stats || {};
+    switch (achievement.id) {
+      case "multi-5-wins": return { value: Number(stats.multiplayer?.wins || 0), target: 5 };
+      case "single-5-wins": return { value: Number(stats.singlePlayer?.wins || 0), target: 5 };
+      case "water-30-cards": return { value: Number(stats.cardsBySchool?.water || 0), target: 30 };
+      case "turn-20-damage": return { value: Number(stats.maxTurnDamage || 0), target: 20 };
+      case "speed-5-min": {
+        const values = [stats.singlePlayer?.fastestWinMs, stats.multiplayer?.fastestWinMs].filter(value => Number.isFinite(Number(value)) && Number(value) > 0);
+        return { value: values.length ? Math.min(...values.map(Number)) : null, target: 5 * 60 * 1000, duration: true };
+      }
+      case "drain-100-life": return { value: Number(stats.lifeDrained || 0), target: 100 };
+      default: return { value: 0, target: achievement.target || 1 };
+    }
+  }
+
+  function renderPlayerProfile() {
+    const root = $("#playerProfileContent");
+    if (!root) return;
+    profile = A.loadProfile();
+    const stats = profile.stats || {};
+    const single = stats.singlePlayer || {};
+    const multi = stats.multiplayer || {};
+    const storedName = profile.playerName || localStorage.getItem("arcane.playerName") || t("ui.player");
+    const achievements = A.PROFILE_ACHIEVEMENTS || [];
+    root.innerHTML = `
+      <section class="profile-identity-card ornate-subpanel">
+        <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
+        <button id="saveProfileNameBtn" type="button" class="multiplayer-primary-action">${t("profile.saveName")}</button>
+      </section>
+      <div class="profile-mode-grid">
+        <article class="profile-mode-card"><span>${t("profile.singlePlayer")}</span><strong>${t("profile.record", { wins: single.wins || 0, losses: single.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: single.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(single.fastestWinMs)}</small></article>
+        <article class="profile-mode-card"><span>${t("nav.multiplayer")}</span><strong>${t("profile.record", { wins: multi.wins || 0, losses: multi.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: multi.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(multi.fastestWinMs)}</small></article>
+      </div>
+      <section class="profile-fun-stats ornate-subpanel">
+        <h3>${t("profile.stats")}</h3>
+        <div class="profile-stat-grid">
+          <div><small>${t("profile.creaturesPlayed")}</small><strong>${Number(stats.creaturesPlayed || 0)}</strong></div>
+          <div><small>${t("profile.spellsPlayed")}</small><strong>${Number(stats.spellsPlayed || 0)}</strong></div>
+          <div><small>${t("profile.damageDealt")}</small><strong>${Number(stats.damageDealt || 0)}</strong></div>
+          <div><small>${t("profile.maxTurnDamage")}</small><strong>${Number(stats.maxTurnDamage || 0)}</strong></div>
+          <div><small>${t("profile.lifeDrained")}</small><strong>${Number(stats.lifeDrained || 0)}</strong></div>
+          <div><small>${t("profile.cardsPlayed")}</small><strong>${Number(stats.cardsPlayed || 0)}</strong></div>
+        </div>
+        <div class="profile-school-stats">
+          ${A.SCHOOLS.map(item => `<span><b>${item.icon}</b><small>${schoolName(item.id)}</small><strong>${Number(stats.cardsBySchool?.[item.id] || 0)}</strong></span>`).join("")}
+        </div>
+      </section>
+      <section class="profile-trophies ornate-subpanel">
+        <div class="profile-section-heading"><div><h3>${t("profile.trophies")}</h3><p>${t("profile.trophiesIntro")}</p></div><strong>${(profile.achievements || []).length}/${achievements.length}</strong></div>
+        <div class="trophy-grid">
+          ${achievements.map(item => {
+            const earned = (profile.achievements || []).includes(item.id);
+            const progress = achievementProgress(item);
+            const progressText = progress.duration
+              ? (progress.value === null ? "— / 5:00" : `${formatProfileDuration(progress.value)} / 5:00`)
+              : `${Math.min(progress.value, progress.target)}/${progress.target}`;
+            return `<article class="trophy-badge ${earned ? "earned" : "locked"}"><span class="trophy-icon" aria-hidden="true">${earned ? "★" : "◇"}</span><div><strong>${t(`achievement.${item.id}.title`)}</strong><p>${t(`achievement.${item.id}.description`)}</p><small>${earned ? t("profile.unlocked") : progressText}</small></div></article>`;
+          }).join("")}
+        </div>
+      </section>
+      <div class="profile-secondary-actions">
+        <button type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>
+        <button type="button" data-view-jump="diagnostics">${t("nav.options")}</button>
+      </div>`;
+    $("#saveProfileNameBtn")?.addEventListener("click", () => {
+      const name = normalizedPlayerName($("#profilePlayerNameInput")?.value, t("ui.player"));
+      profile.playerName = name;
+      A.saveProfile(profile);
+      localStorage.setItem("arcane.playerName", name);
+      if ($("#playerNameInput")) $("#playerNameInput").value = name;
+      if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = name;
+      renderPlayerProfile();
+    });
+    root.querySelectorAll("[data-view-jump]").forEach(button => {
+      button.addEventListener("click", () => switchView(button.dataset.viewJump));
+    });
   }
 
   $("#resetProfileBtn").addEventListener("click", () => {
@@ -2626,7 +2822,7 @@
     A.resetProgress();
     profile = A.loadProfile();
     tournament = null;
-    renderProfile();
+    renderPlayerProfile();
     renderTournament();
   });
 
@@ -3033,14 +3229,16 @@
   $("#languageSelect")?.addEventListener("change", event => A.i18n?.setLanguage(event.target.value));
   $("#retryMultiplayerServerBtn")?.addEventListener("click", () => checkMultiplayerServer({ force: true }));
   $("#onlinePlayerNameInput")?.addEventListener("change", event => savePlayerName(event.currentTarget));
+  $("#onlineDuelModeSelect")?.addEventListener("change", syncOnlineDuelMode);
   $("#createOnlineRoomBtn")?.addEventListener("click", async () => {
     if (multiplayerServerStatus !== "online" && !await checkMultiplayerServer({ force: true })) return;
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
     setMultiplayerControlsDisabled(true);
     try {
       remoteRoomClient = createRemoteRoomClient();
+      remoteMatchStartedAt = null;
       const response = await remoteRoomClient.create({
-        playerTalent: $("#onlineTalentSelect")?.value || "fire",
+        ...onlineDuelOptions(),
         playerName: savePlayerName($("#onlinePlayerNameInput"))
       });
       saveRemoteRoom(); renderRemoteLobby(response); beginRemotePolling();
@@ -3063,8 +3261,9 @@
     setMultiplayerControlsDisabled(true);
     try {
       remoteRoomClient = createRemoteRoomClient();
+      remoteMatchStartedAt = null;
       const response = await remoteRoomClient.join(roomCode, {
-        playerTalent: $("#onlineTalentSelect")?.value || "water",
+        ...onlineDuelOptions(),
         playerName: savePlayerName($("#onlinePlayerNameInput"))
       });
       saveRemoteRoom(); renderRemoteLobby(response); beginRemotePolling();
@@ -3079,7 +3278,7 @@
   $("#leaveOnlineRoomBtn")?.addEventListener("click", async () => {
     clearInterval(remoteRoomPoll); remoteRoomPoll = null;
     await remoteRoomClient?.disconnect().catch(() => {});
-    remoteRoomClient = null; saveRemoteRoom(); renderRemoteLobby(null);
+    remoteRoomClient = null; remoteMatchStartedAt = null; saveRemoteRoom(); renderRemoteLobby(null);
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
   });
   window.addEventListener("arcane:languagechange", () => {
@@ -3091,9 +3290,12 @@
     if (["Giocatore", "Player"].includes(String(currentPlayerName || "").trim())) currentPlayerName = t("ui.player");
     syncOptionsPage();
     setupDifficultyOptions();
+    setupAstralSpecializationOptions();
+    syncOnlineDuelMode();
     renderTalentChoices();
     renderCollectionPanels();
     renderTournament();
+    renderPlayerProfile();
     renderRuleset();
     if (pauseMenu?.isOpen()) $("#duelPauseSubtitle").textContent = pauseSubtitle();
     if (engine) renderGame();
@@ -3114,6 +3316,7 @@
   }
   setupLocalServerLifecycle();
   setupAstralSpecializationOptions();
+  syncOnlineDuelMode();
   $("#duelModeSelect").addEventListener("change", renderTalentChoices);
   $("#cardArtStyleSelect").addEventListener("change", event => {
     cardArtStyle = event.target.value === "new" ? "new" : "original";
@@ -3131,7 +3334,7 @@
   renderTalentChoices();
   populateEditor();
   renderTournament();
-  renderProfile();
+  renderPlayerProfile();
   renderRuleset();
   inspectedCardId = allAstralCards()[0]?.id || null;
   collectionSelectedCardId = inspectedCardId;
@@ -3143,6 +3346,7 @@
       restoredRemoteRoom = true;
       remoteRoomClient = createRemoteRoomClient();
       Object.assign(remoteRoomClient, savedRoom);
+      remoteMatchStartedAt = Number(savedRoom.startedAt || 0) || null;
       switchView("multiplayer");
       checkMultiplayerServer().then(online => { if (online) return refreshRemoteRoom().then(beginRemotePolling); });
     }

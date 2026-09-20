@@ -20,19 +20,159 @@
     };
   }
 
+  const PROFILE_ACHIEVEMENTS = Object.freeze([
+    Object.freeze({ id: "multi-5-wins", metric: "multiplayerWins", target: 5 }),
+    Object.freeze({ id: "single-5-wins", metric: "singlePlayerWins", target: 5 }),
+    Object.freeze({ id: "water-30-cards", metric: "waterCardsPlayed", target: 30 }),
+    Object.freeze({ id: "turn-20-damage", metric: "maxTurnDamage", target: 20 }),
+    Object.freeze({ id: "speed-5-min", metric: "fastestWinMs", target: 5 * 60 * 1000, comparison: "lte" }),
+    Object.freeze({ id: "drain-100-life", metric: "lifeDrained", target: 100 })
+  ]);
+
+  function createModeStats() {
+    return { played: 0, wins: 0, losses: 0, draws: 0, fastestWinMs: null };
+  }
+
+  function createPlayStats() {
+    return {
+      singlePlayer: createModeStats(),
+      multiplayer: createModeStats(),
+      creaturesPlayed: 0,
+      spellsPlayed: 0,
+      cardsPlayed: 0,
+      cardsBySchool: Object.fromEntries(A.SCHOOLS.map(s => [s.id, 0])),
+      damageDealt: 0,
+      maxTurnDamage: 0,
+      lifeDrained: 0
+    };
+  }
+
+  function normalizeModeStats(value) {
+    const base = createModeStats();
+    const source = value && typeof value === "object" ? value : {};
+    return {
+      played: Math.max(0, Number(source.played || base.played)),
+      wins: Math.max(0, Number(source.wins || base.wins)),
+      losses: Math.max(0, Number(source.losses || base.losses)),
+      draws: Math.max(0, Number(source.draws || base.draws)),
+      fastestWinMs: Number.isFinite(Number(source.fastestWinMs)) && Number(source.fastestWinMs) > 0
+        ? Number(source.fastestWinMs)
+        : null
+    };
+  }
+
+  function normalizePlayStats(value) {
+    const base = createPlayStats();
+    const source = value && typeof value === "object" ? value : {};
+    return {
+      ...base,
+      ...source,
+      singlePlayer: normalizeModeStats(source.singlePlayer),
+      multiplayer: normalizeModeStats(source.multiplayer),
+      cardsBySchool: {
+        ...base.cardsBySchool,
+        ...(source.cardsBySchool && typeof source.cardsBySchool === "object" ? source.cardsBySchool : {})
+      }
+    };
+  }
+
+  function achievementMetric(profile, achievement) {
+    const stats = profile.stats || createPlayStats();
+    switch (achievement.metric) {
+      case "multiplayerWins": return stats.multiplayer.wins;
+      case "singlePlayerWins": return stats.singlePlayer.wins;
+      case "waterCardsPlayed": return Number(stats.cardsBySchool.water || 0);
+      case "maxTurnDamage": return Number(stats.maxTurnDamage || 0);
+      case "fastestWinMs": return stats.singlePlayer.fastestWinMs === null && stats.multiplayer.fastestWinMs === null
+        ? null
+        : Math.min(...[stats.singlePlayer.fastestWinMs, stats.multiplayer.fastestWinMs].filter(value => Number.isFinite(value)));
+      case "lifeDrained": return Number(stats.lifeDrained || 0);
+      default: return 0;
+    }
+  }
+
   A.createDefaultProfile = function createDefaultProfile() {
     return {
-      version: 1,
+      version: 2,
+      playerName: "",
       tournamentsPlayed: 0,
       tournamentsWon: 0,
       duelsWon: 0,
       duelsLost: 0,
       highestRank: 0,
       trophies: [],
+      achievements: [],
+      recordedMatches: [],
+      stats: createPlayStats(),
       victoriesByClass: Object.fromEntries(A.SCHOOLS.map(s => [s.id, 0])),
       updatedAt: new Date().toISOString()
     };
   };
+
+  A.evaluateProfileAchievements = function evaluateProfileAchievements(profile) {
+    profile.achievements = Array.isArray(profile.achievements) ? profile.achievements : [];
+    PROFILE_ACHIEVEMENTS.forEach(achievement => {
+      const value = achievementMetric(profile, achievement);
+      const earned = achievement.comparison === "lte"
+        ? Number.isFinite(value) && value <= achievement.target
+        : Number(value || 0) >= achievement.target;
+      if (earned && !profile.achievements.includes(achievement.id)) profile.achievements.push(achievement.id);
+    });
+    return profile.achievements;
+  };
+
+  A.recordProfileCardPlay = function recordProfileCardPlay(profile, card) {
+    if (!profile || !card) return profile;
+    profile.stats = normalizePlayStats(profile.stats);
+    profile.stats.cardsPlayed += 1;
+    if (card.type === "creature") profile.stats.creaturesPlayed += 1;
+    if (card.type === "spell") profile.stats.spellsPlayed += 1;
+    if (card.school && Object.hasOwn(profile.stats.cardsBySchool, card.school)) {
+      profile.stats.cardsBySchool[card.school] += 1;
+    }
+    A.evaluateProfileAchievements(profile);
+    A.saveProfile(profile);
+    return profile;
+  };
+
+  A.recordProfileCombat = function recordProfileCombat(profile, details = {}) {
+    if (!profile) return profile;
+    profile.stats = normalizePlayStats(profile.stats);
+    profile.stats.damageDealt += Math.max(0, Number(details.damage || 0));
+    profile.stats.lifeDrained += Math.max(0, Number(details.lifeDrained || 0));
+    if (Number.isFinite(Number(details.turnDamage))) {
+      profile.stats.maxTurnDamage = Math.max(profile.stats.maxTurnDamage, Math.max(0, Number(details.turnDamage)));
+    }
+    A.evaluateProfileAchievements(profile);
+    A.saveProfile(profile);
+    return profile;
+  };
+
+  A.recordProfileMatch = function recordProfileMatch(profile, details = {}) {
+    if (!profile) return profile;
+    profile.stats = normalizePlayStats(profile.stats);
+    profile.recordedMatches = Array.isArray(profile.recordedMatches) ? profile.recordedMatches : [];
+    const matchId = String(details.matchId || "");
+    if (matchId && profile.recordedMatches.includes(matchId)) return profile;
+    const modeKey = details.mode === "multiplayer" ? "multiplayer" : "singlePlayer";
+    const stats = profile.stats[modeKey];
+    const result = details.result === "win" ? "win" : details.result === "loss" ? "loss" : "draw";
+    stats.played += 1;
+    if (result === "win") {
+      stats.wins += 1;
+      const duration = Number(details.durationMs);
+      if (Number.isFinite(duration) && duration > 0) {
+        stats.fastestWinMs = stats.fastestWinMs === null ? duration : Math.min(stats.fastestWinMs, duration);
+      }
+    } else if (result === "loss") stats.losses += 1;
+    else stats.draws += 1;
+    if (matchId) profile.recordedMatches = [...profile.recordedMatches, matchId].slice(-100);
+    A.evaluateProfileAchievements(profile);
+    A.saveProfile(profile);
+    return profile;
+  };
+
+  A.PROFILE_ACHIEVEMENTS = PROFILE_ACHIEVEMENTS;
 
   A.getStorage = function getStorage() {
     try {
@@ -50,7 +190,19 @@
   A.loadProfile = function loadProfile(storage) {
     const target = storage || A.getStorage();
     try {
-      return { ...A.createDefaultProfile(), ...JSON.parse(target.getItem(PROFILE_KEY) || "{}") };
+      const base = A.createDefaultProfile();
+      const stored = JSON.parse(target.getItem(PROFILE_KEY) || "{}");
+      const profile = {
+        ...base,
+        ...stored,
+        version: 2,
+        stats: normalizePlayStats(stored.stats),
+        achievements: Array.isArray(stored.achievements) ? stored.achievements : [],
+        recordedMatches: Array.isArray(stored.recordedMatches) ? stored.recordedMatches.slice(-100) : [],
+        victoriesByClass: { ...base.victoriesByClass, ...(stored.victoriesByClass || {}) }
+      };
+      A.evaluateProfileAchievements(profile);
+      return profile;
     } catch (error) {
       return A.createDefaultProfile();
     }

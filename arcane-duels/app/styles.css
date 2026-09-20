@@ -5461,3 +5461,294 @@ html[lang="en"] #playerHand.hand-showcase .game-card.unplayable::after { content
     padding-bottom: 0;
   }
 }
+
+
+/* 0.21.0 — unified menu system, precise mobile navigation, profile and trophies */
+.unified-menu-screen {
+  min-height: calc(100vh - 62px);
+  padding: 28px 18px 86px;
+}
+.unified-menu-stage {
+  width: min(1040px, calc(100vw - 28px));
+  margin: 0 auto;
+}
+.unified-menu-panel {
+  padding: clamp(18px, 3vw, 30px);
+  color: #3d2b21;
+}
+.unified-menu-panel > h2 {
+  margin: 2px 0 8px;
+  text-align: center;
+  color: #783f23;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+}
+.unified-menu-intro {
+  max-width: 720px;
+  margin: 0 auto 18px !important;
+  text-align: center;
+  color: #5c4636 !important;
+  line-height: 1.45;
+}
+.unified-menu-panel h3,
+.unified-menu-panel strong {
+  color: #513522;
+}
+.unified-menu-panel p,
+.unified-menu-panel small,
+.unified-menu-panel label,
+.unified-menu-panel span {
+  color: #5c4636;
+}
+.classic-tournament-view {
+  padding: 0;
+}
+.classic-tournament-actions {
+  width: min(1040px, calc(100vw - 28px));
+  margin: 12px auto 0;
+}
+.classic-tournament-board {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.collection-page-filters-top {
+  position: sticky;
+  top: 8px;
+  z-index: 6;
+  margin-bottom: 14px;
+  background: rgba(255,247,221,.94);
+  backdrop-filter: blur(8px);
+}
+.collection-page-filters-top .collection-page-filter-row {
+  align-items: start;
+}
+.horizontal-school-filters {
+  grid-template-columns: repeat(6, minmax(0,1fr));
+}
+.level-filters.wide {
+  grid-template-columns: repeat(7, minmax(0,1fr));
+}
+.profile-identity-card {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+.profile-identity-card label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+.profile-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.profile-mode-card {
+  display: grid;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid rgba(89,51,31,.32);
+  border-radius: 12px;
+  background: rgba(255,247,221,.48);
+}
+.profile-mode-card > span {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.profile-mode-card > strong {
+  font-size: 1.35rem;
+}
+.profile-fun-stats,
+.profile-trophies {
+  margin-bottom: 14px;
+}
+.profile-fun-stats h3,
+.profile-trophies h3 {
+  margin-top: 0;
+}
+.profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px;
+}
+.profile-stat-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid rgba(89,51,31,.24);
+  border-radius: 9px;
+  background: rgba(255,255,255,.25);
+}
+.profile-stat-grid strong {
+  font-size: 1.15rem;
+}
+.profile-school-stats {
+  display: grid;
+  grid-template-columns: repeat(5,minmax(0,1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+.profile-school-stats span {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 8px 3px;
+  border: 1px solid rgba(89,51,31,.2);
+  border-radius: 9px;
+  background: rgba(255,255,255,.2);
+}
+.profile-school-stats b {
+  font-size: 1.15rem;
+}
+.profile-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+.profile-section-heading h3,
+.profile-section-heading p {
+  margin: 0;
+}
+.profile-section-heading > strong {
+  font-size: 1.2rem;
+}
+.trophy-grid {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.trophy-badge {
+  display: grid;
+  grid-template-columns: 44px minmax(0,1fr);
+  gap: 10px;
+  align-items: start;
+  min-height: 102px;
+  padding: 12px;
+  border: 1px solid rgba(89,51,31,.22);
+  border-radius: 11px;
+  background: rgba(255,255,255,.22);
+}
+.trophy-badge.locked {
+  opacity: .58;
+  filter: grayscale(.55);
+}
+.trophy-badge.earned {
+  border-color: #a67b22;
+  box-shadow: inset 0 0 18px rgba(190,145,45,.14);
+}
+.trophy-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 2px solid #a67b22;
+  border-radius: 50%;
+  background: #17394b;
+  color: #ffe49a !important;
+  font-size: 1.25rem;
+}
+.trophy-badge p {
+  margin: 3px 0 6px !important;
+  line-height: 1.32;
+}
+.profile-secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 10px;
+}
+.profile-secondary-actions button {
+  min-height: 46px;
+  border: 2px ridge #9c722d;
+  border-radius: 7px;
+  background: #17394b;
+  color: #ffe49a;
+  font-weight: 700;
+}
+.multiplayer-config-grid {
+  grid-template-columns: repeat(2,minmax(0,1fr));
+}
+body.ui-classic[data-board-creature-names="hide"] .unit-name {
+  display: none !important;
+}
+
+@media (max-width: 820px) {
+  .unified-menu-screen {
+    padding: 14px 8px calc(86px + env(safe-area-inset-bottom));
+  }
+  .unified-menu-stage {
+    width: 100%;
+  }
+  .unified-menu-panel {
+    padding: 14px 10px;
+  }
+
+  .mobile-bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5,minmax(0,1fr));
+    gap: 0;
+    min-height: 68px;
+    padding: 5px 5px calc(5px + env(safe-area-inset-bottom));
+  }
+  .mobile-bottom-nav .mobile-nav-item {
+    width: 100%;
+    min-width: 0;
+    min-height: 56px;
+    padding: 4px 1px;
+    border-radius: 8px;
+    font-size: clamp(.58rem,2.5vw,.72rem);
+    letter-spacing: 0;
+  }
+  .mobile-bottom-nav .mobile-nav-item::before {
+    left: 24%;
+    right: 24%;
+  }
+  .mobile-bottom-nav .mobile-nav-primary {
+    transform: translateY(-7px);
+    min-height: 63px;
+    border: 1px solid rgba(213,173,78,.42);
+    border-radius: 12px 12px 8px 8px;
+    background: linear-gradient(180deg, rgba(132,101,38,.38), rgba(22,31,67,.95));
+    box-shadow: 0 -5px 15px rgba(0,0,0,.24);
+  }
+  .mobile-bottom-nav .mobile-nav-primary .mobile-nav-icon {
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(240,198,82,.65);
+    border-radius: 50%;
+    background: rgba(5,12,42,.8);
+  }
+  .mobile-nav-icon {
+    font-size: 1rem;
+  }
+
+  .collection-page-filters-top {
+    position: static;
+  }
+  .horizontal-school-filters {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+  .level-filters.wide {
+    grid-template-columns: repeat(5,minmax(0,1fr));
+  }
+  .profile-identity-card,
+  .profile-mode-grid,
+  .profile-stat-grid,
+  .trophy-grid,
+  .profile-secondary-actions,
+  .multiplayer-config-grid {
+    grid-template-columns: 1fr;
+  }
+  .profile-school-stats {
+    grid-template-columns: repeat(5,minmax(0,1fr));
+  }
+  .profile-identity-card button {
+    width: 100%;
+  }
+}

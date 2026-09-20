@@ -138,6 +138,30 @@
 
   const tests = [
     {
+      name: "Profilo giocatore: statistiche e sei trofei richiesti vengono persistiti e sbloccati",
+      run() {
+        const profile = A.createDefaultProfile();
+        profile.playerName = "Tester";
+        for (let index = 0; index < 5; index += 1) {
+          A.recordProfileMatch(profile, { matchId: `single-win-${index}`, mode: "singlePlayer", result: "win", durationMs: index === 0 ? 4 * 60 * 1000 : 8 * 60 * 1000 });
+          A.recordProfileMatch(profile, { matchId: `multi-win-${index}`, mode: "multiplayer", result: "win", durationMs: 9 * 60 * 1000 });
+        }
+        for (let index = 0; index < 30; index += 1) {
+          A.recordProfileCardPlay(profile, { type: index % 2 ? "spell" : "creature", school: "water" });
+        }
+        A.recordProfileCombat(profile, { turnDamage: 20, damage: 20, lifeDrained: 100 });
+        const earned = new Set(profile.achievements);
+        ["multi-5-wins", "single-5-wins", "water-30-cards", "turn-20-damage", "speed-5-min", "drain-100-life"].forEach(id => {
+          assert(earned.has(id), `Trofeo non sbloccato: ${id}`);
+        });
+        assert(profile.stats.singlePlayer.wins === 5 && profile.stats.multiplayer.wins === 5, "Le vittorie per modalità devono essere separate");
+        assert(profile.stats.cardsBySchool.water === 30, "Le carte Acqua devono essere conteggiate");
+        assert(profile.stats.creaturesPlayed === 15 && profile.stats.spellsPlayed === 15, "Creature e magie devono essere conteggiate separatamente");
+        assert(profile.stats.fastestWinMs === undefined, "Il record veloce deve vivere nelle statistiche per modalità");
+        assert(profile.stats.singlePlayer.fastestWinMs === 4 * 60 * 1000, "La vittoria più veloce deve conservare il tempo minimo");
+      }
+    },
+    {
       name: "Protocollo multiplayer: comandi e replay producono lo stesso stato",
       run() {
         const first = engineWithHands();
