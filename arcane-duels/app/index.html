@@ -21,7 +21,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.21.0 · build 538ebf0</small>
+        <small class="app-version-badge" data-arcane-version>v0.21.1 · build 078dde4</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -434,7 +434,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.0 · build 538ebf0</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.1 · build 078dde4</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -505,7 +505,7 @@
   <script src="src/ui/navigation.js?v=3.0.2"></script>
   <script src="src/ui/pause-menu.js?v=3.0.17"></script>
   <script src="src/ui/tournament-view.js?v=3.0.18"></script>
-  <script src="src/ui/app.js?v=3.0.35"></script>
+  <script src="src/ui/app.js?v=3.0.36"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
@@ -519,7 +519,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=14", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=15", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {

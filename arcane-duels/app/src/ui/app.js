@@ -78,6 +78,7 @@
   let remoteRoomClient = null;
   let remoteRoomPoll = null;
   let remoteDuelActive = false;
+  let remoteRenderedSnapshotKey = "";
   let remoteRefreshBusy = false;
   let multiplayerServerStatus = "idle";
   let multiplayerServerCheckPromise = null;
@@ -368,9 +369,22 @@
     return oriented;
   }
 
-  function showRemoteBattle(response) {
+  function remoteSnapshotKey(response) {
+    if (!response?.state || !remoteRoomClient) return "";
+    return [
+      response.code || remoteRoomClient.code || "",
+      remoteRoomClient.side || "",
+      Number(response.sequence || 0),
+      response.checksum || ""
+    ].join("|");
+  }
+
+  function showRemoteBattle(response, options = {}) {
     clearPersistedLocalDuel();
-    if (!response?.state) return;
+    if (!response?.state) return false;
+    const snapshotKey = remoteSnapshotKey(response);
+    if (!options.force && snapshotKey && snapshotKey === remoteRenderedSnapshotKey) return false;
+    remoteRenderedSnapshotKey = snapshotKey;
     engine = A.GameEngine.fromSnapshot(
       orientRemoteSnapshot(response.state, remoteRoomClient.side),
       sessionSets["astral-original"]
@@ -406,6 +420,7 @@
       profile = A.loadProfile();
       renderPlayerProfile();
     }
+    return true;
   }
 
   async function refreshRemoteRoom() {
@@ -3236,6 +3251,7 @@
     setMultiplayerControlsDisabled(true);
     try {
       remoteRoomClient = createRemoteRoomClient();
+      remoteRenderedSnapshotKey = "";
       remoteMatchStartedAt = null;
       const response = await remoteRoomClient.create({
         ...onlineDuelOptions(),
@@ -3261,6 +3277,7 @@
     setMultiplayerControlsDisabled(true);
     try {
       remoteRoomClient = createRemoteRoomClient();
+      remoteRenderedSnapshotKey = "";
       remoteMatchStartedAt = null;
       const response = await remoteRoomClient.join(roomCode, {
         ...onlineDuelOptions(),
@@ -3278,7 +3295,7 @@
   $("#leaveOnlineRoomBtn")?.addEventListener("click", async () => {
     clearInterval(remoteRoomPoll); remoteRoomPoll = null;
     await remoteRoomClient?.disconnect().catch(() => {});
-    remoteRoomClient = null; remoteMatchStartedAt = null; saveRemoteRoom(); renderRemoteLobby(null);
+    remoteRoomClient = null; remoteRenderedSnapshotKey = ""; remoteMatchStartedAt = null; saveRemoteRoom(); renderRemoteLobby(null);
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
   });
   window.addEventListener("arcane:languagechange", () => {
@@ -3345,6 +3362,7 @@
     if (multiplayerEnabled && savedRoom?.code && savedRoom?.token) {
       restoredRemoteRoom = true;
       remoteRoomClient = createRemoteRoomClient();
+      remoteRenderedSnapshotKey = "";
       Object.assign(remoteRoomClient, savedRoom);
       remoteMatchStartedAt = Number(savedRoom.startedAt || 0) || null;
       switchView("multiplayer");
