@@ -115,7 +115,20 @@
       if (response.code) this.code = response.code;
       if (response.token) this.token = response.token;
       if (response.side) this.side = response.side;
-      if (Number.isFinite(Number(response.sequence))) this.sequence = Number(response.sequence);
+      const incomingSequence = Number(response.sequence);
+      const hasSequence = Number.isFinite(incomingSequence);
+      if (hasSequence && incomingSequence < this.sequence) {
+        return {
+          ...response,
+          stale: true,
+          sequence: this.sequence,
+          checksum: this.checksum,
+          state: this.state,
+          commands: [],
+          actions: []
+        };
+      }
+      if (hasSequence) this.sequence = incomingSequence;
       if (response.checksum) this.checksum = response.checksum;
       if (response.state) this.state = response.state;
       return response;
@@ -132,6 +145,7 @@
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: options.method || "GET",
         headers,
+        cache: "no-store",
         body: options.body === undefined ? undefined : JSON.stringify(options.body)
       });
       const payload = await response.json();

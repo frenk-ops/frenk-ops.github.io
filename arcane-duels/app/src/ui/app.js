@@ -946,6 +946,10 @@
 
   async function presentRemoteCommandResponse(response) {
     if (!response?.state) return false;
+    if (response.stale) {
+      showRemoteBattle(response, { force: true });
+      return false;
+    }
     if (!engine || !remoteDuelActive || !response.result) {
       showRemoteBattle(response, { force: true });
       return false;
@@ -1048,6 +1052,8 @@
     remoteRefreshBusy = true;
     try {
       let state = await remoteRoomClient.reconnect();
+      if (state.stale) return;
+      setMultiplayerServerState("online");
       applyRemoteLifecycle(state);
       const animateMissedActions = Boolean(
         state.ready
@@ -1072,18 +1078,19 @@
       saveRemoteRoom();
     }
     catch (error) {
-      clearInterval(remoteRoomPoll);
-      remoteRoomPoll = null;
       const staleRoom = [401, 404, 410].includes(Number(error?.status));
       if (staleRoom) {
+        stopRemoteTimers();
         remoteRoomClient = null;
         remoteRenderedSnapshotKey = "";
         remoteMatchStartedAt = null;
         saveRemoteRoom();
+        renderRemoteLobby(null);
+        setMultiplayerServerState("online");
+        if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+        return;
       }
-      renderRemoteLobby(null);
-      setMultiplayerServerState(staleRoom ? "online" : "offline");
-      if (staleRoom && $("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+      setMultiplayerServerState("offline");
     }
     finally { remoteRefreshBusy = false; }
   }
@@ -1094,6 +1101,12 @@
     remoteRoomPoll = setInterval(refreshRemoteRoom, 1200);
     remoteHeartbeatTimer = setInterval(heartbeatRemoteRoom, 5000);
     heartbeatRemoteRoom();
+  }
+
+  function resumeRemoteSynchronization() {
+    if (!remoteRoomClient?.code || !remoteRoomClient?.token) return;
+    beginRemotePolling();
+    refreshRemoteRoom();
   }
 
   async function resolveRemoteMove(type, payload = {}) {
@@ -4550,6 +4563,7 @@
       busy = false;
       renderGame();
     }
+    resumeRemoteSynchronization();
   });
   window.addEventListener("pagehide", () => {
     clearMobileHandGesture();
@@ -4567,5 +4581,6 @@
       busy = false;
       renderGame();
     }
+    resumeRemoteSynchronization();
   });
 })(window.Arcane = window.Arcane || {});
