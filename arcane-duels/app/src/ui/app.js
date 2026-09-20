@@ -3522,6 +3522,8 @@
   let renderedHandEngine = null;
   let mobileHandGesture = null;
   let mobileHoldGesture = null;
+  const MOBILE_HOLD_PREVIEW_DELAY = 300;
+  const MOBILE_DRAG_START_DISTANCE = 12;
 
   function isMobileDuelLayout() {
     return window.matchMedia?.("(max-width: 820px)").matches && !$("#battlePanel")?.classList.contains("hidden");
@@ -3564,6 +3566,25 @@
     inspect.setAttribute("aria-hidden", "false");
   }
 
+  function releaseMobilePointerCapture(gesture) {
+    const target = gesture?.captureTarget;
+    if (!target || !gesture?.pointerId || typeof target.releasePointerCapture !== "function") return;
+    try {
+      if (typeof target.hasPointerCapture !== "function" || target.hasPointerCapture(gesture.pointerId)) {
+        target.releasePointerCapture(gesture.pointerId);
+      }
+    } catch (error) {}
+  }
+
+  function captureMobilePointer(event, gesture) {
+    const target = event.currentTarget;
+    if (!target || typeof target.setPointerCapture !== "function") return;
+    try {
+      target.setPointerCapture(event.pointerId);
+      gesture.captureTarget = target;
+    } catch (error) {}
+  }
+
   function clearMobileHoldPreview() {
     const gesture = mobileHoldGesture;
     if (!gesture) {
@@ -3571,15 +3592,19 @@
       return;
     }
     clearTimeout(gesture.holdTimer);
-    document.removeEventListener("pointermove", gesture.move);
-    document.removeEventListener("pointerup", gesture.end);
-    document.removeEventListener("pointercancel", gesture.cancel);
+    document.removeEventListener("pointermove", gesture.move, true);
+    document.removeEventListener("pointerup", gesture.end, true);
+    document.removeEventListener("pointercancel", gesture.cancel, true);
+    releaseMobilePointerCapture(gesture);
     hideMobileCardInspect();
     mobileHoldGesture = null;
   }
 
   function startMobileHoldPreview(event, card, side = "player") {
-    if (!isMobileDuelLayout() || event.button !== 0 || mobileHoldGesture || mobileHandGesture || !card) return;
+    if (!isMobileDuelLayout() || event.button !== 0 || !card) return;
+    if (event.pointerType === "touch" && event.isPrimary === false) return;
+    if (mobileHoldGesture) clearMobileHoldPreview();
+    if (mobileHandGesture) return;
     event.preventDefault();
     const gesture = {
       pointerId: event.pointerId,
@@ -3588,19 +3613,21 @@
       previewing: false,
       moved: false,
       holdTimer: null,
+      captureTarget: null,
       move: null,
       end: null,
       cancel: clearMobileHoldPreview
     };
+    captureMobilePointer(event, gesture);
     gesture.holdTimer = setTimeout(() => {
       if (mobileHoldGesture !== gesture || gesture.moved) return;
       gesture.previewing = true;
       showMobileCardInspect(card, side);
-    }, 300);
+    }, MOBILE_HOLD_PREVIEW_DELAY);
     gesture.move = moveEvent => {
       if (moveEvent.pointerId !== gesture.pointerId) return;
       const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
-      if (distance < 12 || gesture.previewing) return;
+      if (distance < MOBILE_DRAG_START_DISTANCE || gesture.previewing) return;
       gesture.moved = true;
       clearTimeout(gesture.holdTimer);
     };
@@ -3609,9 +3636,9 @@
       clearMobileHoldPreview();
     };
     mobileHoldGesture = gesture;
-    document.addEventListener("pointermove", gesture.move, { passive: false });
-    document.addEventListener("pointerup", gesture.end);
-    document.addEventListener("pointercancel", gesture.cancel);
+    document.addEventListener("pointermove", gesture.move, { passive: false, capture: true });
+    document.addEventListener("pointerup", gesture.end, true);
+    document.addEventListener("pointercancel", gesture.cancel, true);
   }
 
   function clearMobileHandGesture() {
@@ -3621,9 +3648,10 @@
       return;
     }
     clearTimeout(gesture.holdTimer);
-    document.removeEventListener("pointermove", gesture.move);
-    document.removeEventListener("pointerup", gesture.end);
-    document.removeEventListener("pointercancel", gesture.cancel);
+    document.removeEventListener("pointermove", gesture.move, true);
+    document.removeEventListener("pointerup", gesture.end, true);
+    document.removeEventListener("pointercancel", gesture.cancel, true);
+    releaseMobilePointerCapture(gesture);
     $$("#playerBoard .mobile-drop-hover").forEach(node => node.classList.remove("mobile-drop-hover"));
     $("#battlePanel")?.classList.remove("mobile-drag-creature", "mobile-drag-spell");
     $("#mobileDragGhost")?.classList.add("hidden");
@@ -3631,11 +3659,33 @@
     mobileHandGesture = null;
   }
 
-  function startMobileHandGesture(event, card, playable) {
-    if (!isMobileDuelLayout() || event.button !== 0 || mobileHandGesture) return;
-    event.preventDefault();
+  function beginMobileHandDrag(gesture, card, x, y) {
+    if (!gesture?.canDrag || gesture.dragging) return false;
+    gesture.previewing = false;
+    gesture.dragging = true;
+    clearTimeout(gesture.holdTimer);
+    hideMobileCardInspect();
     const ghost = $("#mobileDragGhost");
-    const panel = $("#battlePanel");
+    ghost?.replaceChildren(buildArtBlock(card, "mobileDrag"));
+    ghost?.classList.remove("hidden");
+    $("#battlePanel")?.classList.add(card.type === "spell" ? "mobile-drag-spell" : "mobile-drag-creature");
+    if (ghost) {
+      ghost.style.left = `${x}px`;
+      ghost.style.top = `${y}px`;
+    }
+    return true;
+  }
+
+  function startMobileHandGesture(event, card, playable) {
+    if (!isMobileDuelLayout() || event.button !== 0) return;
+    if (event.pointerType === "touch" && event.isPrimary === false) return;
+    // A fresh primary pointer always supersedes any stale gesture left by a
+    // rerender/page lifecycle transition. This prevents the next card from
+    // becoming undraggable after the previous play.
+    if (mobileHandGesture) clearMobileHandGesture();
+    if (mobileHoldGesture) clearMobileHoldPreview();
+
+    event.preventDefault();
     const gesture = {
       pointerId: event.pointerId,
       cardId: card.id,
@@ -3645,34 +3695,35 @@
       previewing: false,
       canDrag: Boolean(playable),
       holdTimer: null,
+      captureTarget: null,
       move: null,
       end: null,
       cancel: clearMobileHandGesture
     };
+    captureMobilePointer(event, gesture);
     gesture.holdTimer = setTimeout(() => {
       if (mobileHandGesture !== gesture || gesture.dragging) return;
       gesture.previewing = true;
       showMobileCardInspect(card, "player");
-    }, 300);
+    }, MOBILE_HOLD_PREVIEW_DELAY);
+
     gesture.move = moveEvent => {
       if (moveEvent.pointerId !== gesture.pointerId) return;
       const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
-      if (!gesture.dragging && distance < 11) return;
-      moveEvent.preventDefault();
-      if (gesture.previewing && !gesture.canDrag) return;
+      if (!gesture.dragging && distance < MOBILE_DRAG_START_DISTANCE) return;
+      if (moveEvent.cancelable) moveEvent.preventDefault();
       clearTimeout(gesture.holdTimer);
-      if (!gesture.canDrag) return;
-      if (gesture.previewing) {
-        gesture.previewing = false;
-        hideMobileCardInspect();
+
+      if (!gesture.canDrag) {
+        gesture.moved = true;
+        return;
       }
-      if (!gesture.dragging) {
-        gesture.dragging = true;
-        hideMobileCardInspect();
-        ghost?.replaceChildren(buildArtBlock(card, "mobileDrag"));
-        ghost?.classList.remove("hidden");
-        panel?.classList.add(card.type === "spell" ? "mobile-drag-spell" : "mobile-drag-creature");
-      }
+
+      // Hold is only a temporary inspection state. Once the finger travels
+      // past the drag threshold, the same pointer seamlessly becomes a drag.
+      if (!gesture.dragging) beginMobileHandDrag(gesture, card, moveEvent.clientX, moveEvent.clientY);
+
+      const ghost = $("#mobileDragGhost");
       if (ghost) {
         ghost.style.left = `${moveEvent.clientX}px`;
         ghost.style.top = `${moveEvent.clientY}px`;
@@ -3683,24 +3734,34 @@
           ?.closest("#playerBoard .slot")?.classList.add("mobile-drop-hover");
       }
     };
+
     gesture.end = async endEvent => {
       if (endEvent.pointerId !== gesture.pointerId) return;
+      const x = endEvent.clientX;
+      const y = endEvent.clientY;
+      const releaseDistance = Math.hypot(x - gesture.startX, y - gesture.startY);
+
+      // iOS can occasionally coalesce the last pointermove after a long hold.
+      // Promote the release itself to a drag when it crossed the threshold.
+      if (!gesture.dragging && gesture.canDrag && releaseDistance >= MOBILE_DRAG_START_DISTANCE) {
+        beginMobileHandDrag(gesture, card, x, y);
+      }
+
       const wasDragging = gesture.dragging;
       const wasPreviewing = gesture.previewing;
       const canDrag = gesture.canDrag;
-      const x = endEvent.clientX;
-      const y = endEvent.clientY;
       const slotCell = card.type === "creature"
         ? document.elementFromPoint(x, y)?.closest("#playerBoard .slot")
         : null;
       const battlefield = $(".classic-battlefield")?.getBoundingClientRect();
       const insideBattlefield = battlefield && x >= battlefield.left && x <= battlefield.right
         && y >= battlefield.top && y <= battlefield.bottom;
+
       clearMobileHandGesture();
       if (!engine || !isMobileDuelLayout()) return;
 
-      // Hearthstone-like mobile interaction: hold = preview until release, drag = play.
-      if (wasPreviewing) return;
+      // Hold without movement is inspection only. Hold + movement is drag.
+      if (wasPreviewing && !wasDragging) return;
       if (!wasDragging) {
         inspectedCardId = card.id;
         inspectedCardSide = "player";
@@ -3723,10 +3784,11 @@
           && engine.state.phase === A.PHASES.PLAYER_TARGET) await onPlayerCard(card.id);
       }
     };
+
     mobileHandGesture = gesture;
-    document.addEventListener("pointermove", gesture.move, { passive: false });
-    document.addEventListener("pointerup", gesture.end);
-    document.addEventListener("pointercancel", gesture.cancel);
+    document.addEventListener("pointermove", gesture.move, { passive: false, capture: true });
+    document.addEventListener("pointerup", gesture.end, true);
+    document.addEventListener("pointercancel", gesture.cancel, true);
   }
 
   function renderHand() {
@@ -4331,7 +4393,12 @@
   }
 
   async function presentResolutionBeforeUpdate(result, before) {
-    const cardIdentityShown = showCardResolutionIdentityFx(result);
+    let cardIdentityShown = false;
+    try {
+      cardIdentityShown = showCardResolutionIdentityFx(result);
+    } catch (error) {
+      console.warn("Card presentation effect failed", error);
+    }
     showResolvedEffectDamage(result);
     showResolutionDeaths(result);
     (result?.events || []).filter(event => event.type === "astralFireAura").forEach(event => {
