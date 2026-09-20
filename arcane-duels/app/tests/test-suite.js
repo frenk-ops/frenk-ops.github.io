@@ -1148,6 +1148,99 @@
       }
     },
     {
+      name: "Modificatori periodici: l'evocazione cambia la crescita ma non applica subito i Poteri",
+      run() {
+        const periodicIds = [
+          "astral_fire_07", "astral_fire_10",
+          "astral_water_09", "astral_water_10", "astral_water_11", "astral_water_12", "astral_water_13",
+          "astral_air_03", "astral_air_10", "astral_air_11",
+          "astral_earth_05", "astral_earth_07", "astral_earth_11",
+          "astral_death_05"
+        ];
+        periodicIds.forEach(cardId => {
+          const engine = astralEngine([cardId], ["astral_fire_02"]);
+          ["player", "enemy"].forEach(side => A.SCHOOLS.forEach(school => {
+            engine.state[side].power[school.id] = 5;
+            engine.state[side].powerGain[school.id] = 1;
+          }));
+          const unit = placeAstralUnit(engine, "player", cardId, 0);
+          const beforePlayer = { ...engine.state.player.power };
+          const beforeEnemy = { ...engine.state.enemy.power };
+          const summonEvents = [];
+          A.astralOnSummon(engine, "player", unit, summonEvents);
+          assert(A.SCHOOLS.every(school => engine.state.player.power[school.id] === beforePlayer[school.id]), `${cardId}: Poteri propri applicati subito`);
+          assert(A.SCHOOLS.every(school => engine.state.enemy.power[school.id] === beforeEnemy[school.id]), `${cardId}: Poteri nemici applicati subito`);
+          assert(unit.astralPowerModifiers.length > 0, `${cardId}: nessun modificatore periodico registrato`);
+
+          const targetSides = [...new Set(unit.astralPowerModifiers.map(mod => mod.targetSide))];
+          targetSides.forEach(targetSide => {
+            const growthEvents = [];
+            A.astralGrowPowers(engine, targetSide, growthEvents);
+            const growth = growthEvents.find(event => event.type === "astralPowerGrowth");
+            assert(growth, `${cardId}: evento crescita mancante per ${targetSide}`);
+            const expected = unit.astralPowerModifiers.filter(mod => mod.targetSide === targetSide);
+            const sources = growth.sources.filter(source => source.sourceCardId === cardId);
+            assert(sources.length === expected.length, `${cardId}: sorgenti crescita ${sources.length}/${expected.length}`);
+            expected.forEach(mod => assert(
+              sources.some(source => source.school === mod.school && source.amount === mod.delta),
+              `${cardId}: sorgente ${mod.school} ${mod.delta} mancante`
+            ));
+          });
+        });
+      }
+    },
+    {
+      name: "Demon: +1 Fuoco si applica solo alla crescita del turno successivo",
+      run() {
+        const engine = astralEngine(["astral_death_05"], ["astral_fire_02"]);
+        ["player", "enemy"].forEach(side => A.SCHOOLS.forEach(school => {
+          engine.state[side].power[school.id] = 5;
+          engine.state[side].powerGain[school.id] = 1;
+        }));
+        const demon = placeAstralUnit(engine, "player", "astral_death_05", 0);
+        A.astralOnSummon(engine, "player", demon, []);
+        assert(engine.state.player.power.fire === 5, `Demon ha applicato subito Fuoco: ${engine.state.player.power.fire}`);
+        assert(engine.state.player.powerGain.fire === 2, `Demon crescita Fuoco: ${engine.state.player.powerGain.fire}`);
+
+        engine.state.phase = A.PHASES.PLAYER_ATTACK;
+        const enemyTurn = engine.finishAttack("player");
+        assert(enemyTurn.ok && engine.state.player.power.fire === 5, "Demon ha applicato il bonus durante la crescita avversaria");
+
+        engine.state.phase = A.PHASES.ENEMY_ATTACK;
+        const playerTurn = engine.finishAttack("enemy");
+        assert(playerTurn.ok && engine.state.player.power.fire === 7, `Demon crescita successiva: ${engine.state.player.power.fire}`);
+        const growth = playerTurn.events.find(event => event.type === "astralPowerGrowth");
+        assert(growth?.baseGain === 1, `Demon baseGain: ${growth?.baseGain}`);
+        assert(growth?.sources.some(source => source.sourceCardId === "astral_death_05" && source.school === "fire" && source.amount === 1), "Demon non espone +1 Fuoco come sorgente separata");
+      }
+    },
+    {
+      name: "Ocean Master: bonus e malus Acqua scattano solo alla crescita del lato interessato",
+      run() {
+        const engine = astralEngine(["astral_water_09"], ["astral_fire_02"]);
+        ["player", "enemy"].forEach(side => A.SCHOOLS.forEach(school => {
+          engine.state[side].power[school.id] = 5;
+          engine.state[side].powerGain[school.id] = 1;
+        }));
+        const ocean = placeAstralUnit(engine, "player", "astral_water_09", 0);
+        A.astralOnSummon(engine, "player", ocean, []);
+        assert(engine.state.player.power.water === 5 && engine.state.enemy.power.water === 5, "Ocean Master ha modificato subito il Potere Acqua");
+        assert(engine.state.player.powerGain.water === 2 && engine.state.enemy.powerGain.water === 0, "Ocean Master non ha registrato i due modificatori");
+
+        engine.state.phase = A.PHASES.PLAYER_ATTACK;
+        const enemyTurn = engine.finishAttack("player");
+        assert(engine.state.enemy.power.water === 5, `Ocean Master crescita Acqua nemica: ${engine.state.enemy.power.water}`);
+        const enemyGrowth = enemyTurn.events.find(event => event.type === "astralPowerGrowth");
+        assert(enemyGrowth?.sources.some(source => source.sourceCardId === "astral_water_09" && source.targetSide === "enemy" && source.school === "water" && source.amount === -1), "Ocean Master malus nemico non attribuito");
+
+        engine.state.phase = A.PHASES.ENEMY_ATTACK;
+        const playerTurn = engine.finishAttack("enemy");
+        assert(engine.state.player.power.water === 7, `Ocean Master crescita Acqua propria: ${engine.state.player.power.water}`);
+        const playerGrowth = playerTurn.events.find(event => event.type === "astralPowerGrowth");
+        assert(playerGrowth?.sources.some(source => source.sourceCardId === "astral_water_09" && source.targetSide === "player" && source.school === "water" && source.amount === 1), "Ocean Master bonus proprio non attribuito");
+      }
+    },
+    {
       name: "A fine attacco cresce solo il potere del prossimo giocatore",
       run() {
         const engine = astralEngine(["astral_fire_01"], ["astral_water_01"]);

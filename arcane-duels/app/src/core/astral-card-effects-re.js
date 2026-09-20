@@ -652,17 +652,55 @@
     return { events, event: primaryEvent, skipped: false, damage, multiTarget: Boolean(cardMeta?.multiTarget) };
   }
 
+  function growthModifierSources(engine, targetSide) {
+    const sources = [];
+    ["player", "enemy"].forEach(ownerSide => {
+      fighter(engine, ownerSide).board.forEach((unit, slot) => {
+        if (!unit || unit.currentHealth <= 0) return;
+        (unit.astralPowerModifiers || []).forEach(modifier => {
+          const amount = Math.trunc(modifier?.delta || 0);
+          if (!amount || modifier?.targetSide !== targetSide || !modifier?.school) return;
+          sources.push({
+            sourceSide: ownerSide,
+            sourceCardId: unit.id,
+            sourceInstanceId: unit.instanceId,
+            sourceSlot: slot,
+            targetSide,
+            school: modifier.school,
+            amount
+          });
+        });
+      });
+    });
+    return sources;
+  }
+
   function growPowers(engine, side, events) {
     const target = fighter(engine, side);
+    const beforePower = A.deepClone(target.power);
+    const gain = A.deepClone(target.powerGain);
+    const sources = growthModifierSources(engine, side);
+    const applied = {};
     A.SCHOOLS.forEach(school => {
-      const gain = Math.trunc(target.powerGain[school.id] || 0);
-      target.power[school.id] = Math.max(0, Math.min(engine.rules.maxPower, (target.power[school.id] || 0) + gain));
+      const growth = Math.trunc(target.powerGain[school.id] || 0);
+      const before = Number(target.power[school.id] || 0);
+      target.power[school.id] = Math.max(0, Math.min(engine.rules.maxPower, before + growth));
+      applied[school.id] = target.power[school.id] - before;
     });
     // Il controllo di Healing Aura (abilità 26) segue immediatamente la crescita
     // dei cinque poteri nella routine originale 0x44AE65–0x44AECD.
     if (target.passives?.includes("healing_aura")) healHero(engine, side, 2, "healing_aura", events);
     target.flags.cardPlayedThisTurn = false;
-    events?.push({ type: "astralPowerGrowth", side, power: A.deepClone(target.power), gain: A.deepClone(target.powerGain) });
+    events?.push({
+      type: "astralPowerGrowth",
+      side,
+      beforePower,
+      power: A.deepClone(target.power),
+      gain,
+      applied,
+      baseGain: Math.trunc(engine.rules.basePowerGain || 0),
+      sources
+    });
   }
 
   function previewCardValue(engine, side, card) {

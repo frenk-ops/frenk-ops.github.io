@@ -1151,10 +1151,11 @@
 
     if (type === A.MULTIPLAYER_COMMANDS.FINISH_ATTACK && result?.ok) {
       const healingShown = showHealingChanges(before, result);
-      const powerShown = showPowerValueChanges(before);
+      const powerShown = showPowerGrowthFeedback(result, before);
       const attackShown = showUnitAttackChanges(before);
-      if (healingShown + powerShown + attackShown > 0) await sleep(reducedMotion ? 0 : 460);
+      if (healingShown + powerShown + attackShown > 0) await sleep(reducedMotion ? 0 : 520);
       renderGame();
+      recordPowerGrowth(result);
       return true;
     }
 
@@ -2662,6 +2663,72 @@
     return localized;
   }
 
+  function groupedPowerGrowthSources(growthEvent) {
+    const groups = new Map();
+    (growthEvent?.sources || []).forEach(source => {
+      const amount = Number(source?.amount || 0);
+      if (!amount || !source?.sourceCardId || !source?.school) return;
+      const key = `${source.sourceSide || ""}|${source.sourceCardId}|${source.targetSide || growthEvent.side || ""}`;
+      let group = groups.get(key);
+      if (!group) {
+        group = {
+          sourceSide: source.sourceSide,
+          sourceCardId: source.sourceCardId,
+          targetSide: source.targetSide || growthEvent.side,
+          schools: {}
+        };
+        groups.set(key, group);
+      }
+      group.schools[source.school] = Number(group.schools[source.school] || 0) + amount;
+    });
+    return [...groups.values()];
+  }
+
+  function recordPowerGrowth(result) {
+    const events = result?.events || [];
+    const growth = events.find(event => event.type === "astralPowerGrowth");
+    if (!growth) return;
+
+    const baseGain = Number(growth.baseGain || 0);
+    if (baseGain) {
+      pushPresentationLog("log.powerGrowthBase", {
+        targetSide: growth.side,
+        amount: Math.abs(baseGain)
+      });
+    }
+
+    groupedPowerGrowthSources(growth).forEach(group => {
+      const nonZero = A.SCHOOLS
+        .map(school => ({ schoolId: school.id, amount: Number(group.schools[school.id] || 0) }))
+        .filter(item => item.amount !== 0);
+      const allSame = nonZero.length === A.SCHOOLS.length
+        && new Set(nonZero.map(item => item.amount)).size === 1;
+      if (allSame) {
+        const amount = nonZero[0].amount;
+        pushPresentationLog(amount > 0 ? "log.powerGrowthSourceAllGain" : "log.powerGrowthSourceAllLoss", {
+          sourceCardId: group.sourceCardId,
+          amount: Math.abs(amount)
+        });
+        return;
+      }
+      nonZero.forEach(item => {
+        pushPresentationLog(item.amount > 0 ? "log.powerGrowthSourceGain" : "log.powerGrowthSourceLoss", {
+          sourceCardId: group.sourceCardId,
+          schoolId: item.schoolId,
+          amount: Math.abs(item.amount)
+        });
+      });
+    });
+
+    events.filter(event => event.type === "astralHealHero").forEach(event => {
+      pushPresentationLog("log.healHero", {
+        sourceName: event.reason === "healing_aura" ? t("effect.healingAura") : event.reason,
+        targetSide: event.side,
+        amount: event.amount
+      });
+    });
+  }
+
   function renderPresentationLog() {
     const root = $("#combatLog");
     if (root) {
@@ -2681,25 +2748,28 @@
       cardName: result.card.name
     });
     (result.events || []).forEach(event => {
-      if (event.type === "astralHeroDamage") {
+      if (["astralHeroDamage", "heroDamage"].includes(event.type)) {
+        const amount = Number(event.amount ?? event.damage ?? 0);
+        const gross = Number(event.modifiedAmount ?? amount);
+        const resolved = Number(event.resolvedAmount ?? amount);
         const vars = {
           sourceCardId: result.card.id,
           sourceName: result.card.name,
-          targetSide: event.targetSide,
-          amount: event.amount,
-          gross: event.modifiedAmount
+          targetSide: event.targetSide || event.side,
+          amount,
+          gross
         };
-        pushPresentationLog(event.modifiedAmount > event.resolvedAmount ? "log.damageHeroReduced" : "log.damageHero", vars);
-      } else if (event.type === "astralCreatureDamage") {
+        pushPresentationLog(gross > resolved ? "log.damageHeroReduced" : "log.damageHero", vars);
+      } else if (["astralCreatureDamage", "creatureDamage"].includes(event.type)) {
         if (event.reason === "astral_nets") return;
         pushPresentationLog("log.damageCreature", {
           sourceCardId: result.card.id,
           sourceName: result.card.name,
           targetCardId: event.targetId,
           targetName: event.targetId,
-          amount: event.amount
+          amount: Number(event.amount ?? event.damage ?? 0)
         });
-      } else if (event.type === "astralHealHero") {
+      } else if (["astralHealHero", "heroHeal"].includes(event.type)) {
         const reactiveSourceIds = {
           wall_of_souls: "astral_death_09",
           souldrinker: null,
@@ -2764,7 +2834,22 @@
 
   function recordAttackSecondaryEffects(result) {
     (result?.events || []).forEach(event => {
-      if (event.type === "astralVampireHeal") {
+      if (["astralHeroDamage", "heroDamage"].includes(event.type) && event.sourceKind === "effect") {
+        pushPresentationLog("log.damageHero", {
+          sourceCardId: event.sourceId || event.reason,
+          sourceName: event.sourceName || event.reason,
+          targetSide: event.targetSide || event.side,
+          amount: Number(event.amount ?? event.damage ?? 0)
+        });
+      } else if (["astralCreatureDamage", "creatureDamage"].includes(event.type) && event.sourceKind === "effect" && event.reason !== "astral_nets") {
+        pushPresentationLog("log.damageCreature", {
+          sourceCardId: event.sourceId || event.reason,
+          sourceName: event.sourceName || event.reason,
+          targetCardId: event.targetId,
+          targetName: event.targetId,
+          amount: Number(event.amount ?? event.damage ?? 0)
+        });
+      } else if (event.type === "astralVampireHeal") {
         pushPresentationLog("log.vampireHeal", { sourceCardId: "astral_death_11", amount: event.amount });
       } else if (event.type === "astralDeath") {
         pushPresentationLog("log.death", { targetCardId: event.cardId, targetName: event.cardName });
@@ -3731,15 +3816,6 @@
     });
   }
 
-  function showPowerGainChanges(before) {
-    if (!before || !engine) return;
-    ["player", "enemy"].forEach(side => A.SCHOOLS.forEach(school => {
-      const previous = Number(before[side]?.powerGain?.[school.id] || 0);
-      const current = Number(engine.state[side].powerGain?.[school.id] || 0);
-      if (current !== previous) showPowerGainChange(side, school.id, current - previous);
-    }));
-  }
-
   function showPowerValueChanges(before) {
     if (!before || !engine) return 0;
     let shown = 0;
@@ -3751,37 +3827,63 @@
     return shown;
   }
 
-  function showPowerGainChange(side, schoolId, amount) {
-    const root = side === "player" ? $("#schoolFilters") : $("#enemySchoolMenu");
-    const parent = root?.querySelector(`[data-school-id="${schoolId}"]`);
-    if (!parent || !amount) return false;
-    parent.classList.add("effect-power-change", amount > 0 ? "power-gain" : "power-loss");
-    const badge = document.createElement("span");
-    badge.className = `effect-power-number rate ${amount > 0 ? "gain" : "loss"}`;
-    badge.textContent = `${amount > 0 ? "+" : "−"}${Math.abs(amount)}/${t("effect.turnShort")}`;
-    parent.appendChild(badge);
-    setTimeout(() => {
-      badge.remove();
-      parent.classList.remove("effect-power-change", "power-gain", "power-loss");
-    }, fxDuration(1650) || 40);
-    return true;
-  }
-
-  function showPowerChange(side, schoolId, amount) {
+  function showPowerChange(side, schoolId, amount, options = {}) {
     if (!amount) return false;
     const root = side === "player" ? $("#schoolFilters") : $("#enemySchoolMenu");
     const parent = root?.querySelector(`[data-school-id="${schoolId}"]`);
     if (!parent) return false;
     parent.classList.add("effect-power-change", amount > 0 ? "power-gain" : "power-loss");
     const badge = document.createElement("span");
-    badge.className = `effect-power-number ${amount > 0 ? "gain" : "loss"}`;
-    badge.textContent = `${amount > 0 ? "+" : "−"}${Math.abs(amount)}`;
+    badge.className = `effect-power-number ${amount > 0 ? "gain" : "loss"}${options.source ? " source-modifier" : ""}`;
+    badge.style.setProperty("--power-badge-index", String(Number(options.index || 0)));
+    badge.textContent = options.label || `${amount > 0 ? "+" : "−"}${Math.abs(amount)}`;
+    if (options.sourceCardId) badge.dataset.sourceCardId = options.sourceCardId;
     parent.appendChild(badge);
     setTimeout(() => {
       badge.remove();
-      parent.classList.remove("effect-power-change", "power-gain", "power-loss");
-    }, fxDuration(1500) || 40);
+      if (!parent.querySelector(".effect-power-number")) {
+        parent.classList.remove("effect-power-change", "power-gain", "power-loss");
+      }
+    }, fxDuration(options.duration || 1500) || 40);
     return true;
+  }
+
+  function showPowerGrowthFeedback(result, before) {
+    const growth = (result?.events || []).find(event => event.type === "astralPowerGrowth");
+    if (!growth) return showPowerValueChanges(before);
+
+    const grouped = groupedPowerGrowthSources(growth);
+    let shown = 0;
+    A.SCHOOLS.forEach(school => {
+      let index = 0;
+      const baseGain = Number(growth.baseGain || 0);
+      if (baseGain && showPowerChange(growth.side, school.id, baseGain, {
+        index: index++,
+        duration: 1650
+      })) shown += 1;
+
+      let sourceSum = 0;
+      grouped.forEach(group => {
+        const amount = Number(group.schools[school.id] || 0);
+        if (!amount) return;
+        sourceSum += amount;
+        if (showPowerChange(growth.side, school.id, amount, {
+          index: index++,
+          duration: 1750,
+          source: true,
+          sourceCardId: group.sourceCardId,
+          label: `${amount > 0 ? "+" : "−"}${Math.abs(amount)} ${schoolName(school.id)}`
+        })) shown += 1;
+      });
+
+      const totalGain = Number(growth.gain?.[school.id] || 0);
+      const residual = totalGain - baseGain - sourceSum;
+      if (residual && showPowerChange(growth.side, school.id, residual, {
+        index: index++,
+        duration: 1650
+      })) shown += 1;
+    });
+    return shown;
   }
 
   function showResolutionPowerChanges(result, before) {
@@ -3800,11 +3902,7 @@
         if (showPowerChange(event.side, event.school, Number(event.amount || 0))) shown += 1;
       }
     });
-    const beforeRates = ["player", "enemy"].flatMap(side => A.SCHOOLS.map(school =>
-      Number(before?.[side]?.powerGain?.[school.id] || 0) !== Number(engine.state[side].powerGain?.[school.id] || 0)
-    )).filter(Boolean).length;
-    showPowerGainChanges(before);
-    return shown + beforeRates;
+    return shown;
   }
 
   function showUnitAttackChanges(before) {
@@ -3960,12 +4058,13 @@
       await sleep(260);
     }
     const finishHealthBefore = captureHealthState();
-    issueDuelCommand(side, A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
-    const finishHealingShown = showHealingChanges(finishHealthBefore);
-    const finishPowerShown = showPowerValueChanges(finishHealthBefore);
+    const finishResult = issueDuelCommand(side, A.MULTIPLAYER_COMMANDS.FINISH_ATTACK);
+    const finishHealingShown = showHealingChanges(finishHealthBefore, finishResult);
+    const finishPowerShown = showPowerGrowthFeedback(finishResult, finishHealthBefore);
     const finishAttackShown = showUnitAttackChanges(finishHealthBefore);
-    if (finishHealingShown + finishPowerShown + finishAttackShown > 0) await sleep(reducedMotion ? 0 : 460);
+    if (finishHealingShown + finishPowerShown + finishAttackShown > 0) await sleep(reducedMotion ? 0 : 520);
     renderGame();
+    recordPowerGrowth(finishResult);
 
     if (engine.state.gameOver) {
       busy = false;
