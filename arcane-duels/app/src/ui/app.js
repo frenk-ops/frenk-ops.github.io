@@ -1996,14 +1996,10 @@
   function renderBoard(side, visualSnapshot = null) {
     const root = $("#" + side + "Board");
     const fighter = engine.state[side];
-    const compactEnemy = side === "enemy" && !window.matchMedia?.("(max-width: 820px)")?.matches;
-    const logicalEntries = fighter.board.map((unit, slot) => ({ unit, slot }));
-    const entries = compactEnemy
-      ? [
-          ...logicalEntries.filter(entry => entry.unit),
-          ...logicalEntries.filter(entry => !entry.unit)
-        ]
-      : logicalEntries;
+    // A lane is part of the authoritative game state. Never compact occupied
+    // enemy lanes for presentation: doing so makes a surviving unit appear to
+    // move when a lower-numbered lane becomes empty.
+    const entries = fighter.board.map((unit, slot) => ({ unit, slot }));
 
     entries.forEach((entry, displayIndex) => {
       const { unit, slot } = entry;
