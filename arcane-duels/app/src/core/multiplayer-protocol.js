@@ -84,6 +84,7 @@
       if (!engine?.snapshot || !engine?.state) throw new Error("È richiesto un GameEngine valido.");
       this.engine = engine;
       this.matchId = String(options.matchId || `duel:${engine.state.seed}`);
+      this.protocolVersion = Number(options.protocolVersion || PROTOCOL_VERSION);
       this.sequence = Number(options.sequence || 0);
       this.initialSnapshot = A.deepClone(options.initialSnapshot || engine.snapshot());
       this.history = [];
@@ -95,7 +96,7 @@
 
     createCommand(actor, type, payload = {}) {
       return {
-        protocolVersion: PROTOCOL_VERSION,
+        protocolVersion: this.protocolVersion,
         matchId: this.matchId,
         sequence: this.sequence + 1,
         actor,
@@ -115,7 +116,7 @@
       };
 
       if (!command || typeof command !== "object") return reject("Comando non valido.");
-      if (command.protocolVersion !== PROTOCOL_VERSION) return reject("Versione del protocollo incompatibile.");
+      if (command.protocolVersion !== this.protocolVersion) return reject("Versione del protocollo incompatibile.");
       if (command.matchId !== this.matchId) return reject("Il comando appartiene a un'altra partita.");
       if (command.sequence !== this.sequence + 1) return reject("Sequenza del comando non valida.");
       if (command.previousChecksum !== beforeChecksum) return reject("Stato desincronizzato.");
@@ -149,7 +150,7 @@
 
     exportReplay() {
       return {
-        protocolVersion: PROTOCOL_VERSION,
+        protocolVersion: this.protocolVersion,
         matchId: this.matchId,
         initialSnapshot: A.deepClone(this.initialSnapshot),
         commands: A.deepClone(this.history),
@@ -163,6 +164,7 @@
     const engine = A.GameEngine.fromSnapshot(replay.initialSnapshot, cards);
     const session = new CommandSession(engine, {
       matchId: replay.matchId,
+      protocolVersion: replay.protocolVersion,
       initialSnapshot: replay.initialSnapshot
     });
     for (const command of replay.commands || []) {

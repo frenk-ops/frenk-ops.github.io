@@ -24,6 +24,16 @@
       };
     }
 
+    async listRooms(options = {}) {
+      const params = new URLSearchParams({
+        clientVersion: this.compatibilityVersion,
+        gameVersion: this.clientVersion,
+        protocolVersion: String(this.protocolVersion),
+        availableOnly: options.availableOnly === false ? "0" : "1"
+      });
+      return this.request(`/api/rooms?${params}`);
+    }
+
     async create(options = {}) {
       return this.accept(await this.request("/api/rooms", {
         method: "POST",
@@ -69,12 +79,36 @@
       }));
     }
 
+    async heartbeat() {
+      this.ensureIdentity();
+      return this.request(`/api/rooms/${encodeURIComponent(this.code)}/heartbeat`, {
+        method: "POST",
+        token: this.token
+      });
+    }
+
     async disconnect() {
       if (!this.code || !this.token) return { ok: true };
       return this.request(`/api/rooms/${encodeURIComponent(this.code)}/disconnect`, {
         method: "POST",
         token: this.token
       });
+    }
+
+    async leave() {
+      if (!this.code || !this.token) return { ok: true };
+      return this.request(`/api/rooms/${encodeURIComponent(this.code)}/leave`, {
+        method: "POST",
+        token: this.token
+      });
+    }
+
+    async forfeit() {
+      this.ensureIdentity();
+      return this.accept(await this.request(`/api/rooms/${encodeURIComponent(this.code)}/forfeit`, {
+        method: "POST",
+        token: this.token
+      }));
     }
 
     accept(response) {
