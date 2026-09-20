@@ -77,6 +77,106 @@
   let pauseMenu = null;
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
 
+  const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
+
+  function clearPersistedLocalDuel() {
+    try { localStorage.removeItem(ACTIVE_LOCAL_DUEL_KEY); } catch {}
+  }
+
+  function persistLocalDuelState() {
+    if (!engine || remoteDuelActive || engine.state?.gameOver) {
+      if (engine?.state?.gameOver) clearPersistedLocalDuel();
+      return;
+    }
+    try {
+      localStorage.setItem(ACTIVE_LOCAL_DUEL_KEY, JSON.stringify({
+        version: 1,
+        savedAt: Date.now(),
+        snapshot: engine.snapshot(),
+        sequence: Number(duelCommandSession?.sequence || 0),
+        matchId: duelCommandSession?.matchId || `local:${engine.state.seed}`,
+        initialSnapshot: duelCommandSession?.initialSnapshot || engine.snapshot(),
+        aiDifficulty: engine.aiDifficulty || "advanced",
+        currentDuelLaunch,
+        currentPlayerName,
+        currentOpponentName,
+        tournamentMatch,
+        matchRecorded,
+        activeSchool,
+        enemySchool
+      }));
+    } catch {}
+  }
+
+  function resumeRestoredLocalDuelFlow() {
+    if (!engine || remoteDuelActive || engine.state.gameOver) return;
+    const phase = engine.state.phase;
+    if (phase === A.PHASES.PLAYER_ATTACK) {
+      setTimeout(() => resolveAttackFlow("player"), 80);
+    } else if ([A.PHASES.ENEMY_THINK, A.PHASES.ENEMY_PLAY].includes(phase)) {
+      setTimeout(() => resolveAttackFlow("player"), 80);
+    } else if (phase === A.PHASES.ENEMY_ATTACK) {
+      setTimeout(() => resolveAttackFlow("enemy"), 80);
+    }
+  }
+
+  function restorePersistedLocalDuel() {
+    let saved;
+    try {
+      saved = JSON.parse(localStorage.getItem(ACTIVE_LOCAL_DUEL_KEY) || "null");
+    } catch {
+      clearPersistedLocalDuel();
+      return false;
+    }
+    if (!saved || saved.version !== 1 || !saved.snapshot) return false;
+    try {
+      engine = A.GameEngine.fromSnapshot(saved.snapshot, sessionSets["astral-original"]);
+      engine.aiDifficulty = saved.aiDifficulty || "advanced";
+      duelCommandSession = new A.CommandSession(engine, {
+        matchId: saved.matchId || `local:${engine.state.seed}`,
+        sequence: Number(saved.sequence || 0),
+        initialSnapshot: saved.initialSnapshot || saved.snapshot
+      });
+      currentDuelLaunch = saved.currentDuelLaunch || {
+        playerTalent: engine.state.player?.talent || "fire",
+        fromTournament: Boolean(saved.tournamentMatch),
+        selectedSpecialization: engine.state.playerSpecialization,
+        requestedMode: engine.state.playerSpecialization ? "specializations" : "normal",
+        seed: engine.state.seed
+      };
+      currentPlayerName = normalizedPlayerName(saved.currentPlayerName, t("ui.player"));
+      currentOpponentName = normalizedPlayerName(saved.currentOpponentName, t("ui.opponent"));
+      tournamentMatch = Boolean(saved.tournamentMatch);
+      matchRecorded = Boolean(saved.matchRecorded);
+      activeSchool = saved.activeSchool || engine.state.player?.talent || "fire";
+      enemySchool = saved.enemySchool || engine.state.enemy?.talent || "water";
+      inspectedCardId = engine.state.player.hand[0]?.id || allAstralCards()[0]?.id || null;
+      inspectedCardSide = "player";
+      inspectedCardInstanceId = null;
+      $("#setupPanel")?.classList.add("hidden");
+      $("#battlePanel")?.classList.remove("hidden");
+      $("#duelSessionActions")?.classList.add("hidden");
+      $("#duelMenuBtn")?.setAttribute("aria-expanded", "false");
+      const generation = engine.state.generationDiagnostics?.[0];
+      $("#seedBadge").textContent = generation
+        ? `seed: ${engine.state.seed} · libro: ${generation.generationAttempt} tentativi`
+        : `seed: ${engine.state.seed}`;
+      busy = false;
+      clearFxLayer();
+      switchView("game");
+      setMessage(t("status.duelRestored"));
+      renderGame();
+      resumeBackgroundMusic();
+      resumeRestoredLocalDuelFlow();
+      return true;
+    } catch {
+      clearPersistedLocalDuel();
+      engine = null;
+      duelCommandSession = null;
+      return false;
+    }
+  }
+
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>'"]/g, char => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
@@ -245,6 +345,7 @@
   }
 
   function showRemoteBattle(response) {
+    clearPersistedLocalDuel();
     if (!response?.state) return;
     engine = A.GameEngine.fromSnapshot(
       orientRemoteSnapshot(response.state, remoteRoomClient.side),
@@ -327,6 +428,7 @@
     if (!duelCommandSession) return { ok: false, reason: "Sessione del duello non disponibile." };
     const command = duelCommandSession.createCommand(actor, type, payload);
     const outcome = duelCommandSession.dispatch(command);
+    if (outcome.ok && !remoteDuelActive) persistLocalDuelState();
     return outcome.ok ? outcome.result : { ok: false, reason: outcome.reason };
   }
 
@@ -663,11 +765,13 @@
     switchView("game");
     setMessage("");
     renderGame();
+    persistLocalDuelState();
     resumeBackgroundMusic();
     showTurnBanner(t("turn.yours"), "player", 900);
   }
 
   function restartDuel() {
+    clearPersistedLocalDuel();
     engine = null;
     duelCommandSession = null;
     remoteDuelActive = false;
@@ -2340,6 +2444,7 @@
   }
 
   async function finalizeMatch() {
+    clearPersistedLocalDuel();
     const winner = engine.state.winner;
     if (winner === "player") playOriginalSound("winner", 0.5);
     if (winner === "enemy") playOriginalSound("looser", 0.5);
@@ -3031,9 +3136,11 @@
   inspectedCardId = allAstralCards()[0]?.id || null;
   collectionSelectedCardId = inspectedCardId;
   renderCollectionPanels();
+  let restoredRemoteRoom = false;
   try {
     const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
     if (multiplayerEnabled && savedRoom?.code && savedRoom?.token) {
+      restoredRemoteRoom = true;
       remoteRoomClient = createRemoteRoomClient();
       Object.assign(remoteRoomClient, savedRoom);
       switchView("multiplayer");
@@ -3041,6 +3148,14 @@
     }
   } catch { localStorage.removeItem("arcane.remoteRoom"); }
   if (urlParams.get("qa") === "duel") {
+    clearPersistedLocalDuel();
     setTimeout(() => startDuel("fire", false, null, "normal"), 30);
+  } else if (!restoredRemoteRoom) {
+    restorePersistedLocalDuel();
   }
+
+  window.addEventListener("pagehide", persistLocalDuelState);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") persistLocalDuelState();
+  });
 })(window.Arcane = window.Arcane || {});

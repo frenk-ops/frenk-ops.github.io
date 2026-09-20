@@ -1,7 +1,7 @@
 "use strict";
 
-const SHELL_CACHE = "arcane-duels-shell-v12";
-const RUNTIME_CACHE = "arcane-duels-runtime-v12";
+const SHELL_CACHE = "arcane-duels-shell-v13";
+const RUNTIME_CACHE = "arcane-duels-runtime-v13";
 
 const APP_SHELL = [
   "./",
@@ -61,7 +61,7 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("message", event => {
-  if (event.data?.type === "ACTIVATE_UPDATE") self.skipWaiting();
+  if (event.data?.type === "ACTIVATE_UPDATE" && event.data?.safeToActivate === true) self.skipWaiting();
 });
 
 function isDynamicOrMultiplayer(url) {

@@ -21,7 +21,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.20.4 · build 466dd94</small>
+        <small class="app-version-badge" data-arcane-version>v0.20.5 · build f4637ab</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -422,7 +422,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.20.4 · build 466dd94</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.20.5 · build f4637ab</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -470,8 +470,8 @@
   <script src="src/core/rng.js?v=3.0.0"></script>
   <script src="src/data/cards.js?v=3.0.0"></script>
   <script src="src/data/original-cards.js?v=3.0.0"></script>
-  <script src="src/i18n/en.js?v=3.0.24"></script>
-  <script src="src/i18n/it.js?v=3.0.24"></script>
+  <script src="src/i18n/en.js?v=3.0.25"></script>
+  <script src="src/i18n/it.js?v=3.0.25"></script>
   <script src="src/i18n/index.js?v=3.0.0"></script>
   <script src="src/core/card-schema.js?v=3.0.0"></script>
   <script src="src/data/astral-ai-card-metadata.js?v=3.0.0"></script>
@@ -493,15 +493,21 @@
   <script src="src/ui/navigation.js?v=3.0.1"></script>
   <script src="src/ui/pause-menu.js?v=3.0.17"></script>
   <script src="src/ui/tournament-view.js?v=3.0.18"></script>
-  <script src="src/ui/app.js?v=3.0.33"></script>
+  <script src="src/ui/app.js?v=3.0.34"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        const activateWaitingWorker = registration => {
-          registration.waiting?.postMessage({ type: "ACTIVATE_UPDATE" });
+        const duelIsActive = () => {
+          const battle = document.querySelector("#battlePanel");
+          return Boolean(battle && !battle.classList.contains("hidden"));
         };
-        navigator.serviceWorker.register("./service-worker.js?v=12", { updateViaCache: "none" })
+        const activateWaitingWorker = registration => {
+          if (!registration.waiting || duelIsActive()) return false;
+          registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
+          return true;
+        };
+        navigator.serviceWorker.register("./service-worker.js?v=13", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {

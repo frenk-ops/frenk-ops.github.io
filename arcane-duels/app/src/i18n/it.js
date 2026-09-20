@@ -110,6 +110,7 @@
     "phase.playerAttack": "Il tuo attacco", "phase.enemyThink": "L'avversario sta pensando",
     "phase.enemyPlay": "Giocata avversaria", "phase.enemyAttack": "Attacco avversario",
     "phase.roundEnd": "Fine round", "phase.gameOver": "Duello terminato",
+    "status.duelRestored": "Partita ripristinata dopo il riavvio.",
     "status.summoningSickness": "Debolezza da evocazione — potrà attaccare dal prossimo turno",
     "schools.fire": "Fuoco", "schools.water": "Acqua", "schools.air": "Aria",
     "schools.earth": "Terra", "schools.nature": "Terra", "schools.death": "Morte"
