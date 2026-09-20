@@ -6591,3 +6591,225 @@ body.ui-classic .classic-topbar .classic-nav .tab.active {
   .mobile-drag-ghost .art-media,
   .mobile-drag-ghost .art-image { width:100%;height:100%;object-fit:cover; }
 }
+
+
+/* 0.21.8 — completed in-game redesign and touch interaction hardening. */
+#battlePanel,
+#battlePanel *,
+#cardPreviewOverlay,
+#cardPreviewOverlay *,
+.mobile-card-inspect,
+.mobile-card-inspect * {
+  -webkit-touch-callout:none;
+}
+#battlePanel img,
+#cardPreviewOverlay img,
+.mobile-card-inspect img,
+.mobile-drag-ghost img {
+  -webkit-user-drag:none;
+  -webkit-user-select:none;
+  user-select:none;
+  pointer-events:none;
+}
+
+/* School power rails: icon first, value second, same icon set everywhere. */
+.classic-power-stack .school-status {
+  grid-template-columns:1fr !important;
+  grid-template-rows:auto auto auto !important;
+  place-items:center;
+  text-align:center;
+}
+.classic-power-stack .school-status::before { content:none !important; }
+.classic-power-stack .school-status > .school-power-icon {
+  grid-column:1 !important;
+  grid-row:1 !important;
+  display:block !important;
+  margin:0 !important;
+  font-size:1.35rem !important;
+  line-height:1;
+  filter:drop-shadow(0 1px 2px #000);
+}
+.classic-power-stack .school-status > strong {
+  grid-column:1 !important;
+  grid-row:2 !important;
+  margin:0;
+}
+.classic-power-stack .school-status > small {
+  grid-column:1 !important;
+  grid-row:3 !important;
+  margin:0;
+}
+
+/* Non-playable cards stay readable, but clearly unavailable. */
+.classic-hand-grid .game-card.unplayable {
+  opacity:.64 !important;
+  filter:brightness(.72) saturate(.6) contrast(.96) !important;
+  cursor:zoom-in;
+}
+.classic-hand-grid .game-card.unplayable:hover,
+.classic-hand-grid .game-card.unplayable:focus-visible {
+  opacity:.76 !important;
+  filter:brightness(.8) saturate(.68) contrast(.98) !important;
+}
+.classic-hand-grid .game-card.unplayable::after {
+  content:attr(data-unplayable-label) !important;
+  position:absolute !important;
+  inset:auto 6px 6px 6px !important;
+  z-index:12;
+  display:block !important;
+  padding:3px 5px !important;
+  border:1px solid rgba(255,224,128,.76);
+  border-radius:999px;
+  background:rgba(4,10,23,.82) !important;
+  color:#ffe99a !important;
+  font:800 .68rem/1.1 Georgia,serif !important;
+  text-align:center;
+  text-shadow:0 1px 2px #000;
+  pointer-events:none;
+}
+
+/* Dynamic spell/effect values must read as live gameplay data, not body copy. */
+.current-value-highlight {
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  margin-left:10px;
+  padding:3px 8px;
+  border:1px solid rgba(91,224,255,.62);
+  border-radius:999px;
+  background:rgba(5,35,54,.72);
+  color:#83ecff;
+  font-weight:800;
+  white-space:nowrap;
+  box-shadow:inset 0 0 10px rgba(70,211,255,.08);
+}
+.current-value-highlight strong {
+  color:#fff19a;
+  font-size:1.12em;
+}
+.preview-current-value,
+.mobile-current-value {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  margin:9px 0;
+  padding:8px 11px;
+  border:1px solid rgba(91,224,255,.68);
+  border-radius:10px;
+  background:linear-gradient(180deg,rgba(8,55,77,.9),rgba(4,27,45,.9));
+  color:#82edff;
+  font-weight:800;
+  box-shadow:inset 0 0 14px rgba(70,211,255,.1),0 2px 8px rgba(0,0,0,.28);
+}
+.preview-current-value strong,
+.mobile-current-value strong {
+  color:#fff19a;
+  font-size:1.32rem;
+}
+
+/* Zoomed creature combat stats are deliberately dominant. */
+.preview-stat {
+  border:1px solid rgba(255,255,255,.11);
+}
+.preview-stat-attack,
+.preview-stat-health {
+  padding:10px 8px;
+  border-width:2px;
+  background:rgba(3,9,18,.86);
+  box-shadow:inset 0 0 12px rgba(255,255,255,.06),0 3px 8px rgba(0,0,0,.3);
+}
+.preview-stat-attack { border-color:#e6c24f;color:#ffe68b; }
+.preview-stat-health { border-color:#e6656c;color:#ffadb2; }
+.preview-stat-attack strong,
+.preview-stat-health strong {
+  font-size:1.65rem;
+  line-height:1;
+}
+.preview-stat-attack small,
+.preview-stat-health small {
+  font-weight:800;
+  letter-spacing:.04em;
+}
+
+/* Bottom actions now mirror the redesign: MENU left, PASS right. */
+@media (min-width:821px) {
+  #endTurnBtn { grid-area:preview;justify-self:end; }
+  #duelMenuBtn,
+  #endTurnBtn {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px 14px;
+    overflow:hidden;
+    font-size:clamp(.78rem,1.05vw,1rem);
+    line-height:1.05;
+    text-align:center;
+    white-space:normal;
+  }
+}
+
+@media (max-width:820px) {
+  .classic-power-stack .school-status {
+    grid-template-rows:22px 20px !important;
+  }
+  .classic-power-stack .school-status > .school-power-icon {
+    font-size:1rem !important;
+  }
+  .classic-power-stack .school-status > small { display:none !important; }
+
+  #playerHand.hand-showcase .game-card.unplayable::after {
+    display:block !important;
+    inset:auto 4px 4px 4px !important;
+    padding:2px 3px !important;
+    font-size:.56rem !important;
+  }
+
+  #mobileCardInspectStats {
+    display:flex;
+    justify-content:center;
+    gap:7px;
+    margin-top:7px;
+    color:#d9f7ff;
+  }
+  .mobile-inspect-stat {
+    display:grid;
+    min-width:64px;
+    gap:2px;
+    padding:6px 7px;
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:9px;
+    background:rgba(3,10,22,.76);
+  }
+  .mobile-inspect-stat small {
+    font-size:.58rem;
+    font-weight:800;
+    letter-spacing:.03em;
+  }
+  .mobile-inspect-stat b { font-size:1rem; }
+  .mobile-inspect-attack {
+    border-color:#e6c24f;
+    color:#ffe68b;
+  }
+  .mobile-inspect-health {
+    border-color:#e6656c;
+    color:#ffadb2;
+  }
+  .mobile-inspect-attack b,
+  .mobile-inspect-health b {
+    font-size:1.35rem;
+    line-height:1;
+  }
+  .mobile-current-value {
+    margin:8px 2px 0;
+    padding:6px 9px;
+    font-size:.72rem;
+  }
+  .mobile-current-value strong { font-size:1.15rem; }
+
+  .mobile-card-inspect,
+  #playerHand.hand-showcase,
+  #playerHand.hand-showcase .game-card {
+    touch-action:none;
+  }
+}

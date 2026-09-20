@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
-  <meta name="arcane-app-version" content="0.21.7">
+  <meta name="arcane-app-version" content="0.21.8">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <title>Arcane Duels — Astral Classic 3.0</title>
-  <link rel="stylesheet" href="styles.css?v=3.0.31">
+  <link rel="stylesheet" href="styles.css?v=3.0.32">
   <link rel="stylesheet" href="pwa.css?v=1.3.0">
 </head>
 <body class="pages-static-profile">
@@ -22,7 +22,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.21.7 · build 78764bc</small>
+        <small class="app-version-badge" data-arcane-version>v0.21.8 · build f71c21c</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -135,7 +135,6 @@
             <div class="classic-duel-body">
               <aside class="classic-power-column classic-power-left">
                 <div id="schoolFilters" class="school-status-grid classic-power-stack player-grid"></div>
-                <button id="endTurnBtn" class="primary classic-skip-button" data-i18n="ui.passTurn">Passa</button>
                 <div class="classic-mini-settings dev-only hidden">
                   <label><span data-i18n="ui.speed">Velocità</span><select id="animationSpeed"><option value="0.55" data-i18n="speed.fastest">Molto veloce</option><option value="0.8" data-i18n="speed.fast">Veloce</option><option value="1.2" selected data-i18n="speed.normal">Standard</option><option value="1.5" data-i18n="speed.slow">Lenta</option></select></label>
                   <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> <span data-i18n="ui.sound">Suono</span></label>
@@ -162,7 +161,6 @@
                 <div id="enemyRevealedCards" class="revealed-cards classic-enemy-book"></div>
                 <div class="enemy-school-summary-row">
                   <div id="enemySchoolSummary" class="enemy-school-summary"></div>
-                  <button id="enemyRevealedQuickToggle" class="enemy-revealed-quick-toggle" type="button" data-i18n="cards.viewRevealed">Vedi carte</button>
                 </div>
               </section>
 
@@ -231,7 +229,7 @@
               </section>
               <nav class="duel-footer-actions" aria-label="Azioni carta">
                 <button id="duelMenuBtn" type="button" class="classic-footer-button" aria-expanded="false" data-i18n="ui.menu">MENU</button>
-                <button id="viewCardBtn" type="button" class="classic-footer-button" data-open-preview="true" data-i18n="ui.viewCard" disabled>VEDI CARTA</button>
+                <button id="endTurnBtn" type="button" class="classic-footer-button classic-pass-button" data-i18n="ui.passTurn">PASSA</button>
               </nav>
             </footer>
 
@@ -242,6 +240,7 @@
                   <strong id="mobileCardInspectName"></strong>
                   <p id="mobileCardInspectText"></p>
                   <div id="mobileCardInspectStats"></div>
+                  <div id="mobileCardInspectCurrentValue" class="mobile-current-value hidden"></div>
                 </div>
               </div>
             </div>
@@ -446,7 +445,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.7 · build 78764bc</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.21.8 · build f71c21c</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -518,7 +517,7 @@
   <script src="src/ui/navigation.js?v=3.0.2"></script>
   <script src="src/ui/pause-menu.js?v=3.0.17"></script>
   <script src="src/ui/tournament-view.js?v=3.0.19"></script>
-  <script src="src/ui/app.js?v=3.0.42"></script>
+  <script src="src/ui/app.js?v=3.0.43"></script>
   <script src="pwa-install-v2.js?v=1.0.0"></script>
   <script>
     if ("serviceWorker" in navigator) {
@@ -532,7 +531,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=22", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=23", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {

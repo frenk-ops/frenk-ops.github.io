@@ -1459,6 +1459,7 @@
         let button = root.querySelector(`[data-school-id="${item.id}"]`);
         if (!button) {
           button = document.createElement("button");
+          button.type = "button";
           button.dataset.schoolId = item.id;
           bindTapAction(button, () => {
             const selectedSchool = button.dataset.schoolId;
@@ -1468,29 +1469,26 @@
               playSchoolSelectionSound();
               renderSchoolButtons();
               renderHand();
-            } else {
-              if (isMobileEnemyBookLayout()) {
-                if (enemySchool === selectedSchool) return;
-                enemySchool = selectedSchool;
-                playSchoolSelectionSound();
-                renderSchoolButtons();
-                renderEnemyRevealed();
-                toggleEnemyRevealedModal(true);
-                return;
-              }
-              if (enemySchool === selectedSchool) return;
-              enemySchool = selectedSchool;
-              playSchoolSelectionSound();
-              renderSchoolButtons();
-              renderEnemyRevealed();
+              return;
             }
+            const changed = enemySchool !== selectedSchool;
+            enemySchool = selectedSchool;
+            if (changed) playSchoolSelectionSound();
+            renderSchoolButtons();
+            renderEnemyRevealed();
+            toggleEnemyRevealedModal(true);
           });
           root.appendChild(button);
         }
         const fighter = engine.state[side];
         const selected = side === "player" ? activeSchool : enemySchool;
+        const powerValue = fighter.power[item.id];
         button.className = `school-status school-${item.id} ${selected === item.id ? "active" : ""}`;
-        button.innerHTML = `<span>${item.icon} ${item.name}</span><strong>${fighter.power[item.id]}</strong><small>${formatGain(fighter.powerGain[item.id])}</small>`;
+        button.setAttribute("aria-label", `${schoolName(item.id)}: ${powerValue}`);
+        button.title = side === "enemy"
+          ? `${schoolName(item.id)} · ${powerValue} · ${t("cards.revealed")}`
+          : `${schoolName(item.id)} · ${powerValue}`;
+        button.innerHTML = `<span class="school-power-icon" aria-hidden="true">${item.icon}</span><strong>${powerValue}</strong><small>${formatGain(fighter.powerGain[item.id])}</small>`;
       });
     };
     updateSide(playerRoot, "player");
@@ -1525,12 +1523,16 @@
   function buildArtBlock(card, variant = "hand") {
     const wrapper = document.createElement("div");
     wrapper.className = `art-media art-variant-${variant}`;
+    wrapper.addEventListener("contextmenu", event => event.preventDefault());
+    wrapper.addEventListener("dragstart", event => event.preventDefault());
 
     const img = document.createElement("img");
     img.className = "art-image";
     img.alt = cardName(card);
     img.loading = "eager";
     img.decoding = "async";
+    img.draggable = false;
+    img.setAttribute("draggable", "false");
 
     const fallback = document.createElement("div");
     fallback.className = "art-fallback";
@@ -1602,6 +1604,18 @@
   function currentCardPreview(card, side = inspectedCardSide) {
     if (!engine || !side || !card) return null;
     return A.astralPreviewCardValue?.(engine, side, card) || null;
+  }
+
+  function currentValueData(card, side = inspectedCardSide) {
+    const preview = currentCardPreview(card, side);
+    if (!preview || !Number.isFinite(Number(preview.effective))) return null;
+    return { ...preview, effective: Number(preview.effective) };
+  }
+
+  function currentValueHtml(card, side = inspectedCardSide) {
+    const value = currentValueData(card, side);
+    if (!value) return "";
+    return `<span class="current-value-highlight"><span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(value.effective)}</strong></span>`;
   }
 
   function integrateCurrentValue(raw, preview) {
@@ -1831,7 +1845,6 @@
       $("#inspectCardAbility").textContent = t("ui.selectCardForDetails");
       $("#inspectCardDetails").innerHTML = "";
       $("#inspectCardMeta").innerHTML = "";
-      if ($("#viewCardBtn")) $("#viewCardBtn").disabled = true;
       return;
     }
     const inspectedUnit = getInspectedBoardUnit();
@@ -1847,8 +1860,7 @@
       target.appendChild(status);
     }
     $("#inspectCardTitle").textContent = cardName(card);
-    $("#inspectCardAbility").innerHTML = cardDescriptionHtml(card);
-    if ($("#viewCardBtn")) $("#viewCardBtn").disabled = false;
+    $("#inspectCardAbility").innerHTML = `${cardDescriptionHtml(card)}${currentValueHtml(card, inspectedCardSide)}`;
     const combatDetails = card.type === "spell" ? "" : `
       <span class="detail-combat-stat detail-attack"><small><i aria-hidden="true">⚔</i> ${t("ui.attack")}</small><b>${escapeHtml(displayedAttack)}</b></span>
       <span class="detail-combat-stat detail-health"><small><i aria-hidden="true">♥</i> ${t("ui.life")}</small><b>${escapeHtml(displayedCard.currentHealth ?? displayedCard.health)}</b></span>`;
@@ -2026,10 +2038,24 @@
     if (!inspect) return;
     $("#mobileCardInspectArt").replaceChildren(buildArtBlock(card, "mobileInspect"));
     $("#mobileCardInspectName").textContent = cardName(card);
-    $("#mobileCardInspectText").textContent = cardText(card);
+    $("#mobileCardInspectText").textContent = cardDescription(card, "player");
     const cost = engine.effectiveCost("player", card);
-    $("#mobileCardInspectStats").textContent = `${schoolName(card.school)} · ${t(card.type === "spell" ? "ui.spell" : "ui.creature")} · ${cost}`
-      + (card.type === "creature" ? ` · ⚔ ${card.attack} · ♥ ${card.health}` : "");
+    const stats = $("#mobileCardInspectStats");
+    if (stats) {
+      stats.innerHTML = card.type === "creature"
+        ? `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>
+           <span class="mobile-inspect-stat mobile-inspect-attack"><small>⚔ ${escapeHtml(t("ui.attack"))}</small><b>${escapeHtml(card.attack)}</b></span>
+           <span class="mobile-inspect-stat mobile-inspect-health"><small>♥ ${escapeHtml(t("ui.life"))}</small><b>${escapeHtml(card.health)}</b></span>`
+        : `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>`;
+    }
+    const currentValue = currentValueData(card, "player");
+    const currentValueNode = $("#mobileCardInspectCurrentValue");
+    if (currentValueNode) {
+      currentValueNode.classList.toggle("hidden", !currentValue);
+      currentValueNode.innerHTML = currentValue
+        ? `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`
+        : "";
+    }
     inspect.classList.remove("hidden");
     inspect.setAttribute("aria-hidden", "false");
   }
@@ -2048,7 +2074,7 @@
     mobileHandGesture = null;
   }
 
-  function startMobileHandGesture(event, card) {
+  function startMobileHandGesture(event, card, playable) {
     if (!isMobileDuelLayout() || event.button !== 0 || mobileHandGesture) return;
     event.preventDefault();
     const ghost = $("#mobileDragGhost");
@@ -2059,6 +2085,7 @@
       startX: event.clientX,
       startY: event.clientY,
       dragging: false,
+      canDrag: Boolean(playable),
       holdTimer: null,
       move: null,
       end: null,
@@ -2071,6 +2098,8 @@
       if (moveEvent.pointerId !== gesture.pointerId) return;
       const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
       if (!gesture.dragging && distance < 11) return;
+      moveEvent.preventDefault();
+      if (!gesture.canDrag) return;
       if (!gesture.dragging) {
         gesture.dragging = true;
         clearTimeout(gesture.holdTimer);
@@ -2079,7 +2108,6 @@
         ghost?.classList.remove("hidden");
         panel?.classList.add(card.type === "spell" ? "mobile-drag-spell" : "mobile-drag-creature");
       }
-      moveEvent.preventDefault();
       if (ghost) {
         ghost.style.left = `${moveEvent.clientX}px`;
         ghost.style.top = `${moveEvent.clientY}px`;
@@ -2093,6 +2121,7 @@
     gesture.end = async endEvent => {
       if (endEvent.pointerId !== gesture.pointerId) return;
       const wasDragging = gesture.dragging;
+      const canDrag = gesture.canDrag;
       const x = endEvent.clientX;
       const y = endEvent.clientY;
       const slotCell = card.type === "creature"
@@ -2108,8 +2137,10 @@
         inspectedCardSide = "player";
         inspectedCardInstanceId = null;
         renderCollectionPanels();
+        if (!canDrag) openCardPreview(card, "player", "modal");
         return;
       }
+      if (!canDrag) return;
       if (card.type === "creature") {
         if (!slotCell) return;
         const slot = Number(slotCell.dataset.slot);
@@ -2156,8 +2187,15 @@
       const clone = template.content.firstElementChild.cloneNode(true);
       const selected = engine.state.pendingCardId === card.id;
       const cost = engine.effectiveCost("player", card);
-      const playable = engine.getPlayability("player", card).ok;
+      const playability = engine.getPlayability("player", card);
+      const playable = playability.ok;
+      const availablePower = Number(engine.state.player.power?.[card.school] || 0);
+      const missingPower = Math.max(0, cost - availablePower);
       clone.dataset.cardId = card.id;
+      clone.dataset.playable = playable ? "true" : "false";
+      clone.dataset.unplayableLabel = missingPower > 0
+        ? `${school(card.school).icon} ${availablePower}/${cost}`
+        : "×";
       clone.style.setProperty("--card-index", cardIndex);
       const position = cards.length > 1 ? cardIndex / (cards.length - 1) * 2 - 1 : 0;
       clone.style.setProperty("--fan-angle", `${(position * 8).toFixed(1)}deg`);
@@ -2166,6 +2204,7 @@
       clone.classList.add(`school-${card.school}`, `type-${card.type}`);
       clone.classList.toggle("selected", selected);
       clone.classList.toggle("unplayable", !playable && !selected);
+      if (!playable && playability.reason) clone.title = playability.reason;
       clone.querySelector(".cost").textContent = cost;
       clone.querySelector(".school").textContent = `${school(card.school).icon} ${schoolName(card.school)}`;
       const artNode = clone.querySelector(".art");
@@ -2178,10 +2217,16 @@
       const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; inspectedCardInstanceId = null; renderCollectionPanels(); };
       clone.addEventListener("mouseenter", inspectHandCard);
       clone.addEventListener("focus", inspectHandCard);
-      clone.addEventListener("pointerdown", event => startMobileHandGesture(event, card));
+      clone.addEventListener("pointerdown", event => startMobileHandGesture(event, card, playable));
       clone.addEventListener("contextmenu", event => { if (isMobileDuelLayout()) event.preventDefault(); });
+      clone.addEventListener("dragstart", event => event.preventDefault());
       clone.addEventListener("click", event => {
-        if (isMobileDuelLayout() && event.detail > 0) { event.preventDefault();return; }
+        if (isMobileDuelLayout() && event.detail > 0) { event.preventDefault(); return; }
+        if (!playable) {
+          inspectHandCard();
+          openCardPreview(card, "player", "modal");
+          return;
+        }
         onPlayerCard(card.id);
       });
       fragment.appendChild(clone);
@@ -2203,15 +2248,19 @@
     const summary = $("#enemySchoolSummary");
     const modalSummary = $("#enemyRevealedModalSummary");
     const hand = engine.state.enemy.hand.filter(card => card.school === enemySchool);
-    const revealed = hand.filter(card => engine.state.enemy.revealedCards.includes(card.id));
+    const revealedIds = new Set(engine.state.enemy.revealedCards || []);
+    const allCards = allAstralCards();
+    const revealed = [...revealedIds]
+      .map(id => hand.find(card => card.id === id) || allCards.find(card => card.id === id))
+      .filter(card => card?.school === enemySchool);
     const summaryText = t("cards.enemySummary", { school: schoolName(enemySchool), total: hand.length, revealed: revealed.length });
     if (summary) summary.textContent = summaryText;
     if (modalSummary) modalSummary.textContent = summaryText;
-    const fragment = document.createDocumentFragment();
-    revealed.forEach(card => {
+
+    const createChip = card => {
       const chip = document.createElement("button");
       chip.className = `revealed-chip school-${card.school} type-${card.type}`;
-      chip.innerHTML = "";
+      chip.type = "button";
       const art = document.createElement("div");
       art.className = "revealed-chip-art";
       art.appendChild(buildArtBlock(card, "enemyBook"));
@@ -2220,29 +2269,44 @@
       label.textContent = engine.effectiveCost("enemy", card);
       chip.appendChild(art);
       chip.appendChild(label);
-      chip.addEventListener("mouseenter", () => {
+      const inspect = () => {
         inspectedCardId = card.id;
         inspectedCardSide = "enemy";
         inspectedCardInstanceId = null;
         renderCollectionPanels();
-      });
-      chip.addEventListener("focus", () => { inspectedCardId = card.id; inspectedCardSide = "enemy"; inspectedCardInstanceId = null; renderCollectionPanels(); });
-      chip.addEventListener("click", () => { inspectedCardId = card.id; inspectedCardSide = "enemy"; inspectedCardInstanceId = null; renderCollectionPanels(); });
-      fragment.appendChild(chip);
-    });
-    for (let i = revealed.length; i < hand.length; i += 1) {
-      const hidden = document.createElement("span");
-      hidden.className = "hidden-card-chip";
-      hidden.setAttribute("aria-label", t("cards.hiddenEnemy"));
-      fragment.appendChild(hidden);
-    }
+      };
+      chip.addEventListener("mouseenter", inspect);
+      chip.addEventListener("focus", inspect);
+      chip.addEventListener("click", inspect);
+      return chip;
+    };
+
+    const buildFragment = includeHidden => {
+      const fragment = document.createDocumentFragment();
+      revealed.forEach(card => fragment.appendChild(createChip(card)));
+      if (!revealed.length) {
+        const empty = document.createElement("span");
+        empty.className = "revealed-empty";
+        empty.textContent = `${t("cards.revealed")}: 0`;
+        fragment.appendChild(empty);
+      }
+      if (includeHidden) {
+        for (let i = revealed.length; i < hand.length; i += 1) {
+          const hidden = document.createElement("span");
+          hidden.className = "hidden-card-chip";
+          hidden.setAttribute("aria-label", t("cards.hiddenEnemy"));
+          fragment.appendChild(hidden);
+        }
+      }
+      return fragment;
+    };
+
+    if (modalRoot) modalRoot.replaceChildren(buildFragment(false));
     if (isMobileEnemyBookLayout()) {
-      if (modalRoot) modalRoot.replaceChildren(fragment);
-      if (root) root.replaceChildren("");
+      if (root) root.replaceChildren();
       return;
     }
-    if (root) root.replaceChildren(fragment);
-    closeEnemyRevealedModal();
+    if (root) root.replaceChildren(buildFragment(true));
   }
 
   function renderGame() {
@@ -2295,16 +2359,18 @@
   })();
 
   $("#enemyRevealedModalClose")?.addEventListener("click", () => closeEnemyRevealedModal());
-  $("#enemyRevealedQuickToggle")?.addEventListener("click", () => toggleEnemyRevealedModal());
   $("#enemyRevealedModal")?.addEventListener("click", event => {
     if (event.target === event.currentTarget) closeEnemyRevealedModal();
   });
   window.addEventListener("resize", () => {
-    if (!isMobileEnemyBookLayout()) {
-      closeEnemyRevealedModal();
-    }
     renderEnemyRevealed();
   });
+  $("#battlePanel")?.addEventListener("contextmenu", event => {
+    if (event.target.closest(".game-card, .art-media, .unit, .mobile-card-inspect, .mobile-drag-ghost")) event.preventDefault();
+  }, true);
+  $("#battlePanel")?.addEventListener("dragstart", event => event.preventDefault(), true);
+  $("#cardPreviewOverlay")?.addEventListener("contextmenu", event => event.preventDefault(), true);
+  $("#cardPreviewOverlay")?.addEventListener("dragstart", event => event.preventDefault(), true);
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && enemyRevealedModalOpen) closeEnemyRevealedModal();
   });
@@ -2902,28 +2968,34 @@
     article.appendChild(title);
 
     const subtitle = document.createElement("div");
-    subtitle.textContent = `${schoolName(card.school)} · ${card.type === "spell" ? t("ui.spell") : t("ui.creature")}`;
+    subtitle.textContent = `${school(card.school).icon} ${schoolName(card.school)} · ${card.type === "spell" ? t("ui.spell") : t("ui.creature")}`;
     article.appendChild(subtitle);
 
     const meta = document.createElement("div");
     meta.className = "preview-meta";
-    // Only units already deployed on the board have a live combat value.
-    // Hand and collection previews must keep the printed/base card statistic.
     const attack = side && card.instanceId && card.type !== "spell"
       ? displayedUnitAttack(side, card)
       : card.attack;
     const blocks = [
-      { value: cost, label: t("cards.levelCost") },
-      { value: card.type === "spell" ? "—" : attack, label: t("ui.attack") },
-      { value: card.type === "spell" ? "—" : (card.currentHealth ?? card.health ?? 0), label: t("ui.life") }
+      { key: "cost", value: cost, label: t("cards.levelCost") },
+      { key: "attack", value: card.type === "spell" ? "—" : attack, label: t("ui.attack") },
+      { key: "health", value: card.type === "spell" ? "—" : (card.currentHealth ?? card.health ?? 0), label: t("ui.life") }
     ];
     blocks.forEach(item => {
       const stat = document.createElement("div");
-      stat.className = "preview-stat";
+      stat.className = `preview-stat preview-stat-${item.key}`;
       stat.innerHTML = `<strong>${escapeHtml(item.value)}</strong><br><small>${escapeHtml(item.label)}</small>`;
       meta.appendChild(stat);
     });
     article.appendChild(meta);
+
+    const currentValue = currentValueData(card, side || inspectedCardSide);
+    if (currentValue) {
+      const value = document.createElement("div");
+      value.className = "preview-current-value";
+      value.innerHTML = `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`;
+      article.appendChild(value);
+    }
 
     const text = document.createElement("p");
     text.textContent = cardDescription(card, side || inspectedCardSide);
@@ -2962,11 +3034,6 @@
     const modal = overlay.querySelector(".card-preview-modal");
     modal.removeAttribute("style");
   }
-
-  $('[data-open-preview="true"]')?.addEventListener("click", () => {
-    const card = getInspectedCard();
-    if (card) openCardPreview(card, null, "modal");
-  });
 
   $("#closeCardPreview").addEventListener("click", () => closeCardPreview());
   $("#cardPreviewOverlay").addEventListener("click", event => {

@@ -5,8 +5,8 @@
     { id: "fire", name: "Fuoco", icon: "🔥" },
     { id: "water", name: "Acqua", icon: "💧" },
     { id: "air", name: "Aria", icon: "🌪️" },
-    { id: "nature", name: "Terra", icon: "🌿" },
-    { id: "death", name: "Morte", icon: "☠️" }
+    { id: "nature", name: "Terra", icon: "🍃" },
+    { id: "death", name: "Morte", icon: "💀" }
   ]);
 
   A.PHASES = Object.freeze({
