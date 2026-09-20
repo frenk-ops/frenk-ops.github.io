@@ -1,7 +1,8 @@
 "use strict";
 
-const SHELL_CACHE = "arcane-duels-shell-v25";
-const RUNTIME_CACHE = "arcane-duels-runtime-v25";
+const BUILD_REVISION = "0.22.0-62418e6";
+const SHELL_CACHE = `arcane-duels-shell-${BUILD_REVISION}`;
+const RUNTIME_CACHE = `arcane-duels-runtime-${BUILD_REVISION}`;
 
 const APP_SHELL = [
   "./",
@@ -43,9 +44,14 @@ const APP_SHELL = [
   "./src/ui/app.js"
 ];
 
+function revisionedShellUrl(url) {
+  if (/\.(?:js|css)$/.test(url)) return `${url}?v=${encodeURIComponent(BUILD_REVISION)}`;
+  return url;
+}
+
 self.addEventListener("install", event => {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then(cache => cache.addAll(APP_SHELL))
+    caches.open(SHELL_CACHE).then(cache => cache.addAll(APP_SHELL.map(revisionedShellUrl)))
   );
 });
 

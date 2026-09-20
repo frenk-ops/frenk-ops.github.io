@@ -9,5 +9,6 @@
   "multiplayerServerIncluded": false,
   "multiplayerApiConfigured": true,
   "version": "0.22.0",
-  "build": "0754e80"
+  "build": "62418e6",
+  "revision": "0.22.0-62418e6"
 }
