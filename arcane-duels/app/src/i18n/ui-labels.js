@@ -12,7 +12,7 @@
   const labels = {
     it: {
     "ui.language": "Lingua", "ui.italian": "Italiano", "ui.english": "English",
-    "ui.menu": "MENU", "ui.viewCard": "VEDI CARTA", "ui.passTurn": "PASSA",
+    "ui.menu": "MENU", "ui.viewCard": "VEDI CARTA", "ui.passTurn": "PASSA", "ui.dragToPlay": "Trascina per giocare",
     "ui.selectCardForDetails": "Seleziona una carta per visualizzarne i dettagli",
     "ui.noCard": "Nessuna carta selezionata", "ui.currentValue": "Valore attuale", "ui.beforeDefense": "prima delle difese",
     "log.damageHero": "{source} infligge {amount} danni a {target}.",
@@ -198,7 +198,7 @@
   },
     en: {
     "ui.language": "Language", "ui.italian": "Italiano", "ui.english": "English",
-    "ui.menu": "MENU", "ui.viewCard": "VIEW CARD", "ui.passTurn": "PASS",
+    "ui.menu": "MENU", "ui.viewCard": "VIEW CARD", "ui.passTurn": "PASS", "ui.dragToPlay": "Drag to play",
     "ui.selectCardForDetails": "Select a card to view its details",
     "ui.noCard": "No card selected", "ui.currentValue": "Current value", "ui.beforeDefense": "before defenses",
     "log.damageHero": "{source} deals {amount} damage to {target}.",

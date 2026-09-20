@@ -74,7 +74,6 @@
   let collectionSelectedCardId = null;
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   let turnBannerTimer = null;
-  let previewCloseTimer = null;
   let presentationLog = [];
   let currentDuelLaunch = null;
   let remoteRoomClient = null;
@@ -243,6 +242,34 @@
   function schoolName(id) {
     return t(`schools.${id}`);
   }
+
+  function schoolIconMarkup(id, className = "school-icon-svg") {
+    if (typeof A.schoolIconMarkup === "function") return A.schoolIconMarkup(id, className);
+    return `<span class="${className} school-icon-fallback" aria-hidden="true">${escapeHtml(school(id).icon)}</span>`;
+  }
+
+  function isTextEditingControl(target) {
+    const element = target instanceof Element ? target : target?.parentElement;
+    return Boolean(element?.closest("input, textarea, select, [contenteditable='true']"));
+  }
+
+  // Installed-app behavior: no browser zoom, text selection menu or native image drag
+  // on the game surface. Form controls keep their normal editing behavior.
+  ["gesturestart", "gesturechange", "gestureend"].forEach(type => {
+    document.addEventListener(type, event => {
+      if (!isTextEditingControl(event.target) && event.cancelable) event.preventDefault();
+    }, { passive: false, capture: true });
+  });
+  document.addEventListener("touchmove", event => {
+    if (event.touches?.length > 1 && event.cancelable) event.preventDefault();
+  }, { passive: false, capture: true });
+  document.addEventListener("contextmenu", event => {
+    if (!isTextEditingControl(event.target)) event.preventDefault();
+  }, true);
+  document.addEventListener("dragstart", event => {
+    const element = event.target instanceof Element ? event.target : null;
+    if (element?.matches("img") || element?.closest(".game-card, .art-media, #battlePanel")) event.preventDefault();
+  }, true);
 
   const SPELLBOOK_MODE_KEYS = Object.freeze({
     arcane: ["menu.arcaneDuel", "menu.arcaneDuelDescription"],
@@ -1702,6 +1729,7 @@
     const playerRoot = $("#schoolFilters");
     const enemyRoot = $("#enemySchoolMenu");
     const updateSide = (root, side) => {
+      if (!root) return;
       A.SCHOOLS.forEach(item => {
         let button = root.querySelector(`[data-school-id="${item.id}"]`);
         if (!button) {
@@ -1735,7 +1763,7 @@
         button.title = side === "enemy"
           ? `${schoolName(item.id)} · ${powerValue} · ${t("cards.revealed")}`
           : `${schoolName(item.id)} · ${powerValue}`;
-        button.innerHTML = `<span class="school-power-icon" aria-hidden="true">${item.icon}</span><strong>${powerValue}</strong><small>${formatGain(fighter.powerGain[item.id])}</small>`;
+        button.innerHTML = `<span class="school-power-icon" aria-hidden="true">${schoolIconMarkup(item.id, "school-icon-svg school-power-svg")}</span><strong>${powerValue}</strong><small>${formatGain(fighter.powerGain[item.id])}</small>`;
       });
     };
     updateSide(playerRoot, "player");
@@ -2252,7 +2280,7 @@
     if (card && featured && meta) {
       featured.replaceChildren(buildArtBlock(card, "collectionFeatured"));
       $("#collectionPageCardTitle").textContent = cardName(card);
-      $("#collectionPageCardKind").textContent = `${school(card.school).icon} ${schoolName(card.school)} · ${t(card.type === "spell" ? "ui.spell" : "ui.creature")}`;
+      $("#collectionPageCardKind").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg collection-school-svg")} ${escapeHtml(schoolName(card.school))} · ${escapeHtml(t(card.type === "spell" ? "ui.spell" : "ui.creature"))}`;
       $("#collectionPageCardLevel").textContent = `${t("cards.level")} ${card.level}`;
       const combatDetails = card.type === "spell" ? "" : `
           <div><small>${t("ui.attack")}</small><strong>${card.attack}</strong></div>
@@ -2279,50 +2307,15 @@
     return window.matchMedia?.("(max-width: 820px)").matches && !$("#battlePanel")?.classList.contains("hidden");
   }
 
-  function hideMobileCardInspect() {
-    const inspect = $("#mobileCardInspect");
-    inspect?.classList.add("hidden");
-    inspect?.setAttribute("aria-hidden", "true");
-  }
-
-  function showMobileCardInspect(card) {
-    const inspect = $("#mobileCardInspect");
-    if (!inspect) return;
-    $("#mobileCardInspectArt").replaceChildren(buildArtBlock(card, "mobileInspect"));
-    $("#mobileCardInspectName").textContent = cardName(card);
-    $("#mobileCardInspectText").textContent = cardDescription(card, "player");
-    const cost = engine.effectiveCost("player", card);
-    const stats = $("#mobileCardInspectStats");
-    if (stats) {
-      stats.innerHTML = card.type === "creature"
-        ? `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>
-           <span class="mobile-inspect-stat mobile-inspect-attack"><small>⚔ ${escapeHtml(t("ui.attack"))}</small><b>${escapeHtml(card.attack)}</b></span>
-           <span class="mobile-inspect-stat mobile-inspect-health"><small>♥ ${escapeHtml(t("ui.life"))}</small><b>${escapeHtml(card.health)}</b></span>`
-        : `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>`;
-    }
-    const currentValue = currentValueData(card, "player");
-    const currentValueNode = $("#mobileCardInspectCurrentValue");
-    if (currentValueNode) {
-      currentValueNode.classList.toggle("hidden", !currentValue);
-      currentValueNode.innerHTML = currentValue
-        ? `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`
-        : "";
-    }
-    inspect.classList.remove("hidden");
-    inspect.setAttribute("aria-hidden", "false");
-  }
-
   function clearMobileHandGesture() {
     const gesture = mobileHandGesture;
     if (!gesture) return;
-    clearTimeout(gesture.holdTimer);
     document.removeEventListener("pointermove", gesture.move);
     document.removeEventListener("pointerup", gesture.end);
     document.removeEventListener("pointercancel", gesture.cancel);
     $$("#playerBoard .mobile-drop-hover").forEach(node => node.classList.remove("mobile-drop-hover"));
     $("#battlePanel")?.classList.remove("mobile-drag-creature", "mobile-drag-spell");
     $("#mobileDragGhost")?.classList.add("hidden");
-    hideMobileCardInspect();
     mobileHandGesture = null;
   }
 
@@ -2338,14 +2331,10 @@
       startY: event.clientY,
       dragging: false,
       canDrag: Boolean(playable),
-      holdTimer: null,
       move: null,
       end: null,
       cancel: clearMobileHandGesture
     };
-    gesture.holdTimer = setTimeout(() => {
-      if (mobileHandGesture === gesture && !gesture.dragging) showMobileCardInspect(card);
-    }, 340);
     gesture.move = moveEvent => {
       if (moveEvent.pointerId !== gesture.pointerId) return;
       const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
@@ -2354,8 +2343,6 @@
       if (!gesture.canDrag) return;
       if (!gesture.dragging) {
         gesture.dragging = true;
-        clearTimeout(gesture.holdTimer);
-        hideMobileCardInspect();
         ghost?.replaceChildren(buildArtBlock(card, "mobileDrag"));
         ghost?.classList.remove("hidden");
         panel?.classList.add(card.type === "spell" ? "mobile-drag-spell" : "mobile-drag-creature");
@@ -2383,16 +2370,18 @@
       const insideBattlefield = battlefield && x >= battlefield.left && x <= battlefield.right
         && y >= battlefield.top && y <= battlefield.bottom;
       clearMobileHandGesture();
-      if (!engine || busy || !isMobileDuelLayout()) return;
+      if (!engine || !isMobileDuelLayout()) return;
+
+      // Mobile interaction is explicit: tap = read/zoom, drag = play.
       if (!wasDragging) {
         inspectedCardId = card.id;
         inspectedCardSide = "player";
         inspectedCardInstanceId = null;
         renderCollectionPanels();
-        if (!canDrag) openCardPreview(card, "player", "modal");
+        openDuelCardZoom(card, "player");
         return;
       }
-      if (!canDrag) return;
+      if (busy || !canDrag) return;
       if (card.type === "creature") {
         if (!slotCell) return;
         const slot = Number(slotCell.dataset.slot);
@@ -2434,6 +2423,7 @@
     renderedHandEngine = engine;
     renderedHandSignature = signature;
     root.style.setProperty("--hand-steps", Math.max(1, cards.length - 1));
+    root.dataset.cardCount = String(cards.length);
     const fragment = document.createDocumentFragment();
     cards.forEach((card, cardIndex) => {
       const clone = template.content.firstElementChild.cloneNode(true);
@@ -2441,13 +2431,8 @@
       const cost = engine.effectiveCost("player", card);
       const playability = engine.getPlayability("player", card);
       const playable = playability.ok;
-      const availablePower = Number(engine.state.player.power?.[card.school] || 0);
-      const missingPower = Math.max(0, cost - availablePower);
       clone.dataset.cardId = card.id;
       clone.dataset.playable = playable ? "true" : "false";
-      clone.dataset.unplayableLabel = missingPower > 0
-        ? `${school(card.school).icon} ${availablePower}/${cost}`
-        : "×";
       clone.style.setProperty("--card-index", cardIndex);
       const position = cards.length > 1 ? cardIndex / (cards.length - 1) * 2 - 1 : 0;
       clone.style.setProperty("--fan-angle", `${(position * 8).toFixed(1)}deg`);
@@ -2458,7 +2443,7 @@
       clone.classList.toggle("unplayable", !playable && !selected);
       if (!playable && playability.reason) clone.title = playability.reason;
       clone.querySelector(".cost").textContent = cost;
-      clone.querySelector(".school").textContent = `${school(card.school).icon} ${schoolName(card.school)}`;
+      clone.querySelector(".school").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg card-school-svg")} ${escapeHtml(schoolName(card.school))}`;
       const artNode = clone.querySelector(".art");
       artNode.innerHTML = "";
       artNode.appendChild(buildArtBlock(card, "hand"));
@@ -2476,7 +2461,7 @@
         if (isMobileDuelLayout() && event.detail > 0) { event.preventDefault(); return; }
         if (!playable) {
           inspectHandCard();
-          openCardPreview(card, "player", "modal");
+          openDuelCardZoom(card, "player");
           return;
         }
         onPlayerCard(card.id);
@@ -2621,8 +2606,6 @@
     if (event.target.closest(".game-card, .art-media, .unit, .mobile-card-inspect, .mobile-drag-ghost")) event.preventDefault();
   }, true);
   $("#battlePanel")?.addEventListener("dragstart", event => event.preventDefault(), true);
-  $("#cardPreviewOverlay")?.addEventListener("contextmenu", event => event.preventDefault(), true);
-  $("#cardPreviewOverlay")?.addEventListener("dragstart", event => event.preventDefault(), true);
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && enemyRevealedModalOpen) closeEnemyRevealedModal();
   });
@@ -3220,7 +3203,8 @@
     article.appendChild(title);
 
     const subtitle = document.createElement("div");
-    subtitle.textContent = `${school(card.school).icon} ${schoolName(card.school)} · ${card.type === "spell" ? t("ui.spell") : t("ui.creature")}`;
+    subtitle.className = "preview-subtitle";
+    subtitle.innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg preview-school-svg")}<span>${escapeHtml(schoolName(card.school))} · ${escapeHtml(card.type === "spell" ? t("ui.spell") : t("ui.creature"))}</span>`;
     article.appendChild(subtitle);
 
     const meta = document.createElement("div");
@@ -3256,46 +3240,28 @@
     target.appendChild(article);
   }
 
-  function openCardPreview(card, side, mode, anchor) {
-    clearTimeout(previewCloseTimer);
-    const overlay = $("#cardPreviewOverlay");
-    renderPreviewInto($("#cardPreviewContent"), card, side);
-    overlay.className = `card-preview-overlay open ${mode === "hover" ? "hover-preview" : "modal-preview"}`;
-    overlay.dataset.previewMode = mode;
+  function openDuelCardZoom(card, side = null) {
+    const overlay = $("#duelCardZoom");
+    const content = $("#duelCardZoomContent");
+    if (!overlay || !content || !card) return;
+    renderPreviewInto(content, card, side);
+    overlay.classList.add("open");
     overlay.setAttribute("aria-hidden", "false");
-    if (mode === "hover" && anchor) {
-      const modal = overlay.querySelector(".card-preview-modal");
-      const rect = anchor.getBoundingClientRect();
-      modal.style.width = `${Math.min(330, window.innerWidth - 24)}px`;
-      modal.style.left = `${Math.max(12, Math.min(window.innerWidth - 342, rect.left))}px`;
-      modal.style.top = `${Math.min(window.innerHeight - 420, rect.bottom + 8)}px`;
-    }
   }
 
-  function schedulePreviewClose(mode, delay = 220) {
-    clearTimeout(previewCloseTimer);
-    previewCloseTimer = setTimeout(() => closeCardPreview(mode), delay);
-  }
-
-  function closeCardPreview(mode) {
-    const overlay = $("#cardPreviewOverlay");
-    if (mode && overlay.dataset.previewMode !== mode) return;
-    overlay.className = "card-preview-overlay";
-    overlay.removeAttribute("data-preview-mode");
+  function closeDuelCardZoom() {
+    const overlay = $("#duelCardZoom");
+    if (!overlay) return;
+    overlay.classList.remove("open");
     overlay.setAttribute("aria-hidden", "true");
-    const modal = overlay.querySelector(".card-preview-modal");
-    modal.removeAttribute("style");
   }
 
-  $("#closeCardPreview").addEventListener("click", () => closeCardPreview());
-  $("#cardPreviewOverlay").addEventListener("click", event => {
-    if (event.target.id === "cardPreviewOverlay" && event.currentTarget.dataset.previewMode === "modal") closeCardPreview();
+  $("#closeDuelCardZoom")?.addEventListener("click", closeDuelCardZoom);
+  $("#duelCardZoom")?.addEventListener("click", event => {
+    if (event.target === event.currentTarget) closeDuelCardZoom();
   });
-  $("#cardPreviewOverlay").querySelector(".card-preview-modal").addEventListener("mouseenter", () => {
-    if ($("#cardPreviewOverlay").dataset.previewMode === "hover") clearTimeout(previewCloseTimer);
-  });
-  $("#cardPreviewOverlay").querySelector(".card-preview-modal").addEventListener("mouseleave", () => {
-    if ($("#cardPreviewOverlay").dataset.previewMode === "hover") schedulePreviewClose("hover", 120);
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeDuelCardZoom();
   });
 
   function renderTournament() {

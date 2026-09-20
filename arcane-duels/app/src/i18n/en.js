@@ -2,7 +2,7 @@
   "use strict";
   const ui = {
     "ui.language": "Language", "ui.italian": "Italiano", "ui.english": "English",
-    "ui.menu": "MENU", "ui.viewCard": "VIEW CARD", "ui.passTurn": "PASS",
+    "ui.menu": "MENU", "ui.viewCard": "VIEW CARD", "ui.passTurn": "PASS", "ui.dragToPlay": "Drag to play",
     "ui.selectCardForDetails": "Select a card to view its details",
     "ui.noCard": "No card selected", "ui.currentValue": "Current value", "ui.beforeDefense": "before defenses",
     "log.damageHero": "{source} deals {amount} damage to {target}.",
