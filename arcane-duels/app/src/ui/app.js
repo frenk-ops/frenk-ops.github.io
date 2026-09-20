@@ -1076,7 +1076,6 @@
     $("#battlePanel")?.classList.add("hidden");
     $("#setupPanel")?.classList.remove("hidden");
     $("#remoteDisconnectOverlay")?.classList.add("hidden");
-    pauseBackgroundMusic();
     switchView("multiplayer");
     renderRemoteLobby(lastRemoteRoomState, { deferBattle: true });
     renderRecoverableMatch();
@@ -1612,6 +1611,7 @@
     if (name === "cards") renderCollectionPage();
     if (name === "profile") renderPlayerProfile();
     if (name === "rules") renderRuleset();
+    syncBackgroundMusicScene();
   }
 
   navigation = A.UINavigation?.create({ onViewChange: switchView, onReturnToGame: () => { if (!engine) restartDuel(); } });
@@ -2135,7 +2135,7 @@
     $("#setupPanel").classList.remove("hidden");
     clearFxLayer();
     setMessage("");
-    pauseBackgroundMusic();
+    syncBackgroundMusicScene();
     activateWaitingAppUpdateIfSafe();
   }
 
@@ -5057,72 +5057,296 @@
     document.body.dataset.animationSpeed = animationSpeed >= 1.4 ? "slow" : animationSpeed < 1 ? "fast" : "normal";
   } catch (e) {}
 
-  // Background music support
-  let bgmAudio = null;
+  // Central background-music manager. The saved preference is intentionally
+  // separate from the browser's temporary autoplay permission.
   let bgmEnabled = false;
-  // subtle default so music is present but not intrusive
   let bgmVolume = 0.12;
+  const MUSIC_CROSSFADE_MS = 900;
+  let originalMenuThemeUrl = "";
+  function createOriginalMenuThemeUrl() {
+    if (originalMenuThemeUrl) return originalMenuThemeUrl;
+
+    // Original 30-second fairytale-fantasy loop: soft celesta, harp-like arpeggio
+    // and an airy pad. It is synthesized once, cached as a local Blob URL and
+    // needs no network request, which keeps the installed PWA menu music offline-safe.
+    const sampleRate = 16000;
+    const duration = 30;
+    const samples = new Float32Array(sampleRate * duration);
+    const beat = 60 / 64;
+    const midi = note => 440 * (2 ** ((note - 69) / 12));
+    const addNote = (note, startBeat, lengthBeats, volume, voice = "bell") => {
+      const start = Math.max(0, Math.floor(startBeat * beat * sampleRate));
+      const length = Math.min(samples.length - start, Math.floor(lengthBeats * beat * sampleRate));
+      const frequency = midi(note);
+      for (let i = 0; i < length; i += 1) {
+        const time = i / sampleRate;
+        const progress = i / Math.max(1, length - 1);
+        let envelope;
+        let tone;
+        if (voice === "pad") {
+          envelope = Math.min(1, progress * 8) * Math.min(1, (1 - progress) * 5);
+          tone = Math.sin(2 * Math.PI * frequency * time)
+            + 0.24 * Math.sin(2 * Math.PI * frequency * 2 * time);
+        } else if (voice === "harp") {
+          envelope = (1 - Math.exp(-progress * 35)) * Math.exp(-progress * 5.2);
+          tone = Math.sin(2 * Math.PI * frequency * time)
+            + 0.20 * Math.sin(2 * Math.PI * frequency * 2 * time);
+        } else {
+          envelope = (1 - Math.exp(-progress * 45)) * Math.exp(-progress * 4.3);
+          tone = Math.sin(2 * Math.PI * frequency * time)
+            + 0.34 * Math.sin(2 * Math.PI * frequency * 2 * time)
+            + 0.10 * Math.sin(2 * Math.PI * frequency * 4 * time);
+        }
+        samples[start + i] += tone * envelope * volume;
+      }
+    };
+
+    const chords = [
+      [50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55],
+      [50, 53, 57], [55, 58, 62], [57, 61, 64], [50, 53, 57]
+    ];
+    const melody = [
+      69, 72, 74, 77, 74, 72, 69, 65,
+      67, 69, 72, 74, 72, 69, 67, 64,
+      69, 72, 77, 76, 74, 72, 69, 67,
+      65, 69, 72, 74, 72, 69, 65, 62
+    ];
+
+    chords.forEach((chord, bar) => {
+      const barBeat = bar * 4;
+      chord.forEach((note, index) => addNote(note, barBeat, 4.15, 0.020 - index * 0.002, "pad"));
+      [0, 2, 1, 2, 0, 2, 1, 2].forEach((index, step) => {
+        addNote(chord[index] + 12, barBeat + step * 0.5, 0.72, 0.030, "harp");
+      });
+      for (let step = 0; step < 4; step += 1) {
+        addNote(melody[bar * 4 + step], barBeat + step, 1.35, 0.042, "bell");
+      }
+    });
+
+    let peak = 0.0001;
+    for (let i = 0; i < samples.length; i += 1) peak = Math.max(peak, Math.abs(samples[i]));
+    const scale = Math.min(1, 0.72 / peak);
+    const bytesPerSample = 2;
+    const dataSize = samples.length * bytesPerSample;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+    const writeText = (offset, value) => {
+      for (let i = 0; i < value.length; i += 1) view.setUint8(offset + i, value.charCodeAt(i));
+    };
+    writeText(0, "RIFF");
+    view.setUint32(4, 36 + dataSize, true);
+    writeText(8, "WAVE");
+    writeText(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * bytesPerSample, true);
+    view.setUint16(32, bytesPerSample, true);
+    view.setUint16(34, 16, true);
+    writeText(36, "data");
+    view.setUint32(40, dataSize, true);
+    for (let i = 0; i < samples.length; i += 1) {
+      const value = Math.max(-1, Math.min(1, samples[i] * scale));
+      view.setInt16(44 + i * 2, Math.round(value * 32767), true);
+    }
+    originalMenuThemeUrl = URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+    return originalMenuThemeUrl;
+  }
+
+  const MUSIC_TRACKS = Object.freeze({
+    menu: Object.freeze({ createSrc: createOriginalMenuThemeUrl, gain: 0.72, playbackRate: 1 }),
+    duel: Object.freeze({ src: "assets/audio/bgm.ogg", gain: 1, playbackRate: 1 })
+  });
+
+  const musicManager = (() => {
+    const channels = new Map();
+    let activeScene = null;
+    let unlocked = false;
+    let suspended = document.visibilityState === "hidden";
+    let transitionId = 0;
+
+    function desiredScene() {
+      const gameVisible = $("#gameView")?.classList.contains("active");
+      const battleVisible = Boolean(engine && !$("#battlePanel")?.classList.contains("hidden"));
+      return gameVisible && battleVisible ? "duel" : "menu";
+    }
+
+    function channelFor(scene) {
+      const spec = MUSIC_TRACKS[scene];
+      if (!spec) return null;
+      if (!channels.has(scene)) {
+        const source = spec.src || spec.createSrc?.();
+        if (!source) return null;
+        const audio = new Audio(source);
+        audio.loop = true;
+        audio.preload = "auto";
+        audio.volume = 0;
+        try {
+          audio.playbackRate = spec.playbackRate || 1;
+          if ("preservesPitch" in audio) audio.preservesPitch = true;
+          if ("webkitPreservesPitch" in audio) audio.webkitPreservesPitch = true;
+        } catch (e) {}
+        channels.set(scene, { audio, spec });
+      }
+      return channels.get(scene);
+    }
+
+    function sceneVolume(scene) {
+      const gain = Number(MUSIC_TRACKS[scene]?.gain ?? 1);
+      return Math.max(0, Math.min(1, bgmVolume * gain));
+    }
+
+    function fade(channel, target, duration, token, onDone) {
+      if (!channel) return;
+      const audio = channel.audio;
+      const from = Number(audio.volume || 0);
+      const to = Math.max(0, Math.min(1, target));
+      if (!duration || typeof requestAnimationFrame !== "function") {
+        audio.volume = to;
+        onDone?.();
+        return;
+      }
+      const startedAt = performance.now();
+      const step = now => {
+        if (token !== transitionId) return;
+        const progress = Math.min(1, Math.max(0, (now - startedAt) / duration));
+        audio.volume = from + ((to - from) * progress);
+        if (progress < 1) requestAnimationFrame(step);
+        else onDone?.();
+      };
+      requestAnimationFrame(step);
+    }
+
+    function pauseChannels() {
+      transitionId += 1;
+      channels.forEach(({ audio }) => {
+        try { if (!audio.paused) audio.pause(); } catch (e) {}
+      });
+    }
+
+    function startScene(scene) {
+      if (!bgmEnabled || UI_MODE === "essential" || suspended || document.visibilityState === "hidden") {
+        pauseChannels();
+        return;
+      }
+      if (!unlocked) return;
+      const next = channelFor(scene);
+      if (!next) return;
+      const sameScene = activeScene === scene;
+      const previous = activeScene ? channels.get(activeScene) : null;
+      if (sameScene && !next.audio.paused) {
+        next.audio.volume = sceneVolume(scene);
+        return;
+      }
+      if (!sameScene) next.audio.volume = 0;
+      let playPromise;
+      try { playPromise = next.audio.play(); }
+      catch (err) { playPromise = Promise.reject(err); }
+      Promise.resolve(playPromise).then(() => {
+        if (!bgmEnabled || suspended || document.visibilityState === "hidden") {
+          try { next.audio.pause(); } catch (e) {}
+          return;
+        }
+        const token = ++transitionId;
+        const duration = sameScene ? 220 : MUSIC_CROSSFADE_MS;
+        activeScene = scene;
+        if (previous && previous !== next) {
+          fade(previous, 0, duration, token, () => {
+            try { previous.audio.pause(); } catch (e) {}
+          });
+        }
+        fade(next, sceneVolume(scene), duration, token);
+      }).catch(err => {
+        if (err?.name === "NotAllowedError") unlocked = false;
+        console.warn("Background music play blocked or failed:", err);
+      });
+    }
+
+    function sync() {
+      suspended = document.visibilityState === "hidden";
+      if (!bgmEnabled || UI_MODE === "essential" || suspended) {
+        pauseChannels();
+        return;
+      }
+      startScene(desiredScene());
+    }
+
+    return Object.freeze({
+      sync,
+      pause: pauseChannels,
+      suspend() {
+        suspended = true;
+        pauseChannels();
+      },
+      resume() {
+        suspended = document.visibilityState === "hidden";
+        if (!suspended) sync();
+      },
+      unlock() {
+        unlocked = true;
+        sync();
+      },
+      setVolume() {
+        const channel = activeScene ? channels.get(activeScene) : null;
+        if (channel && !channel.audio.paused) channel.audio.volume = sceneVolume(activeScene);
+      }
+    });
+  })();
+
+  function syncBackgroundMusicScene() {
+    musicManager.sync();
+  }
 
   function setBackgroundMusicEnabled(enabled) {
     bgmEnabled = Boolean(enabled);
     try {
-      window.localStorage.setItem('bgmEnabled', bgmEnabled ? '1' : '0');
+      window.localStorage.setItem("bgmEnabled", bgmEnabled ? "1" : "0");
     } catch (e) {}
-    const battleToggle = document.querySelector('#bgmEnabled');
-    const optionsToggle = document.querySelector('#optionsBgmEnabled');
-    const duelToggle = document.querySelector('#duelOptionsBgmEnabled');
+    const battleToggle = document.querySelector("#bgmEnabled");
+    const optionsToggle = document.querySelector("#optionsBgmEnabled");
+    const duelToggle = document.querySelector("#duelOptionsBgmEnabled");
     if (battleToggle) battleToggle.checked = bgmEnabled;
     if (optionsToggle) optionsToggle.checked = bgmEnabled;
     if (duelToggle) duelToggle.checked = bgmEnabled;
+    if (bgmEnabled) musicManager.sync();
+    else musicManager.pause();
   }
 
   function startBackgroundMusic() {
-    if (!bgmEnabled || !soundEnabled || UI_MODE === "essential") return;
-    if (!engine || $("#battlePanel")?.classList.contains("hidden")) return;
-    if (document.visibilityState === "hidden") return;
-    try {
-      if (!bgmAudio) {
-        bgmAudio = new Audio('assets/audio/bgm.ogg');
-        bgmAudio.loop = true;
-        bgmAudio.volume = bgmVolume;
-        bgmAudio.preload = 'auto';
-      }
-      if (bgmAudio.paused) {
-        bgmAudio.play().catch(err => {
-          console.warn('Background music play blocked or failed:', err);
-          setBackgroundMusicEnabled(false);
-          pauseBackgroundMusic();
-        });
-      }
-    } catch (e) { bgmAudio = null; }
+    musicManager.sync();
   }
 
   function pauseBackgroundMusic() {
-    try { if (bgmAudio && !bgmAudio.paused) bgmAudio.pause(); } catch (e) {}
+    musicManager.suspend();
   }
 
   function resumeBackgroundMusic() {
-    if (!bgmEnabled || !soundEnabled || UI_MODE === "essential") return;
-    startBackgroundMusic();
+    musicManager.resume();
   }
 
   function handleBackgroundMusicVisibility() {
-    if (document.visibilityState === "hidden") {
-      pauseBackgroundMusic();
-    } else {
-      resumeBackgroundMusic();
-    }
+    if (document.visibilityState === "hidden") musicManager.suspend();
+    else musicManager.resume();
   }
 
-  // initialize bgm toggle from localStorage and wire the menu checkbox
+  function unlockMusicFromGesture(event) {
+    if (!event?.isTrusted) return;
+    musicManager.unlock();
+    window.removeEventListener("pointerdown", unlockMusicFromGesture, true);
+    window.removeEventListener("keydown", unlockMusicFromGesture, true);
+  }
+
+  window.addEventListener("pointerdown", unlockMusicFromGesture, true);
+  window.addEventListener("keydown", unlockMusicFromGesture, true);
+
   try {
-    const stored = window.localStorage.getItem('bgmEnabled');
-    bgmEnabled = stored === null ? false : stored === '1';
+    const stored = window.localStorage.getItem("bgmEnabled");
+    bgmEnabled = stored === null ? false : stored === "1";
     const bgmCheckbox = $("#bgmEnabled");
     const bgmSlider = $("#bgmVolume");
 
-    // load stored volume (0-100) -> convert to 0-1
-    const storedVol = window.localStorage.getItem('bgmVolume');
+    const storedVol = window.localStorage.getItem("bgmVolume");
     if (storedVol !== null) {
       const n = Number(storedVol);
       if (!Number.isNaN(n)) bgmVolume = Math.max(0, Math.min(1, n / 100));
@@ -5130,31 +5354,26 @@
 
     if (bgmSlider) {
       bgmSlider.value = Math.round(bgmVolume * 100);
-      bgmSlider.addEventListener('input', e => {
+      bgmSlider.addEventListener("input", e => {
         const v = Number(e.target.value || 0);
         bgmVolume = Math.max(0, Math.min(1, v / 100));
-        window.localStorage.setItem('bgmVolume', String(Math.round(bgmVolume * 100)));
-        try { if (bgmAudio) bgmAudio.volume = bgmVolume; } catch (err) {}
+        window.localStorage.setItem("bgmVolume", String(Math.round(bgmVolume * 100)));
+        musicManager.setVolume();
         const duelVolume = $("#duelOptionsBgmVolume");
         const duelValue = $("#duelOptionsBgmVolumeValue");
         if (duelVolume && duelVolume.value !== String(Math.round(bgmVolume * 100))) duelVolume.value = String(Math.round(bgmVolume * 100));
-        if (duelValue) duelValue.textContent = `${Math.round(bgmVolume * 100)}%`;
+        if (duelValue) duelValue.textContent = Math.round(bgmVolume * 100) + "%";
       });
     }
 
     if (bgmCheckbox) {
       bgmCheckbox.checked = bgmEnabled;
-      bgmCheckbox.addEventListener('change', e => {
-        setBackgroundMusicEnabled(e.target.checked);
-        if (bgmEnabled) startBackgroundMusic(); else pauseBackgroundMusic();
-      });
+      bgmCheckbox.addEventListener("change", e => setBackgroundMusicEnabled(e.target.checked));
     }
     document.addEventListener("visibilitychange", handleBackgroundMusicVisibility);
-    window.addEventListener("focus", resumeBackgroundMusic);
-    window.addEventListener("blur", pauseBackgroundMusic);
     window.addEventListener("pageshow", resumeBackgroundMusic);
     window.addEventListener("pagehide", pauseBackgroundMusic);
-    if (bgmEnabled) startBackgroundMusic();
+    musicManager.sync();
   } catch (e) {}
 
   function setBoardCreatureNames(enabled, { persist = true } = {}) {
@@ -5286,7 +5505,7 @@
     localStorage.setItem("arcane.soundEnabled", soundEnabled ? "1" : "0");
     if ($("#optionsSoundEnabled")) $("#optionsSoundEnabled").checked = soundEnabled;
     if ($("#duelOptionsSoundEnabled")) $("#duelOptionsSoundEnabled").checked = soundEnabled;
-    if (soundEnabled) { ensureAudio(); if (bgmEnabled) startBackgroundMusic(); } else { pauseBackgroundMusic(); }
+    if (soundEnabled) ensureAudio();
   });
   $("#languageSelect")?.addEventListener("change", event => A.i18n?.setLanguage(event.target.value));
   $("#retryMultiplayerServerBtn")?.addEventListener("click", () => checkMultiplayerServer({ force: true }));
