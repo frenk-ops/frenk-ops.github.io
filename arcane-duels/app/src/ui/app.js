@@ -2009,11 +2009,136 @@
 
   let renderedHandSignature = "";
   let renderedHandEngine = null;
+  let mobileHandGesture = null;
+
+  function isMobileDuelLayout() {
+    return window.matchMedia?.("(max-width: 820px)").matches && !$("#battlePanel")?.classList.contains("hidden");
+  }
+
+  function hideMobileCardInspect() {
+    const inspect = $("#mobileCardInspect");
+    inspect?.classList.add("hidden");
+    inspect?.setAttribute("aria-hidden", "true");
+  }
+
+  function showMobileCardInspect(card) {
+    const inspect = $("#mobileCardInspect");
+    if (!inspect) return;
+    $("#mobileCardInspectArt").replaceChildren(buildArtBlock(card, "mobileInspect"));
+    $("#mobileCardInspectName").textContent = cardName(card);
+    $("#mobileCardInspectText").textContent = cardText(card);
+    const cost = engine.effectiveCost("player", card);
+    $("#mobileCardInspectStats").textContent = `${schoolName(card.school)} · ${t(card.type === "spell" ? "ui.spell" : "ui.creature")} · ${cost}`
+      + (card.type === "creature" ? ` · ⚔ ${card.attack} · ♥ ${card.health}` : "");
+    inspect.classList.remove("hidden");
+    inspect.setAttribute("aria-hidden", "false");
+  }
+
+  function clearMobileHandGesture() {
+    const gesture = mobileHandGesture;
+    if (!gesture) return;
+    clearTimeout(gesture.holdTimer);
+    document.removeEventListener("pointermove", gesture.move);
+    document.removeEventListener("pointerup", gesture.end);
+    document.removeEventListener("pointercancel", gesture.cancel);
+    $$("#playerBoard .mobile-drop-hover").forEach(node => node.classList.remove("mobile-drop-hover"));
+    $("#battlePanel")?.classList.remove("mobile-drag-creature", "mobile-drag-spell");
+    $("#mobileDragGhost")?.classList.add("hidden");
+    hideMobileCardInspect();
+    mobileHandGesture = null;
+  }
+
+  function startMobileHandGesture(event, card) {
+    if (!isMobileDuelLayout() || event.button !== 0 || mobileHandGesture) return;
+    event.preventDefault();
+    const ghost = $("#mobileDragGhost");
+    const panel = $("#battlePanel");
+    const gesture = {
+      pointerId: event.pointerId,
+      cardId: card.id,
+      startX: event.clientX,
+      startY: event.clientY,
+      dragging: false,
+      holdTimer: null,
+      move: null,
+      end: null,
+      cancel: clearMobileHandGesture
+    };
+    gesture.holdTimer = setTimeout(() => {
+      if (mobileHandGesture === gesture && !gesture.dragging) showMobileCardInspect(card);
+    }, 340);
+    gesture.move = moveEvent => {
+      if (moveEvent.pointerId !== gesture.pointerId) return;
+      const distance = Math.hypot(moveEvent.clientX - gesture.startX, moveEvent.clientY - gesture.startY);
+      if (!gesture.dragging && distance < 11) return;
+      if (!gesture.dragging) {
+        gesture.dragging = true;
+        clearTimeout(gesture.holdTimer);
+        hideMobileCardInspect();
+        ghost?.replaceChildren(buildArtBlock(card, "mobileDrag"));
+        ghost?.classList.remove("hidden");
+        panel?.classList.add(card.type === "spell" ? "mobile-drag-spell" : "mobile-drag-creature");
+      }
+      moveEvent.preventDefault();
+      if (ghost) {
+        ghost.style.left = `${moveEvent.clientX}px`;
+        ghost.style.top = `${moveEvent.clientY}px`;
+      }
+      $$("#playerBoard .mobile-drop-hover").forEach(node => node.classList.remove("mobile-drop-hover"));
+      if (card.type === "creature") {
+        document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)
+          ?.closest("#playerBoard .slot")?.classList.add("mobile-drop-hover");
+      }
+    };
+    gesture.end = async endEvent => {
+      if (endEvent.pointerId !== gesture.pointerId) return;
+      const wasDragging = gesture.dragging;
+      const x = endEvent.clientX;
+      const y = endEvent.clientY;
+      const slotCell = card.type === "creature"
+        ? document.elementFromPoint(x, y)?.closest("#playerBoard .slot")
+        : null;
+      const battlefield = $(".classic-battlefield")?.getBoundingClientRect();
+      const insideBattlefield = battlefield && x >= battlefield.left && x <= battlefield.right
+        && y >= battlefield.top && y <= battlefield.bottom;
+      clearMobileHandGesture();
+      if (!engine || busy || !isMobileDuelLayout()) return;
+      if (!wasDragging) {
+        inspectedCardId = card.id;
+        inspectedCardSide = "player";
+        inspectedCardInstanceId = null;
+        renderCollectionPanels();
+        return;
+      }
+      if (card.type === "creature") {
+        if (!slotCell) return;
+        const slot = Number(slotCell.dataset.slot);
+        if (!Number.isInteger(slot) || engine.state.player.board[slot]) return;
+        await onPlayerCard(card.id);
+        if (engine.state.pendingCardId === card.id && engine.state.phase === A.PHASES.PLAYER_TARGET) {
+          await onPlayerSlot(slot);
+        }
+      } else if (insideBattlefield) {
+        await onPlayerCard(card.id);
+        if (!remoteDuelActive && engine.state.pendingCardId === card.id
+          && engine.state.phase === A.PHASES.PLAYER_TARGET) await onPlayerCard(card.id);
+      }
+    };
+    mobileHandGesture = gesture;
+    document.addEventListener("pointermove", gesture.move, { passive: false });
+    document.addEventListener("pointerup", gesture.end);
+    document.addEventListener("pointercancel", gesture.cancel);
+  }
 
   function renderHand() {
     const root = $("#playerHand");
     const template = $("#smallCardTemplate");
-    const cards = engine.state.player.hand.filter(card => card.school === activeSchool);
+    const cards = engine.state.player.hand
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(item => item.card.school === activeSchool)
+      .sort((a, b) => engine.effectiveCost("player", a.card) - engine.effectiveCost("player", b.card)
+        || a.originalIndex - b.originalIndex)
+      .map(item => item.card);
     const signature = JSON.stringify({
       school: activeSchool,
       phase: engine.state.phase,
@@ -2022,8 +2147,10 @@
       cards: cards.map(card => [card.id, engine.effectiveCost("player", card), engine.getPlayability("player", card).ok])
     });
     if (engine === renderedHandEngine && signature === renderedHandSignature) return;
+    clearMobileHandGesture();
     renderedHandEngine = engine;
     renderedHandSignature = signature;
+    root.style.setProperty("--hand-steps", Math.max(1, cards.length - 1));
     const fragment = document.createDocumentFragment();
     cards.forEach((card, cardIndex) => {
       const clone = template.content.firstElementChild.cloneNode(true);
@@ -2032,6 +2159,10 @@
       const playable = engine.getPlayability("player", card).ok;
       clone.dataset.cardId = card.id;
       clone.style.setProperty("--card-index", cardIndex);
+      const position = cards.length > 1 ? cardIndex / (cards.length - 1) * 2 - 1 : 0;
+      clone.style.setProperty("--fan-angle", `${(position * 8).toFixed(1)}deg`);
+      clone.style.setProperty("--fan-drop", `${(Math.abs(position) * 2).toFixed(1)}px`);
+      clone.style.setProperty("--fan-z", cardIndex + 1);
       clone.classList.add(`school-${card.school}`, `type-${card.type}`);
       clone.classList.toggle("selected", selected);
       clone.classList.toggle("unplayable", !playable && !selected);
@@ -2047,7 +2178,12 @@
       const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; inspectedCardInstanceId = null; renderCollectionPanels(); };
       clone.addEventListener("mouseenter", inspectHandCard);
       clone.addEventListener("focus", inspectHandCard);
-      clone.addEventListener("click", () => onPlayerCard(card.id));
+      clone.addEventListener("pointerdown", event => startMobileHandGesture(event, card));
+      clone.addEventListener("contextmenu", event => { if (isMobileDuelLayout()) event.preventDefault(); });
+      clone.addEventListener("click", event => {
+        if (isMobileDuelLayout() && event.detail > 0) { event.preventDefault();return; }
+        onPlayerCard(card.id);
+      });
       fragment.appendChild(clone);
     });
     root.replaceChildren(fragment);
@@ -2114,6 +2250,9 @@
     const state = engine.state;
     $("#playerNameBattle").textContent = currentPlayerName || t("ui.player");
     $("#enemyNameBattle").textContent = currentOpponentName || t("ui.opponent");
+    $("#playerNameBattle").title = currentPlayerName || t("ui.player");
+    $("#enemyNameBattle").title = currentOpponentName || t("ui.opponent");
+    $("#mobileSpellDropTarget").textContent = t("mobile.castSpell");
     updatePhaseVisual(state);
     $("#enemyHpBattle").textContent = `${state.enemy.hp} ♥`;
     $("#playerHpBattle").textContent = `${state.player.hp} ♥`;

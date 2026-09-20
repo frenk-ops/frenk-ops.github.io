@@ -1,7 +1,7 @@
 "use strict";
 
-const SHELL_CACHE = "arcane-duels-shell-v21";
-const RUNTIME_CACHE = "arcane-duels-runtime-v21";
+const SHELL_CACHE = "arcane-duels-shell-v22";
+const RUNTIME_CACHE = "arcane-duels-runtime-v22";
 
 const APP_SHELL = [
   "./",

@@ -28,7 +28,7 @@
     "ui.player": "Giocatore", "ui.opponent": "Avversario", "ui.life": "Vita",
     "ui.school": "Scuola", "ui.type": "Tipo", "ui.cost": "Costo",
     "ui.attack": "Attacco", "ui.ability": "Abilità", "ui.spell": "Magia",
-    "ui.creature": "Creatura", "ui.original": "Originale",
+    "ui.creature": "Creatura", "ui.original": "Originale", "mobile.castSpell": "Rilascia qui per lanciare la magia",
     "ui.animationSpeed": "Velocità animazioni", "ui.backgroundMusic": "Musica di sottofondo",
     "ui.volume": "Volume", "ui.sound": "Suono", "ui.speed": "Velocità",
     "ui.returnMainMenu": "TORNA AL MENU", "ui.round": "Round {value}",

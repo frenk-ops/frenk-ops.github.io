@@ -28,7 +28,7 @@
     "ui.player": "Player", "ui.opponent": "Opponent", "ui.life": "Life",
     "ui.school": "School", "ui.type": "Type", "ui.cost": "Cost",
     "ui.attack": "Attack", "ui.ability": "Ability", "ui.spell": "Spell",
-    "ui.creature": "Creature", "ui.original": "Original",
+    "ui.creature": "Creature", "ui.original": "Original", "mobile.castSpell": "Release here to cast the spell",
     "ui.animationSpeed": "Animation speed", "ui.backgroundMusic": "Background music",
     "ui.volume": "Volume", "ui.sound": "Sound", "ui.speed": "Speed",
     "ui.returnMainMenu": "RETURN TO MENU", "ui.round": "Round {value}",
