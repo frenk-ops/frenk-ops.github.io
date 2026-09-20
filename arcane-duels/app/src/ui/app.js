@@ -2994,11 +2994,6 @@
     if (engine) renderGame();
   });
 
-  function cleanupOldCaches() {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then(items => items.forEach(item => item.unregister())).catch(() => {});
-    if ("caches" in window) caches.keys().then(keys => keys.forEach(key => caches.delete(key))).catch(() => {});
-  }
-
   syncMultiplayerAvailability();
   setupDifficultyOptions();
   if ($("#playerNameInput") || $("#onlinePlayerNameInput")) {
@@ -3048,5 +3043,4 @@
   if (urlParams.get("qa") === "duel") {
     setTimeout(() => startDuel("fire", false, null, "normal"), 30);
   }
-  cleanupOldCaches();
 })(window.Arcane = window.Arcane || {});

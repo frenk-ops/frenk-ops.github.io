@@ -1,7 +1,7 @@
 "use strict";
 
-const SHELL_CACHE = "arcane-duels-shell-v10";
-const RUNTIME_CACHE = "arcane-duels-runtime-v10";
+const SHELL_CACHE = "arcane-duels-shell-v11";
+const RUNTIME_CACHE = "arcane-duels-runtime-v11";
 
 const APP_SHELL = [
   "./",
@@ -60,6 +60,10 @@ self.addEventListener("activate", event => {
   );
 });
 
+self.addEventListener("message", event => {
+  if (event.data?.type === "ACTIVATE_UPDATE") self.skipWaiting();
+});
+
 function isDynamicOrMultiplayer(url) {
   return url.pathname.includes("/server/") ||
     url.pathname.includes("/api/") ||
@@ -90,7 +94,7 @@ self.addEventListener("fetch", event => {
   }
 
   event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then(cached => {
+    caches.match(request).then(cached => {
       const network = fetch(request).then(response => {
         if (response && response.ok && response.type === "basic") {
           const clone = response.clone();
