@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.22.2-14eb634";
+const BUILD_REVISION = "0.22.3-dea597e";
 const SHELL_CACHE = `arcane-duels-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `arcane-duels-runtime-${BUILD_REVISION}`;
 
@@ -58,16 +58,14 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    const upgrading = keys.some(key => key.startsWith("arcane-duels-shell-") && key !== SHELL_CACHE);
     await Promise.all(
       keys
         .filter(key => key.startsWith("arcane-duels-") && key !== SHELL_CACHE && key !== RUNTIME_CACHE)
         .map(key => caches.delete(key))
     );
     await self.clients.claim();
-    if (!upgrading) return;
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    await Promise.all(windows.map(client => client.navigate(client.url).catch(() => null)));
+    windows.forEach(client => client.postMessage({ type: "ARCANE_SW_ACTIVATED", revision: BUILD_REVISION }));
   })());
 });
 

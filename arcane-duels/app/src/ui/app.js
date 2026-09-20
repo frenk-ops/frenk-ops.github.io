@@ -310,13 +310,19 @@
     return String(value || "").replace(/\s+/g, " ").trim().slice(0, 24) || fallback;
   }
 
-  function selectedPlayerName(input = $("#playerNameInput")) {
-    return normalizedPlayerName(input?.value);
+  function selectedPlayerName(input = null) {
+    const candidate = input?.value
+      ?? $("#optionsPlayerNameInput")?.value
+      ?? localStorage.getItem("arcane.playerName")
+      ?? profile?.playerName
+      ?? $("#playerNameInput")?.value;
+    return normalizedPlayerName(candidate);
   }
 
-  function savePlayerName(input = $("#playerNameInput")) {
+  function savePlayerName(input = null) {
     const name = selectedPlayerName(input);
     if ($("#playerNameInput")) $("#playerNameInput").value = name;
+    if ($("#optionsPlayerNameInput")) $("#optionsPlayerNameInput").value = name;
     if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = name;
     localStorage.setItem("arcane.playerName", name);
     if (profile) {
@@ -424,7 +430,10 @@
         }
       }
     } catch {}
-    if (!activationRequested) window.setTimeout(() => location.reload(), 1000);
+    window.setTimeout(() => {
+      const duelActive = Boolean($("#battlePanel") && !$("#battlePanel").classList.contains("hidden"));
+      if (!duelActive) location.reload();
+    }, activationRequested ? 900 : 1000);
   }
 
   function scheduleMultiplayerServerRetry(delay = 4000) {
@@ -1554,7 +1563,11 @@
     };
     cell.addEventListener("mouseenter", inspectUnit);
     cell.addEventListener("focus", inspectUnit);
-    cell.addEventListener("click", inspectUnit);
+    cell.addEventListener("click", () => {
+      inspectUnit();
+      const currentUnit = engine?.state?.[side]?.board?.[slot];
+      if (currentUnit) openDuelCardZoom(currentUnit, side);
+    });
     return cell;
   }
 
@@ -2490,7 +2503,7 @@
     const revealed = [...revealedIds]
       .map(id => hand.find(card => card.id === id) || allCards.find(card => card.id === id))
       .filter(card => card?.school === enemySchool);
-    const summaryText = t("cards.enemySummary", { school: schoolName(enemySchool), total: hand.length, revealed: revealed.length });
+    const summaryText = `${schoolName(enemySchool)} · ${t("cards.revealed")}: ${revealed.length}`;
     if (summary) summary.textContent = summaryText;
     if (modalSummary) modalSummary.textContent = summaryText;
 
@@ -2504,8 +2517,12 @@
       const label = document.createElement("span");
       label.className = "enemy-card-cost";
       label.textContent = engine.effectiveCost("enemy", card);
+      const name = document.createElement("strong");
+      name.className = "enemy-card-name";
+      name.textContent = cardName(card);
       chip.appendChild(art);
       chip.appendChild(label);
+      chip.appendChild(name);
       const inspect = () => {
         inspectedCardId = card.id;
         inspectedCardSide = "enemy";
@@ -2514,7 +2531,10 @@
       };
       chip.addEventListener("mouseenter", inspect);
       chip.addEventListener("focus", inspect);
-      chip.addEventListener("click", inspect);
+      chip.addEventListener("click", () => {
+        inspect();
+        openDuelCardZoom(card, "enemy");
+      });
       return chip;
     };
 
@@ -3754,6 +3774,7 @@
   }
 
   function syncOptionsPage() {
+    if ($("#optionsPlayerNameInput")) $("#optionsPlayerNameInput").value = selectedPlayerName();
     if ($("#optionsLanguageSelect")) $("#optionsLanguageSelect").value = A.i18n?.getLanguage?.() || "it";
     if ($("#optionsAnimationSpeed")) $("#optionsAnimationSpeed").value = String(animationSpeed);
     if ($("#optionsCardArtStyle")) $("#optionsCardArtStyle").value = cardArtStyle;
@@ -3775,6 +3796,7 @@
     if ($("#duelOptionsBgmVolumeValue")) $("#duelOptionsBgmVolumeValue").textContent = `${volume}%`;
   }
 
+  $("#optionsPlayerNameInput")?.addEventListener("change", event => savePlayerName(event.currentTarget));
   $("#optionsLanguageSelect")?.addEventListener("change", event => {
     A.i18n?.setLanguage(event.target.value);
     if ($("#languageSelect")) $("#languageSelect").value = event.target.value;
@@ -3981,15 +4003,13 @@
 
   syncMultiplayerAvailability();
   setupDifficultyOptions();
-  if ($("#playerNameInput") || $("#onlinePlayerNameInput")) {
-    const storedPlayerName = localStorage.getItem("arcane.playerName");
+  if ($("#playerNameInput") || $("#onlinePlayerNameInput") || $("#optionsPlayerNameInput")) {
+    const storedPlayerName = localStorage.getItem("arcane.playerName") || profile?.playerName;
     const resolvedPlayerName = ["Giocatore", "Player"].includes(String(storedPlayerName || "").trim())
       ? t("ui.player")
       : normalizedPlayerName(storedPlayerName, t("ui.player"));
-    if ($("#playerNameInput")) {
-      $("#playerNameInput").value = resolvedPlayerName;
-      $("#playerNameInput").addEventListener("change", event => savePlayerName(event.currentTarget));
-    }
+    if ($("#playerNameInput")) $("#playerNameInput").value = resolvedPlayerName;
+    if ($("#optionsPlayerNameInput")) $("#optionsPlayerNameInput").value = resolvedPlayerName;
     if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = resolvedPlayerName;
   }
   setupLocalServerLifecycle();
@@ -4039,8 +4059,32 @@
     restorePersistedLocalDuel();
   }
 
-  window.addEventListener("pagehide", persistLocalDuelState);
+  window.addEventListener("pageshow", event => {
+    clearMobileHandGesture();
+    $("#battlePanel")?.classList.remove("mobile-drag-creature", "mobile-drag-spell");
+    $("#mobileDragGhost")?.classList.add("hidden");
+    if (event.persisted) {
+      closeDuelCardZoom();
+      closeEnemyRevealedModal();
+    }
+    if (engine && !remoteDuelActive && [A.PHASES.PLAYER_SELECT, A.PHASES.PLAYER_TARGET].includes(engine.state.phase)) {
+      busy = false;
+      renderGame();
+    }
+  });
+  window.addEventListener("pagehide", () => {
+    clearMobileHandGesture();
+    persistLocalDuelState();
+  });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") persistLocalDuelState();
+    if (document.visibilityState === "hidden") {
+      clearMobileHandGesture();
+      persistLocalDuelState();
+      return;
+    }
+    if (engine && !remoteDuelActive && [A.PHASES.PLAYER_SELECT, A.PHASES.PLAYER_TARGET].includes(engine.state.phase)) {
+      busy = false;
+      renderGame();
+    }
   });
 })(window.Arcane = window.Arcane || {});
