@@ -8830,3 +8830,228 @@ body.ui-classic:not(:has(#battlePanel:not(.hidden))) .multiplayer-screen {
 .tournament-specialization-value .specialization-wizard-icon {
   color:#c9a4ff !important;
 }
+
+
+/* 0.22.12 — spell identity pass: Scorching Orbs, rising flames, Ice Bolt and life-drain cloud. */
+.cast-card.spell-identity-scorching-orbs::before {
+  background:
+    radial-gradient(circle at 26% 68%,rgba(255,241,157,.75) 0 4%,rgba(255,117,40,.45) 5% 13%,transparent 21%),
+    radial-gradient(circle at 72% 38%,rgba(255,224,126,.68) 0 3%,rgba(242,73,25,.38) 5% 12%,transparent 20%),
+    radial-gradient(circle at 52% 82%,rgba(255,177,70,.55),rgba(218,42,18,.28) 36%,transparent 68%);
+  box-shadow:0 0 34px rgba(255,91,26,.42);
+}
+.cast-card.spell-identity-rising-flames::before {
+  background:radial-gradient(circle at 50% 88%,rgba(255,201,84,.55),rgba(235,62,21,.32) 38%,transparent 70%);
+  box-shadow:0 0 34px rgba(255,82,24,.44);
+}
+.cast-card.spell-identity-ice-bolt::before {
+  background:
+    linear-gradient(128deg,transparent 24%,rgba(221,250,255,.45) 25% 28%,transparent 29% 47%,rgba(123,215,255,.3) 48% 52%,transparent 53%),
+    radial-gradient(circle at 50% 50%,rgba(209,247,255,.28),rgba(69,168,235,.18) 46%,transparent 72%);
+  box-shadow:0 0 38px rgba(123,218,255,.48);
+}
+
+/* Scorching Orbs: distinct fireballs fly to each target, then burst into sparks. */
+.spell-scorching-orb {
+  position:fixed;
+  z-index:101;
+  width:18px;
+  height:18px;
+  margin:-9px 0 0 -9px;
+  border-radius:50%;
+  pointer-events:none;
+  background:radial-gradient(circle at 35% 30%,#fffbd0 0 15%,#ffd052 24%,#ff7b29 48%,#cf2817 72%,rgba(88,5,0,.18) 100%);
+  box-shadow:0 0 8px #fff0a0,0 0 18px rgba(255,113,34,.95),0 0 30px rgba(213,39,18,.62);
+  animation:spellScorchingOrbFlight .72s cubic-bezier(.16,.72,.24,1) both;
+  animation-delay:calc(var(--spell-index,0) * 65ms);
+}
+.spell-scorching-orb::after {
+  content:"";
+  position:absolute;
+  right:55%;
+  top:35%;
+  width:30px;
+  height:7px;
+  border-radius:999px;
+  background:linear-gradient(90deg,transparent,rgba(255,90,26,.18),rgba(255,220,100,.75));
+  filter:blur(2px);
+  transform:rotate(-8deg);
+}
+@keyframes spellScorchingOrbFlight {
+  0% { opacity:0;transform:translate(0,0) scale(.35);filter:brightness(.9); }
+  12% { opacity:1;transform:translate(0,-5px) scale(1.12);filter:brightness(1.55); }
+  78% { opacity:1;filter:brightness(1.2); }
+  100% { opacity:0;transform:translate(var(--spell-dx),var(--spell-dy)) scale(.72);filter:brightness(2); }
+}
+.spell-scorching-impact-marker {
+  border:1px solid rgba(255,174,62,.28);
+  background:radial-gradient(circle,rgba(255,213,92,.26),rgba(241,75,24,.12) 42%,transparent 70%);
+  animation:spellScorchingImpact .8s ease-out both;
+}
+.spell-scorching-impact-marker::before,
+.spell-scorching-impact-marker::after {
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#fff2a0;
+  box-shadow:
+    0 -25px 0 #ff9e39,
+    22px -15px 0 #ffd15f,
+    28px 8px 0 #ff6d2d,
+    11px 27px 0 #ffc049,
+    -17px 23px 0 #ff7a30,
+    -28px 2px 0 #ffd76a,
+    -19px -20px 0 #ff8f35;
+  animation:spellScorchingSparks .66s ease-out both;
+  animation-delay:calc(var(--spell-index,0) * 35ms);
+}
+.spell-scorching-impact-marker::after {
+  transform:rotate(24deg) scale(.72);
+  filter:blur(.4px);
+  animation-delay:calc(55ms + var(--spell-index,0) * 35ms);
+}
+@keyframes spellScorchingImpact {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.45); }
+  25% { opacity:1;transform:translate(-50%,-50%) scale(1.05);filter:brightness(1.7); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.28); }
+}
+@keyframes spellScorchingSparks {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.35); }
+  28% { opacity:1;transform:translate(-50%,-50%) scale(1); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.65);filter:blur(1px); }
+}
+
+/* Reused fire language for Flame Wave, Inferno and Fire Wall's entry damage. */
+.spell-rising-flames-marker::before,
+.spell-rising-flames-marker::after {
+  content:"";
+  position:absolute;
+  left:8%;
+  right:8%;
+  bottom:-4%;
+  height:92%;
+  opacity:0;
+  transform-origin:50% 100%;
+  clip-path:polygon(0 100%,12% 52%,22% 100%,38% 10%,50% 100%,66% 36%,76% 100%,91% 0,100% 100%);
+  background:linear-gradient(180deg,#fff4a7 0%,#ff9b38 42%,#d52614 76%,rgba(99,12,4,.1) 100%);
+  filter:drop-shadow(0 0 9px rgba(255,86,22,.95));
+  animation:spellRisingFlames .86s cubic-bezier(.2,.8,.25,1) both;
+  animation-delay:calc(var(--spell-index,0) * 55ms);
+}
+.spell-rising-flames-marker::after {
+  inset:auto 18% -8% 12%;
+  height:75%;
+  filter:blur(2px) drop-shadow(0 0 12px rgba(255,166,55,.7));
+  animation-delay:calc(70ms + var(--spell-index,0) * 55ms);
+}
+.spell-rising-flames-hero::before,
+.spell-rising-flames-hero::after {
+  left:-6%;
+  right:-6%;
+  height:115%;
+}
+@keyframes spellRisingFlames {
+  0% { opacity:0;transform:scaleY(.08) translateY(24px); }
+  26% { opacity:1;transform:scaleY(1.14) translateY(-4px); }
+  66% { opacity:.92;transform:scaleY(.98) translateY(0); }
+  100% { opacity:0;transform:scaleY(.74) translateY(-15px); }
+}
+
+/* Ice Bolt: a directional crystalline spear, visually separate from Lightning. */
+.spell-ice-bolt {
+  position:fixed;
+  z-index:102;
+  width:62px;
+  height:10px;
+  margin:-5px 0 0 -8px;
+  pointer-events:none;
+  transform-origin:8px 50%;
+  rotate:var(--spell-angle);
+  clip-path:polygon(0 34%,68% 34%,81% 0,100% 50%,81% 100%,68% 66%,0 66%);
+  background:linear-gradient(90deg,rgba(135,221,255,.18),#bff2ff 28%,#effdff 58%,#77cdf6 82%,#dff9ff);
+  box-shadow:0 0 8px #eaffff,0 0 16px rgba(91,195,244,.9),0 0 26px rgba(54,133,217,.55);
+  filter:drop-shadow(0 0 4px rgba(215,250,255,.95));
+  animation:spellIceBoltFlight .72s cubic-bezier(.14,.76,.18,1) both;
+}
+.spell-ice-bolt::before {
+  content:"";
+  position:absolute;
+  inset:-3px 34% -3px 10%;
+  background:linear-gradient(90deg,transparent,rgba(231,252,255,.82),transparent);
+  filter:blur(2px);
+}
+@keyframes spellIceBoltFlight {
+  0% { opacity:0;transform:translate(0,0) scaleX(.45);filter:brightness(.8); }
+  14% { opacity:1;transform:translate(0,0) scaleX(1);filter:brightness(1.55); }
+  86% { opacity:1; }
+  100% { opacity:0;transform:translate(var(--spell-dx),var(--spell-dy)) scaleX(.78);filter:brightness(2.1); }
+}
+.spell-ice-impact-marker {
+  border:2px solid rgba(198,241,255,.7);
+  background:
+    linear-gradient(32deg,transparent 47%,rgba(226,251,255,.72) 48% 51%,transparent 52%),
+    linear-gradient(145deg,transparent 47%,rgba(122,211,250,.62) 48% 51%,transparent 52%),
+    radial-gradient(circle,rgba(220,250,255,.28),rgba(73,171,229,.12) 52%,transparent 72%);
+  box-shadow:0 0 26px rgba(143,225,255,.72),inset 0 0 18px rgba(209,246,255,.28);
+  animation:spellIceImpact .84s ease-out both;
+}
+.spell-ice-impact-marker::before,
+.spell-ice-impact-marker::after {
+  content:"";
+  position:absolute;
+  inset:16%;
+  border:2px solid rgba(223,251,255,.75);
+  clip-path:polygon(46% 0,55% 40%,100% 47%,58% 56%,67% 100%,50% 65%,28% 100%,41% 55%,0 43%,43% 42%);
+}
+.spell-ice-impact-marker::after {
+  inset:28%;
+  rotate:25deg;
+  border-color:rgba(111,203,248,.72);
+}
+@keyframes spellIceImpact {
+  0% { opacity:0;transform:translate(-50%,-50%) scale(.55); }
+  22% { opacity:1;transform:translate(-50%,-50%) scale(1.04);filter:brightness(1.75); }
+  100% { opacity:0;transform:translate(-50%,-50%) scale(1.22);filter:brightness(.95) blur(1px); }
+}
+
+/* Drain Life: a loose cloud of vital essence instead of a straight beam. */
+.spell-drain-life-line { display:none !important; }
+.spell-drain-mote {
+  position:fixed;
+  z-index:101;
+  width:22px;
+  height:22px;
+  margin:-11px 0 0 -11px;
+  border-radius:48% 52% 44% 56%;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 42% 38%,rgba(222,255,209,.9) 0 10%,rgba(116,255,168,.55) 18%,rgba(174,83,220,.62) 42%,rgba(73,16,101,.08) 72%);
+  box-shadow:0 0 12px rgba(151,255,189,.55),0 0 26px rgba(168,70,218,.5);
+  filter:blur(.3px);
+  animation:spellDrainMoteFlow 1.06s cubic-bezier(.28,.05,.2,1) both;
+  animation-delay:calc(var(--spell-index,0) * 58ms);
+}
+.spell-drain-mote::after {
+  content:"";
+  position:absolute;
+  inset:-8px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(197,255,208,.22),rgba(138,61,196,.13) 42%,transparent 70%);
+  filter:blur(3px);
+}
+@keyframes spellDrainMoteFlow {
+  0% { opacity:0;transform:translate(0,0) scale(.35) rotate(-12deg);filter:brightness(.55) blur(1px); }
+  18% { opacity:.95;transform:translate(0,-9px) scale(1.12) rotate(7deg);filter:brightness(1.15) blur(.2px); }
+  65% { opacity:.88;filter:brightness(1.3) blur(.5px); }
+  100% { opacity:0;transform:translate(var(--spell-dx),var(--spell-dy)) scale(.42) rotate(34deg);filter:brightness(1.8) blur(2px); }
+}
+.spell-drain-source-marker {
+  background:radial-gradient(circle,rgba(158,52,202,.18),rgba(58,4,82,.08) 52%,transparent 72%);
+}
+.spell-drain-target-marker {
+  background:radial-gradient(circle,rgba(144,255,188,.24),rgba(68,203,147,.08) 52%,transparent 72%);
+}

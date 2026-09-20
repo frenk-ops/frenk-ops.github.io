@@ -4,7 +4,7 @@
   A.RAW_CARD_SETS["astral-original"] = [
   {
     "id": "astral_fire_01",
-    "name": "Fire spikes",
+    "name": "Scorching Orbs",
     "school": "fire",
     "cost": 1,
     "level": 1,

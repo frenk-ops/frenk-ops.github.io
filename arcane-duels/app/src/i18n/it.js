@@ -187,7 +187,7 @@
     "schools.earth": "Terra", "schools.nature": "Terra", "schools.death": "Morte"
   };
   const rows = [
-    ["astral_fire_01","Sfere Infuocate","Infligge 3 danni a tutte le creature nemiche"],
+    ["astral_fire_01","Sfere Ustionanti","Infligge 3 danni a tutte le creature nemiche"],
     ["astral_fire_02","Soldato Orco","Quando entra in campo, se il potere Terra è inferiore a 6, infligge 4 danni al suo evocatore"],
     ["astral_fire_03","Rituale del Fuoco","Aumenta di 5 il potere Fuoco dell'evocatore (aumento totale: 2) e riduce di 1 il potere Acqua nemico"],
     ["astral_fire_04","Muro di Fuoco","Quando entra in campo infligge 3 danni a tutti i nemici"],

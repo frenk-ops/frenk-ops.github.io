@@ -59,19 +59,54 @@
   let audioContext = null;
   const originalSoundCache = new Map();
 
-  // UI-only spell identity registry. Engine events remain the source of truth;
-  // these profiles only decide how a resolved spell is presented.
-  const SPELL_FX_REGISTRY = Object.freeze({
+  // UI-only card identity registry. Engine events remain the source of truth;
+  // these profiles only decide how a resolved card is presented.
+  const CARD_FX_REGISTRY = Object.freeze({
     astral_fire_01: Object.freeze({
-      vfx: "fire-spikes",
+      vfx: "scorching-orbs",
       sfx: Object.freeze({
         cast: Object.freeze([
-          { type: "triangle", frequency: 170, secondFrequency: 620, duration: 0.28, volume: 0.055 },
-          { type: "sawtooth", frequency: 420, secondFrequency: 980, duration: 0.18, volume: 0.025, delay: 0.08 }
+          { type: "triangle", frequency: 360, secondFrequency: 980, duration: 0.26, volume: 0.050 },
+          { type: "sine", frequency: 720, secondFrequency: 1480, duration: 0.18, volume: 0.024, delay: 0.06 }
         ]),
         impact: Object.freeze([
-          { type: "sawtooth", frequency: 260, secondFrequency: 90, duration: 0.20, volume: 0.052 },
-          { type: "triangle", frequency: 740, secondFrequency: 310, duration: 0.17, volume: 0.035, delay: 0.07 }
+          { type: "triangle", frequency: 980, secondFrequency: 310, duration: 0.16, volume: 0.042 },
+          { type: "sawtooth", frequency: 510, secondFrequency: 170, duration: 0.13, volume: 0.024, delay: 0.045 }
+        ])
+      })
+    }),
+    astral_fire_04: Object.freeze({
+      vfx: "rising-flames",
+      sfx: Object.freeze({
+        impact: Object.freeze([
+          { type: "sawtooth", frequency: 250, secondFrequency: 82, duration: 0.28, volume: 0.042 },
+          { type: "triangle", frequency: 620, secondFrequency: 210, duration: 0.20, volume: 0.025, delay: 0.04 }
+        ])
+      })
+    }),
+    astral_fire_06: Object.freeze({
+      vfx: "rising-flames",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sawtooth", frequency: 145, secondFrequency: 540, duration: 0.42, volume: 0.045 },
+          { type: "triangle", frequency: 420, secondFrequency: 860, duration: 0.28, volume: 0.024, delay: 0.06 }
+        ]),
+        impact: Object.freeze([
+          { type: "sawtooth", frequency: 320, secondFrequency: 72, duration: 0.31, volume: 0.052 },
+          { type: "triangle", frequency: 740, secondFrequency: 180, duration: 0.22, volume: 0.026, delay: 0.05 }
+        ])
+      })
+    }),
+    astral_fire_08: Object.freeze({
+      vfx: "rising-flames",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sawtooth", frequency: 110, secondFrequency: 470, duration: 0.48, volume: 0.052 },
+          { type: "triangle", frequency: 350, secondFrequency: 820, duration: 0.34, volume: 0.027, delay: 0.08 }
+        ]),
+        impact: Object.freeze([
+          { type: "sawtooth", frequency: 280, secondFrequency: 58, duration: 0.38, volume: 0.060 },
+          { type: "triangle", frequency: 690, secondFrequency: 135, duration: 0.28, volume: 0.030, delay: 0.05 }
         ])
       })
     }),
@@ -84,6 +119,19 @@
         ]),
         impact: Object.freeze([
           { type: "sine", frequency: 620, secondFrequency: 1180, duration: 0.42, volume: 0.045 }
+        ])
+      })
+    }),
+    astral_water_05: Object.freeze({
+      vfx: "ice-bolt",
+      sfx: Object.freeze({
+        cast: Object.freeze([
+          { type: "sine", frequency: 820, secondFrequency: 1760, duration: 0.26, volume: 0.040 },
+          { type: "triangle", frequency: 1320, secondFrequency: 2360, duration: 0.19, volume: 0.024, delay: 0.05 }
+        ]),
+        impact: Object.freeze([
+          { type: "triangle", frequency: 1900, secondFrequency: 520, duration: 0.22, volume: 0.046 },
+          { type: "sine", frequency: 2460, secondFrequency: 760, duration: 0.18, volume: 0.025, delay: 0.025 }
         ])
       })
     }),
@@ -116,11 +164,12 @@
       vfx: "drain-life",
       sfx: Object.freeze({
         cast: Object.freeze([
-          { type: "sine", frequency: 390, secondFrequency: 145, duration: 0.45, volume: 0.040 },
-          { type: "triangle", frequency: 680, secondFrequency: 230, duration: 0.34, volume: 0.024, delay: 0.08 }
+          { type: "sine", frequency: 430, secondFrequency: 138, duration: 0.52, volume: 0.038 },
+          { type: "triangle", frequency: 760, secondFrequency: 260, duration: 0.38, volume: 0.022, delay: 0.07 }
         ]),
         impact: Object.freeze([
-          { type: "sine", frequency: 210, secondFrequency: 520, duration: 0.48, volume: 0.046 }
+          { type: "sine", frequency: 170, secondFrequency: 610, duration: 0.58, volume: 0.044 },
+          { type: "triangle", frequency: 290, secondFrequency: 820, duration: 0.46, volume: 0.022, delay: 0.09 }
         ])
       })
     }),
@@ -139,8 +188,12 @@
     })
   });
 
+  function cardFxProfile(card) {
+    return card?.id ? CARD_FX_REGISTRY[card.id] || null : null;
+  }
+
   function spellFxProfile(card) {
-    return card?.id ? SPELL_FX_REGISTRY[card.id] || null : null;
+    return card?.type === "spell" ? cardFxProfile(card) : null;
   }
   let profile = A.loadProfile();
   let tournament = A.loadTournament();
@@ -1353,8 +1406,8 @@
     return true;
   }
 
-  function playSpellFxSound(card, phase = "cast") {
-    const cues = spellFxProfile(card)?.sfx?.[phase];
+  function playCardFxSound(card, phase = "cast") {
+    const cues = cardFxProfile(card)?.sfx?.[phase];
     if (!Array.isArray(cues) || cues.length === 0) return false;
     let played = false;
     cues.forEach(cue => {
@@ -1486,7 +1539,7 @@
   }
 
   function spellSound(card = null) {
-    if (playSpellFxSound(card, "cast")) return;
+    if (playCardFxSound(card, "cast")) return;
     if (playOriginalSound("spelldamaged", 0.42)) return;
     const ctx = ensureAudio();
     if (!ctx) return;
@@ -1927,6 +1980,64 @@
     return line;
   }
 
+  function addScorchingOrb(fromElement, toElement, index = 0) {
+    if (reducedMotion) return null;
+    const layer = $("#duelFxLayer");
+    const from = spellElementCenter(fromElement);
+    const to = spellElementCenter(toElement);
+    if (!layer || !from || !to) return null;
+    const orb = document.createElement("div");
+    orb.className = "spell-scorching-orb";
+    orb.style.left = `${from.x}px`;
+    orb.style.top = `${from.y}px`;
+    orb.style.setProperty("--spell-dx", `${to.x - from.x}px`);
+    orb.style.setProperty("--spell-dy", `${to.y - from.y}px`);
+    orb.style.setProperty("--spell-index", String(index));
+    layer.appendChild(orb);
+    setTimeout(() => orb.remove(), fxDuration(900) || 40);
+    return orb;
+  }
+
+  function addIceBolt(fromElement, toElement) {
+    if (reducedMotion) return null;
+    const layer = $("#duelFxLayer");
+    const from = spellElementCenter(fromElement);
+    const to = spellElementCenter(toElement);
+    if (!layer || !from || !to) return null;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const bolt = document.createElement("div");
+    bolt.className = "spell-ice-bolt";
+    bolt.style.left = `${from.x}px`;
+    bolt.style.top = `${from.y}px`;
+    bolt.style.setProperty("--spell-dx", `${dx}px`);
+    bolt.style.setProperty("--spell-dy", `${dy}px`);
+    bolt.style.setProperty("--spell-angle", `${Math.atan2(dy, dx)}rad`);
+    layer.appendChild(bolt);
+    setTimeout(() => bolt.remove(), fxDuration(880) || 40);
+    return bolt;
+  }
+
+  function addDrainMote(fromElement, toElement, index = 0) {
+    if (reducedMotion) return null;
+    const layer = $("#duelFxLayer");
+    const from = spellElementCenter(fromElement);
+    const to = spellElementCenter(toElement);
+    if (!layer || !from || !to) return null;
+    const spreadX = [-18, 10, -8, 20, 4, -14, 14][index % 7];
+    const spreadY = [-12, 14, 5, -5, 17, -17, 0][index % 7];
+    const mote = document.createElement("div");
+    mote.className = "spell-drain-mote";
+    mote.style.left = `${from.x + spreadX}px`;
+    mote.style.top = `${from.y + spreadY}px`;
+    mote.style.setProperty("--spell-dx", `${to.x - from.x - spreadX}px`);
+    mote.style.setProperty("--spell-dy", `${to.y - from.y - spreadY}px`);
+    mote.style.setProperty("--spell-index", String(index));
+    layer.appendChild(mote);
+    setTimeout(() => mote.remove(), fxDuration(1300) || 40);
+    return mote;
+  }
+
   function addSoulWisp(fromElement, toElement, index = 0) {
     if (reducedMotion) return null;
     const layer = $("#duelFxLayer");
@@ -1945,10 +2056,10 @@
     return wisp;
   }
 
-  function showSpellResolutionIdentityFx(result) {
-    const profile = spellFxProfile(result?.card);
+  function showCardResolutionIdentityFx(result) {
+    const profile = cardFxProfile(result?.card);
     if (!profile) return false;
-    playSpellFxSound(result.card, "impact");
+    playCardFxSound(result.card, "impact");
     if (reducedMotion) return false;
 
     const events = result?.events || [];
@@ -1956,19 +2067,33 @@
     const enemySide = side === "player" ? "enemy" : "player";
     const ownHero = spellHeroAnchor(side);
     const enemyHero = spellHeroAnchor(enemySide);
+    const ownBoard = $(`#${side}Board`) || ownHero;
     let shown = false;
 
     const damageTargets = events
       .filter(event => ["astralCreatureDamage", "creatureDamage"].includes(event.type))
       .map(event => $(`#${event.targetSide || event.side}Board [data-slot="${event.slot}"]`))
       .filter(Boolean);
+    const enemyHeroDamaged = events.some(event =>
+      ["astralHeroDamage", "heroDamage"].includes(event.type)
+      && (event.targetSide || event.side || enemySide) === enemySide
+    );
 
-    if (profile.vfx === "fire-spikes") {
+    if (profile.vfx === "scorching-orbs") {
       damageTargets.forEach((target, index) => {
-        if (addSpellMarker(target, "spell-fire-spikes-marker", 880, index)) shown = true;
+        if (addScorchingOrb(ownBoard, target, index)) shown = true;
+        addSpellMarker(target, "spell-scorching-impact-marker", 820, index);
       });
+    } else if (profile.vfx === "rising-flames") {
+      damageTargets.forEach((target, index) => {
+        if (addSpellMarker(target, "spell-rising-flames-marker", 920, index)) shown = true;
+      });
+      if (enemyHeroDamaged && addSpellMarker(enemyHero, "spell-rising-flames-marker spell-rising-flames-hero", 920, damageTargets.length)) shown = true;
     } else if (profile.vfx === "cure") {
       if (addSpellMarker(ownHero, "spell-cure-marker", 1050)) shown = true;
+    } else if (profile.vfx === "ice-bolt") {
+      if (addIceBolt(ownBoard, enemyHero)) shown = true;
+      addSpellMarker(enemyHero, "spell-ice-impact-marker", 880);
     } else if (profile.vfx === "lightning") {
       const target = enemyHero;
       const targetPoint = spellElementCenter(target);
@@ -1982,9 +2107,11 @@
       const target = death ? $(`#${death.side || enemySide}Board [data-slot="${death.slot}"]`) : damageTargets[0];
       if (addSpellMarker(target, "spell-tornado-marker", 1150)) shown = true;
     } else if (profile.vfx === "drain-life") {
-      if (addSpellLine(enemyHero, ownHero, "spell-drain-life-line", 1050)) shown = true;
-      addSpellMarker(enemyHero, "spell-drain-source-marker", 900);
-      addSpellMarker(ownHero, "spell-drain-target-marker", 1050);
+      for (let index = 0; index < 7; index += 1) {
+        if (addDrainMote(enemyHero, ownHero, index)) shown = true;
+      }
+      addSpellMarker(enemyHero, "spell-drain-source-marker", 1000);
+      addSpellMarker(ownHero, "spell-drain-target-marker", 1180);
     } else if (profile.vfx === "drain-souls") {
       const deaths = events.filter(event => event.type === "astralDeath");
       deaths.forEach((event, index) => {
@@ -3701,7 +3828,7 @@
   }
 
   async function presentResolutionBeforeUpdate(result, before) {
-    const spellIdentityShown = showSpellResolutionIdentityFx(result);
+    const cardIdentityShown = showCardResolutionIdentityFx(result);
     showResolvedEffectDamage(result);
     showResolutionDeaths(result);
     (result?.events || []).filter(event => event.type === "astralFireAura").forEach(event => {
@@ -3720,7 +3847,7 @@
     const healingShown = showHealingChanges(before, result);
     const powerShown = showResolutionPowerChanges(result, before);
     const attackShown = showUnitAttackChanges(before);
-    const hasVisibleEffect = spellIdentityShown || healingShown + powerShown + attackShown > 0 || (result?.events || []).some(event => [
+    const hasVisibleEffect = cardIdentityShown || healingShown + powerShown + attackShown > 0 || (result?.events || []).some(event => [
       "astralCreatureDamage", "astralHeroDamage", "creatureDamage", "heroDamage", "astralDeath", "astralFireAura", "astralNets"
     ].includes(event.type));
     if (hasVisibleEffect) await sleep(reducedMotion ? 0 : 620);
