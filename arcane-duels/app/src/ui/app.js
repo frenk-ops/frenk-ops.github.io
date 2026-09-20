@@ -82,6 +82,7 @@
   let remoteRefreshBusy = false;
   let multiplayerServerStatus = "idle";
   let multiplayerServerCheckPromise = null;
+  let multiplayerControlsLocked = false;
   let currentPlayerName = "";
   let currentOpponentName = "";
   let matchStartedAt = null;
@@ -265,11 +266,18 @@
   }
 
   function setMultiplayerControlsDisabled(disabled) {
-    ["#createOnlineRoomBtn", "#joinOnlineRoomBtn", "#onlineRoomCode", "#onlineSpecializationSelect", "#onlineDuelModeSelect", "#onlinePlayerNameInput"]
+    multiplayerControlsLocked = Boolean(disabled);
+    ["#onlineRoomCode", "#onlineSpecializationSelect", "#onlineDuelModeSelect"]
       .forEach(selector => {
         const control = $(selector);
-        if (control) control.disabled = Boolean(disabled);
+        if (control) control.disabled = multiplayerControlsLocked;
       });
+    const actionDisabled = multiplayerControlsLocked || multiplayerServerStatus !== "online";
+    ["#createOnlineRoomBtn", "#joinOnlineRoomBtn"].forEach(selector => {
+      const control = $(selector);
+      if (control) control.disabled = actionDisabled;
+    });
+    if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").disabled = false;
   }
 
   function setMultiplayerServerState(state, detail = "") {
@@ -290,7 +298,7 @@
       state === "online" ? "online.serverOnlineHint" : state === "offline" ? "online.serverOfflineHint" : "online.serverWakeHint"
     );
     $("#retryMultiplayerServerBtn")?.classList.toggle("hidden", state !== "offline");
-    setMultiplayerControlsDisabled(state !== "online" || Boolean(remoteRoomClient?.code));
+    setMultiplayerControlsDisabled(multiplayerControlsLocked);
   }
 
   async function checkMultiplayerServer(options = {}) {
@@ -336,7 +344,7 @@
     $("#onlineLobbyActions")?.classList.toggle("hidden", Boolean(response));
     $("#onlineLobbyStatus")?.classList.toggle("hidden", !response);
     if (!response) {
-      setMultiplayerControlsDisabled(multiplayerServerStatus !== "online");
+      setMultiplayerControlsDisabled(false);
       return;
     }
     if ($("#onlineRoomCodeLabel")) $("#onlineRoomCodeLabel").textContent = response.code || remoteRoomClient?.code || "";
@@ -433,11 +441,19 @@
       }
       saveRemoteRoom(); renderRemoteLobby(state);
     }
-    catch {
+    catch (error) {
       clearInterval(remoteRoomPoll);
       remoteRoomPoll = null;
+      const staleRoom = [401, 404, 410].includes(Number(error?.status));
+      if (staleRoom) {
+        remoteRoomClient = null;
+        remoteRenderedSnapshotKey = "";
+        remoteMatchStartedAt = null;
+        saveRemoteRoom();
+      }
       renderRemoteLobby(null);
-      setMultiplayerServerState("offline");
+      setMultiplayerServerState(staleRoom ? "online" : "offline");
+      if (staleRoom && $("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
     }
     finally { remoteRefreshBusy = false; }
   }
@@ -3358,6 +3374,7 @@
   inspectedCardId = allAstralCards()[0]?.id || null;
   collectionSelectedCardId = inspectedCardId;
   renderCollectionPanels();
+  switchView("game");
   let restoredRemoteRoom = false;
   try {
     const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
@@ -3367,7 +3384,6 @@
       remoteRenderedSnapshotKey = "";
       Object.assign(remoteRoomClient, savedRoom);
       remoteMatchStartedAt = Number(savedRoom.startedAt || 0) || null;
-      switchView("multiplayer");
       checkMultiplayerServer().then(online => { if (online) return refreshRemoteRoom().then(beginRemotePolling); });
     }
   } catch { localStorage.removeItem("arcane.remoteRoom"); }

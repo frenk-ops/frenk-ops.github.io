@@ -1,7 +1,7 @@
 "use strict";
 
-const SHELL_CACHE = "arcane-duels-shell-v18";
-const RUNTIME_CACHE = "arcane-duels-runtime-v18";
+const SHELL_CACHE = "arcane-duels-shell-v19";
+const RUNTIME_CACHE = "arcane-duels-runtime-v19";
 
 const APP_SHELL = [
   "./",
@@ -49,15 +49,19 @@ self.addEventListener("install", event => {
 });
 
 self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys
-          .filter(key => key.startsWith("arcane-duels-") && key !== SHELL_CACHE && key !== RUNTIME_CACHE)
-          .map(key => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    const upgrading = keys.some(key => key.startsWith("arcane-duels-shell-") && key !== SHELL_CACHE);
+    await Promise.all(
+      keys
+        .filter(key => key.startsWith("arcane-duels-") && key !== SHELL_CACHE && key !== RUNTIME_CACHE)
+        .map(key => caches.delete(key))
+    );
+    await self.clients.claim();
+    if (!upgrading) return;
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    await Promise.all(windows.map(client => client.navigate(client.url).catch(() => null)));
+  })());
 });
 
 self.addEventListener("message", event => {
