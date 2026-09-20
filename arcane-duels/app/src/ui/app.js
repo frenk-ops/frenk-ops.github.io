@@ -1304,6 +1304,7 @@
     switchView("game");
     $("#setupPanel").classList.add("hidden");
     $("#battlePanel").classList.remove("hidden");
+    syncBackgroundMusicScene();
     navigation?.setActive("multiplayer");
     $("#seedBadge").textContent = `online · ${response.code || remoteRoomClient.code} · #${response.sequence}`;
     renderGame();
@@ -5194,12 +5195,29 @@
     duel: Object.freeze({ src: "assets/audio/bgm.ogg", gain: 1, playbackRate: 1 })
   });
 
+  let musicUnlockListenersArmed = false;
+
+  function armMusicUnlock() {
+    if (musicUnlockListenersArmed) return;
+    musicUnlockListenersArmed = true;
+    window.addEventListener("pointerdown", unlockMusicFromGesture, true);
+    window.addEventListener("keydown", unlockMusicFromGesture, true);
+  }
+
+  function disarmMusicUnlock() {
+    if (!musicUnlockListenersArmed) return;
+    musicUnlockListenersArmed = false;
+    window.removeEventListener("pointerdown", unlockMusicFromGesture, true);
+    window.removeEventListener("keydown", unlockMusicFromGesture, true);
+  }
+
   const musicManager = (() => {
     const channels = new Map();
     let activeScene = null;
     let unlocked = false;
     let suspended = document.visibilityState === "hidden";
     let transitionId = 0;
+    let playRequestId = 0;
 
     function desiredScene() {
       const gameVisible = $("#gameView")?.classList.contains("active");
@@ -5255,6 +5273,7 @@
 
     function pauseChannels() {
       transitionId += 1;
+      playRequestId += 1;
       channels.forEach(({ audio }) => {
         try { if (!audio.paused) audio.pause(); } catch (e) {}
       });
@@ -5265,7 +5284,11 @@
         pauseChannels();
         return;
       }
-      if (!unlocked) return;
+      if (!unlocked) {
+        armMusicUnlock();
+        return;
+      }
+
       const next = channelFor(scene);
       if (!next) return;
       const sameScene = activeScene === scene;
@@ -5274,15 +5297,27 @@
         next.audio.volume = sceneVolume(scene);
         return;
       }
+
+      const requestId = ++playRequestId;
       if (!sameScene) next.audio.volume = 0;
       let playPromise;
       try { playPromise = next.audio.play(); }
       catch (err) { playPromise = Promise.reject(err); }
+
       Promise.resolve(playPromise).then(() => {
-        if (!bgmEnabled || suspended || document.visibilityState === "hidden") {
-          try { next.audio.pause(); } catch (e) {}
+        if (
+          requestId !== playRequestId
+          || !bgmEnabled
+          || suspended
+          || document.visibilityState === "hidden"
+          || desiredScene() !== scene
+        ) {
+          if (activeScene !== scene) {
+            try { next.audio.pause(); } catch (e) {}
+          }
           return;
         }
+
         const token = ++transitionId;
         const duration = sameScene ? 220 : MUSIC_CROSSFADE_MS;
         activeScene = scene;
@@ -5293,7 +5328,11 @@
         }
         fade(next, sceneVolume(scene), duration, token);
       }).catch(err => {
-        if (err?.name === "NotAllowedError") unlocked = false;
+        if (requestId !== playRequestId) return;
+        if (err?.name === "NotAllowedError") {
+          unlocked = false;
+          armMusicUnlock();
+        }
         console.warn("Background music play blocked or failed:", err);
       });
     }
@@ -5316,10 +5355,18 @@
       },
       resume() {
         suspended = document.visibilityState === "hidden";
-        if (!suspended) sync();
+        if (suspended) return;
+        sync();
+        // iOS/PWA can report visibility before its media stack is fully awake.
+        // A short second attempt resumes automatically when Safari allows it;
+        // otherwise the next trusted tap re-unlocks playback.
+        window.setTimeout(() => {
+          if (document.visibilityState !== "hidden") sync();
+        }, 160);
       },
       unlock() {
         unlocked = true;
+        disarmMusicUnlock();
         sync();
       },
       setVolume() {
@@ -5344,8 +5391,13 @@
     if (battleToggle) battleToggle.checked = bgmEnabled;
     if (optionsToggle) optionsToggle.checked = bgmEnabled;
     if (duelToggle) duelToggle.checked = bgmEnabled;
-    if (bgmEnabled) musicManager.sync();
-    else musicManager.pause();
+    if (bgmEnabled) {
+      armMusicUnlock();
+      musicManager.sync();
+    } else {
+      disarmMusicUnlock();
+      musicManager.pause();
+    }
   }
 
   function startBackgroundMusic() {
@@ -5368,12 +5420,9 @@
   function unlockMusicFromGesture(event) {
     if (!event?.isTrusted) return;
     musicManager.unlock();
-    window.removeEventListener("pointerdown", unlockMusicFromGesture, true);
-    window.removeEventListener("keydown", unlockMusicFromGesture, true);
   }
 
-  window.addEventListener("pointerdown", unlockMusicFromGesture, true);
-  window.addEventListener("keydown", unlockMusicFromGesture, true);
+  armMusicUnlock();
 
   try {
     const stored = window.localStorage.getItem("bgmEnabled");
@@ -5407,6 +5456,7 @@
     }
     document.addEventListener("visibilitychange", handleBackgroundMusicVisibility);
     window.addEventListener("pageshow", resumeBackgroundMusic);
+    window.addEventListener("focus", resumeBackgroundMusic);
     window.addEventListener("pagehide", pauseBackgroundMusic);
     musicManager.sync();
   } catch (e) {}
