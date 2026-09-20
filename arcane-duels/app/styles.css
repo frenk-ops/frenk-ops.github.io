@@ -376,14 +376,23 @@ input, select, textarea {
   position: relative;
   transition: transform .24s ease, opacity .2s ease;
 }
-.unit.attacking-player {
-  transform: translateY(-18px);
-}
-.unit.attacking-enemy {
-  transform: translateY(18px);
+.unit.attacking {
+  z-index: 9;
+  transform-origin: 50% 50%;
+  animation: attackSurge .38s cubic-bezier(.18,.82,.22,1) both;
 }
 .unit.hit {
   animation: hitPulse .32s ease;
+}
+.classic-player-head.hit {
+  animation: heroHitPulse .32s ease;
+}
+@keyframes attackSurge {
+  0% { transform: scale(1); filter: brightness(1); }
+  28% { transform: scale(.985); filter: brightness(1.04); }
+  62% { transform: scale(1.105); filter: brightness(1.22) saturate(1.12); }
+  82% { transform: scale(1.045); filter: brightness(1.1); }
+  100% { transform: scale(1); filter: brightness(1); }
 }
 .unit.defeated {
   animation: vanish .28s ease forwards;
@@ -409,8 +418,16 @@ input, select, textarea {
   pointer-events: none;
 }
 @keyframes hitPulse {
-  0%,100% { filter: brightness(1); }
-  50% { filter: brightness(1.8); }
+  0%,100% { filter: brightness(1); transform: translateX(0); }
+  24% { filter: brightness(2); transform: translateX(-3px); }
+  48% { filter: brightness(1.45); transform: translateX(3px); }
+  72% { filter: brightness(1.2); transform: translateX(-1px); }
+}
+@keyframes heroHitPulse {
+  0%,100% { filter: brightness(1); transform: translateX(0); }
+  24% { filter: brightness(1.55); transform: translateX(-4px); }
+  48% { filter: brightness(1.28); transform: translateX(4px); }
+  72% { filter: brightness(1.12); transform: translateX(-2px); }
 }
 @keyframes vanish {
   to { opacity: 0; transform: scale(.82); }
@@ -1885,17 +1902,38 @@ body {
 
 .attack-trail {
   --trail-color: #89cbff;
+  --trail-delay: 0ms;
   position: fixed;
   z-index: 92;
-  height: 4px;
+  height: 5px;
   transform-origin: 0 50%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, var(--trail-color) 18%, #fff 48%, var(--trail-color) 72%, transparent);
-  box-shadow: 0 0 12px var(--trail-color), 0 0 26px color-mix(in srgb, var(--trail-color) 45%, transparent);
-  animation: attackTrail .5s ease-out both;
+  border-radius: 999px 55% 55% 999px;
+  background:
+    linear-gradient(90deg, transparent 0 5%, var(--trail-color) 22%, #fff 54%, var(--trail-color) 78%, transparent 100%);
+  box-shadow: 0 0 10px var(--trail-color), 0 0 24px color-mix(in srgb, var(--trail-color) 46%, transparent);
+  filter: saturate(1.12);
+  animation: attackTrail .46s cubic-bezier(.15,.78,.2,1) var(--trail-delay) both;
+}
+.attack-trail::after {
+  content:"";
+  position:absolute;
+  right:-4px;
+  top:50%;
+  width:13px;
+  height:13px;
+  border-radius:50%;
+  background:radial-gradient(circle,#fff 0 18%,var(--trail-color) 32%,transparent 72%);
+  transform:translate(50%,-50%) scale(.7);
+  box-shadow:0 0 15px var(--trail-color);
 }
 .attack-trail.side-enemy { --trail-color: #ff735c; }
-@keyframes attackTrail { 0% { clip-path: inset(0 100% 0 0); opacity: 0; } 25% { opacity: 1; } 70% { clip-path: inset(0 0 0 0); opacity: 1; } 100% { clip-path: inset(0 0 0 100%); opacity: 0; } }
+.attack-trail.multi-target { height:4px; opacity:.92; }
+@keyframes attackTrail {
+  0% { clip-path: inset(0 100% 0 0); opacity: 0; }
+  18% { opacity: 1; }
+  62% { clip-path: inset(0 0 0 0); opacity: 1; }
+  100% { clip-path: inset(0 0 0 100%); opacity: 0; }
+}
 
 .hand-showcase .game-card { animation: handDeal .38s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--card-index, 0) * 32ms); transform-origin: 50% 100%; }
 @keyframes handDeal { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -4206,7 +4244,7 @@ body:has(#battlePanel:not(.hidden)) .shell { width: 100%; max-width: none; paddi
 
 /* Combat sequence readability: stable board, explicit attack, damage and defeat cues. */
 .classic-board-column .slot:not(.valid-target),
-.classic-board-column .unit:not(.summon-arrival):not(.hit) { animation:none; }
+.classic-board-column .unit:not(.summon-arrival):not(.hit):not(.attacking) { animation:none; }
 .combat-cue {
   position:fixed;
   z-index:118;
@@ -4943,10 +4981,8 @@ body[data-card-art-style="new"][data-spell-frame="parchment"] #playerHand .game-
 
 /* Multi-target attacks fan out visibly instead of reading as an ordinary lane hit. */
 .unit.attacking-multi {
-  z-index:8;
-  filter:brightness(1.22) saturate(1.18);
+  z-index:9;
   box-shadow:0 0 0 2px rgba(115,226,255,.76),0 0 28px rgba(91,205,255,.72);
-  animation:multi-attacker-pulse .64s ease-in-out both;
 }
 #battlePanel.multi-target-attack .classic-battlefield {
   animation:multi-field-pulse .64s ease-out both;
@@ -4954,11 +4990,6 @@ body[data-card-art-style="new"][data-spell-frame="parchment"] #playerHand .game-
 #battlePanel.multi-target-attack .target-locked {
   outline-color:#84eaff;
   box-shadow:inset 0 0 24px rgba(79,205,255,.22),0 0 18px rgba(79,205,255,.42);
-}
-@keyframes multi-attacker-pulse {
-  0% { filter:brightness(1); }
-  42% { filter:brightness(1.35) saturate(1.3); }
-  100% { filter:brightness(1.12) saturate(1.12); }
 }
 @keyframes multi-field-pulse {
   0%,100% { filter:none; }

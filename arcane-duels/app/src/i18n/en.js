@@ -21,6 +21,7 @@
     "log.fireAura": "Fire Aura deals {amount} retaliation damage to {target}.",
     "effect.souldrinker": "Souldrinker", "effect.healingAura": "Healing Aura",
     "effect.forcedAttack": "Forced attack", "effect.turnShort": "turn",
+    "combat.allEnemies": "all enemies", "combat.opposingMage": "opposing mage",
     "log.regenerate": "{source} regenerates {amount} health before attacking.",
     "log.healCreature": "{source} restores {amount} health to {target}.",
     "log.cast": "{actor} casts {card}.", "log.summon": "{actor} summons {card}.",

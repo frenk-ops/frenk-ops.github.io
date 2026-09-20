@@ -1841,24 +1841,48 @@
     return playSyntheticCue({ type: "sine", frequency: 720, secondFrequency: 1120, duration: 0.22, volume: 0.05 });
   }
 
-  function attackSound(direct) {
-    if (playOriginalSound(direct ? "move" : "movecard", 0.36)) return;
-    const ctx = ensureAudio();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = direct ? "triangle" : "sawtooth";
-    osc.frequency.setValueAtTime(direct ? 410 : 520, now);
-    osc.frequency.exponentialRampToValueAtTime(direct ? 95 : 75, now + 0.24);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.09, now + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.27);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.28);
+  function attackSound({ direct = false, multiTarget = false } = {}) {
+    if (!soundEnabled || UI_MODE === "essential") return;
+    // Layered physical strike: short air slash, body impact and a restrained low hit.
+    // This replaces the old generic card-move samples for every creature attack.
+    playSyntheticCue({
+      type: "noise",
+      filterType: "bandpass",
+      filterFrequency: multiTarget ? 3200 : 2700,
+      filterEndFrequency: 760,
+      filterQ: 0.72,
+      duration: multiTarget ? 0.24 : 0.19,
+      volume: multiTarget ? 0.038 : 0.032
+    });
+    playSyntheticCue({
+      type: "triangle",
+      frequency: direct ? 390 : 520,
+      secondFrequency: direct ? 82 : 108,
+      duration: 0.22,
+      volume: direct ? 0.052 : 0.046,
+      delay: 0.16
+    });
+    playSyntheticCue({
+      type: "noise",
+      filterType: "lowpass",
+      filterFrequency: direct ? 720 : 980,
+      filterEndFrequency: 150,
+      duration: direct ? 0.25 : 0.20,
+      volume: direct ? 0.038 : 0.030,
+      delay: 0.20
+    });
+    if (multiTarget) {
+      playSyntheticCue({
+        type: "noise",
+        filterType: "highpass",
+        filterFrequency: 2200,
+        filterEndFrequency: 4200,
+        duration: 0.18,
+        volume: 0.018,
+        delay: 0.075
+      });
+    }
   }
-
   function spellSound(card = null) {
     if (playCardFxSound(card, "cast")) return;
     if (playOriginalSound("spelldamaged", 0.42)) return;
@@ -2222,7 +2246,7 @@
     if (layer) layer.innerHTML = "";
   }
 
-  function createAttackTrail(attacker, target, side) {
+  function createAttackTrail(attacker, target, side, options = {}) {
     if (reducedMotion || !attacker || !target) return null;
     const layer = $("#duelFxLayer");
     if (!layer) return null;
@@ -2235,7 +2259,8 @@
     const dx = x2 - x1;
     const dy = y2 - y1;
     const trail = document.createElement("div");
-    trail.className = `attack-trail side-${side}`;
+    trail.className = `attack-trail side-${side}${options.multiTarget ? " multi-target" : ""}`;
+    trail.style.setProperty("--trail-delay", `${Math.max(0, Number(options.index || 0)) * 28}ms`);
     trail.style.left = `${x1}px`;
     trail.style.top = `${y1}px`;
     trail.style.width = `${Math.hypot(dx, dy)}px`;
@@ -4148,36 +4173,46 @@
     await resolveAttackFlow("player");
   });
 
+  function attackHeroTarget(side) {
+    const life = $(`#${side}HpBattle`);
+    return life?.closest(".classic-player-head") || life;
+  }
+
   async function animateAttack(event) {
     const attacker = $(`#${event.side}Board [data-slot="${event.slot}"]`);
-    const target = event.type === "laneAttack" ? $(`#${event.enemySide}Board [data-slot="${event.slot}"]`) : $(`#${event.enemySide}HpBattle`);
+    const primaryTarget = event.type === "laneAttack"
+      ? $(`#${event.enemySide}Board [data-slot="${event.slot}"]`)
+      : attackHeroTarget(event.enemySide);
     const multiTargets = event.multiTarget
-      ? [...$$(`#${event.enemySide}Board .unit`), $(`#${event.enemySide}HpBattle`)].filter(Boolean)
-      : [target].filter(Boolean);
-    attacker?.classList.add(event.side === "player" ? "attacking-player" : "attacking-enemy");
+      ? [...$$(`#${event.enemySide}Board .unit`), attackHeroTarget(event.enemySide)].filter(Boolean)
+      : [primaryTarget].filter(Boolean);
+
+    attacker?.classList.add("attacking");
     attacker?.classList.toggle("attacking-multi", Boolean(event.multiTarget));
-    multiTargets.forEach(node => {
+    multiTargets.forEach((node, index) => {
       node.classList.add("target-locked");
-      createAttackTrail(attacker, node, event.side);
+      createAttackTrail(attacker, node, event.side, {
+        multiTarget: Boolean(event.multiTarget),
+        index
+      });
     });
     $("#battlePanel")?.classList.toggle("multi-target-attack", Boolean(event.multiTarget));
     showCombatCue(event);
-    attackSound(event.type === "directAttack");
-    await sleep(event.multiTarget ? 460 : 330);
-    attacker?.classList.remove("attacking-player", "attacking-enemy", "attacking-multi");
+    attackSound({ direct: event.type === "directAttack", multiTarget: Boolean(event.multiTarget) });
+    await sleep(event.multiTarget ? 430 : 300);
+    attacker?.classList.remove("attacking", "attacking-multi");
     multiTargets.forEach(node => node.classList.add("hit"));
-    await sleep(event.multiTarget ? 180 : 110);
+    await sleep(event.multiTarget ? 180 : 120);
     multiTargets.forEach(node => node.classList.remove("hit", "target-locked"));
     $("#battlePanel")?.classList.remove("multi-target-attack");
   }
-
   function showCombatCue(event) {
     const layer = $("#duelFxLayer");
     if (!layer || !event) return;
     const cue = document.createElement("div");
     cue.className = `combat-cue side-${event.side}${event.multiTarget ? " multi-target" : ""}${event.forcedByEffect ? " forced-attack" : ""}`;
-    const target = event.multiTarget ? "tutti i nemici" : (event.targetName || "eroe avversario");
-    cue.textContent = `${event.forcedByEffect ? `${t("effect.forcedAttack")} · ` : ""}${event.attackerName || "Creatura"} → ${target}`;
+    const target = event.multiTarget ? t("combat.allEnemies") : (event.targetName || t("combat.opposingMage"));
+    cue.textContent = `${event.forcedByEffect ? `${t("effect.forcedAttack")} · ` : ""}${event.attackerName || t("ui.creature")} → ${target}`;
     layer.appendChild(cue);
     requestAnimationFrame(() => cue.classList.add("show"));
     setTimeout(() => cue.remove(), fxDuration(760) || 40);

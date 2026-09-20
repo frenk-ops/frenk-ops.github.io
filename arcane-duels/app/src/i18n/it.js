@@ -21,6 +21,7 @@
     "log.fireAura": "L'Aura di Fuoco infligge {amount} danni di ritorno a {target}.",
     "effect.souldrinker": "Divoratore di Anime", "effect.healingAura": "Aura Curativa",
     "effect.forcedAttack": "Attacco forzato", "effect.turnShort": "turno",
+    "combat.allEnemies": "tutti i nemici", "combat.opposingMage": "Incantatore avversario",
     "log.regenerate": "{source} rigenera {amount} punti vita prima dell'attacco.",
     "log.healCreature": "{source} cura {target} di {amount} punti vita.",
     "log.cast": "{actor} lancia {card}.", "log.summon": "{actor} evoca {card}.",
