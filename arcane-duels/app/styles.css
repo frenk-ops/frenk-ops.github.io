@@ -6004,3 +6004,112 @@ body.ui-classic[data-board-creature-names="hide"] .unit-name {
     width:100%;
   }
 }
+
+
+/* 0.21.3 — Play-first control polish and desktop navigation cleanup. */
+body.ui-classic .classic-topbar .classic-nav {
+  gap:7px;
+}
+body.ui-classic .classic-topbar .classic-nav .tab {
+  flex:0 1 142px;
+  min-height:40px;
+  padding:8px 13px;
+  border:1px solid rgba(160,181,214,.72);
+  border-radius:8px;
+  background:linear-gradient(180deg,#1b2944,#0d1629);
+  color:#d8f7c8;
+  font-family:Georgia,serif;
+  font-weight:700;
+  text-shadow:0 1px 2px #000;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 5px rgba(0,0,0,.28);
+  transition:background .15s ease,border-color .15s ease,color .15s ease,transform .12s ease;
+}
+body.ui-classic .classic-topbar .classic-nav .tab:hover {
+  border-color:#d7bd72;
+  background:linear-gradient(180deg,#263959,#111d34);
+  color:#fff0a6;
+}
+body.ui-classic .classic-topbar .classic-nav .tab:active {
+  transform:translateY(1px);
+}
+body.ui-classic .classic-topbar .classic-nav .tab.active {
+  border-color:#d6b75f;
+  background:linear-gradient(180deg,#6f5b24,#342914);
+  color:#fff2a4;
+  box-shadow:inset 0 1px 0 rgba(255,244,181,.22),0 2px 7px rgba(0,0,0,.3);
+}
+
+/* Dark config tiles always use the same high-contrast typography as Play. */
+.unified-menu-panel.classic-menu-config .options-grid label > span,
+.unified-menu-panel.classic-menu-config .profile-identity-card label > span,
+.multiplayer-panel.classic-menu-config .multiplayer-identity label > span {
+  color:#f4dfaa !important;
+}
+.unified-menu-panel.classic-menu-config .options-grid .options-check,
+.unified-menu-panel.classic-menu-config .options-grid .options-check > span {
+  color:#f4dfaa !important;
+}
+.unified-menu-panel.classic-menu-config .options-grid label:has(input[type="range"]) > span {
+  color:#f4dfaa !important;
+}
+
+/* Player-facing actions use the same gold, softly asymmetric button shape as Play. */
+.multiplayer-panel.classic-menu-config .classic-stone-button,
+.multiplayer-panel.classic-menu-config #createOnlineRoomBtn,
+.multiplayer-panel.classic-menu-config #joinOnlineRoomBtn,
+.multiplayer-panel.classic-menu-config #leaveOnlineRoomBtn,
+.multiplayer-panel.classic-menu-config #retryMultiplayerServerBtn,
+.unified-menu-panel.classic-menu-config .classic-stone-button,
+.classic-tournament-actions .classic-stone-button,
+.tournament-create .classic-stone-button,
+.tournament-hub .classic-stone-button,
+.tournament-complete .classic-stone-button {
+  min-height:50px;
+  padding:10px 17px;
+  border:4px double #f0dc95 !important;
+  border-radius:5px 15px !important;
+  background:linear-gradient(180deg,#a9873e,#6c4b1e 52%,#3e2912) !important;
+  color:#fff5bd !important;
+  font-family:Georgia,serif;
+  font-weight:700;
+  text-shadow:0 2px 2px #2a180a;
+  box-shadow:0 5px 0 #2a180a,0 0 14px rgba(215,170,95,.25),inset 0 0 14px rgba(255,238,166,.22) !important;
+}
+.multiplayer-panel.classic-menu-config .classic-stone-button:hover,
+.multiplayer-panel.classic-menu-config #createOnlineRoomBtn:hover,
+.multiplayer-panel.classic-menu-config #joinOnlineRoomBtn:hover,
+.unified-menu-panel.classic-menu-config .classic-stone-button:hover,
+.classic-tournament-actions .classic-stone-button:hover {
+  background:linear-gradient(180deg,#b99545,#795522 52%,#493016) !important;
+}
+.multiplayer-panel.classic-menu-config .classic-stone-button:active,
+.multiplayer-panel.classic-menu-config #createOnlineRoomBtn:active,
+.multiplayer-panel.classic-menu-config #joinOnlineRoomBtn:active,
+.unified-menu-panel.classic-menu-config .classic-stone-button:active,
+.classic-tournament-actions .classic-stone-button:active {
+  transform:translateY(2px);
+  box-shadow:0 3px 0 #2a180a,inset 0 0 14px rgba(255,238,166,.22) !important;
+}
+.unified-menu-panel.classic-menu-config .classic-stone-button.danger,
+.classic-tournament-actions .classic-stone-button.danger {
+  border-color:#e3a4a4 !important;
+  background:linear-gradient(180deg,#8e4b4b,#542626 52%,#341616) !important;
+  color:#ffe1e1 !important;
+}
+
+/* Multiplayer mirrors Play: classic has no school choice; specializations reveal school + specialization. */
+#onlineTalentField.hidden,
+#onlineSpecializationField.hidden {
+  display:none !important;
+}
+.multiplayer-config-grid:has(#onlineTalentField:not(.hidden)) {
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+@media (max-width:1050px) {
+  body.ui-classic .classic-topbar .classic-nav .tab {
+    flex:0 1 126px;
+    padding-inline:9px;
+    font-size:.92rem;
+  }
+}

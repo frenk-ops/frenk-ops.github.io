@@ -774,31 +774,42 @@
     select.value = A.DIFFICULTIES[selected] ? selected : "advanced";
   }
 
+  function syncOnlineSpecializationOptions() {
+    const school = $("#onlineTalentSelect")?.value || "fire";
+    const select = $("#onlineSpecializationSelect");
+    if (!select) return;
+    const current = select.value;
+    const available = A.ASTRAL_SPECIALIZATIONS.filter(item => item.talent === school);
+    select.innerHTML = available
+      .map(item => `<option value="${item.id}">${item.icon} ${t(`specialization.${item.id}`)}</option>`)
+      .join("");
+    select.value = available.some(item => item.id === current) ? current : (available[0]?.id || "");
+  }
+
   function setupAstralSpecializationOptions() {
     $("#enemySpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
       .map(item => `<option value="${item.id}" ${item.id === "stormmage" ? "selected" : ""}>${item.icon} ${t(`specialization.${item.id}`)}</option>`)
       .join("");
-    if ($("#onlineSpecializationSelect")) {
-      $("#onlineSpecializationSelect").innerHTML = A.ASTRAL_SPECIALIZATIONS
-        .map(item => `<option value="${item.id}">${item.icon} ${t(`specialization.${item.id}`)}</option>`)
-        .join("");
-    }
+    syncOnlineSpecializationOptions();
   }
 
   function syncOnlineDuelMode() {
     const specialized = $("#onlineDuelModeSelect")?.value === "specializations";
-    $("#onlineTalentField")?.classList.toggle("hidden", specialized);
+    $("#onlineTalentField")?.classList.toggle("hidden", !specialized);
     $("#onlineSpecializationField")?.classList.toggle("hidden", !specialized);
+    if (specialized) syncOnlineSpecializationOptions();
   }
 
   function onlineDuelOptions() {
     const duelMode = $("#onlineDuelModeSelect")?.value === "specializations" ? "specializations" : "normal";
-    const specializationId = $("#onlineSpecializationSelect")?.value || "battlemage";
-    const specialization = duelMode === "specializations" ? A.getAstralSpecialization?.(specializationId) : null;
+    if (duelMode !== "specializations") return { duelMode };
+    const playerTalent = $("#onlineTalentSelect")?.value || "fire";
+    const specializationId = $("#onlineSpecializationSelect")?.value || "";
+    const specialization = A.getAstralSpecialization?.(specializationId, playerTalent);
     return {
       duelMode,
-      playerTalent: specialization?.talent || $("#onlineTalentSelect")?.value || "fire",
-      playerSpecialization: duelMode === "specializations" ? specializationId : undefined
+      playerTalent,
+      playerSpecialization: specialization?.id || specializationId || undefined
     };
   }
 
@@ -3245,6 +3256,7 @@
   $("#retryMultiplayerServerBtn")?.addEventListener("click", () => checkMultiplayerServer({ force: true }));
   $("#onlinePlayerNameInput")?.addEventListener("change", event => savePlayerName(event.currentTarget));
   $("#onlineDuelModeSelect")?.addEventListener("change", syncOnlineDuelMode);
+  $("#onlineTalentSelect")?.addEventListener("change", syncOnlineSpecializationOptions);
   $("#createOnlineRoomBtn")?.addEventListener("click", async () => {
     if (multiplayerServerStatus !== "online" && !await checkMultiplayerServer({ force: true })) return;
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
