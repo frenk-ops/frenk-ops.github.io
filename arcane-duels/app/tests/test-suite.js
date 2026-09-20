@@ -430,6 +430,40 @@
       }
     },
     {
+      name: "Debolezza da evocazione: la creatura difende subito la propria corsia",
+      run() {
+        const engine = engineWithHands();
+        const attackerCard = engine.state.player.hand[0];
+        const defenderCard = engine.state.enemy.hand[0];
+        const attacker = {
+          ...A.deepClone(attackerCard),
+          currentHealth: attackerCard.health,
+          owner: "player",
+          instanceId: "ready-attacker",
+          summonedOnOwnerTurn: engine.getOwnerTurnCount("player") - 1
+        };
+        const defender = {
+          ...A.deepClone(defenderCard),
+          currentHealth: defenderCard.health,
+          owner: "enemy",
+          instanceId: "sick-defender",
+          summonedOnOwnerTurn: engine.getOwnerTurnCount("enemy")
+        };
+        engine.state.player.board[0] = attacker;
+        engine.state.enemy.board[0] = defender;
+        engine.state.phase = A.PHASES.PLAYER_ATTACK;
+
+        assert(engine.isUnitSummoningSick(defender, "enemy"), "Il difensore dovrebbe avere debolezza da evocazione");
+        const heroHealthBefore = engine.state.enemy.hp;
+        const defenderHealthBefore = defender.currentHealth;
+        const step = engine.attackNext("player");
+
+        assert(step.event?.type === "laneAttack", "L'attacco ha ignorato il difensore appena evocato");
+        assert(engine.state.enemy.hp === heroHealthBefore, "L'eroe ha subito danno diretto nonostante il difensore");
+        assert(defender.currentHealth < defenderHealthBefore, "Il difensore appena evocato non ha assorbito l'attacco");
+      }
+    },
+    {
       name: "Attacco ordinato da un effetto ignora soltanto la debolezza da evocazione",
       run() {
         const engine = engineWithHands();
