@@ -126,6 +126,30 @@ body.ui-classic .classic-topbar {
   cursor: pointer;
 }
 
+.pwa-android-apk-download {
+  display: block;
+  margin: 0 0 10px;
+  border: 1px solid rgba(139, 92, 246, .65);
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: rgba(124, 58, 237, .22);
+  color: #f8fafc;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.pwa-android-apk-download[hidden],
+.pwa-android-apk-note[hidden] {
+  display: none !important;
+}
+
+.pwa-android-apk-note {
+  margin: 0 0 14px !important;
+  color: #aebed0 !important;
+  font-size: .78rem;
+}
+
 .pwa-install-confirm {
   width: 100%;
   border: 0;
