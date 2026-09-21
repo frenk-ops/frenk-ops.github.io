@@ -72,6 +72,7 @@
   let busy = false;
   let audioContext = null;
   const originalSoundCache = new Map();
+  const activeOriginalSounds = new Set();
 
   // UI-only card identity registry. Engine events remain the source of truth;
   // these profiles only decide how a resolved card is presented.
@@ -1824,9 +1825,14 @@
       }
       const sound = source.cloneNode();
       sound.volume = Math.max(0, Math.min(1, volume));
+      const release = () => activeOriginalSounds.delete(sound);
+      sound.addEventListener("ended", release, { once: true });
+      sound.addEventListener("error", release, { once: true });
+      activeOriginalSounds.add(sound);
       const playPromise = sound.play();
       playPromise?.catch(() => {
         try { sound.pause(); } catch (e) {}
+        release();
         playFallbackSound(name, volume);
       });
       return true;
@@ -5369,7 +5375,10 @@
       playRequestId += 1;
       transitioningScene = null;
       channels.forEach(({ audio }) => {
-        try { if (!audio.paused) audio.pause(); } catch (e) {}
+        try {
+          if (!audio.paused) audio.pause();
+          audio.volume = 0;
+        } catch (e) {}
       });
     }
 
@@ -5521,7 +5530,22 @@
     musicManager.sync();
   }
 
+  function suspendTransientAudio() {
+    try { window.speechSynthesis?.cancel?.(); } catch (e) {}
+    activeOriginalSounds.forEach(sound => {
+      try {
+        sound.pause();
+        sound.currentTime = 0;
+      } catch (e) {}
+    });
+    activeOriginalSounds.clear();
+    try {
+      if (audioContext?.state === "running") audioContext.suspend();
+    } catch (e) {}
+  }
+
   function pauseBackgroundMusic() {
+    suspendTransientAudio();
     musicManager.suspend();
   }
 
@@ -5530,8 +5554,8 @@
   }
 
   function handleBackgroundMusicVisibility() {
-    if (document.visibilityState === "hidden") musicManager.suspend();
-    else musicManager.resume();
+    if (document.visibilityState === "hidden") pauseBackgroundMusic();
+    else resumeBackgroundMusic();
   }
 
   function unlockMusicFromGesture(event) {
@@ -5574,7 +5598,12 @@
     document.addEventListener("visibilitychange", handleBackgroundMusicVisibility);
     window.addEventListener("pageshow", resumeBackgroundMusic);
     window.addEventListener("focus", resumeBackgroundMusic);
+    // iOS/PWA can keep media alive briefly while the app switcher is open.
+    // Suspend immediately on blur so audio is already stopped before the user
+    // swipes the app away; pagehide/freeze remain additional safety nets.
+    window.addEventListener("blur", pauseBackgroundMusic);
     window.addEventListener("pagehide", pauseBackgroundMusic);
+    document.addEventListener("freeze", pauseBackgroundMusic);
     musicManager.sync();
   } catch (e) {}
 
