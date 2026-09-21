@@ -130,13 +130,25 @@
       return;
     }
 
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
+    // Android must always acknowledge the tap immediately. Keep these
+    // instructions visible underneath the native prompt so a rejected or
+    // broken browser prompt never looks like a dead button.
+    if (isAndroid) openInstructions();
+
+    const promptEvent = deferredPrompt;
+    if (promptEvent) {
       try {
-        const choice = await deferredPrompt.userChoice;
-        if (choice && choice.outcome === "accepted") hideEntry();
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice && choice.outcome === "accepted") {
+          hideEntry();
+          closeInstructions();
+        }
+      } catch (error) {
+        console.warn("Prompt installazione PWA non disponibile:", error);
+        openInstructions();
       } finally {
-        deferredPrompt = null;
+        if (deferredPrompt === promptEvent) deferredPrompt = null;
       }
       return;
     }
