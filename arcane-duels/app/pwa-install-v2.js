@@ -5,10 +5,14 @@
   const button = document.getElementById("pwaInstallBtn");
   const overlay = document.getElementById("pwaInstallOverlay");
   const closeButtons = document.querySelectorAll("[data-pwa-install-close]");
+  const intro = document.getElementById("pwaInstallIntro");
+  const step1 = document.getElementById("pwaInstallStep1");
+  const step2 = document.getElementById("pwaInstallStep2");
 
   if (!entry || !button || !overlay) return;
 
   let deferredPrompt = null;
+  const userAgent = navigator.userAgent || "";
 
   const isStandalone = () =>
     window.matchMedia("(display-mode: standalone)").matches ||
@@ -16,8 +20,14 @@
     window.navigator.standalone === true;
 
   const isIOS =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    /iPad|iPhone|iPod/.test(userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  const isAndroid = /Android/i.test(userAgent);
+  const isAndroidWebView = isAndroid && (
+    /\bwv\b/i.test(userAgent) ||
+    /Instagram|FBAN|FBAV|TikTok|Line\/|Twitter|WhatsApp/i.test(userAgent)
+  );
 
   const hideEntry = () => {
     entry.hidden = true;
@@ -33,6 +43,35 @@
     entry.style.display = "flex";
   };
 
+  const setInstructionCopy = () => {
+    if (!intro || !step1 || !step2) return;
+
+    if (isIOS) {
+      intro.textContent = "Su iPhone l’installazione richiede un passaggio nel menu Condividi.";
+      step1.innerHTML = "Tocca <strong>Condividi</strong> in Safari.";
+      step2.innerHTML = "Scegli <strong>Aggiungi alla schermata Home</strong>.";
+      return;
+    }
+
+    if (isAndroidWebView) {
+      intro.textContent = "Per installare Arcane Duels come app, apri questa pagina nel browser Chrome.";
+      step1.innerHTML = "Apri il menu del browser e scegli <strong>Apri in Chrome</strong>.";
+      step2.innerHTML = "In Chrome tocca <strong>⋮</strong> e scegli <strong>Installa app</strong>.";
+      return;
+    }
+
+    if (isAndroid) {
+      intro.textContent = "Arcane Duels può essere installato come app da Chrome.";
+      step1.innerHTML = "Tocca <strong>⋮</strong> in alto a destra.";
+      step2.innerHTML = "Scegli <strong>Installa app</strong>. Se il prompt è disponibile, usa direttamente il pulsante qui sopra.";
+      return;
+    }
+
+    intro.textContent = "Installa Arcane Duels dal menu del browser.";
+    step1.innerHTML = "Apri il menu principale del browser.";
+    step2.innerHTML = "Scegli <strong>Installa app</strong> o <strong>Aggiungi alla schermata Home</strong>.";
+  };
+
   const closeInstructions = () => {
     overlay.hidden = true;
     overlay.style.display = "none";
@@ -46,19 +85,21 @@
       hideEntry();
       return;
     }
+    setInstructionCopy();
     overlay.hidden = false;
     overlay.style.display = "grid";
     overlay.setAttribute("aria-hidden", "false");
     document.body.classList.add("pwa-install-dialog-open");
   };
 
-  // Fail-safe: the install UI must never be visible just because CSS failed
-  // to load or an older stylesheet is still cached.
   hideEntry();
   closeInstructions();
 
   if (isStandalone()) return;
-  if (isIOS) showEntry();
+
+  // Keep the install affordance discoverable on Android even if the browser
+  // does not expose beforeinstallprompt yet (first visit or in-app browser).
+  if (isIOS || isAndroid) showEntry();
 
   window.addEventListener("beforeinstallprompt", event => {
     event.preventDefault();
