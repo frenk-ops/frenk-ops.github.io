@@ -471,7 +471,12 @@
   let remoteRoomClient = null;
   let remoteRoomPoll = null;
   let remoteHeartbeatTimer = null;
+  let remoteTurnTimerTicker = null;
   let roomBrowserPoll = null;
+  let remoteQuickChatToastTimer = null;
+  let remoteSeenMessageIds = new Set();
+  let remoteMessagesInitialized = false;
+  let remoteRecordedMatchId = "";
   let remoteDuelActive = false;
   let remoteBattleSuspendedToMenu = false;
   let remoteLifecycleStatus = "idle";
@@ -966,7 +971,7 @@
     if (!remoteRoomClient?.code) return localStorage.removeItem("arcane.remoteRoom");
     localStorage.setItem("arcane.remoteRoom", JSON.stringify({
       code: remoteRoomClient.code, token: remoteRoomClient.token, side: remoteRoomClient.side,
-      sequence: remoteRoomClient.sequence, checksum: remoteRoomClient.checksum,
+      sequence: remoteRoomClient.sequence, matchNumber: remoteRoomClient.matchNumber || 0, checksum: remoteRoomClient.checksum,
       startedAt: remoteMatchStartedAt || null
     }));
   }
@@ -974,8 +979,11 @@
   function stopRemoteTimers() {
     clearInterval(remoteRoomPoll);
     clearInterval(remoteHeartbeatTimer);
+    clearInterval(remoteTurnTimerTicker);
     remoteRoomPoll = null;
     remoteHeartbeatTimer = null;
+    remoteTurnTimerTicker = null;
+    renderRemoteTurnTimer(null);
   }
 
   function clearRemoteSession() {
@@ -987,9 +995,35 @@
     remoteDuelActive = false;
     remoteBattleSuspendedToMenu = false;
     remoteLifecycleStatus = "idle";
+    remoteSeenMessageIds = new Set();
+    remoteMessagesInitialized = false;
+    remoteRecordedMatchId = "";
+    window.clearTimeout(remoteQuickChatToastTimer);
+    remoteQuickChatToastTimer = null;
+    $("#duelQuickChat")?.classList.add("hidden");
+    $("#duelQuickChatToast")?.classList.add("hidden");
     saveRemoteRoom();
     renderRecoverableMatch();
     $("#remoteDisconnectOverlay")?.classList.add("hidden");
+  }
+
+  function renderRemoteTurnTimer(response = lastRemoteRoomState) {
+    const root = $("#onlineTurnTimer");
+    if (!root) return;
+    const timer = response?.turnTimer;
+    const active = Boolean(remoteDuelActive && response?.lifecycle?.status === "active" && timer?.actorSide && timer?.deadlineAt);
+    root.classList.toggle("hidden", !active);
+    if (!active) return;
+    const remainingMs = Math.max(0, Number(timer.deadlineAt) - Date.now());
+    const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const streak = Number(timer.streaks?.[timer.actorSide] || 0);
+    const max = Number(timer.maxConsecutiveTimeouts || 3);
+    root.textContent = `⏳ ${seconds}s${streak > 0 ? ` · ${streak}/${max}` : ""}`;
+    const afkWarning = timer.actorSide === remoteRoomClient?.side && streak >= Math.max(2, max - 1);
+    root.classList.toggle("is-warning", seconds <= 15 || afkWarning);
+    root.classList.toggle("is-danger", seconds <= 5);
+    if (afkWarning) root.textContent = `⚠ ${seconds}s · ${streak}/${max}`;
+    root.title = streak > 0 ? `${t("online.afkWarning")} ${streak}/${max}` : t("online.turnTimer");
   }
 
   function remoteResultLabel(lifecycle) {
@@ -1022,6 +1056,7 @@
   function applyRemoteLifecycle(response) {
     if (!response) return;
     lastRemoteRoomState = response;
+    renderRemoteTurnTimer(response);
     const lifecycle = response.lifecycle || {};
     remoteLifecycleStatus = lifecycle.status || (response.ready ? "active" : "waiting");
     renderRecoverableMatch(response);
@@ -1033,30 +1068,26 @@
     const returnButton = $("#remoteDisconnectReturnBtn");
 
     if (remoteLifecycleStatus === "finished") {
-      if (remoteRoomClient?.side) {
+      const finishedMatchId = response.matchId || `room:${response.code || remoteRoomClient?.code || "online"}:match:${response.matchNumber || 1}`;
+      if (remoteRoomClient?.side && remoteRecordedMatchId !== finishedMatchId) {
         const result = lifecycle.winner === remoteRoomClient.side
           ? "win"
           : lifecycle.winner
             ? "loss"
             : "draw";
         A.recordProfileMatch?.(profile, {
-          matchId: response.matchId || `room:${response.code || remoteRoomClient.code}`,
+          matchId: finishedMatchId,
           mode: "multiplayer",
           result,
           durationMs: remoteMatchStartedAt ? Date.now() - remoteMatchStartedAt : null
         });
+        remoteRecordedMatchId = finishedMatchId;
         profile = A.loadProfile();
         renderPlayerProfile();
       }
-      if (overlay && remoteDuelActive) overlay.classList.remove("hidden");
-      if (title) title.textContent = remoteResultLabel(lifecycle) || t("online.matchFinished");
-      if (detail) detail.textContent = lifecycle.reason === "forfeit"
-        ? t("online.matchFinishedForfeit")
-        : lifecycle.reason === "disconnect_timeout"
-          ? t("online.matchFinishedDisconnect")
-          : t("online.matchFinished");
+      overlay?.classList.add("hidden");
       if (countdown) countdown.textContent = "";
-      returnButton?.classList.remove("hidden");
+      returnButton?.classList.add("hidden");
       return;
     }
 
@@ -1080,21 +1111,32 @@
     if (!remoteRoomClient?.code || !remoteRoomClient?.token) return;
     try {
       const response = await remoteRoomClient.heartbeat();
-      applyRemoteLifecycle({ ...(lastRemoteRoomState || {}), lifecycle: response.lifecycle });
+      applyRemoteLifecycle({
+        ...(lastRemoteRoomState || {}),
+        lifecycle: response.lifecycle,
+        turnTimer: response.turnTimer || lastRemoteRoomState?.turnTimer
+      });
     } catch {}
   }
 
-  function hideRemoteBattleToMultiplayer() {
+  function hideRemoteBattleToMultiplayer(response = lastRemoteRoomState) {
+    if (response) lastRemoteRoomState = response;
     remoteBattleSuspendedToMenu = true;
     remoteDuelActive = false;
     engine = null;
     busy = false;
+    remoteRenderedSnapshotKey = "";
     $("#battlePanel")?.classList.add("hidden");
     $("#setupPanel")?.classList.remove("hidden");
     $("#remoteDisconnectOverlay")?.classList.add("hidden");
+    $("#duelQuickChat")?.classList.add("hidden");
+    renderRemoteTurnTimer(null);
     switchView("multiplayer");
+    navigation?.setActive("multiplayer");
     renderRemoteLobby(lastRemoteRoomState, { deferBattle: true });
     renderRecoverableMatch();
+    syncBackgroundMusicScene();
+    activateWaitingAppUpdateIfSafe();
   }
 
   function clearRemoteRoomPreview() {
@@ -1213,18 +1255,167 @@
     }
   }
 
+  function remotePhraseLabel(phraseId) {
+    const key = `online.phrase.${String(phraseId || "")}`;
+    const translated = t(key);
+    return translated === key ? String(phraseId || "") : translated;
+  }
+
+  function showRemotePhraseToast(message, response) {
+    if (!message || message.side === remoteRoomClient?.side || message.kind !== "phrase" || !remoteDuelActive) return;
+    const toast = $("#duelQuickChatToast");
+    if (!toast) return;
+    const senderName = normalizedPlayerName(response?.playerNames?.[message.side], t("ui.opponent"));
+    toast.textContent = `💬 ${senderName}: ${remotePhraseLabel(message.phraseId)}`;
+    toast.classList.remove("hidden");
+    window.clearTimeout(remoteQuickChatToastTimer);
+    remoteQuickChatToastTimer = window.setTimeout(() => toast.classList.add("hidden"), 2600);
+  }
+
+  function renderRemoteMessages(response) {
+    const messages = Array.isArray(response?.messages) ? response.messages : [];
+    if (!remoteMessagesInitialized) {
+      messages.forEach(message => { if (message?.id) remoteSeenMessageIds.add(message.id); });
+      remoteMessagesInitialized = true;
+    } else {
+      for (const message of messages) {
+        if (!message?.id || remoteSeenMessageIds.has(message.id)) continue;
+        showRemotePhraseToast(message, response);
+        remoteSeenMessageIds.add(message.id);
+      }
+    }
+    const root = $("#onlineLobbyChatMessages");
+    if (!root) return;
+    const names = response?.playerNames || {};
+    root.innerHTML = messages.map(message => {
+      const own = message.side === remoteRoomClient?.side;
+      const sender = normalizedPlayerName(names[message.side], own ? t("ui.player") : t("ui.opponent"));
+      const body = message.kind === "phrase" ? remotePhraseLabel(message.phraseId) : String(message.text || "");
+      return `<div class="multiplayer-chat-line${own ? " is-own" : ""}"><small>${escapeHtml(sender)}</small>${escapeHtml(body)}</div>`;
+    }).join("");
+    root.scrollTop = root.scrollHeight;
+  }
+
+  function syncLobbySpecializationVisibility() {
+    const hostSpecialized = $("#onlineLobbySpecializationsSelect")?.value === "on";
+    $("#onlineLobbyHostSpecializationField")?.classList.toggle("hidden", !hostSpecialized);
+  }
+
+  function renderRemoteLobbyControls(response) {
+    const isHost = remoteRoomClient?.side === "player";
+    const settings = response?.settings || {};
+    const finished = response?.lifecycle?.status === "finished";
+    const waiting = response?.lifecycle?.status === "waiting";
+    const editable = finished || waiting;
+    $("#onlineHostLobbySettings")?.classList.toggle("hidden", !isHost);
+    $("#onlineGuestLobbySettings")?.classList.toggle("hidden", isHost);
+    if ($("#onlineLobbyRole")) $("#onlineLobbyRole").textContent = t(isHost ? "online.host" : "online.guest");
+
+    const mode = normalizeSpellbookMode(settings.spellbookDistribution || "arcane");
+    if ($("#onlineLobbyModeSelect")) {
+      $("#onlineLobbyModeSelect").value = mode;
+      $("#onlineLobbyModeSelect").disabled = !editable;
+    }
+    if ($("#onlineLobbySpecializationsSelect")) {
+      $("#onlineLobbySpecializationsSelect").value = settings.specializationsEnabled ? "on" : "off";
+      $("#onlineLobbySpecializationsSelect").disabled = !editable;
+    }
+    if ($("#onlineLobbyHostSpecializationSelect")) {
+      $("#onlineLobbyHostSpecializationSelect").value = settings.playerSpecialization || "random";
+      $("#onlineLobbyHostSpecializationSelect").disabled = !editable || !settings.specializationsEnabled;
+    }
+    syncLobbySpecializationVisibility();
+
+    if ($("#onlineLobbyGuestRules")) $("#onlineLobbyGuestRules").textContent = roomModeLabel(settings);
+    $("#onlineLobbyGuestSpecializationField")?.classList.toggle("hidden", isHost || !settings.specializationsEnabled);
+    if ($("#onlineLobbyGuestSpecializationSelect")) {
+      $("#onlineLobbyGuestSpecializationSelect").value = settings.playerSpecialization || "random";
+      $("#onlineLobbyGuestSpecializationSelect").disabled = !editable || !settings.specializationsEnabled;
+    }
+
+    const result = $("#onlinePostMatchResult");
+    if (result) {
+      result.classList.toggle("hidden", !finished);
+      if (!finished) {
+        result.textContent = "";
+      } else if (response.lifecycle?.reason === "afk_timeout") {
+        result.textContent = response.lifecycle?.winner === remoteRoomClient?.side
+          ? t("online.afkVictory")
+          : t("online.afkDefeat");
+      } else {
+        const baseResult = remoteResultLabel(response.lifecycle) || t("online.matchFinished");
+        const reason = response.lifecycle?.reason === "disconnect_timeout"
+          ? t("online.matchFinishedDisconnect")
+          : response.lifecycle?.reason === "forfeit"
+            ? t("online.matchFinishedForfeit")
+            : "";
+        result.textContent = reason ? `${baseResult} · ${reason}` : baseResult;
+      }
+    }
+
+    const proposal = response?.rematch?.proposal || null;
+    const pending = proposal?.status === "pending";
+    const declined = proposal?.status === "declined";
+    $("#onlineRematchHostActions")?.classList.toggle("hidden", !isHost || !finished || pending || !response?.rematch?.canPropose);
+    const pendingRoot = $("#onlineRematchPending");
+    pendingRoot?.classList.toggle("hidden", !finished || (!pending && !declined));
+    if (pendingRoot && (pending || declined)) {
+      const title = $("#onlineRematchPendingTitle");
+      const detail = $("#onlineRematchPendingDetail");
+      if (declined) {
+        if (title) title.textContent = t("online.proposal.declined");
+        if (detail) detail.textContent = "";
+      } else {
+        if (title) title.textContent = t(proposal.mode === "same" ? "online.proposal.same" : "online.proposal.new");
+        if (detail) detail.textContent = isHost ? t("online.proposal.waiting") : "";
+      }
+    }
+    $("#onlineRematchGuestActions")?.classList.toggle("hidden", !finished || isHost || !response?.rematch?.canRespond);
+    const opponentPresent = remoteRoomClient?.side === "player"
+      ? response?.roomPresence?.enemy !== false
+      : response?.roomPresence?.player !== false;
+    const chatInput = $("#onlineLobbyChatInput");
+    const chatButton = $("#onlineLobbyChatForm button[type='submit']");
+    if (chatInput) chatInput.disabled = !opponentPresent;
+    if (chatButton) chatButton.disabled = !opponentPresent;
+  }
+
+  async function updateRemoteLobbySettings(payload) {
+    if (!remoteRoomClient) return null;
+    try {
+      const response = await remoteRoomClient.updateSettings(payload);
+      lastRemoteRoomState = response;
+      renderRemoteLobby(response, { deferBattle: true });
+      saveRemoteRoom();
+      return response;
+    } catch (error) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+      return null;
+    }
+  }
+
   function renderRemoteLobby(response, options = {}) {
-    const suspended = Boolean(response && remoteBattleSuspendedToMenu);
-    $("#onlineLobbyActions")?.classList.toggle("hidden", Boolean(response) && !suspended);
-    $("#onlineLobbyStatus")?.classList.toggle("hidden", !response || suspended);
+    $("#onlineLobbyActions")?.classList.toggle("hidden", Boolean(response));
+    $("#onlineLobbyStatus")?.classList.toggle("hidden", !response);
     if (!response) {
       renderRecoverableMatch();
       setMultiplayerControlsDisabled(false);
       return;
     }
     applyRemoteLifecycle(response);
+    renderRemoteMessages(response);
+    renderRemoteLobbyControls(response);
     if ($("#onlineRoomCodeLabel")) $("#onlineRoomCodeLabel").textContent = response.code || remoteRoomClient?.code || "";
-    if ($("#onlineConnectionMessage")) $("#onlineConnectionMessage").textContent = t(response.ready ? "online.ready" : "online.waiting");
+    if ($("#onlineConnectionMessage")) {
+      const opponentPresent = remoteRoomClient?.side === "player"
+        ? response?.roomPresence?.enemy !== false
+        : response?.roomPresence?.player !== false;
+      $("#onlineConnectionMessage").textContent = !opponentPresent && response.playerNames?.enemy
+        ? t("online.opponentLeftRoom")
+        : response.lifecycle?.status === "finished"
+          ? t("online.matchFinished")
+          : t(response.ready ? "online.ready" : "online.waiting");
+    }
     const names = response.playerNames || {};
     if ($("#onlinePlayerOneName")) $("#onlinePlayerOneName").textContent = normalizedPlayerName(names.player, t("online.waitingPlayer"));
     if ($("#onlinePlayerTwoName")) $("#onlinePlayerTwoName").textContent = names.enemy
@@ -1283,6 +1474,7 @@
     return [
       response.code || remoteRoomClient.code || "",
       remoteRoomClient.side || "",
+      Number(response.matchNumber || 1),
       Number(response.sequence || 0),
       response.checksum || ""
     ].join("|");
@@ -1301,7 +1493,12 @@
 
   function showRemoteBattle(response, options = {}) {
     clearPersistedLocalDuel();
-    if (!response?.state || response.lifecycle?.status === "finished") {
+    if (response?.lifecycle?.status === "finished") {
+      applyRemoteLifecycle(response);
+      hideRemoteBattleToMultiplayer(response);
+      return false;
+    }
+    if (!response?.state) {
       applyRemoteLifecycle(response);
       return false;
     }
@@ -1320,6 +1517,8 @@
     switchView("game");
     $("#setupPanel").classList.add("hidden");
     $("#battlePanel").classList.remove("hidden");
+    $("#duelQuickChat")?.classList.remove("hidden");
+    renderRemoteTurnTimer(response);
     syncBackgroundMusicScene();
     navigation?.setActive("multiplayer");
     $("#seedBadge").textContent = `online · ${response.code || remoteRoomClient.code} · #${response.sequence}`;
@@ -1445,13 +1644,27 @@
     if (!remoteRoomClient || remoteRefreshBusy || busy) return;
     remoteRefreshBusy = true;
     try {
+      const previousMatchNumber = Number(lastRemoteRoomState?.matchNumber || 0);
       let state = await remoteRoomClient.reconnect();
       if (state.stale) return;
+      const newMatchStarted = Boolean(
+        state.lifecycle?.status === "active"
+        && Number(state.matchNumber || 0) > previousMatchNumber
+        && previousMatchNumber > 0
+      );
+      if (newMatchStarted) {
+        remoteBattleSuspendedToMenu = false;
+        remoteDuelActive = false;
+        remoteRenderedSnapshotKey = "";
+        remoteMatchStartedAt = Date.now();
+        currentTurnDamage = 0;
+        presentationLog = [];
+      }
       setMultiplayerServerState("online");
       applyRemoteLifecycle(state);
+      renderRemoteMessages(state);
       const animateMissedActions = Boolean(
-        state.ready
-        && state.lifecycle?.status === "active"
+        ["active", "finished"].includes(state.lifecycle?.status)
         && remoteDuelActive
         && engine
         && state.actions?.length
@@ -1464,6 +1677,8 @@
         } finally {
           busy = false;
         }
+      } else if (state.lifecycle?.status === "finished" && remoteDuelActive) {
+        hideRemoteBattleToMultiplayer(state);
       }
       if (state.ready && state.lifecycle?.status === "active" && !remoteBattleSuspendedToMenu && remoteRoomClient.side === "enemy" && state.state?.state?.phase === A.PHASES.ENEMY_THINK) {
         state = await remoteRoomClient.submit(A.MULTIPLAYER_COMMANDS.BEGIN_PLAY);
@@ -1492,9 +1707,12 @@
   function beginRemotePolling() {
     clearInterval(remoteRoomPoll);
     clearInterval(remoteHeartbeatTimer);
+    clearInterval(remoteTurnTimerTicker);
     remoteRoomPoll = setInterval(refreshRemoteRoom, 1200);
     remoteHeartbeatTimer = setInterval(heartbeatRemoteRoom, 5000);
+    remoteTurnTimerTicker = setInterval(() => renderRemoteTurnTimer(lastRemoteRoomState), 250);
     heartbeatRemoteRoom();
+    renderRemoteTurnTimer(lastRemoteRoomState);
   }
 
   function resumeRemoteSynchronization() {
@@ -2029,6 +2247,8 @@
     populateSpecializationSelect($("#enemySpecializationSelect"), "random");
     populateSpecializationSelect($("#onlineSpecializationSelect"), "random");
     populateSpecializationSelect($("#onlineJoinSpecializationSelect"), "random");
+    populateSpecializationSelect($("#onlineLobbyHostSpecializationSelect"), "random");
+    populateSpecializationSelect($("#onlineLobbyGuestSpecializationSelect"), "random");
   }
 
   function syncOnlineDuelMode() {
@@ -2202,6 +2422,7 @@
     if (online) {
       stopRemoteTimers();
       await remoteRoomClient?.forfeit().catch(() => {});
+      await remoteRoomClient?.leave().catch(() => {});
       clearRemoteSession();
     }
     restartDuel();
@@ -5739,14 +5960,57 @@
     if (soundEnabled) ensureAudio();
   });
   $("#languageSelect")?.addEventListener("change", event => A.i18n?.setLanguage(event.target.value));
+  async function proposeRemoteDuel(mode) {
+    if (!remoteRoomClient || remoteRoomClient.side !== "player") return;
+    try {
+      const response = await remoteRoomClient.rematch("propose", mode);
+      lastRemoteRoomState = response;
+      renderRemoteLobby(response, { deferBattle: true });
+      saveRemoteRoom();
+    } catch (error) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+    }
+  }
+
+  async function respondToRemoteDuel(action) {
+    if (!remoteRoomClient || remoteRoomClient.side !== "enemy") return;
+    try {
+      const response = await remoteRoomClient.rematch(action);
+      lastRemoteRoomState = response;
+      if (action === "accept" && response.lifecycle?.status === "active") {
+        remoteBattleSuspendedToMenu = false;
+        remoteDuelActive = false;
+        remoteRenderedSnapshotKey = "";
+        remoteMatchStartedAt = Date.now();
+        currentTurnDamage = 0;
+        presentationLog = [];
+      }
+      renderRemoteLobby(response, { deferBattle: action !== "accept" });
+      saveRemoteRoom();
+      beginRemotePolling();
+    } catch (error) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+    }
+  }
+
+  async function syncHostLobbySettings() {
+    if (remoteRoomClient?.side !== "player") return;
+    const specializationsEnabled = $("#onlineLobbySpecializationsSelect")?.value === "on";
+    syncLobbySpecializationVisibility();
+    await updateRemoteLobbySettings({
+      spellbookDistribution: normalizeSpellbookMode($("#onlineLobbyModeSelect")?.value),
+      specializationsEnabled,
+      ...(specializationsEnabled ? { playerSpecialization: $("#onlineLobbyHostSpecializationSelect")?.value || "random" } : {})
+    });
+  }
+
   $("#retryMultiplayerServerBtn")?.addEventListener("click", () => checkMultiplayerServer({ force: true }));
   $("#refreshRoomBrowserBtn")?.addEventListener("click", refreshRoomBrowser);
   $("#showAvailableRoomsOnly")?.addEventListener("change", refreshRoomBrowser);
   $("#resumeOnlineMatchBtn")?.addEventListener("click", async () => {
     if (!remoteRoomClient || !lastRemoteRoomState) return;
     if (lastRemoteRoomState.lifecycle?.status === "finished") {
-      clearRemoteSession();
-      renderRemoteLobby(null);
+      hideRemoteBattleToMultiplayer(lastRemoteRoomState);
       return;
     }
     remoteBattleSuspendedToMenu = false;
@@ -5754,15 +6018,50 @@
     if (lastRemoteRoomState?.state) showRemoteBattle(lastRemoteRoomState, { force: true });
   });
   $("#remoteDisconnectReturnBtn")?.addEventListener("click", () => {
-    if (remoteLifecycleStatus === "finished") {
-      clearRemoteSession();
-      restartDuel();
-      switchView("multiplayer");
-      renderRemoteLobby(null);
-      return;
+    if (lastRemoteRoomState?.lifecycle?.canReturnToMenu || remoteLifecycleStatus === "finished") {
+      hideRemoteBattleToMultiplayer(lastRemoteRoomState);
     }
-    if (lastRemoteRoomState?.lifecycle?.canReturnToMenu) hideRemoteBattleToMultiplayer();
   });
+  $("#onlineLobbyModeSelect")?.addEventListener("change", syncHostLobbySettings);
+  $("#onlineLobbySpecializationsSelect")?.addEventListener("change", syncHostLobbySettings);
+  $("#onlineLobbyHostSpecializationSelect")?.addEventListener("change", syncHostLobbySettings);
+  $("#onlineLobbyGuestSpecializationSelect")?.addEventListener("change", event => {
+    if (remoteRoomClient?.side !== "enemy") return;
+    updateRemoteLobbySettings({ playerSpecialization: event.currentTarget.value || "random" });
+  });
+  $("#proposeSameCardsBtn")?.addEventListener("click", () => proposeRemoteDuel("same"));
+  $("#proposeNewDuelBtn")?.addEventListener("click", () => proposeRemoteDuel("new"));
+  $("#acceptRematchBtn")?.addEventListener("click", () => respondToRemoteDuel("accept"));
+  $("#declineRematchBtn")?.addEventListener("click", () => respondToRemoteDuel("decline"));
+  $("#onlineLobbyChatForm")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const input = $("#onlineLobbyChatInput");
+    const text = String(input?.value || "").trim();
+    if (!text || !remoteRoomClient) return;
+    try {
+      const payload = await remoteRoomClient.sendMessage(text);
+      if (input) input.value = "";
+      if (lastRemoteRoomState) {
+        lastRemoteRoomState = { ...lastRemoteRoomState, messages: payload.messages || lastRemoteRoomState.messages || [] };
+        renderRemoteMessages(lastRemoteRoomState);
+      }
+    } catch (error) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+    }
+  });
+  $("[data-quick-phrase]").forEach(button => button.addEventListener("click", async () => {
+    if (!remoteRoomClient || !remoteDuelActive) return;
+    try {
+      const payload = await remoteRoomClient.sendPhrase(button.dataset.quickPhrase);
+      if (lastRemoteRoomState) {
+        lastRemoteRoomState = { ...lastRemoteRoomState, messages: payload.messages || lastRemoteRoomState.messages || [] };
+        renderRemoteMessages(lastRemoteRoomState);
+      }
+      $("#duelQuickChat")?.removeAttribute("open");
+    } catch (error) {
+      setMessage(error.message || t("online.error"));
+    }
+  }));
   $("#onlinePlayerNameInput")?.addEventListener("change", event => savePlayerName(event.currentTarget));
   $("#onlineDuelModeSelect")?.addEventListener("change", syncOnlineDuelMode);
   $("#onlineSpecializationsSelect")?.addEventListener("change", syncOnlineDuelMode);
@@ -5787,6 +6086,9 @@
       remoteLifecycleStatus = "waiting";
       lastRemoteRoomState = null;
       remoteMatchStartedAt = null;
+      remoteSeenMessageIds = new Set();
+      remoteMessagesInitialized = false;
+      remoteRecordedMatchId = "";
       const response = await remoteRoomClient.create({
         ...onlineDuelOptions(),
         playerName: savePlayerName($("#onlinePlayerNameInput"))
@@ -5828,6 +6130,9 @@
       remoteLifecycleStatus = "waiting";
       lastRemoteRoomState = null;
       remoteMatchStartedAt = null;
+      remoteSeenMessageIds = new Set();
+      remoteMessagesInitialized = false;
+      remoteRecordedMatchId = "";
       const joinOptions = {
         playerName: savePlayerName($("#onlinePlayerNameInput"))
       };
@@ -5846,7 +6151,13 @@
   });
   $("#leaveOnlineRoomBtn")?.addEventListener("click", async () => {
     stopRemoteTimers();
-    await remoteRoomClient?.leave().catch(() => {});
+    const lifecycle = lastRemoteRoomState?.lifecycle?.status;
+    if (["finished", "waiting"].includes(lifecycle)) {
+      await remoteRoomClient?.leave().catch(() => {});
+    } else {
+      await remoteRoomClient?.forfeit().catch(() => {});
+      await remoteRoomClient?.leave().catch(() => {});
+    }
     clearRemoteSession();
     renderRemoteLobby(null);
     clearRemoteRoomPreview();

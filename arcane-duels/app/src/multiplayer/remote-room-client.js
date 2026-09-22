@@ -8,6 +8,7 @@
       this.token = null;
       this.side = null;
       this.sequence = 0;
+      this.matchNumber = 0;
       this.checksum = null;
       this.state = null;
       this.clientVersion = String(options.clientVersion || "");
@@ -111,10 +112,67 @@
       }));
     }
 
+    async updateSettings(options = {}) {
+      this.ensureIdentity();
+      return this.accept(await this.request(`/api/rooms/${encodeURIComponent(this.code)}/settings`, {
+        method: "POST",
+        token: this.token,
+        body: options
+      }));
+    }
+
+    async rematch(action, mode = undefined) {
+      this.ensureIdentity();
+      return this.accept(await this.request(`/api/rooms/${encodeURIComponent(this.code)}/rematch`, {
+        method: "POST",
+        token: this.token,
+        body: { action, ...(mode ? { mode } : {}) }
+      }));
+    }
+
+    async sendMessage(text) {
+      this.ensureIdentity();
+      return this.request(`/api/rooms/${encodeURIComponent(this.code)}/messages`, {
+        method: "POST",
+        token: this.token,
+        body: { kind: "text", text }
+      });
+    }
+
+    async sendPhrase(phraseId) {
+      this.ensureIdentity();
+      return this.request(`/api/rooms/${encodeURIComponent(this.code)}/messages`, {
+        method: "POST",
+        token: this.token,
+        body: { kind: "phrase", phraseId }
+      });
+    }
+
     accept(response) {
       if (response.code) this.code = response.code;
       if (response.token) this.token = response.token;
       if (response.side) this.side = response.side;
+      const incomingMatchNumber = Number(response.matchNumber || 0);
+      if (Number.isFinite(incomingMatchNumber) && incomingMatchNumber > 0 && this.matchNumber > 0 && incomingMatchNumber < this.matchNumber) {
+        return {
+          ...response,
+          stale: true,
+          matchNumber: this.matchNumber,
+          sequence: this.sequence,
+          checksum: this.checksum,
+          state: this.state,
+          commands: [],
+          actions: []
+        };
+      }
+      if (Number.isFinite(incomingMatchNumber) && incomingMatchNumber > this.matchNumber) {
+        this.matchNumber = incomingMatchNumber;
+        this.sequence = 0;
+        this.checksum = null;
+        this.state = null;
+      } else if (Number.isFinite(incomingMatchNumber) && incomingMatchNumber > 0 && this.matchNumber === 0) {
+        this.matchNumber = incomingMatchNumber;
+      }
       const incomingSequence = Number(response.sequence);
       const hasSequence = Number.isFinite(incomingSequence);
       if (hasSequence && incomingSequence < this.sequence) {

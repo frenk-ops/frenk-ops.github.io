@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const PROTOCOL_VERSION = 3;
+  const PROTOCOL_VERSION = 4;
   const COMMANDS = Object.freeze({
     SELECT: "SELECT",
     CANCEL_SELECTION: "CANCEL_SELECTION",

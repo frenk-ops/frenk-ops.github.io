@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
-  <meta name="arcane-app-version" content="0.22.25">
+  <meta name="arcane-app-version" content="0.22.26">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <title>Arcane Duels</title>
-  <link rel="stylesheet" href="styles.css?v=0.22.25-6982400">
-  <link rel="stylesheet" href="pwa.css?v=0.22.25-6982400">
+  <link rel="stylesheet" href="styles.css?v=0.22.26-03bae27">
+  <link rel="stylesheet" href="pwa.css?v=0.22.26-03bae27">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -23,7 +23,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.22.25 · build 6982400</small>
+        <small class="app-version-badge" data-arcane-version>v0.22.26 · build 03bae27</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -134,7 +134,7 @@
               </div>
               <div class="classic-duel-status">
                 <div class="classic-versus-title">versus</div>
-                <div class="classic-round-line"><span id="phaseLabel">Selection</span><small id="roundLabel">Round 1</small></div>
+                <div class="classic-round-line"><span id="phaseLabel">Selection</span><small id="roundLabel">Round 1</small><small id="onlineTurnTimer" class="online-turn-timer hidden" aria-live="polite">60s</small></div>
               </div>
               <div class="classic-player-head enemy-head">
                 <div class="classic-player-copy"><strong id="enemyNameBattle">Avversario</strong><span>Vita: <b id="enemyHpBattle">50</b></span></div>
@@ -269,6 +269,23 @@
             <div id="mobileDragGhost" class="mobile-drag-ghost hidden" aria-hidden="true"></div>
 
             <details class="combat-log-panel classic-combat-log"><summary data-i18n="log.title">Registro battaglia</summary><div id="combatLog" class="combat-log"></div></details>
+            <details id="duelQuickChat" class="duel-quick-chat hidden">
+              <summary aria-label="Frasi rapide" data-i18n-aria-label="online.quickChat">💬</summary>
+              <div class="duel-quick-chat-panel">
+                <strong data-i18n="online.quickChat">Frasi rapide</strong>
+                <div class="duel-quick-chat-grid">
+                  <button type="button" data-quick-phrase="good_luck" data-i18n="online.phrase.good_luck">Buona fortuna!</button>
+                  <button type="button" data-quick-phrase="nice_play" data-i18n="online.phrase.nice_play">Bella giocata!</button>
+                  <button type="button" data-quick-phrase="wake_up" data-i18n="online.phrase.wake_up">Ehi non dormire</button>
+                  <button type="button" data-quick-phrase="oops" data-i18n="online.phrase.oops">Ops!</button>
+                  <button type="button" data-quick-phrase="rematch" data-i18n="online.phrase.rematch">Rivincita?</button>
+                  <button type="button" data-quick-phrase="just_luck" data-i18n="online.phrase.just_luck">È stata solo fortuna!</button>
+                  <button type="button" data-quick-phrase="sure" data-i18n="online.phrase.sure">Certo!</button>
+                  <button type="button" data-quick-phrase="no_way" data-i18n="online.phrase.no_way">Direi di no</button>
+                </div>
+              </div>
+            </details>
+            <div id="duelQuickChatToast" class="duel-quick-chat-toast hidden" aria-live="polite"></div>
 
             <div class="classic-hidden-ui-support" aria-hidden="true">
               <span id="playerManaOrb">0/0</span><span id="enemyManaOrb">0/0</span>
@@ -394,13 +411,88 @@
               </div>
 
               <div id="onlineLobbyStatus" class="multiplayer-room-status hidden" aria-live="polite">
-                <span class="multiplayer-room-label" data-i18n="online.room">Stanza</span>
-                <strong id="onlineRoomCodeLabel" class="multiplayer-room-code"></strong>
-                <p id="onlineConnectionMessage"></p>
+                <div class="multiplayer-room-heading">
+                  <div>
+                    <span class="multiplayer-room-label" data-i18n="online.room">Stanza</span>
+                    <strong id="onlineRoomCodeLabel" class="multiplayer-room-code"></strong>
+                  </div>
+                  <p id="onlineConnectionMessage"></p>
+                </div>
                 <div class="multiplayer-players">
                   <div><small data-i18n="online.playerOne">Giocatore 1</small><strong id="onlinePlayerOneName">—</strong></div>
                   <div><small data-i18n="online.playerTwo">Giocatore 2</small><strong id="onlinePlayerTwoName">—</strong></div>
                 </div>
+
+                <div id="onlinePostMatchResult" class="multiplayer-post-match-result hidden"></div>
+
+                <section class="multiplayer-lobby-rules">
+                  <div class="multiplayer-lobby-rules-head">
+                    <div>
+                      <small data-i18n="online.nextDuel">Prossimo duello</small>
+                      <strong data-i18n="online.lobbyRules">Regole della lobby</strong>
+                    </div>
+                    <span id="onlineLobbyRole"></span>
+                  </div>
+                  <div id="onlineHostLobbySettings" class="classic-config-grid hidden">
+                    <label>
+                      <span data-i18n="menu.mode">Modalità</span>
+                      <select id="onlineLobbyModeSelect">
+                        <option value="arcane" data-i18n="menu.arcaneDuel">Duello Arcano</option>
+                        <option value="free" data-i18n="menu.freeDuel">Duello Libero</option>
+                        <option value="mirror" data-i18n="menu.mirrorDuel">Duello Speculare</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span data-i18n="menu.specializations">Specializzazioni</span>
+                      <select id="onlineLobbySpecializationsSelect">
+                        <option value="off" data-i18n="menu.specializationsOff">No</option>
+                        <option value="on" data-i18n="menu.specializationsOn">Sì</option>
+                      </select>
+                    </label>
+                    <label id="onlineLobbyHostSpecializationField" class="hidden">
+                      <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                      <select id="onlineLobbyHostSpecializationSelect"></select>
+                    </label>
+                  </div>
+                  <div id="onlineGuestLobbySettings" class="multiplayer-guest-lobby-settings hidden">
+                    <div><small data-i18n="online.hostRules">Regole dell'host</small><strong id="onlineLobbyGuestRules">—</strong></div>
+                    <label id="onlineLobbyGuestSpecializationField" class="hidden">
+                      <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                      <select id="onlineLobbyGuestSpecializationSelect"></select>
+                    </label>
+                  </div>
+                </section>
+
+                <div id="onlineRematchHostActions" class="multiplayer-rematch-actions hidden">
+                  <button id="proposeSameCardsBtn" class="classic-stone-button" type="button">
+                    <strong data-i18n="online.sameCardsRematch">Rivincita · stesse carte</strong>
+                    <small data-i18n="online.sameCardsRematchHint">Stesse carte estratte e stesse condizioni del duello precedente</small>
+                  </button>
+                  <button id="proposeNewDuelBtn" class="classic-stone-button" type="button">
+                    <strong data-i18n="online.newDuel">Nuovo duello</strong>
+                    <small data-i18n="online.newDuelHint">Nuova estrazione con le regole attuali della lobby</small>
+                  </button>
+                </div>
+                <div id="onlineRematchPending" class="multiplayer-rematch-pending hidden">
+                  <strong id="onlineRematchPendingTitle"></strong>
+                  <p id="onlineRematchPendingDetail"></p>
+                  <div id="onlineRematchGuestActions" class="multiplayer-rematch-guest-actions hidden">
+                    <button id="acceptRematchBtn" class="classic-stone-button" type="button" data-i18n="online.accept">Accetta</button>
+                    <button id="declineRematchBtn" class="classic-stone-button ghost" type="button" data-i18n="online.decline">Rifiuta</button>
+                  </div>
+                </div>
+
+                <details id="onlineLobbyChat" class="multiplayer-lobby-chat">
+                  <summary data-i18n="online.chat">Chat</summary>
+                  <div class="multiplayer-lobby-chat-panel">
+                    <div id="onlineLobbyChatMessages" class="multiplayer-lobby-chat-messages"></div>
+                    <form id="onlineLobbyChatForm" class="multiplayer-lobby-chat-compose">
+                      <input id="onlineLobbyChatInput" type="text" maxlength="180" autocomplete="off" data-i18n-placeholder="online.chatPlaceholder" placeholder="Scrivi un messaggio…">
+                      <button class="classic-stone-button" type="submit" data-i18n="online.send">Invia</button>
+                    </form>
+                  </div>
+                </details>
+
                 <button id="leaveOnlineRoomBtn" class="classic-stone-button" type="button" data-i18n="online.leave">Esci dalla stanza</button>
               </div>
             </div>
@@ -513,7 +605,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.22.25 · build 6982400</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.22.26 · build 03bae27</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -562,36 +654,36 @@
     </div>
   </div>
 
-  <script src="src/core/constants.js?v=0.22.25-6982400"></script>
-  <script src="src/core/rng.js?v=0.22.25-6982400"></script>
-  <script src="src/data/cards.js?v=0.22.25-6982400"></script>
-  <script src="src/data/original-cards.js?v=0.22.25-6982400"></script>
-  <script src="src/i18n/en.js?v=0.22.25-6982400"></script>
-  <script src="src/i18n/it.js?v=0.22.25-6982400"></script>
-  <script src="src/i18n/ui-labels.js?v=0.22.25-6982400"></script>
-  <script src="src/i18n/index.js?v=0.22.25-6982400"></script>
-  <script src="src/core/card-schema.js?v=0.22.25-6982400"></script>
-  <script src="src/data/astral-ai-card-metadata.js?v=0.22.25-6982400"></script>
-  <script src="src/core/original-rules.js?v=0.22.25-6982400"></script>
-  <script src="src/core/generator.js?v=0.22.25-6982400"></script>
-  <script src="src/core/astral-abilities-re.js?v=0.22.25-6982400"></script>
-  <script src="src/core/astral-spellbook-re.js?v=0.22.25-6982400"></script>
-  <script src="src/core/passives.js?v=0.22.25-6982400"></script>
-  <script src="src/core/effects.js?v=0.22.25-6982400"></script>
-  <script src="src/core/astral-card-effects-re.js?v=0.22.25-6982400"></script>
-  <script src="src/core/game-engine.js?v=0.22.25-6982400"></script>
-  <script src="src/core/multiplayer-protocol.js?v=0.22.25-6982400"></script>
-  <script src="src/multiplayer/remote-room-client.js?v=0.22.25-6982400"></script>
-  <script src="src/core/ai.js?v=0.22.25-6982400"></script>
-  <script src="src/core/astral-ai-re.js?v=0.22.25-6982400"></script>
-  <script src="src/core/tournament.js?v=0.22.25-6982400"></script>
-  <script src="tests/golden-replay-fixtures.js?v=0.22.25-6982400"></script>
-  <script src="tests/test-suite.js?v=0.22.25-6982400"></script>
-  <script src="src/ui/navigation.js?v=0.22.25-6982400"></script>
-  <script src="src/ui/pause-menu.js?v=0.22.25-6982400"></script>
-  <script src="src/ui/tournament-view.js?v=0.22.25-6982400"></script>
-  <script src="src/ui/app.js?v=0.22.25-6982400"></script>
-  <script src="pwa-install-v2.js?v=0.22.25-6982400"></script>
+  <script src="src/core/constants.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/rng.js?v=0.22.26-03bae27"></script>
+  <script src="src/data/cards.js?v=0.22.26-03bae27"></script>
+  <script src="src/data/original-cards.js?v=0.22.26-03bae27"></script>
+  <script src="src/i18n/en.js?v=0.22.26-03bae27"></script>
+  <script src="src/i18n/it.js?v=0.22.26-03bae27"></script>
+  <script src="src/i18n/ui-labels.js?v=0.22.26-03bae27"></script>
+  <script src="src/i18n/index.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/card-schema.js?v=0.22.26-03bae27"></script>
+  <script src="src/data/astral-ai-card-metadata.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/original-rules.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/generator.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/astral-abilities-re.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/astral-spellbook-re.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/passives.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/effects.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/astral-card-effects-re.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/game-engine.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/multiplayer-protocol.js?v=0.22.26-03bae27"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/ai.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/astral-ai-re.js?v=0.22.26-03bae27"></script>
+  <script src="src/core/tournament.js?v=0.22.26-03bae27"></script>
+  <script src="tests/golden-replay-fixtures.js?v=0.22.26-03bae27"></script>
+  <script src="tests/test-suite.js?v=0.22.26-03bae27"></script>
+  <script src="src/ui/navigation.js?v=0.22.26-03bae27"></script>
+  <script src="src/ui/pause-menu.js?v=0.22.26-03bae27"></script>
+  <script src="src/ui/tournament-view.js?v=0.22.26-03bae27"></script>
+  <script src="src/ui/app.js?v=0.22.26-03bae27"></script>
+  <script src="pwa-install-v2.js?v=0.22.26-03bae27"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -610,7 +702,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=0.22.25-6982400", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=0.22.26-03bae27", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {
