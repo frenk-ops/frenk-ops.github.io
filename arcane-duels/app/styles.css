@@ -11244,3 +11244,43 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 @media (max-width:720px) {
   .profile-player-tag { width:100%; }
 }
+
+
+/* 0.23.5 — tournament setup hierarchy and readable league details. */
+#tournamentView #tournamentSpecializationField {
+  order:3;
+}
+#tournamentView .tournament-league-strip {
+  order:4;
+}
+#tournamentView #tournamentSpecializationPreview {
+  order:5;
+}
+#tournamentView .tournament-advanced {
+  order:6;
+}
+#tournamentView .tournament-primary-action {
+  order:7;
+}
+#tournamentView .tournament-league-detail,
+#tournamentView .tournament-league-detail header,
+#tournamentView .tournament-ability-details,
+#tournamentView .tournament-ability-details > div,
+#tournamentView .tournament-ability-details strong,
+#tournamentView .tournament-ability-details p {
+  text-align:left !important;
+}
+#tournamentView .tournament-league-detail header {
+  display:grid;
+  gap:3px;
+}
+#tournamentView .tournament-league-detail header small {
+  text-align:left !important;
+  justify-self:start;
+}
+#tournamentView .tournament-ability-details > div {
+  justify-items:start;
+}
+#tournamentView .tournament-league-strip[data-mode="evolution"] .tournament-league-chip small {
+  font-weight:700;
+}

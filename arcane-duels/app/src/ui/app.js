@@ -5551,16 +5551,27 @@
         $("#tournamentCustomRules")?.classList.toggle("hidden", mode !== "custom");
         $("#tournamentSpecializationField")?.classList.toggle("hidden", !rules.specializationsEnabled);
         if ($("#tournamentModeDescription")) $("#tournamentModeDescription").textContent = t(`tournament.mode.${mode}.description`);
+
+        const evolutionCaptions = Boolean(rules.evolutionEnabled);
+        const captionKeys = evolutionCaptions
+          ? { starting: "tournament.evolutionMatches12", advanced: "tournament.evolutionMatches34", major: "tournament.evolutionMatches57" }
+          : { starting: "tournament.matches12", advanced: "tournament.matches34", major: "tournament.matches57" };
+        root.querySelectorAll("[data-league-caption]").forEach(node => {
+          const stage = node.dataset.leagueCaption;
+          const key = captionKeys[stage];
+          if (key) node.textContent = t(key);
+        });
+        const leagueStrip = root.querySelector(".tournament-league-strip");
+        if (leagueStrip) leagueStrip.dataset.mode = evolutionCaptions ? "evolution" : "league";
+
         const tournamentSelect = $("#tournamentTalentSelect");
         syncSpecializationSelectIcon(tournamentSelect);
         const preview = $("#tournamentSpecializationPreview");
         if (preview) {
           const selectedSpecialization = tournamentSelect?.value || "random";
-          preview.innerHTML = rules.specializationsEnabled
-            ? (selectedSpecialization === "random"
-              ? `<p class="tournament-random-specialization">🎲 ${escapeHtml(t("menu.randomSpecialization"))}</p>`
-              : A.UITournamentView.specializationProgression(selectedSpecialization, context))
-            : `<p>${t("tournament.noSpecializationDescription")}</p>`;
+          preview.innerHTML = rules.specializationsEnabled && selectedSpecialization !== "random"
+            ? A.UITournamentView.specializationProgression(selectedSpecialization, context)
+            : "";
           resetLeagueDisclosure();
           const canInspectLeagues = rules.specializationsEnabled && selectedSpecialization !== "random";
           leagueButtons.forEach(button => {

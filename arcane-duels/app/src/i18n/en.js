@@ -82,6 +82,7 @@
     "tournament.noSpecialization": "None", "tournament.noSpecializationDescription": "This tournament does not use specializations.", "tournament.abandon": "Abandon tournament", "tournament.confirmAbandon": "Abandon the active tournament? This competition's progress will be lost.",
     "tournament.introTitle": "Arcane Duels Tournament", "tournament.intro": "7 challengers · 3 Leagues · 5 wins for the title.",
     "tournament.matches12": "Matches 1–2", "tournament.matches34": "Matches 3–4", "tournament.matches57": "Matches 5–7",
+    "tournament.evolutionMatches12": "Matches 1–2 · Power-up I", "tournament.evolutionMatches34": "Matches 3–4 · Power-up II", "tournament.evolutionMatches57": "Matches 5–7 · Power-up III",
     "tournament.playerSchool": "Player school", "tournament.playerSpecialization": "Player specialization", "tournament.seed": "Tournament seed", "tournament.randomSeed": "Random (or enter a seed)",
     "tournament.create": "Create tournament", "tournament.startNew": "Start new tournament", "tournament.resume": "Resume tournament",
     "tournament.school": "School", "tournament.specialization": "Specialization", "tournament.match": "Match", "tournament.wins": "Victories", "tournament.losses": "Defeats", "tournament.points": "Points",

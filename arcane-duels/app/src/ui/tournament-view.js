@@ -41,12 +41,6 @@
         <small id="tournamentModeDescription">${t("tournament.mode.league.description")}</small>
       </label>
 
-      <div class="tournament-league-strip" aria-label="${t("tournament.path")}">
-        <button type="button" class="tournament-league-chip" data-league-stage="starting" aria-expanded="false"><b>${t("league.starting")}</b><small>${t("tournament.matches12")}</small></button>
-        <button type="button" class="tournament-league-chip" data-league-stage="advanced" aria-expanded="false"><b>${t("league.advanced")}</b><small>${t("tournament.matches34")}</small></button>
-        <button type="button" class="tournament-league-chip" data-league-stage="major" aria-expanded="false"><b>${t("league.major")}</b><small>${t("tournament.matches57")}</small></button>
-      </div>
-
       <div id="tournamentCustomRules" class="classic-config-grid hidden">
         <label>${t("tournament.customDistribution")}
           <select id="tournamentCustomDistribution">
@@ -78,6 +72,12 @@
           </select>
         </div>
       </label>
+
+      <div class="tournament-league-strip" aria-label="${t("tournament.path")}">
+        <button type="button" class="tournament-league-chip" data-league-stage="starting" aria-expanded="false"><b>${t("league.starting")}</b><small data-league-caption="starting">${t("tournament.matches12")}</small></button>
+        <button type="button" class="tournament-league-chip" data-league-stage="advanced" aria-expanded="false"><b>${t("league.advanced")}</b><small data-league-caption="advanced">${t("tournament.matches34")}</small></button>
+        <button type="button" class="tournament-league-chip" data-league-stage="major" aria-expanded="false"><b>${t("league.major")}</b><small data-league-caption="major">${t("tournament.matches57")}</small></button>
+      </div>
 
       <div id="tournamentSpecializationPreview"></div>
 

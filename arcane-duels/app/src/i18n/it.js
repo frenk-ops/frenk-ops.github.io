@@ -82,6 +82,7 @@
     "tournament.noSpecialization": "Nessuna", "tournament.noSpecializationDescription": "Questo torneo non utilizza specializzazioni.", "tournament.abandon": "Abbandona torneo", "tournament.confirmAbandon": "Abbandonare il torneo attivo? I progressi di questa competizione andranno persi.",
     "tournament.introTitle": "Torneo Arcane Duels", "tournament.intro": "7 sfidanti · 3 Leghe · 5 vittorie per il titolo.",
     "tournament.matches12": "Incontri 1–2", "tournament.matches34": "Incontri 3–4", "tournament.matches57": "Incontri 5–7",
+    "tournament.evolutionMatches12": "Incontri 1–2 · 1° Potenziamento", "tournament.evolutionMatches34": "Incontri 3–4 · 2° Potenziamento", "tournament.evolutionMatches57": "Incontri 5–7 · 3° Potenziamento",
     "tournament.playerSchool": "Scuola del giocatore", "tournament.playerSpecialization": "Specializzazione del giocatore", "tournament.seed": "Seed torneo", "tournament.randomSeed": "Casuale (oppure inserisci un seed)",
     "tournament.create": "Crea il torneo", "tournament.startNew": "Avvia nuovo torneo", "tournament.resume": "Riprendi torneo",
     "tournament.school": "Scuola", "tournament.specialization": "Specializzazione", "tournament.match": "Incontro", "tournament.wins": "Vittorie", "tournament.losses": "Sconfitte", "tournament.points": "Punti",
