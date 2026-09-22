@@ -80,6 +80,11 @@
             font-weight: 600;
         }
 
+        .project-list {
+            display: grid;
+            gap: 1rem;
+        }
+
         .project-card {
             display: flex;
             min-height: 176px;
@@ -198,20 +203,36 @@
         </header>
 
         <main>
-            <p class="project-count">1 progetto</p>
-            <a class="project-card" href="./arcane-duels/app/" aria-label="Apri Arcane Duels">
-                <div>
-                    <div class="project-heading">
-                        <h2>Arcane Duels</h2>
-                        <span class="status">Disponibile</span>
+            <p class="project-count">2 progetti</p>
+            <div class="project-list">
+                <a class="project-card" href="./arcane-duels/app/" aria-label="Apri Arcane Duels">
+                    <div>
+                        <div class="project-heading">
+                            <h2>Arcane Duels</h2>
+                            <span class="status">Disponibile</span>
+                        </div>
+                        <p class="project-description">Gioco di carte strategico fantasy</p>
                     </div>
-                    <p class="project-description">Gioco di carte strategico fantasy</p>
-                </div>
-                <span class="project-action" aria-hidden="true">
-                    <span>Apri progetto</span>
-                    <span class="arrow">→</span>
-                </span>
-            </a>
+                    <span class="project-action" aria-hidden="true">
+                        <span>Apri progetto</span>
+                        <span class="arrow">→</span>
+                    </span>
+                </a>
+
+                <a class="project-card" href="./sigian/app/" aria-label="Apri Sigian">
+                    <div>
+                        <div class="project-heading">
+                            <h2>Sigian</h2>
+                            <span class="status">In sviluppo</span>
+                        </div>
+                        <p class="project-description">Evoluzione di Arcane Duels basata su Formula, Sigillo e Modifier</p>
+                    </div>
+                    <span class="project-action" aria-hidden="true">
+                        <span>Apri progetto</span>
+                        <span class="arrow">→</span>
+                    </span>
+                </a>
+            </div>
         </main>
 
         <footer>
