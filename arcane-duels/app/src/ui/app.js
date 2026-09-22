@@ -6216,7 +6216,7 @@
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
     }
   });
-  $("[data-quick-phrase]").forEach(button => button.addEventListener("click", async () => {
+  $$("[data-quick-phrase]").forEach(button => button.addEventListener("click", async () => {
     if (!remoteRoomClient || !remoteDuelActive) return;
     try {
       const payload = await remoteRoomClient.sendPhrase(button.dataset.quickPhrase);
