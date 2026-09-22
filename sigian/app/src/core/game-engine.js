@@ -456,19 +456,30 @@
           currentHealth: card.health,
           owner: side,
           instanceId: `${side}-${this.state.round}-${slot}-${card.id}`,
-          summonedOnOwnerTurn: this.getOwnerTurnCount(side)
+          summonedOnOwnerTurn: this.getOwnerTurnCount(side),
+          ...(recoveredAstral ? { astralPowerModifiers: [] } : {})
         };
         fighter.board[slot] = unit;
         const passiveEvent = A.applySummonPassives(fighter, unit);
         if (passiveEvent) events.push({ ...passiveEvent, side, slot });
         events.push({ type: "summon", side, slot, cardId: card.id, cardName: card.name });
-        if (recoveredAstral && typeof A.astralOnSummon === "function") A.astralOnSummon(this, side, unit, events);
-        else events.push(...A.resolveEffects(this.state, side, card, "onSummon"));
+        if (recoveredAstral && typeof A.resolveSigianCardEffect === "function") {
+          A.resolveSigianCardEffect(this, side, unit, "onSummon", events);
+        } else if (recoveredAstral && typeof A.astralOnSummon === "function") {
+          A.astralOnSummon(this, side, unit, events);
+        } else {
+          events.push(...A.resolveEffects(this.state, side, card, "onSummon"));
+        }
         this.addLog(`${side === "player" ? "Tu evochi" : "L'avversario evoca"} ${card.name}.`);
       } else {
         events.push({ type: "spell", side, cardId: card.id, cardName: card.name });
-        if (recoveredAstral && typeof A.astralOnSpell === "function") A.astralOnSpell(this, side, card, events);
-        else events.push(...A.resolveEffects(this.state, side, card, "onPlay"));
+        if (recoveredAstral && typeof A.resolveSigianCardEffect === "function") {
+          A.resolveSigianCardEffect(this, side, card, "onPlay", events);
+        } else if (recoveredAstral && typeof A.astralOnSpell === "function") {
+          A.astralOnSpell(this, side, card, events);
+        } else {
+          events.push(...A.resolveEffects(this.state, side, card, "onPlay"));
+        }
         this.addLog(`${side === "player" ? "Tu lanci" : "L'avversario lancia"} ${card.name}.`);
       }
 
