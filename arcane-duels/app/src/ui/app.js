@@ -482,6 +482,10 @@
   let remoteDuelActive = false;
   let remoteBattleSuspendedToMenu = false;
   let remoteLifecycleStatus = "idle";
+  let remoteTransportIssueSince = null;
+  let remoteDisconnectObservedAt = null;
+  const REMOTE_SOFT_RECONNECT_MS = 5000;
+  const REMOTE_DISCONNECT_OVERLAY_DELAY_MS = 4000;
   let lastRemoteRoomState = null;
   let remoteRenderedSnapshotKey = "";
   let remoteRefreshBusy = false;
@@ -997,6 +1001,8 @@
     remoteDuelActive = false;
     remoteBattleSuspendedToMenu = false;
     remoteLifecycleStatus = "idle";
+    remoteTransportIssueSince = null;
+    remoteDisconnectObservedAt = null;
     remoteSeenMessageIds = new Set();
     remoteMessagesInitialized = false;
     remoteRecordedMatchId = "";
@@ -1004,6 +1010,7 @@
     remoteQuickChatToastTimer = null;
     $("#duelQuickChat")?.classList.add("hidden");
     $("#duelQuickChatToast")?.classList.add("hidden");
+    $("#onlineConnectionQuality")?.classList.add("hidden");
     saveRemoteRoom();
     renderRecoverableMatch();
     $("#remoteDisconnectOverlay")?.classList.add("hidden");
@@ -1026,6 +1033,58 @@
     root.classList.toggle("is-danger", seconds <= 5);
     if (afkWarning) root.textContent = `⚠ ${seconds}s · ${streak}/${max}`;
     root.title = streak > 0 ? `${t("online.afkWarning")} ${streak}/${max}` : t("online.turnTimer");
+  }
+
+  function renderRemoteConnectionQuality() {
+    const root = $("#onlineConnectionQuality");
+    if (!root) return;
+    const visible = Boolean(remoteDuelActive && remoteRoomClient);
+    root.classList.toggle("hidden", !visible);
+    if (!visible) return;
+
+    root.classList.remove("is-good", "is-warning", "is-poor", "is-reconnecting");
+    root.title = "";
+    const metrics = remoteRoomClient.connectionMetrics?.() || {};
+    if (remoteTransportIssueSince) {
+      const elapsed = Date.now() - remoteTransportIssueSince;
+      root.classList.add("is-reconnecting");
+      root.textContent = elapsed >= REMOTE_SOFT_RECONNECT_MS
+        ? t("online.connectionUnstable")
+        : t("online.reconnecting");
+      return;
+    }
+    if (remoteLifecycleStatus === "disconnected") {
+      root.classList.add("is-reconnecting");
+      root.textContent = t("online.opponentReconnecting");
+      return;
+    }
+
+    const latency = Number(metrics.latencyMs);
+    if (!Number.isFinite(latency)) {
+      root.textContent = t("online.connectionOnline");
+      root.classList.add("is-good");
+      return;
+    }
+    const rounded = Math.max(0, Math.round(latency));
+    root.textContent = `● ${rounded} ms`;
+    root.title = t("online.connectionPing", { latency: rounded });
+    if (rounded < 150) root.classList.add("is-good");
+    else if (rounded < 350) root.classList.add("is-warning");
+    else root.classList.add("is-poor");
+  }
+
+  function noteRemoteTransportSuccess() {
+    remoteTransportIssueSince = null;
+    if (multiplayerServerStatus !== "online") setMultiplayerServerState("online");
+    renderRemoteConnectionQuality();
+  }
+
+  function noteRemoteTransportFailure() {
+    if (!remoteTransportIssueSince) remoteTransportIssueSince = Date.now();
+    if (Date.now() - remoteTransportIssueSince >= REMOTE_SOFT_RECONNECT_MS) {
+      setMultiplayerServerState("offline");
+    }
+    renderRemoteConnectionQuality();
   }
 
   function remoteResultLabel(lifecycle) {
@@ -1069,7 +1128,10 @@
     const countdown = $("#remoteDisconnectCountdown");
     const returnButton = $("#remoteDisconnectReturnBtn");
 
+    renderRemoteConnectionQuality();
+
     if (remoteLifecycleStatus === "finished") {
+      remoteDisconnectObservedAt = null;
       const finishedMatchId = response.matchId || `room:${response.code || remoteRoomClient?.code || "online"}:match:${response.matchNumber || 1}`;
       if (remoteRoomClient?.side && remoteRecordedMatchId !== finishedMatchId) {
         const result = lifecycle.winner === remoteRoomClient.side
@@ -1094,12 +1156,15 @@
     }
 
     if (remoteLifecycleStatus !== "disconnected") {
+      remoteDisconnectObservedAt = null;
       overlay?.classList.add("hidden");
       returnButton?.classList.add("hidden");
       return;
     }
 
-    if (overlay && remoteDuelActive) overlay.classList.remove("hidden");
+    if (!remoteDisconnectObservedAt) remoteDisconnectObservedAt = Date.now();
+    const showDisconnectOverlay = Date.now() - remoteDisconnectObservedAt >= REMOTE_DISCONNECT_OVERLAY_DELAY_MS;
+    if (overlay) overlay.classList.toggle("hidden", !remoteDuelActive || !showDisconnectOverlay);
     if (title) title.textContent = t("online.opponentDisconnected");
     if (detail) detail.textContent = t("online.waitingReconnect");
     const remainingSeconds = lifecycle.remainingMs == null ? null : Math.ceil(Number(lifecycle.remainingMs) / 1000);
@@ -1113,12 +1178,15 @@
     if (!remoteRoomClient?.code || !remoteRoomClient?.token) return;
     try {
       const response = await remoteRoomClient.heartbeat();
+      noteRemoteTransportSuccess();
       applyRemoteLifecycle({
         ...(lastRemoteRoomState || {}),
         lifecycle: response.lifecycle,
         turnTimer: response.turnTimer || lastRemoteRoomState?.turnTimer
       });
-    } catch {}
+    } catch {
+      noteRemoteTransportFailure();
+    }
   }
 
   function hideRemoteBattleToMultiplayer(response = lastRemoteRoomState) {
@@ -1132,6 +1200,8 @@
     $("#setupPanel")?.classList.remove("hidden");
     $("#remoteDisconnectOverlay")?.classList.add("hidden");
     $("#duelQuickChat")?.classList.add("hidden");
+    $("#onlineConnectionQuality")?.classList.add("hidden");
+    remoteDisconnectObservedAt = null;
     renderRemoteTurnTimer(null);
     switchView("multiplayer");
     navigation?.setActive("multiplayer");
@@ -1577,6 +1647,7 @@
     $("#battlePanel").classList.remove("hidden");
     $("#duelQuickChat")?.classList.remove("hidden");
     renderRemoteTurnTimer(response);
+    renderRemoteConnectionQuality();
     syncBackgroundMusicScene();
     navigation?.setActive("multiplayer");
     $("#seedBadge").textContent = `online · ${response.code || remoteRoomClient.code} · #${response.sequence}`;
@@ -1718,7 +1789,7 @@
         currentTurnDamage = 0;
         presentationLog = [];
       }
-      setMultiplayerServerState("online");
+      noteRemoteTransportSuccess();
       applyRemoteLifecycle(state);
       renderRemoteMessages(state);
       const animateMissedActions = Boolean(
@@ -1751,13 +1822,18 @@
         remoteRoomClient = null;
         remoteRenderedSnapshotKey = "";
         remoteMatchStartedAt = null;
+        remoteDuelActive = false;
+        remoteTransportIssueSince = null;
+        remoteDisconnectObservedAt = null;
+        $("#onlineConnectionQuality")?.classList.add("hidden");
         saveRemoteRoom();
         renderRemoteLobby(null);
         setMultiplayerServerState("online");
         if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
         return;
       }
-      setMultiplayerServerState("offline");
+      if (error?.network) noteRemoteTransportFailure();
+      else setMultiplayerServerState("offline");
     }
     finally { remoteRefreshBusy = false; }
   }
@@ -1768,7 +1844,11 @@
     clearInterval(remoteTurnTimerTicker);
     remoteRoomPoll = setInterval(refreshRemoteRoom, 1200);
     remoteHeartbeatTimer = setInterval(heartbeatRemoteRoom, 5000);
-    remoteTurnTimerTicker = setInterval(() => renderRemoteTurnTimer(lastRemoteRoomState), 250);
+    remoteTurnTimerTicker = setInterval(() => {
+      renderRemoteTurnTimer(lastRemoteRoomState);
+      renderRemoteConnectionQuality();
+      if (lastRemoteRoomState?.lifecycle?.status === "disconnected") applyRemoteLifecycle(lastRemoteRoomState);
+    }, 250);
     heartbeatRemoteRoom();
     renderRemoteTurnTimer(lastRemoteRoomState);
   }

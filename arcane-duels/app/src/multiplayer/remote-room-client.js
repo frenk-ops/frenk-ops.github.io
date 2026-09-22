@@ -14,6 +14,37 @@
       this.clientVersion = String(options.clientVersion || "");
       this.compatibilityVersion = String(options.compatibilityVersion || this.clientVersion);
       this.protocolVersion = Number(options.protocolVersion || A.MULTIPLAYER_PROTOCOL_VERSION || 0);
+      this.pendingSubmit = null;
+      this.connection = {
+        latencyMs: null,
+        lastSuccessAt: null,
+        lastFailureAt: null,
+        consecutiveFailures: 0
+      };
+    }
+
+    createRequestId() {
+      return globalThis.crypto?.randomUUID?.()
+        || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    connectionMetrics() {
+      return { ...this.connection };
+    }
+
+    recordConnectionSuccess(latencyMs) {
+      const measured = Math.max(0, Number(latencyMs || 0));
+      const previous = Number(this.connection.latencyMs);
+      this.connection.latencyMs = Number.isFinite(previous)
+        ? Math.round((previous * 0.65) + (measured * 0.35))
+        : Math.round(measured);
+      this.connection.lastSuccessAt = Date.now();
+      this.connection.consecutiveFailures = 0;
+    }
+
+    recordConnectionFailure() {
+      this.connection.lastFailureAt = Date.now();
+      this.connection.consecutiveFailures = Number(this.connection.consecutiveFailures || 0) + 1;
     }
 
     compatibility(options = {}) {
@@ -68,16 +99,33 @@
 
     async submit(type, payload = {}) {
       this.ensureIdentity();
-      return this.accept(await this.request(`/api/rooms/${encodeURIComponent(this.code)}/commands`, {
+      if (this.pendingSubmit) return this.pendingSubmit;
+      const body = {
+        requestId: this.createRequestId(),
+        sequence: this.sequence + 1,
+        previousChecksum: this.checksum,
+        type,
+        payload
+      };
+      const send = () => this.request(`/api/rooms/${encodeURIComponent(this.code)}/commands`, {
         method: "POST",
         token: this.token,
-        body: {
-          sequence: this.sequence + 1,
-          previousChecksum: this.checksum,
-          type,
-          payload
+        body
+      });
+      this.pendingSubmit = (async () => {
+        try {
+          return this.accept(await send());
+        } catch (error) {
+          if (!error?.network) throw error;
+          await new Promise(resolve => setTimeout(resolve, 220));
+          return this.accept(await send());
         }
-      }));
+      })();
+      try {
+        return await this.pendingSubmit;
+      } finally {
+        this.pendingSubmit = null;
+      }
     }
 
     async heartbeat() {
@@ -209,13 +257,24 @@
       const headers = { Accept: "application/json" };
       if (options.body !== undefined) headers["Content-Type"] = "application/json";
       if (options.token) headers.Authorization = `Bearer ${options.token}`;
-      const response = await fetch(`${this.baseUrl}${path}`, {
-        method: options.method || "GET",
-        headers,
-        cache: "no-store",
-        body: options.body === undefined ? undefined : JSON.stringify(options.body)
-      });
-      const payload = await response.json();
+      const startedAt = Date.now();
+      let response;
+      let payload;
+      try {
+        response = await fetch(`${this.baseUrl}${path}`, {
+          method: options.method || "GET",
+          headers,
+          cache: "no-store",
+          body: options.body === undefined ? undefined : JSON.stringify(options.body)
+        });
+        payload = await response.json();
+        this.recordConnectionSuccess(Date.now() - startedAt);
+      } catch (cause) {
+        this.recordConnectionFailure();
+        const error = cause instanceof Error ? cause : new Error("Connessione al server interrotta.");
+        error.network = true;
+        throw error;
+      }
       if (!response.ok) {
         if (payload.sync) this.accept(payload.sync);
         const error = new Error(payload.error || `Errore HTTP ${response.status}`);
