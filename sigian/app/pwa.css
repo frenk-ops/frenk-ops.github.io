@@ -1,0 +1,286 @@
+/*
+ * PWA viewport, hardware safe areas and install affordance.
+ * Normal browser rendering stays unchanged except for the optional install button.
+ */
+
+.pwa-install-entry[hidden],
+.pwa-install-overlay[hidden] {
+  display: none !important;
+}
+
+body.pwa-install-dialog-open {
+  overflow: hidden;
+}
+
+body.ui-classic .classic-topbar {
+  position: relative;
+}
+
+.app-version-badge {
+  margin-top: 4px;
+  color: rgba(216, 228, 238, .72);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: .56rem;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: .04em;
+  text-shadow: none;
+}
+
+.app-version-info {
+  margin: 12px 0 0;
+  color: #aebed0;
+  font-size: .78rem;
+  text-align: right;
+}
+
+.pwa-install-entry-topbar {
+  position: absolute;
+  top: 50%;
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 12;
+  margin: 0;
+  transform: translateY(-50%);
+}
+
+.pwa-install-entry {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.pwa-install-button {
+  appearance: none;
+  border: 1px solid rgba(139, 92, 246, .38);
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, .72);
+  color: #e2e8f0;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 5px 18px rgba(2, 6, 23, .22);
+}
+
+.pwa-install-button:hover,
+.pwa-install-button:focus-visible {
+  border-color: rgba(167, 139, 250, .8);
+  outline: none;
+}
+
+.pwa-install-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
+  background: rgba(2, 6, 23, .72);
+  backdrop-filter: blur(8px);
+}
+
+.pwa-install-dialog {
+  position: relative;
+  width: min(100%, 360px);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 20px;
+  padding: 22px 20px 18px;
+  background: #101827;
+  color: #f8fafc;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+}
+
+.pwa-install-dialog h2 {
+  margin: 0 28px 10px 0;
+  font-size: 1.15rem;
+}
+
+.pwa-install-dialog p {
+  margin: 0 0 14px;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.pwa-install-steps {
+  margin: 0 0 18px;
+  padding-left: 22px;
+  color: #f8fafc;
+  line-height: 1.55;
+}
+
+.pwa-install-close {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 1.45rem;
+  cursor: pointer;
+}
+
+.pwa-android-apk-download {
+  display: block;
+  margin: 0 0 10px;
+  border: 1px solid rgba(139, 92, 246, .65);
+  border-radius: 12px;
+  padding: 11px 14px;
+  background: rgba(124, 58, 237, .22);
+  color: #f8fafc;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+}
+
+.pwa-android-apk-download[hidden],
+.pwa-android-apk-note[hidden] {
+  display: none !important;
+}
+
+.pwa-android-apk-note {
+  margin: 0 0 14px !important;
+  color: #aebed0 !important;
+  font-size: .78rem;
+}
+
+.pwa-install-confirm {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #334155;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 820px) {
+  .pwa-install-entry-topbar {
+    right: max(8px, env(safe-area-inset-right));
+  }
+
+  .pwa-install-entry-topbar .pwa-install-button {
+    padding: 7px 10px;
+    font-size: .72rem;
+  }
+
+  .app-version-badge {
+    font-size: .5rem;
+  }
+
+  .app-version-info {
+    text-align: center;
+  }
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    min-height: 100%;
+    min-height: 100dvh;
+    overscroll-behavior: none;
+  }
+
+  /*
+   * The classic UI resets .shell padding to zero with a more specific rule.
+   * Match that specificity here so hardware safe areas are actually respected.
+   */
+  body.ui-classic .shell {
+    min-height: 100dvh;
+    padding: 0;
+  }
+
+  body.ui-classic .classic-topbar {
+    min-height: calc(62px + env(safe-area-inset-top));
+    padding:
+      calc(6px + env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      6px
+      max(12px, env(safe-area-inset-left));
+  }
+
+  body:has(#battlePanel:not(.hidden)) {
+    background: #01030d;
+  }
+
+  body.ui-classic:has(#battlePanel:not(.hidden)) .shell {
+    min-height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    background: #01030d;
+  }
+
+  body:has(#battlePanel:not(.hidden)) .classic-duel-screen {
+    min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .pwa-install-entry {
+    display: none !important;
+  }
+
+  @media (min-width: 821px) {
+    body:has(#battlePanel:not(.hidden)) .classic-duel-frame {
+      height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+  }
+
+  @media (max-width: 820px) {
+    /*
+     * iPhone standalone:
+     * - keep the logo/header below the status area / Dynamic Island
+     * - keep the fixed navigation buttons above the Home indicator
+     * - reserve matching content space so the fixed bar covers nothing.
+     */
+    body.ui-classic .classic-topbar {
+      min-height: calc(62px + env(safe-area-inset-top));
+      padding:
+        calc(6px + env(safe-area-inset-top))
+        max(8px, env(safe-area-inset-right))
+        6px
+        max(8px, env(safe-area-inset-left));
+    }
+
+    body.ui-classic .classic-nav {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding-top: 5px;
+      padding-right: max(5px, env(safe-area-inset-right));
+      padding-bottom: max(5px, env(safe-area-inset-bottom));
+      padding-left: max(5px, env(safe-area-inset-left));
+    }
+
+    .classic-menu-screen,
+    .classic-tournament-view,
+    .classic-duel-screen {
+      padding-bottom: calc(58px + env(safe-area-inset-bottom));
+    }
+
+    .collection-page-shell {
+      margin-bottom: calc(74px + env(safe-area-inset-bottom));
+    }
+
+    .player-help-page {
+      padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+
+    body.ui-classic:has(#battlePanel:not(.hidden)) .shell {
+      padding-top: env(safe-area-inset-top);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+    }
+  }
+}

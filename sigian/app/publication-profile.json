@@ -1,0 +1,19 @@
+{
+  "profile": "github-pages-sigian-foundation",
+  "source": "frenk-ops/sigian",
+  "cards": {
+    "remastered": 65,
+    "originalAlias": "remastered"
+  },
+  "staticHosting": true,
+  "multiplayerServerIncluded": false,
+  "multiplayerApiConfigured": true,
+  "onlineAccountsConfigured": true,
+  "version": "0.23.6",
+  "build": "2e5e9ba",
+  "revision": "0.23.6-sigian-2e5e9ba",
+  "formulaFoundation": {
+    "nativeCards": 8,
+    "legacyDelegatedCards": 57
+  }
+}

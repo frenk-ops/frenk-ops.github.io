@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="application-name" content="Sigian">
+  <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
+  <meta name="arcane-supabase-url" content="https://upycjzhaajobqftltcpv.supabase.co">
+  <meta name="arcane-supabase-key" content="sb_publishable_ea1bL9TeUz5n3VGC6xPuvg_BjJK790V">
+  <meta name="arcane-app-version" content="0.23.6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sigian">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <title>Sigian</title>
+  <link rel="stylesheet" href="styles.css?v=0.23.6-sigian-2e5e9ba">
+  <link rel="stylesheet" href="pwa.css?v=0.23.6-sigian-2e5e9ba">
+</head>
+<body class="pages-static-profile">
+  <div class="shell">
+    <header class="topbar classic-topbar">
+      <div class="classic-brand">
+        <span class="classic-brand-main">Sigian</span>
+        <span class="classic-brand-sub">Foundation</span>
+        <small class="app-version-badge" data-arcane-version>v0.23.6 · Sigian 2e5e9ba</small>
+      </div>
+      <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
+        <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
+        <button class="tab multiplayer-nav hidden" data-view="multiplayer" data-i18n="nav.multiplayer">Multiplayer</button>
+        <button class="tab" data-view="tournament" data-i18n="nav.tournament">Torneo</button>
+        <button class="tab" data-view="cards" data-i18n="nav.cards">Collezione</button>
+        <button class="tab" data-view="profile" data-i18n="nav.profile">Profilo</button>
+        <button class="tab" data-view="rules" data-i18n="nav.howToPlay">Come si gioca</button>
+        <button class="tab" data-view="diagnostics" data-i18n="nav.options">Opzioni</button>
+        <button class="tab dev-only hidden" data-view="editor" data-i18n="nav.editor">Editor</button>
+      </nav>
+      <span class="classic-topbar-balance" aria-hidden="true"></span>
+      <div id="pwaInstallEntry" class="pwa-install-entry pwa-install-entry-topbar" hidden style="display:none">
+        <button id="pwaInstallBtn" class="pwa-install-button" type="button">⇩ Installa app</button>
+      </div>
+    </header>
+
+    <nav class="mobile-bottom-nav" data-mobile-navigation aria-label="Navigazione principale">
+      <button class="mobile-nav-item tab multiplayer-nav hidden" data-view="multiplayer" type="button">
+        <span class="mobile-nav-icon" aria-hidden="true">◎</span>
+        <span data-i18n="nav.multiplayer">Multiplayer</span>
+      </button>
+      <button class="mobile-nav-item tab" data-view="tournament" type="button">
+        <span class="mobile-nav-icon" aria-hidden="true">♜</span>
+        <span data-i18n="nav.tournament">Torneo</span>
+      </button>
+      <button class="mobile-nav-item mobile-nav-primary tab active" data-view="game" type="button">
+        <span class="mobile-nav-icon" aria-hidden="true">▶</span>
+        <span data-i18n="nav.play">Gioca</span>
+      </button>
+      <button class="mobile-nav-item tab" data-view="cards" type="button">
+        <span class="mobile-nav-icon" aria-hidden="true">▤</span>
+        <span data-i18n="nav.cards">Collezione</span>
+      </button>
+      <button class="mobile-nav-item tab" data-view="profile" type="button">
+        <span class="mobile-nav-icon" aria-hidden="true">♙</span>
+        <span data-i18n="nav.profile">Profilo</span>
+      </button>
+    </nav>
+
+    <main>
+      <section id="gameView" class="view active">
+        <section id="setupPanel" class="panel talent-panel classic-menu-screen">
+          <div class="classic-menu-logo" aria-label="Sigian">
+            <span>Sigian</span>
+            <strong>Foundation</strong>
+          </div>
+          <div class="classic-menu-scene">
+            <div class="classic-menu-config parchment-panel">
+              <span class="classic-menu-kicker" data-i18n="nav.play">Gioca</span>
+              <h2 data-i18n="menu.prepareDuel">Prepara il duello</h2>
+              <div class="duel-setup foundation-grid classic-config-grid classic-config-essential">
+                <input id="playerNameInput" type="hidden" value="Giocatore">
+                <label><span data-i18n="menu.mode">Modalità</span>
+                  <select id="duelModeSelect">
+                    <option value="arcane" selected data-i18n="menu.arcaneDuel">Duello Arcano</option>
+                    <option value="free" data-i18n="menu.freeDuel">Duello Libero</option>
+                    <option value="mirror" data-i18n="menu.mirrorDuel">Duello Speculare</option>
+                  </select>
+                  <small id="duelModeDescription" data-i18n="menu.arcaneDuelDescription">I due grimori non condividono carte della generazione base.</small>
+                </label>
+                <label><span data-i18n="menu.specializations">Specializzazioni</span>
+                  <select id="duelSpecializationsSelect">
+                    <option value="off" selected data-i18n="menu.specializationsOff">No</option>
+                    <option value="on" data-i18n="menu.specializationsOn">Sì</option>
+                  </select>
+                </label>
+                <label id="playerSpecializationLabel" class="hidden"><span data-i18n="menu.playerSpecialization">Specializzazione giocatore</span>
+                  <select id="playerSpecializationSelect"></select>
+                </label>
+                <label id="enemySpecializationLabel" class="hidden"><span data-i18n="menu.enemySpecialization">Specializzazione avversario</span>
+                  <select id="enemySpecializationSelect"></select>
+                </label>
+                <input id="cardSetSelect" type="hidden" value="astral-original">
+                <label><span data-i18n="menu.opponent">Avversario IA</span>
+                  <select id="difficultySelect"></select>
+                </label>
+              </div>
+              <input id="cardArtStyleSelect" type="hidden" value="new">
+              <details class="classic-advanced-settings">
+                <summary><span data-i18n="menu.advancedSettings">Impostazioni avanzate</span><span aria-hidden="true">⌄</span></summary>
+                <div class="classic-advanced-grid">
+                  <label><span data-i18n="menu.seed">Seed partita</span>
+                    <input id="seedInput" type="text" value="" data-i18n-placeholder="menu.randomSeed" placeholder="Casuale (oppure inserisci un seed)">
+                  </label>
+                  <label id="astralLeagueLabel"><span data-i18n="menu.league">Lega</span>
+                    <select id="astralLeagueSelect">
+                      <option value="starting" data-i18n="league.starting">Starting League</option>
+                      <option value="advanced" data-i18n="league.advanced">Advanced League</option>
+                      <option value="major" data-i18n="league.major">Major League</option>
+                    </select>
+                  </label>
+                </div>
+              </details>
+              <h3 id="talentChoiceHeading" class="visually-hidden">Scegli partita</h3>
+              <div id="talentChoices" class="talent-grid classic-start-buttons"></div>
+
+            </div>
+          </div>
+        </section>
+
+        <section id="battlePanel" class="battle hidden ui-showcase-battle classic-duel-screen">
+          <div class="classic-duel-frame">
+            <header class="classic-versus-header">
+              <div class="classic-player-head player-head">
+                <div class="classic-portrait classic-portrait-player"><span aria-hidden="true">Arcane duelist</span></div>
+                <div class="classic-player-copy"><strong id="playerNameBattle">Giocatore</strong><span>Vita: <b id="playerHpBattle">50</b></span><small id="onlineConnectionQuality" class="online-connection-quality hidden" aria-live="polite"></small></div>
+              </div>
+              <div class="classic-duel-status">
+                <div class="classic-versus-title">versus</div>
+                <div class="classic-round-line"><span id="phaseLabel">Selection</span><small id="roundLabel">Round 1</small><small id="onlineTurnTimer" class="online-turn-timer hidden" aria-live="polite">60s</small></div>
+              </div>
+              <div class="classic-player-head enemy-head">
+                <div class="classic-player-copy"><strong id="enemyNameBattle">Avversario</strong><span>Vita: <b id="enemyHpBattle">50</b></span></div>
+                <div class="classic-portrait classic-portrait-enemy"><span aria-hidden="true">Astral rival</span></div>
+              </div>
+            </header>
+
+            <div class="classic-duel-body">
+              <aside class="classic-power-column classic-power-left">
+                <div id="schoolFilters" class="school-status-grid classic-power-stack player-grid"></div>
+                <div id="activeSchoolLabel" class="active-school-label school-fire" aria-live="polite">Fuoco</div>
+                <div class="classic-mini-settings dev-only hidden">
+                  <label><span data-i18n="ui.speed">Velocità</span><select id="animationSpeed"><option value="0.55" data-i18n="speed.fastest">No animazioni carte</option><option value="0.8" data-i18n="speed.fast">Molto veloce</option><option value="1.2" data-i18n="speed.normal">Veloce</option><option value="1.5" selected data-i18n="speed.slow">Standard</option><option value="2" data-i18n="speed.slower">Lenta</option></select></label>
+                  <label class="sound-toggle"><input id="soundEnabled" type="checkbox" checked> <span data-i18n="ui.sound">Suono</span></label>
+                  <span id="seedBadge" class="seed-badge"></span>
+                </div>
+              </aside>
+
+              <section class="classic-hand-zone classic-hand-player">
+                <div id="playerHand" class="hand hand-showcase classic-hand-grid"></div>
+              </section>
+
+              <section class="classic-battlefield">
+                <div id="mobileSpellDropTarget" class="mobile-spell-drop-target" aria-hidden="true"></div>
+                <div class="classic-field-column classic-field-player">
+                  <div id="playerBoard" class="board classic-board-column"></div>
+                </div>
+                <div class="classic-field-divider" aria-hidden="true"><span>♢</span><span>◈</span><span>♢</span></div>
+                <div class="classic-field-column classic-field-enemy">
+                  <div id="enemyBoard" class="board classic-board-column"></div>
+                </div>
+              </section>
+
+              <section class="classic-hand-zone classic-hand-enemy">
+                <div id="enemyRevealedCards" class="revealed-cards classic-enemy-book"></div>
+                <div class="enemy-school-summary-row">
+                  <div id="enemySchoolSummary" class="enemy-school-summary"></div>
+                </div>
+              </section>
+
+              <div id="enemyRevealedModal" class="enemy-revealed-modal hidden" aria-hidden="true">
+                <div class="enemy-revealed-modal-card" role="dialog" aria-modal="true" aria-label="Carte rivelate dell'avversario" data-i18n-aria-label="cards.revealedEnemy">
+                  <div class="enemy-revealed-modal-header">
+                    <strong id="enemyRevealedModalSummary" data-i18n="cards.revealed">Carte rivelate</strong>
+                    <button id="enemyRevealedModalClose" class="classic-small-button" type="button" aria-label="Chiudi">×</button>
+                  </div>
+                  <div id="enemyRevealedModalContent" class="enemy-revealed-modal-content"></div>
+                </div>
+              </div>
+
+              <aside class="classic-power-column classic-power-right">
+                <div id="enemySchoolMenu" class="school-status-grid classic-power-stack enemy-grid"></div>
+              </aside>
+            </div>
+
+            <div id="remoteDisconnectOverlay" class="remote-disconnect-overlay hidden" aria-live="polite">
+              <div class="remote-disconnect-card">
+                <strong id="remoteDisconnectTitle" data-i18n="online.opponentDisconnected">Avversario disconnesso</strong>
+                <p id="remoteDisconnectDetail" data-i18n="online.waitingReconnect">La partita è in pausa mentre attendiamo la riconnessione.</p>
+                <small id="remoteDisconnectCountdown"></small>
+                <button id="remoteDisconnectReturnBtn" class="classic-stone-button hidden" type="button" data-i18n="online.returnMenuSafe">Torna al Multiplayer</button>
+              </div>
+            </div>
+
+            <nav id="duelSessionActions" class="duel-session-actions hidden" aria-label="Gestione partita" role="dialog" aria-modal="true" aria-labelledby="duelPauseTitle">
+              <div id="duelPauseMainView" class="duel-pause-view">
+                <header class="duel-pause-header"><span aria-hidden="true">⌛</span><h2 id="duelPauseTitle" data-i18n="pause.title">Pausa</h2><small id="duelPauseSubtitle"></small></header>
+                <button id="continueDuelBtn" type="button" class="duel-pause-primary" data-i18n="pause.continue">Continua</button>
+                <div id="normalDuelPauseActions" class="duel-pause-mode-actions">
+                  <button id="restartSameSetsBtn" type="button"><strong data-i18n="pause.restart">Ricomincia il duello</strong><small data-i18n="pause.restartHint">Stessi grimori e stesso seed</small></button>
+                  <button id="startNewDrawBtn" type="button"><strong data-i18n="pause.newDuel">Nuovo duello</strong><small data-i18n="pause.newDuelHint">Stesse regole, nuova partita</small></button>
+                </div>
+                <button id="openDuelOptionsBtn" type="button" data-i18n="nav.options">Opzioni</button>
+                <button id="returnMainMenuBtn" type="button" class="duel-pause-danger normal-pause-action" data-i18n="pause.abandonToMenu">Abbandona e torna al menu</button>
+                <button id="abandonTournamentMatchBtn" type="button" class="duel-pause-danger tournament-pause-action hidden" data-i18n="pause.abandonMatch">Abbandona incontro</button>
+                <p class="duel-pause-note" data-i18n="pause.unsaved">I progressi del duello corrente non vengono salvati.</p>
+              </div>
+              <div id="duelPauseOptionsView" class="duel-pause-view duel-pause-options hidden">
+                <header class="duel-pause-header"><span aria-hidden="true">⚙</span><h2 id="duelPauseOptionsTitle" data-i18n="options.title">Opzioni</h2><small data-i18n="pause.optionsSubtitle">Impostazioni del duello</small></header>
+                <div class="duel-pause-options-grid">
+                  <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
+                    <select id="duelOptionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">No animazioni carte</option><option value="0.8" data-i18n="speed.fast">Molto veloce</option><option value="1.2" data-i18n="speed.normal">Veloce</option><option value="1.5" data-i18n="speed.slow">Standard</option><option value="2" data-i18n="speed.slower">Lenta</option></select>
+                  </label>
+                  <label class="duel-pause-check"><input id="duelOptionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
+                  <label class="duel-pause-check"><input id="duelOptionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
+                  <label class="duel-pause-check"><input id="duelOptionsParchmentSpells" type="checkbox"> <span data-i18n="options.parchmentSpells">Cornice pergamena per le magie</span></label>
+                  <label class="duel-pause-check"><input id="duelOptionsBoardCreatureNames" type="checkbox"> <span data-i18n="options.boardCreatureNames">Mostra nomi creature sul campo</span></label>
+                  <label><span><span data-i18n="options.musicVolume">Volume musica</span> <output id="duelOptionsBgmVolumeValue">12%</output></span>
+                    <input id="duelOptionsBgmVolume" type="range" min="0" max="100" value="12">
+                  </label>
+                </div>
+                <div class="duel-pause-options-actions">
+                  <button id="backFromDuelOptionsBtn" type="button" data-i18n="pause.back">Indietro</button>
+                  <button id="continueFromDuelOptionsBtn" type="button" class="duel-pause-primary" data-i18n="pause.continue">Continua</button>
+                </div>
+              </div>
+            </nav>
+
+            <div class="classic-hidden-ui-support" aria-hidden="true">
+              <select id="animationSpeedMenu"><option value="0.55">Minimal</option><option value="0.8">Very fast</option><option value="1.2">Fast</option><option value="1.5">Standard</option><option value="2">Slow</option></select>
+              <input id="bgmEnabled" type="checkbox"><input id="bgmVolume" type="range" min="0" max="100" value="12">
+              <select id="languageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
+            </div>
+
+            <footer class="classic-info-bar duel-info-footer" aria-label="Informazioni carta">
+              <section class="classic-card-info duel-card-info" aria-live="polite" aria-atomic="true">
+                <div class="duel-card-info-main">
+                  <strong id="inspectCardTitle" class="duel-card-name">Nessuna carta selezionata</strong>
+                  <p id="inspectCardAbility" class="classic-card-ability duel-card-description">Seleziona una carta per visualizzarne i dettagli</p>
+                </div>
+                <div id="inspectCardDetails" class="classic-card-details"></div>
+              </section>
+              <nav class="duel-footer-actions" aria-label="Azioni partita">
+                <button id="duelMenuBtn" type="button" class="classic-footer-button" aria-expanded="false" data-i18n="ui.menu">MENU</button>
+                <span class="duel-action-hint" data-i18n="ui.dragToPlay">Trascina per giocare</span>
+                <button id="endTurnBtn" type="button" class="classic-footer-button classic-pass-button" data-i18n="ui.passTurn">PASSA</button>
+              </nav>
+            </footer>
+
+            <div id="mobileCardInspect" class="mobile-card-inspect hidden" aria-hidden="true">
+              <div class="mobile-card-inspect-card" role="presentation">
+                <div id="mobileCardInspectArt" class="mobile-card-inspect-art"></div>
+                <div class="mobile-card-inspect-copy">
+                  <strong id="mobileCardInspectName"></strong>
+                  <div id="mobileCardInspectKind" class="mobile-card-inspect-kind"></div>
+                  <div id="mobileCardInspectStats"></div>
+                  <div id="mobileCardInspectCurrentValue" class="mobile-current-value hidden"></div>
+                  <p id="mobileCardInspectText"></p>
+                </div>
+              </div>
+            </div>
+            <div id="mobileDragGhost" class="mobile-drag-ghost hidden" aria-hidden="true"></div>
+
+            <details class="combat-log-panel classic-combat-log"><summary data-i18n="log.title">Registro battaglia</summary><div id="combatLog" class="combat-log"></div></details>
+            <details id="duelQuickChat" class="duel-quick-chat hidden">
+              <summary aria-label="Frasi rapide" data-i18n-aria-label="online.quickChat">💬</summary>
+              <div class="duel-quick-chat-panel">
+                <div class="multiplayer-mute-row multiplayer-mute-row-dark">
+                  <strong data-i18n="online.quickChat">Frasi rapide</strong>
+                  <label>
+                    <input id="muteOnlinePhrasesCheckbox" type="checkbox">
+                    <span data-i18n="online.muteOpponentPhrases">Silenzia frasi avversario</span>
+                  </label>
+                </div>
+                <div class="duel-quick-chat-grid">
+                  <button type="button" data-quick-phrase="good_luck" data-i18n="online.phrase.good_luck">Buona fortuna!</button>
+                  <button type="button" data-quick-phrase="nice_play" data-i18n="online.phrase.nice_play">Bella giocata!</button>
+                  <button type="button" data-quick-phrase="wake_up" data-i18n="online.phrase.wake_up">Ehi non dormire</button>
+                  <button type="button" data-quick-phrase="oops" data-i18n="online.phrase.oops">Ops!</button>
+                  <button type="button" data-quick-phrase="rematch" data-i18n="online.phrase.rematch">Rivincita?</button>
+                  <button type="button" data-quick-phrase="just_luck" data-i18n="online.phrase.just_luck">È stata solo fortuna!</button>
+                  <button type="button" data-quick-phrase="sure" data-i18n="online.phrase.sure">Certo!</button>
+                  <button type="button" data-quick-phrase="no_way" data-i18n="online.phrase.no_way">Direi di no</button>
+                </div>
+              </div>
+            </details>
+            <div id="duelQuickChatToast" class="duel-quick-chat-toast hidden" aria-live="polite"></div>
+
+            <div class="classic-hidden-ui-support" aria-hidden="true">
+              <span id="playerManaOrb">0/0</span><span id="enemyManaOrb">0/0</span>
+              <span id="playerTalentLabel"></span><span id="enemyTalentLabel"></span>
+              <span id="handSummary"></span><span id="illustrationProgress"></span>
+              <div id="message" class="message" aria-live="polite"></div>
+              <div id="selectedCardHint" class="selected-card-hint"></div>
+              <div id="inspectPreview"></div><div id="inspectCardMeta"></div>
+              <div id="collectionSchoolFilters"></div><div id="collectionTypeFilters"></div><div id="collectionLevelFilters"></div>
+              <input id="collectionSearch"><div id="collectionStatus"></div><div id="collectionQuickList"></div><div id="collectionGrid"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="multiplayerView" class="view">
+        <section class="multiplayer-screen classic-menu-screen">
+          <div class="multiplayer-stage">
+            <div class="multiplayer-panel parchment-panel classic-menu-config">
+              <span class="classic-menu-kicker" data-i18n="nav.multiplayer">Multiplayer</span>
+              <h2 data-i18n="online.title">Partita online</h2>
+              <p class="multiplayer-intro" data-i18n="online.intro">Crea una stanza privata oppure entra con il codice ricevuto da un altro giocatore.</p>
+
+              <div id="multiplayerServerState" class="multiplayer-server-state is-connecting" data-state="connecting" aria-live="polite">
+                <span class="multiplayer-server-dot" aria-hidden="true"></span>
+                <div>
+                  <strong id="multiplayerServerStateTitle" data-i18n="online.serverConnecting">Connessione al server…</strong>
+                  <small id="multiplayerServerStateDetail" data-i18n="online.serverWakeHint">La connessione può richiedere qualche secondo al primo avvio.</small>
+                </div>
+                <button id="retryMultiplayerServerBtn" class="classic-stone-button hidden" type="button" data-i18n="online.retry">Riprova</button>
+              </div>
+
+              <div id="onlineLobbyActions" class="multiplayer-lobby-actions">
+                <div class="multiplayer-identity classic-config-grid classic-config-essential">
+                  <div id="onlinePlayerAvatar" class="online-player-avatar" aria-hidden="true"></div>
+                  <label>
+                    <span data-i18n="menu.playerName">Nome giocatore</span>
+                    <input id="onlinePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="Giocatore">
+                  </label>
+                </div>
+
+                <div id="multiplayerModeSwitcher" class="multiplayer-mode-switcher" role="tablist" aria-label="Modalità multiplayer">
+                  <button class="multiplayer-mode-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="multiplayerFreePanel" data-multiplayer-entry-mode="free">
+                    <span class="multiplayer-mode-tab-icon" aria-hidden="true">✦</span>
+                    <span>
+                      <strong data-i18n="online.freeMatch">Partita libera</strong>
+                      <small data-i18n="online.freeMatchHint">Crea o raggiungi una stanza con regole personalizzabili.</small>
+                    </span>
+                  </button>
+                  <button class="multiplayer-mode-tab" type="button" role="tab" aria-selected="false" aria-controls="rankedPanel" data-multiplayer-entry-mode="ranked">
+                    <span class="multiplayer-mode-tab-icon" aria-hidden="true">⚔</span>
+                    <span>
+                      <strong data-i18n="ranked.modeTab">Classificata</strong>
+                      <small data-i18n="ranked.modeTabHint">Matchmaking competitivo, rating e classifica stagionale.</small>
+                    </span>
+                  </button>
+                </div>
+
+                <section id="rankedPanel" class="ranked-panel ornate-subpanel multiplayer-entry-panel hidden" role="tabpanel">
+                  <div class="ranked-panel-heading">
+                    <div>
+                      <small data-i18n="ranked.kicker">Competitivo</small>
+                      <h3 data-i18n="ranked.title">Partita Classificata</h3>
+                    </div>
+                    <div class="ranked-rating-tile">
+                      <small data-i18n="profile.rankedRating">Rating Classica</small>
+                      <strong id="rankedRatingBadge">1000</strong>
+                    </div>
+                  </div>
+                  <div id="rankedAccountState" class="ranked-account-state" aria-live="polite" data-i18n="ranked.accountPreparing">Preparazione account…</div>
+                  <div class="ranked-mode-grid">
+                    <article class="ranked-mode-card">
+                      <span aria-hidden="true">⚔</span>
+                      <div><strong data-i18n="ranked.classic">Classica</strong><small data-i18n="ranked.classicHint">Pool comune e regole competitive standard.</small></div>
+                      <button id="findRankedMatchBtn" class="classic-stone-button" type="button" data-i18n="ranked.find">Trova avversario</button>
+                    </article>
+                    <article class="ranked-mode-card is-locked">
+                      <span aria-hidden="true">📖</span>
+                      <div><strong data-i18n="ranked.grimoire">Grimorio</strong><small data-i18n="ranked.grimoireHint">Userà la tua collezione e i Grimori personalizzati.</small></div>
+                      <button class="classic-stone-button" type="button" disabled data-i18n="ranked.comingSoon">Prossimamente</button>
+                    </article>
+                  </div>
+                  <div id="rankedSearchState" class="ranked-search-state hidden" aria-live="polite">
+                    <span class="multiplayer-server-dot" aria-hidden="true"></span>
+                    <div><strong data-i18n="ranked.searching">Ricerca avversario…</strong><small id="rankedSearchDetail"></small></div>
+                    <button id="cancelRankedSearchBtn" class="classic-stone-button" type="button" data-i18n="ranked.cancel">Annulla</button>
+                  </div>
+                  <details id="rankedLeaderboardPanel" class="multiplayer-lobby-chat">
+                    <summary data-i18n="ranked.leaderboard">Classifica stagione</summary>
+                    <div class="multiplayer-lobby-chat-panel">
+                      <div class="multiplayer-room-browser-head multiplayer-room-browser-controls">
+                        <small id="rankedSeasonLabel" data-i18n="ranked.preseason">Preseason</small>
+                        <button id="refreshRankedLeaderboardBtn" class="classic-stone-button" type="button" data-i18n="ranked.refresh">Aggiorna</button>
+                      </div>
+                      <div id="rankedLeaderboardList" class="multiplayer-room-browser-list" aria-live="polite"></div>
+                    </div>
+                  </details>
+                </section>
+
+                <div id="onlineRecoverableMatch" class="multiplayer-recoverable-match hidden">
+                  <div>
+                    <small data-i18n="online.activeMatch">Partita online in corso</small>
+                    <strong id="onlineRecoverableMatchTitle">—</strong>
+                    <span id="onlineRecoverableMatchStatus"></span>
+                  </div>
+                  <button id="resumeOnlineMatchBtn" class="classic-stone-button" type="button" data-i18n="online.resumeMatch">Rientra nella partita</button>
+                </div>
+
+                <div id="multiplayerFreePanel" class="multiplayer-entry-panel" role="tabpanel">
+                  <div class="multiplayer-action-accordions">
+                    <details class="multiplayer-action-accordion" name="multiplayer-actions">
+                    <summary>
+                      <span class="multiplayer-choice-icon" aria-hidden="true">✦</span>
+                      <span class="multiplayer-action-summary-copy">
+                        <strong data-i18n="online.createRoomAccordion">Crea stanza</strong>
+                        <small data-i18n="online.createHint">Genera una stanza e condividi il codice con il tuo avversario.</small>
+                      </span>
+                      <span class="multiplayer-action-chevron" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div class="multiplayer-action-accordion-body">
+                      <div class="multiplayer-host-settings classic-config-grid">
+                        <label>
+                          <span data-i18n="menu.mode">Modalità</span>
+                          <select id="onlineDuelModeSelect">
+                            <option value="arcane" selected data-i18n="menu.arcaneDuel">Duello Arcano</option>
+                            <option value="free" data-i18n="menu.freeDuel">Duello Libero</option>
+                            <option value="mirror" data-i18n="menu.mirrorDuel">Duello Speculare</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span data-i18n="menu.specializations">Specializzazioni</span>
+                          <select id="onlineSpecializationsSelect">
+                            <option value="off" selected data-i18n="menu.specializationsOff">No</option>
+                            <option value="on" data-i18n="menu.specializationsOn">Sì</option>
+                          </select>
+                        </label>
+                        <label id="onlineSpecializationField" class="hidden">
+                          <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                          <select id="onlineSpecializationSelect"></select>
+                        </label>
+                        <label>
+                          <span data-i18n="online.roomName">Nome stanza</span>
+                          <input id="onlineRoomNameInput" type="text" maxlength="32" data-i18n-placeholder="online.roomNamePlaceholder" placeholder="Duello Arcano">
+                        </label>
+                        <label>
+                          <span data-i18n="online.visibility">Visibilità</span>
+                          <select id="onlineRoomVisibilitySelect">
+                            <option value="public" selected data-i18n="online.visibilityPublic">Pubblica</option>
+                            <option value="private" data-i18n="online.visibilityPrivate">Privata</option>
+                          </select>
+                        </label>
+                      </div>
+                      <button id="createOnlineRoomBtn" class="classic-stone-button multiplayer-primary-action" type="button" data-i18n="online.create">Crea partita online</button>
+                    </div>
+                  </details>
+
+                  <details class="multiplayer-action-accordion" name="multiplayer-actions">
+                    <summary>
+                      <span class="multiplayer-choice-icon" aria-hidden="true">⌁</span>
+                      <span class="multiplayer-action-summary-copy">
+                        <strong data-i18n="online.joinRoomAccordion">Entra</strong>
+                        <small data-i18n="online.joinHint">Inserisci il codice della stanza che ti è stato inviato.</small>
+                      </span>
+                      <span class="multiplayer-action-chevron" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div class="multiplayer-action-accordion-body">
+                      <div class="online-join-row">
+                        <input id="onlineRoomCode" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" data-i18n-placeholder="online.codePlaceholder" placeholder="Codice stanza">
+                        <button id="joinOnlineRoomBtn" class="classic-stone-button" type="button" data-i18n="online.join">Entra</button>
+                      </div>
+                      <div id="onlineJoinRoomInfo" class="multiplayer-room-preview hidden" aria-live="polite">
+                        <span data-i18n="online.hostRules">Regole dell'host</span>
+                        <strong id="onlineJoinRoomMode">—</strong>
+                        <label id="onlineJoinSpecializationField" class="hidden">
+                          <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                          <select id="onlineJoinSpecializationSelect"></select>
+                        </label>
+                      </div>
+                    </div>
+                  </details>
+
+                  <details class="multiplayer-action-accordion" name="multiplayer-actions">
+                    <summary>
+                      <span class="multiplayer-choice-icon" aria-hidden="true">⌕</span>
+                      <span class="multiplayer-action-summary-copy">
+                        <strong data-i18n="online.searchRooms">Cerca stanze</strong>
+                        <small data-i18n="online.discovery">Stanze pubbliche</small>
+                      </span>
+                      <span class="multiplayer-action-chevron" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div class="multiplayer-action-accordion-body">
+                      <div class="multiplayer-room-browser-head multiplayer-room-browser-controls">
+                        <label class="multiplayer-room-filter">
+                          <input id="showAvailableRoomsOnly" type="checkbox" checked>
+                          <span data-i18n="online.availableOnly">Mostra solo disponibili</span>
+                        </label>
+                        <button id="refreshRoomBrowserBtn" class="classic-stone-button" type="button" data-i18n="online.refreshRooms">Aggiorna</button>
+                      </div>
+                      <div id="onlineRoomBrowserList" class="multiplayer-room-browser-list" aria-live="polite"></div>
+                    </div>
+                    </details>
+                  </div>
+                </div>
+
+                <p id="onlineFormMessage" class="multiplayer-form-message" aria-live="polite"></p>
+              </div>
+
+              <div id="onlineLobbyStatus" class="multiplayer-room-status hidden" aria-live="polite">
+                <div class="multiplayer-room-heading">
+                  <div>
+                    <span class="multiplayer-room-label" data-i18n="online.room">Stanza</span>
+                    <strong id="onlineRoomCodeLabel" class="multiplayer-room-code"></strong>
+                  </div>
+                  <p id="onlineConnectionMessage"></p>
+                </div>
+                <div class="multiplayer-players">
+                  <div><small data-i18n="online.playerOne">Giocatore 1</small><strong id="onlinePlayerOneName">—</strong><span id="onlinePlayerOneReady" class="multiplayer-ready-state hidden"></span></div>
+                  <div><small data-i18n="online.playerTwo">Giocatore 2</small><strong id="onlinePlayerTwoName">—</strong><span id="onlinePlayerTwoReady" class="multiplayer-ready-state hidden"></span></div>
+                </div>
+
+                <div id="onlineSessionScore" class="multiplayer-session-score hidden" aria-live="polite">
+                  <small data-i18n="online.sessionScore">Punteggio sessione</small>
+                  <strong><span id="onlinePlayerOneScore">0</span><span aria-hidden="true">—</span><span id="onlinePlayerTwoScore">0</span></strong>
+                </div>
+
+                <div id="onlineSessionHistory" class="multiplayer-session-history hidden" aria-live="polite">
+                  <small data-i18n="online.sessionHistory">Ultimi duelli</small>
+                  <div id="onlineSessionHistoryItems" class="multiplayer-session-history-items"></div>
+                </div>
+
+                <div id="onlineInitialReadyActions" class="multiplayer-ready-actions hidden">
+                  <button id="toggleOnlineReadyBtn" class="classic-stone-button" type="button" data-i18n="online.markReady">Pronto</button>
+                  <small id="onlineReadyHint" data-i18n="online.readyHint">Il duello inizia quando entrambi siete pronti.</small>
+                </div>
+
+                <div id="onlinePostMatchResult" class="multiplayer-post-match-result hidden"></div>
+
+                <div id="onlineSessionManagement" class="multiplayer-session-management hidden">
+                  <button id="resetOnlineSessionBtn" class="classic-stone-button" type="button">
+                    <strong data-i18n="online.resetSession">Nuova sessione</strong>
+                    <small data-i18n="online.resetSessionHint">Azzera punteggio e storico mantenendo l'avversario</small>
+                  </button>
+                  <button id="newOnlineOpponentBtn" class="classic-stone-button ghost" type="button">
+                    <strong data-i18n="online.newOpponent">Cambia avversario</strong>
+                    <small data-i18n="online.newOpponentHint">Libera il posto e riapre la stanza</small>
+                  </button>
+                </div>
+
+                <section class="multiplayer-lobby-rules">
+                  <div class="multiplayer-lobby-rules-head">
+                    <div>
+                      <small data-i18n="online.nextDuel">Prossimo duello</small>
+                      <strong data-i18n="online.lobbyRules">Regole della lobby</strong>
+                    </div>
+                    <span id="onlineLobbyRole"></span>
+                  </div>
+                  <div id="onlineHostLobbySettings" class="classic-config-grid hidden">
+                    <label>
+                      <span data-i18n="menu.mode">Modalità</span>
+                      <select id="onlineLobbyModeSelect">
+                        <option value="arcane" data-i18n="menu.arcaneDuel">Duello Arcano</option>
+                        <option value="free" data-i18n="menu.freeDuel">Duello Libero</option>
+                        <option value="mirror" data-i18n="menu.mirrorDuel">Duello Speculare</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span data-i18n="menu.specializations">Specializzazioni</span>
+                      <select id="onlineLobbySpecializationsSelect">
+                        <option value="off" data-i18n="menu.specializationsOff">No</option>
+                        <option value="on" data-i18n="menu.specializationsOn">Sì</option>
+                      </select>
+                    </label>
+                    <label id="onlineLobbyHostSpecializationField" class="hidden">
+                      <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                      <select id="onlineLobbyHostSpecializationSelect"></select>
+                    </label>
+                  </div>
+                  <div id="onlineGuestLobbySettings" class="multiplayer-guest-lobby-settings hidden">
+                    <div><small data-i18n="online.hostRules">Regole dell'host</small><strong id="onlineLobbyGuestRules">—</strong></div>
+                    <label id="onlineLobbyGuestSpecializationField" class="hidden">
+                      <span data-i18n="menu.chooseSpecialization">Specializzazione</span>
+                      <select id="onlineLobbyGuestSpecializationSelect"></select>
+                    </label>
+                  </div>
+                </section>
+
+                <div id="onlineRematchHostActions" class="multiplayer-rematch-actions hidden">
+                  <button id="proposeSameCardsBtn" class="classic-stone-button" type="button">
+                    <strong data-i18n="online.sameCardsRematch">Rivincita · stesse carte</strong>
+                    <small data-i18n="online.sameCardsRematchHint">Stesse carte estratte e stesse condizioni del duello precedente</small>
+                  </button>
+                  <button id="proposeNewDuelBtn" class="classic-stone-button" type="button">
+                    <strong data-i18n="online.newDuel">Nuovo duello</strong>
+                    <small data-i18n="online.newDuelHint">Nuova estrazione con le regole attuali della lobby</small>
+                  </button>
+                </div>
+                <div id="onlineRematchPending" class="multiplayer-rematch-pending hidden">
+                  <strong id="onlineRematchPendingTitle"></strong>
+                  <p id="onlineRematchPendingDetail"></p>
+                  <div id="onlineRematchGuestActions" class="multiplayer-rematch-guest-actions hidden">
+                    <button id="acceptRematchBtn" class="classic-stone-button" type="button" data-i18n="online.accept">Accetta</button>
+                    <button id="declineRematchBtn" class="classic-stone-button ghost" type="button" data-i18n="online.decline">Rifiuta</button>
+                  </div>
+                </div>
+
+                <details id="onlineLobbyChat" class="multiplayer-lobby-chat">
+                  <summary data-i18n="online.chat">Chat</summary>
+                  <div class="multiplayer-lobby-chat-panel">
+                    <label class="multiplayer-mute-row">
+                      <input id="muteOnlineChatCheckbox" type="checkbox">
+                      <span data-i18n="online.muteOpponentChat">Silenzia messaggi avversario</span>
+                    </label>
+                    <div id="onlineLobbyChatMessages" class="multiplayer-lobby-chat-messages"></div>
+                    <form id="onlineLobbyChatForm" class="multiplayer-lobby-chat-compose">
+                      <input id="onlineLobbyChatInput" type="text" maxlength="180" autocomplete="off" data-i18n-placeholder="online.chatPlaceholder" placeholder="Scrivi un messaggio…">
+                      <button class="classic-stone-button" type="submit" data-i18n="online.send">Invia</button>
+                    </form>
+                  </div>
+                </details>
+
+                <button id="leaveOnlineRoomBtn" class="classic-stone-button" type="button" data-i18n="online.leave">Esci dalla stanza</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="tournamentView" class="view classic-tournament-view">
+        <section class="classic-menu-screen unified-menu-screen">
+          <div class="unified-menu-stage">
+          <div class="classic-tournament-board parchment-panel unified-menu-panel classic-menu-config">
+            <span class="classic-menu-kicker" data-i18n="nav.tournament">Torneo</span>
+            <h2 data-i18n="tournament.title">Torneo Sigian</h2>
+            <div id="tournamentContent"></div>
+          </div>
+          <div class="classic-tournament-actions">
+            <button id="newTournamentBtn" class="classic-stone-button" data-i18n="tournament.startNew">Avvia nuovo torneo</button>
+            <button id="abandonTournamentBtn" class="classic-stone-button danger hidden" data-i18n="tournament.abandon">Abbandona torneo</button>
+          </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="cardsView" class="view">
+        <section class="classic-menu-screen unified-menu-screen">
+          <div class="unified-menu-stage">
+            <div class="parchment-panel unified-menu-panel classic-menu-config collection-page-shell">
+              <span class="classic-menu-kicker" data-i18n="nav.cards">Collezione</span>
+              <h2 data-i18n="cards.title">Collezione</h2>
+              <p class="unified-menu-intro" data-i18n="cards.intro">Consulta tutte le 65 carte e confronta caratteristiche e illustrazioni.</p>
+              <div id="cardsContent"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="profileView" class="view">
+        <section class="classic-menu-screen unified-menu-screen">
+          <div class="unified-menu-stage">
+            <div class="parchment-panel unified-menu-panel classic-menu-config player-profile-shell">
+              <span class="classic-menu-kicker" data-i18n="nav.profile">Profilo</span>
+              <h2 data-i18n="profile.title">Profilo giocatore</h2>
+              <p class="unified-menu-intro" data-i18n="profile.intro">Personalizza il tuo nome, consulta statistiche e trofei.</p>
+              <div id="playerProfileContent"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="editorView" class="view dev-only hidden">
+        <div class="editor-layout">
+          <section class="panel editor-controls">
+            <h2>Editor dati carta</h2>
+            <input id="editorSetSelect" type="hidden" value="astral-original">
+            <p class="editor-set-note"><strong>Set attivo:</strong> Sigian — 65 carte. Le modifiche restano nella sessione finché non esporti il JSON.</p>
+            <label>Carta <select id="editorCardSelect"></select></label>
+            <label>Nome interno (base EN) <input id="editName" type="text"></label>
+            <div class="two-col"><label>Scuola <select id="editSchool"></select></label><label>Livello <input id="editLevel" type="number" min="1" max="30"></label></div>
+            <div class="two-col"><label>Tipo <select id="editType"><option value="creature">Creatura</option><option value="spell">Magia</option></select></label><label>Parola chiave <input id="editKeyword" type="text"></label></div>
+            <div class="two-col"><label>Attacco <input id="editAttack" type="number" min="0" max="99"></label><label>Vita <input id="editHealth" type="number" min="0" max="99"></label></div>
+            <label>Testo interno (base EN) <textarea id="editText" rows="4"></textarea></label>
+            <h3>Effetto principale</h3>
+            <div class="two-col">
+              <label>Attivazione
+                <select id="editEffectTrigger"><option value="onPlay">Quando giocata</option><option value="onSummon">All'evocazione</option><option value="onDeath">Alla morte</option><option value="none">Nessun effetto</option></select>
+              </label>
+              <label>Azione
+                <select id="editEffectAction">
+                  <option value="none">Nessuna</option>
+                  <option value="damage_enemy_hero">Danno all'Incantatore avversario</option>
+                  <option value="heal_self_hero">Cura il proprio Incantatore</option>
+                  <option value="damage_all_enemy_creatures">Danno a tutte le creature</option>
+                  <option value="reduce_strongest_enemy_attack">Riduce attacco nemico</option>
+                  <option value="buff_strongest_ally_health">Aumenta vita alleata</option>
+                  <option value="heal_all_allies">Cura tutte le creature alleate</option>
+                  <option value="mana_gain">Aumenta il potere</option>
+                </select>
+              </label>
+            </div>
+            <label>Valore effetto <input id="editEffectAmount" type="number" min="0" max="99" value="0"></label>
+            <div class="editor-actions"><button id="saveCardBtn" class="primary">Salva nella sessione</button><button id="exportCardsBtn" class="ghost">Esporta JSON</button></div>
+          </section>
+          <section class="preview-column"><h2>Anteprima</h2><div id="cardPreview" class="large-card"></div><div id="schemaValidation" class="diagnostic-box"></div></section>
+        </div>
+      </section>
+
+      <section id="rulesView" class="view">
+        <section class="classic-menu-screen unified-menu-screen"><div class="unified-menu-stage"><section class="parchment-panel unified-menu-panel classic-menu-config rules player-help-page"><span class="classic-menu-kicker" data-i18n="nav.howToPlay">Come si gioca</span><h2 data-i18n="help.title">Come si gioca</h2><div id="rulesetContent"></div></section></div></section>
+      </section>
+
+      <section id="diagnosticsView" class="view">
+        <section class="classic-menu-screen unified-menu-screen"><div class="unified-menu-stage"><section class="parchment-panel unified-menu-panel classic-menu-config options-page-shell">
+          <div class="section-heading"><div><h2 data-i18n="options.title">Opzioni</h2><p data-i18n="options.intro">Le preferenze vengono salvate in questo browser e applicate anche ai prossimi duelli.</p></div></div>
+          <div class="options-grid classic-config-grid">
+            <label><span data-i18n="menu.playerName">Nome giocatore</span>
+              <input id="optionsPlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="Giocatore">
+            </label>
+            <label><span data-i18n="options.language">Lingua</span>
+              <select id="optionsLanguageSelect"><option value="it">Italiano</option><option value="en">English</option></select>
+            </label>
+            <label><span data-i18n="options.animationSpeed">Velocità animazioni</span>
+              <select id="optionsAnimationSpeed"><option value="0.55" data-i18n="speed.fastest">No animazioni carte</option><option value="0.8" data-i18n="speed.fast">Molto veloce</option><option value="1.2" data-i18n="speed.normal">Veloce</option><option value="1.5" data-i18n="speed.slow">Standard</option><option value="2" data-i18n="speed.slower">Lenta</option></select>
+            </label>
+            <select id="optionsCardArtStyle" class="hidden" aria-hidden="true"><option value="new">Nuovo</option></select>
+            <label class="options-check"><input id="optionsSoundEnabled" type="checkbox"> <span data-i18n="options.soundEffects">Effetti sonori</span></label>
+            <label class="options-check"><input id="optionsBgmEnabled" type="checkbox"> <span data-i18n="options.music">Musica di sottofondo</span></label>
+            <label class="options-check"><input id="optionsParchmentSpells" type="checkbox"> <span data-i18n="options.parchmentSpells">Cornice pergamena per le magie</span></label>
+            <label class="options-check"><input id="optionsBoardCreatureNames" type="checkbox"> <span data-i18n="options.boardCreatureNames">Mostra nomi creature sul campo</span></label>
+            <label><span data-i18n="options.musicVolume">Volume musica</span>
+              <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
+            </label>
+          </div>
+          <p class="app-version-info">Sigian <span data-arcane-version>v0.23.6 · Sigian 2e5e9ba</span></p>
+          <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
+          <details class="advanced-diagnostics dev-only hidden">
+            <summary>Strumenti tecnici e diagnostica</summary>
+            <div class="section-heading"><div><h3>Test del motore</h3><p>Controlla motore, generatore e IA nel browser.</p></div><button id="runTestsBtn" class="primary">Esegui test</button></div>
+            <div id="testResults" class="diagnostic-box">Test non ancora eseguiti.</div>
+            <h3>Analizzatore cartella legacy</h3>
+            <p>L'inventario resta locale: nessun file viene caricato online.</p>
+            <input id="legacyFolderInput" type="file" webkitdirectory multiple>
+            <div id="legacyScanResults" class="diagnostic-box">Nessuna cartella selezionata.</div>
+          </details>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <template id="smallCardTemplate">
+    <button class="game-card" type="button">
+      <div class="card-header"><span class="cost"></span><span class="school"></span></div>
+      <div class="art"></div><strong class="name"></strong><p class="text"></p>
+      <div class="bottom-row"><span class="keyword"></span><span class="stats"></span></div>
+    </button>
+  </template>
+
+  <div id="duelCardZoom" class="duel-card-zoom" aria-hidden="true">
+    <section class="duel-card-zoom-panel" role="dialog" aria-modal="true" aria-label="Dettagli carta">
+      <button id="closeDuelCardZoom" class="duel-card-zoom-close" type="button" aria-label="Chiudi">×</button>
+      <div id="duelCardZoomContent" class="duel-card-zoom-content"></div>
+    </section>
+  </div>
+
+  <div id="duelFxLayer" class="duel-fx-layer" aria-hidden="true"></div>
+  <div id="turnBanner" class="turn-banner" aria-live="polite"></div>
+
+  <div id="pwaInstallOverlay" class="pwa-install-overlay" hidden style="display:none" role="dialog" aria-modal="true" aria-labelledby="pwaInstallTitle">
+    <div class="pwa-install-dialog">
+      <button class="pwa-install-close" type="button" data-pwa-install-close aria-label="Chiudi">×</button>
+      <h2 id="pwaInstallTitle">Installa Sigian</h2>
+      <p id="pwaInstallIntro">Su iPhone l’installazione richiede un passaggio nel menu Condividi.</p>
+      <ol class="pwa-install-steps">
+        <li id="pwaInstallStep1">Tocca <strong>Condividi</strong> nel browser.</li>
+        <li id="pwaInstallStep2">Scegli <strong>Aggiungi alla schermata Home</strong>.</li>
+      </ol>
+      <a id="pwaAndroidApkDownload" class="pwa-android-apk-download" href="downloads/Sigian-Android.apk" download hidden>Scarica APK Android</a>
+      <p id="pwaAndroidApkNote" class="pwa-android-apk-note" hidden>Alternativa per Android/HyperOS: installa l’APK direttamente. Android potrebbe chiedere di autorizzare Chrome a installare app da questa fonte.</p>
+      <button class="pwa-install-confirm" type="button" data-pwa-install-close>Ho capito</button>
+    </div>
+  </div>
+
+  <script src="src/core/constants.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/rng.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/data/cards.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/data/original-cards.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/i18n/en.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/i18n/it.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/i18n/ui-labels.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/i18n/index.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/card-schema.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/sigian-foundation.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/data/astral-ai-card-metadata.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/original-rules.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/generator.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/astral-abilities-re.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/astral-spellbook-re.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/passives.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/effects.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/astral-card-effects-re.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/data/sigian-formulas.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/sigian-runtime.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/game-engine.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/multiplayer-protocol.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/account/online-account.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/ai.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/astral-ai-re.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/core/tournament.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="tests/golden-replay-fixtures.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="tests/test-suite.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/ui/navigation.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/ui/pause-menu.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/ui/tournament-view.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="src/ui/app.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script src="pwa-install-v2.js?v=0.23.6-sigian-2e5e9ba"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        const duelIsActive = () => {
+          const battle = document.querySelector("#battlePanel");
+          return Boolean(battle && !battle.classList.contains("hidden"));
+        };
+        navigator.serviceWorker.register("./service-worker.js?v=0.23.6-sigian-2e5e9ba", { updateViaCache: "none" })
+          .then(registration => {
+            const checkForUpdate = () => {
+              if (duelIsActive()) return;
+              registration.update().catch(() => {});
+            };
+            window.addEventListener("pageshow", checkForUpdate);
+            window.addEventListener("focus", checkForUpdate);
+            document.addEventListener("visibilitychange", () => {
+              if (document.visibilityState === "visible") checkForUpdate();
+            });
+            window.setInterval(() => {
+              if (document.visibilityState === "visible") checkForUpdate();
+            }, 60000);
+            checkForUpdate();
+          })
+          .catch(error => {
+            console.warn("Sigian service worker non disponibile:", error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
