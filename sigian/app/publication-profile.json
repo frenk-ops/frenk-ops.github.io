@@ -10,10 +10,11 @@
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
   "version": "0.23.6",
-  "build": "2e5e9ba",
-  "revision": "0.23.6-sigian-2e5e9ba",
+  "build": "2a9f3c1",
+  "revision": "0.23.6-sigian-2a9f3c1",
   "formulaFoundation": {
     "nativeCards": 8,
-    "legacyDelegatedCards": 57
+    "legacyDelegatedCards": 57,
+    "liveRuntime": true
   }
 }
