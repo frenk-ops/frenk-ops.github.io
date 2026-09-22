@@ -5566,14 +5566,16 @@
 
         const tournamentSelect = $("#tournamentTalentSelect");
         syncSpecializationSelectIcon(tournamentSelect);
+        const selectedSpecialization = tournamentSelect?.value || "random";
+        const canInspectLeagues = rules.specializationsEnabled && selectedSpecialization !== "random";
+        leagueStrip?.classList.toggle("hidden", !canInspectLeagues);
+
         const preview = $("#tournamentSpecializationPreview");
         if (preview) {
-          const selectedSpecialization = tournamentSelect?.value || "random";
-          preview.innerHTML = rules.specializationsEnabled && selectedSpecialization !== "random"
+          preview.innerHTML = canInspectLeagues
             ? A.UITournamentView.specializationProgression(selectedSpecialization, context)
             : "";
           resetLeagueDisclosure();
-          const canInspectLeagues = rules.specializationsEnabled && selectedSpecialization !== "random";
           leagueButtons.forEach(button => {
             button.disabled = !canInspectLeagues;
             button.title = canInspectLeagues ? t("tournament.tapLeagueDetails") : t("tournament.chooseSpecializationForDetails");

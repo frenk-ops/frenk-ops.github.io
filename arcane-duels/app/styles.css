@@ -11284,3 +11284,18 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 #tournamentView .tournament-league-strip[data-mode="evolution"] .tournament-league-chip small {
   font-weight:700;
 }
+
+
+/* 0.23.6 — compact tournament setup when specialization is random. */
+#tournamentView .tournament-mode-field,
+#tournamentView #tournamentSpecializationField {
+  align-self:stretch;
+  height:100%;
+  box-sizing:border-box;
+}
+#tournamentView #tournamentSpecializationField {
+  align-content:start;
+}
+#tournamentView .tournament-league-strip.hidden {
+  display:none !important;
+}
