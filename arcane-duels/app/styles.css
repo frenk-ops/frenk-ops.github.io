@@ -3010,6 +3010,13 @@ body:has(#setupPanel:not(.hidden)) #restartBtn { visibility: hidden; }
 .multiplayer-players small,.multiplayer-players strong{display:block}
 .multiplayer-players small{color:#72513b}
 .multiplayer-players strong{margin-top:3px;color:#3c2a20;font-size:1.05rem}
+.multiplayer-ready-state{display:inline-flex!important;width:max-content;margin:7px auto 0;padding:3px 8px;border:1px solid rgba(139,94,25,.35);border-radius:999px;background:rgba(139,94,25,.08);color:#8b5e19;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.multiplayer-ready-state.is-ready{border-color:rgba(42,138,74,.42);background:rgba(42,138,74,.1);color:#2a7b45}
+.multiplayer-ready-state.hidden{display:none!important}
+.multiplayer-ready-actions{display:grid;justify-items:center;gap:7px;margin:0 auto 16px}
+.multiplayer-ready-actions .classic-stone-button{min-width:180px}
+.multiplayer-ready-actions .classic-stone-button.is-ready{box-shadow:inset 0 0 0 2px rgba(42,138,74,.35)}
+.multiplayer-ready-actions small{color:#72513b}
 .multiplayer-recoverable-match{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:2px solid rgba(42,138,74,.45);border-radius:11px;background:rgba(226,248,218,.5)}
 .multiplayer-recoverable-match>div{display:grid;gap:3px;min-width:0}
 .multiplayer-recoverable-match small{color:#4c6f43;font-weight:700;text-transform:uppercase;letter-spacing:.08em}

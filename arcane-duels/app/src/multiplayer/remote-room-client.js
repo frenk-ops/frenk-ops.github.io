@@ -121,6 +121,15 @@
       }));
     }
 
+    async setReady(ready) {
+      this.ensureIdentity();
+      return this.accept(await this.request(`/api/rooms/${encodeURIComponent(this.code)}/ready`, {
+        method: "POST",
+        token: this.token,
+        body: { ready: Boolean(ready) }
+      }));
+    }
+
     async rematch(action, mode = undefined) {
       this.ensureIdentity();
       return this.accept(await this.request(`/api/rooms/${encodeURIComponent(this.code)}/rematch`, {

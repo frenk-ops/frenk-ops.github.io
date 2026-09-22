@@ -1353,6 +1353,37 @@
       }
     }
 
+    const lobbyReady = response?.lobbyReady || {};
+    const opponentPresent = remoteRoomClient?.side === "player"
+      ? response?.roomPresence?.enemy !== false
+      : response?.roomPresence?.player !== false;
+    const ownReady = Boolean(lobbyReady?.[remoteRoomClient?.side]);
+    const showInitialReady = waiting && Boolean(response?.roomPresence?.enemy) && opponentPresent;
+    const readyRoot = $("#onlineInitialReadyActions");
+    readyRoot?.classList.toggle("hidden", !showInitialReady);
+    const readyButton = $("#toggleOnlineReadyBtn");
+    if (readyButton) {
+      readyButton.disabled = !showInitialReady;
+      readyButton.textContent = t(ownReady ? "online.cancelReady" : "online.markReady");
+      readyButton.classList.toggle("is-ready", ownReady);
+    }
+    const readyHint = $("#onlineReadyHint");
+    if (readyHint) {
+      const opponentSide = remoteRoomClient?.side === "player" ? "enemy" : "player";
+      readyHint.textContent = lobbyReady?.[opponentSide]
+        ? t(ownReady ? "online.bothReadyStarting" : "online.opponentReady")
+        : t(ownReady ? "online.waitingOpponentReady" : "online.readyHint");
+    }
+    const playerOneReady = $("#onlinePlayerOneReady");
+    const playerTwoReady = $("#onlinePlayerTwoReady");
+    [[playerOneReady, "player"], [playerTwoReady, "enemy"]].forEach(([node, side]) => {
+      if (!node) return;
+      const visible = waiting && Boolean(response?.roomPresence?.[side]);
+      node.classList.toggle("hidden", !visible);
+      node.classList.toggle("is-ready", Boolean(lobbyReady?.[side]));
+      node.textContent = t(lobbyReady?.[side] ? "online.playerReady" : "online.playerNotReady");
+    });
+
     const proposal = response?.rematch?.proposal || null;
     const pending = proposal?.status === "pending";
     const declined = proposal?.status === "declined";
@@ -1371,9 +1402,6 @@
       }
     }
     $("#onlineRematchGuestActions")?.classList.toggle("hidden", !finished || isHost || !response?.rematch?.canRespond);
-    const opponentPresent = remoteRoomClient?.side === "player"
-      ? response?.roomPresence?.enemy !== false
-      : response?.roomPresence?.player !== false;
     const chatInput = $("#onlineLobbyChatInput");
     const chatButton = $("#onlineLobbyChatForm button[type='submit']");
     if (chatInput) chatInput.disabled = !opponentPresent;
@@ -1410,11 +1438,13 @@
       const opponentPresent = remoteRoomClient?.side === "player"
         ? response?.roomPresence?.enemy !== false
         : response?.roomPresence?.player !== false;
+      const waitingWithOpponent = response.lifecycle?.status === "waiting"
+        && Boolean(response?.roomPresence?.enemy);
       $("#onlineConnectionMessage").textContent = !opponentPresent && response.playerNames?.enemy
         ? t("online.opponentLeftRoom")
         : response.lifecycle?.status === "finished"
           ? t("online.matchFinished")
-          : t(response.ready ? "online.ready" : "online.waiting");
+          : t(response.ready ? "online.ready" : waitingWithOpponent ? "online.readyPrompt" : "online.waiting");
     }
     const names = response.playerNames || {};
     if ($("#onlinePlayerOneName")) $("#onlinePlayerOneName").textContent = normalizedPlayerName(names.player, t("online.waitingPlayer"));
@@ -6028,6 +6058,20 @@
   $("#onlineLobbyGuestSpecializationSelect")?.addEventListener("change", event => {
     if (remoteRoomClient?.side !== "enemy") return;
     updateRemoteLobbySettings({ playerSpecialization: event.currentTarget.value || "random" });
+  });
+  $("#toggleOnlineReadyBtn")?.addEventListener("click", async () => {
+    if (!remoteRoomClient || !lastRemoteRoomState) return;
+    const side = remoteRoomClient.side;
+    const currentlyReady = Boolean(lastRemoteRoomState?.lobbyReady?.[side]);
+    try {
+      const response = await remoteRoomClient.setReady(!currentlyReady);
+      lastRemoteRoomState = response;
+      renderRemoteLobby(response);
+      saveRemoteRoom();
+      beginRemotePolling();
+    } catch (error) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+    }
   });
   $("#proposeSameCardsBtn")?.addEventListener("click", () => proposeRemoteDuel("same"));
   $("#proposeNewDuelBtn")?.addEventListener("click", () => proposeRemoteDuel("new"));
