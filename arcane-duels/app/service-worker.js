@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.22.34-dc25def";
+const BUILD_REVISION = "0.23.0-5ca2fc4";
 const SHELL_CACHE = `arcane-duels-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `arcane-duels-runtime-${BUILD_REVISION}`;
 
@@ -33,6 +33,7 @@ const APP_SHELL = [
   "./src/core/astral-card-effects-re.js",
   "./src/core/game-engine.js",
   "./src/core/multiplayer-protocol.js",
+  "./src/account/online-account.js",
   "./src/multiplayer/remote-room-client.js",
   "./src/core/ai.js",
   "./src/core/astral-ai-re.js",

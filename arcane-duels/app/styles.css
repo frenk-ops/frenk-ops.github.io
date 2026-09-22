@@ -10856,3 +10856,119 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 @media (max-width:620px){
   .multiplayer-session-management{grid-template-columns:1fr}
 }
+
+
+/* Account, progression and Ranked foundation */
+.ranked-panel,
+.profile-online-card {
+  display:grid;
+  gap:14px;
+}
+.ranked-panel-heading,
+.profile-online-heading {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.ranked-panel-heading h3,
+.profile-online-heading strong {
+  margin:2px 0 0;
+}
+#rankedRatingBadge,
+.profile-online-rating strong {
+  min-width:68px;
+  text-align:center;
+  font-size:1.35rem;
+}
+.ranked-account-state {
+  opacity:.82;
+  font-size:.92rem;
+}
+.ranked-mode-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.ranked-mode-card {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:start;
+  gap:10px 12px;
+  padding:14px;
+  border:1px solid rgba(80,56,32,.28);
+  border-radius:10px;
+  background:rgba(255,248,225,.46);
+}
+.ranked-mode-card > span {
+  font-size:1.5rem;
+}
+.ranked-mode-card div {
+  display:grid;
+  gap:4px;
+}
+.ranked-mode-card small {
+  opacity:.78;
+}
+.ranked-mode-card button {
+  grid-column:1 / -1;
+}
+.ranked-mode-card.is-locked {
+  opacity:.62;
+}
+.ranked-search-state {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:12px;
+  padding:12px;
+  border-radius:10px;
+  background:rgba(44,31,22,.10);
+}
+.ranked-search-state.hidden {
+  display:none !important;
+}
+.profile-online-stats {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.profile-online-stats > span {
+  display:grid;
+  gap:4px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:rgba(255,248,225,.42);
+}
+.profile-online-edit {
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end;
+}
+.profile-online-heading > div:first-child {
+  display:grid;
+  gap:2px;
+}
+.profile-online-heading span {
+  font-size:.86rem;
+  opacity:.72;
+}
+.profile-online-rating {
+  display:grid;
+  justify-items:center;
+  gap:2px;
+}
+@media (max-width: 720px) {
+  .ranked-mode-grid,
+  .profile-online-stats {
+    grid-template-columns:1fr;
+  }
+  .ranked-search-state {
+    grid-template-columns:auto minmax(0,1fr);
+  }
+  .ranked-search-state button {
+    grid-column:1 / -1;
+  }
+  .profile-online-edit {
+    grid-template-columns:1fr;
+  }
+}

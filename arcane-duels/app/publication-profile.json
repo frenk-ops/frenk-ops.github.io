@@ -8,7 +8,8 @@
   "staticHosting": true,
   "multiplayerServerIncluded": false,
   "multiplayerApiConfigured": true,
-  "version": "0.22.34",
-  "build": "dc25def",
-  "revision": "0.22.34-dc25def"
+  "onlineAccountsConfigured": true,
+  "version": "0.23.0",
+  "build": "5ca2fc4",
+  "revision": "0.23.0-5ca2fc4"
 }

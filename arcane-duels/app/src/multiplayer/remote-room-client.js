@@ -15,6 +15,9 @@
       this.compatibilityVersion = String(options.compatibilityVersion || this.clientVersion);
       this.protocolVersion = Number(options.protocolVersion || A.MULTIPLAYER_PROTOCOL_VERSION || 0);
       this.pendingSubmit = null;
+      this.identityTokenProvider = typeof options.identityTokenProvider === "function"
+        ? options.identityTokenProvider
+        : null;
       this.connection = {
         latencyMs: null,
         lastSuccessAt: null,
@@ -69,7 +72,8 @@
     async create(options = {}) {
       return this.accept(await this.request("/api/rooms", {
         method: "POST",
-        body: this.compatibility(options)
+        body: this.compatibility(options),
+        identity: true
       }));
     }
 
@@ -85,8 +89,48 @@
     async join(code, options = {}) {
       return this.accept(await this.request(`/api/rooms/${encodeURIComponent(code)}/join`, {
         method: "POST",
-        body: this.compatibility(options)
+        body: this.compatibility(options),
+        identity: true
       }));
+    }
+
+    async queueRanked(format = "classic", playerName = "Giocatore") {
+      const response = await this.request("/api/ranked/queue", {
+        method: "POST",
+        body: { format, playerName },
+        identity: true,
+        requireIdentity: true
+      });
+      if (response?.status === "matched" && response.room) response.room = this.accept(response.room);
+      return response;
+    }
+
+    async rankedStatus(ticket) {
+      const response = await this.request(`/api/ranked/queue/${encodeURIComponent(ticket)}`, {
+        identity: true,
+        requireIdentity: true
+      });
+      if (response?.status === "matched" && response.room) response.room = this.accept(response.room);
+      return response;
+    }
+
+    async cancelRanked(ticket) {
+      return this.request(`/api/ranked/queue/${encodeURIComponent(ticket)}/cancel`, {
+        method: "POST",
+        identity: true,
+        requireIdentity: true
+      });
+    }
+
+    async rankedLeaderboard(format = "classic", limit = 20) {
+      const params = new URLSearchParams({
+        format: format === "grimoire" ? "grimoire" : "classic",
+        limit: String(Math.max(1, Math.min(100, Number(limit || 20))))
+      });
+      return this.request(`/api/ranked/leaderboard?${params}`, {
+        identity: true,
+        requireIdentity: true
+      });
     }
 
     async reconnect() {
@@ -266,6 +310,19 @@
       const headers = { Accept: "application/json" };
       if (options.body !== undefined) headers["Content-Type"] = "application/json";
       if (options.token) headers.Authorization = `Bearer ${options.token}`;
+      if (options.identity && this.identityTokenProvider) {
+        const identityToken = String(await this.identityTokenProvider() || "");
+        if (identityToken) headers["X-Arcane-Identity"] = identityToken;
+        else if (options.requireIdentity) {
+          const error = new Error("Account Arcane Duels non disponibile.");
+          error.code = "ACCOUNT_REQUIRED";
+          throw error;
+        }
+      } else if (options.requireIdentity) {
+        const error = new Error("Account Arcane Duels non disponibile.");
+        error.code = "ACCOUNT_REQUIRED";
+        throw error;
+      }
       const startedAt = Date.now();
       let response;
       let payload;

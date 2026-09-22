@@ -499,6 +499,10 @@
   let inspectedRemoteRoomCode = "";
   let inspectedRemoteRoomSettings = null;
   let remoteRoomInspectTimer = null;
+  let rankedTicket = "";
+  let rankedPoll = null;
+  let rankedSearchStartedAt = 0;
+  let onlineAccountSnapshot = A.onlineAccount?.snapshot?.() || { configured: false, ready: false };
   let currentPlayerName = "";
   let currentOpponentName = "";
   let matchStartedAt = null;
@@ -748,8 +752,201 @@
       baseUrl: A.MULTIPLAYER_API_URL,
       clientVersion: APP_VERSION,
       compatibilityVersion: multiplayerServerVersion || APP_VERSION,
-      protocolVersion: A.MULTIPLAYER_PROTOCOL_VERSION
+      protocolVersion: A.MULTIPLAYER_PROTOCOL_VERSION,
+      identityTokenProvider: async () => A.onlineAccount?.accessToken?.() || ""
     });
+  }
+
+
+  function stopRankedPolling() {
+    if (rankedPoll) window.clearInterval(rankedPoll);
+    rankedPoll = null;
+  }
+
+  function renderOnlineAccountState() {
+    const snapshot = onlineAccountSnapshot || {};
+    $("#rankedPanel")?.classList.toggle("hidden", !snapshot.configured);
+    const accountState = $("#rankedAccountState");
+    const findButton = $("#findRankedMatchBtn");
+    const ratingBadge = $("#rankedRatingBadge");
+    const progression = snapshot.progression || {};
+    const rating = snapshot.rating || {};
+    if (ratingBadge) ratingBadge.textContent = String(Number(rating.rating || 1000));
+    if (accountState) {
+      if (!snapshot.configured) accountState.textContent = t("ranked.accountUnavailable");
+      else if (snapshot.error) accountState.textContent = t("ranked.accountError");
+      else if (!snapshot.user) accountState.textContent = t("ranked.accountPreparing");
+      else accountState.textContent = t("ranked.accountReady", {
+        level: Number(progression.level || 1),
+        games: Number(progression.games_played || 0)
+      });
+    }
+    if (findButton) {
+      findButton.disabled = Boolean(rankedTicket) || multiplayerServerStatus !== "online" || !snapshot.configured || !snapshot.user || Boolean(snapshot.error);
+    }
+  }
+
+  async function initializeOnlineAccount(options = {}) {
+    if (!A.onlineAccount) return null;
+    onlineAccountSnapshot = await A.onlineAccount.initialize(selectedPlayerName());
+    if (onlineAccountSnapshot?.user && onlineAccountSnapshot?.profile) {
+      const localName = selectedPlayerName();
+      const remoteName = String(onlineAccountSnapshot.profile.display_name || "");
+      if (localName && remoteName === "Giocatore" && localName !== "Giocatore" && localName !== "Player") {
+        try {
+          await A.onlineAccount.updateProfile({ displayName: localName });
+          onlineAccountSnapshot = A.onlineAccount.snapshot();
+        } catch {}
+      }
+    }
+    renderOnlineAccountState();
+    if (options.renderProfile) renderPlayerProfile();
+    return onlineAccountSnapshot;
+  }
+
+  function renderRankedSearchState(message = "") {
+    const root = $("#rankedSearchState");
+    if (!root) return;
+    root.classList.toggle("hidden", !rankedTicket);
+    if ($("#rankedSearchDetail")) {
+      const elapsed = rankedSearchStartedAt ? Math.max(0, Math.round((Date.now() - rankedSearchStartedAt) / 1000)) : 0;
+      $("#rankedSearchDetail").textContent = message || t("ranked.searchingDetail", { seconds: elapsed });
+    }
+    renderOnlineAccountState();
+  }
+
+  function adoptRankedRoom(response) {
+    const room = response?.room;
+    if (!room || !remoteRoomClient) return false;
+    stopRankedPolling();
+    rankedTicket = "";
+    rankedSearchStartedAt = 0;
+    remoteRenderedSnapshotKey = "";
+    remoteBattleSuspendedToMenu = false;
+    remoteLifecycleStatus = "waiting";
+    lastRemoteRoomState = null;
+    remoteMatchStartedAt = null;
+    remoteSeenMessageIds = new Set();
+    remoteMessagesInitialized = false;
+    remoteRecordedMatchId = "";
+    saveRemoteRoom();
+    renderRankedSearchState();
+    renderRemoteLobby(room);
+    beginRemotePolling();
+    return true;
+  }
+
+  async function pollRankedSearch() {
+    if (!rankedTicket || !remoteRoomClient) return;
+    try {
+      const response = await remoteRoomClient.rankedStatus(rankedTicket);
+      if (response?.status === "matched") {
+        adoptRankedRoom(response);
+        return;
+      }
+      renderRankedSearchState();
+    } catch (error) {
+      stopRankedPolling();
+      rankedTicket = "";
+      rankedSearchStartedAt = 0;
+      renderRankedSearchState();
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+    }
+  }
+
+  async function startRankedSearch() {
+    if (!await checkMultiplayerServer({ force: true })) return;
+    if (remoteRoomClient?.code) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = t("ranked.finishCurrentRoom");
+      return;
+    }
+    onlineAccountSnapshot = await initializeOnlineAccount();
+    if (!onlineAccountSnapshot?.user || onlineAccountSnapshot?.error) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = t("ranked.accountRequired");
+      return;
+    }
+    if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
+    remoteRoomClient = createRemoteRoomClient();
+    try {
+      const response = await remoteRoomClient.queueRanked("classic", savePlayerName($("#onlinePlayerNameInput")));
+      rankedTicket = String(response.ticket || "");
+      rankedSearchStartedAt = Date.now();
+      if (response.status === "matched") {
+        adoptRankedRoom(response);
+        return;
+      }
+      renderRankedSearchState();
+      stopRankedPolling();
+      rankedPoll = window.setInterval(pollRankedSearch, 1500);
+    } catch (error) {
+      remoteRoomClient = null;
+      rankedTicket = "";
+      rankedSearchStartedAt = 0;
+      renderRankedSearchState();
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+    }
+  }
+
+  async function cancelRankedSearch() {
+    if (!rankedTicket || !remoteRoomClient) return;
+    const ticket = rankedTicket;
+    stopRankedPolling();
+    try { await remoteRoomClient.cancelRanked(ticket); } catch {}
+    rankedTicket = "";
+    rankedSearchStartedAt = 0;
+    if (!remoteRoomClient.code) remoteRoomClient = null;
+    renderRankedSearchState();
+  }
+
+  function renderRankedLeaderboard(payload = {}) {
+    const root = $("#rankedLeaderboardList");
+    if (!root) return;
+    root.innerHTML = "";
+    const season = payload.season || null;
+    if ($("#rankedSeasonLabel")) $("#rankedSeasonLabel").textContent = season?.name || t("ranked.preseason");
+    const entries = Array.isArray(payload.entries) ? payload.entries : [];
+    if (!entries.length) {
+      const empty = document.createElement("div");
+      empty.className = "multiplayer-room-empty";
+      empty.textContent = t("ranked.noPlayers");
+      root.appendChild(empty);
+      return;
+    }
+    entries.forEach(entry => {
+      const row = document.createElement("article");
+      row.className = "multiplayer-room-entry";
+      const rank = document.createElement("strong");
+      rank.textContent = `#${Number(entry.rank || 0)}`;
+      const copy = document.createElement("div");
+      copy.className = "multiplayer-room-entry-copy";
+      const title = document.createElement("strong");
+      title.textContent = entry.displayName || "Incantatore";
+      const meta = document.createElement("span");
+      meta.textContent = entry.username
+        ? `@${entry.username} · ${t("ranked.gamesShort", { games: Number(entry.gamesPlayed || 0) })}`
+        : t("ranked.gamesShort", { games: Number(entry.gamesPlayed || 0) });
+      copy.append(title, meta);
+      const rating = document.createElement("strong");
+      rating.textContent = String(Number(entry.rating || 1000));
+      row.append(rank, copy, rating);
+      root.appendChild(row);
+    });
+  }
+
+  async function refreshRankedLeaderboard() {
+    const root = $("#rankedLeaderboardList");
+    if (!onlineAccountSnapshot?.configured || !onlineAccountSnapshot?.user || onlineAccountSnapshot?.error || multiplayerServerStatus !== "online") {
+      if (root) renderRankedLeaderboard({ entries: [] });
+      return false;
+    }
+    try {
+      const payload = await createRemoteRoomClient().rankedLeaderboard("classic", 20);
+      renderRankedLeaderboard(payload);
+      return true;
+    } catch {
+      renderRankedLeaderboard({ entries: [] });
+      return false;
+    }
   }
 
   function setMultiplayerControlsDisabled(disabled) {
@@ -765,6 +962,7 @@
       if (control) control.disabled = actionDisabled;
     });
     if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").disabled = false;
+    renderOnlineAccountState();
   }
 
   function setMultiplayerServerState(state, detail = "") {
@@ -1158,6 +1356,16 @@
 
     if (remoteLifecycleStatus === "finished") {
       remoteDisconnectObservedAt = null;
+      if (response?.ranked && A.onlineAccount?.configured?.()) {
+        window.setTimeout(async () => {
+          try {
+            onlineAccountSnapshot = await A.onlineAccount.refreshData();
+            renderOnlineAccountState();
+            refreshRankedLeaderboard().catch(() => {});
+            if ($("#profileView")?.classList.contains("active")) renderPlayerProfile();
+          } catch {}
+        }, 500);
+      }
       const finishedMatchId = response.matchId || `room:${response.code || remoteRoomClient?.code || "online"}:match:${response.matchNumber || 1}`;
       if (remoteRoomClient?.side && remoteRecordedMatchId !== finishedMatchId) {
         const result = lifecycle.winner === remoteRoomClient.side
@@ -1444,9 +1652,10 @@
     const settings = response?.settings || {};
     const finished = response?.lifecycle?.status === "finished";
     const waiting = response?.lifecycle?.status === "waiting";
-    const editable = finished || waiting;
-    $("#onlineHostLobbySettings")?.classList.toggle("hidden", !isHost);
-    $("#onlineGuestLobbySettings")?.classList.toggle("hidden", isHost);
+    const ranked = Boolean(response?.ranked);
+    const editable = !ranked && (finished || waiting);
+    $("#onlineHostLobbySettings")?.classList.toggle("hidden", !isHost || ranked);
+    $("#onlineGuestLobbySettings")?.classList.toggle("hidden", isHost && !ranked);
     if ($("#onlineLobbyRole")) $("#onlineLobbyRole").textContent = t(isHost ? "online.host" : "online.guest");
 
     const mode = normalizeSpellbookMode(settings.spellbookDistribution || "arcane");
@@ -1532,7 +1741,7 @@
     const proposal = response?.rematch?.proposal || null;
     const pending = proposal?.status === "pending";
     const declined = proposal?.status === "declined";
-    $("#onlineRematchHostActions")?.classList.toggle("hidden", !isHost || !finished || pending || !response?.rematch?.canPropose);
+    $("#onlineRematchHostActions")?.classList.toggle("hidden", ranked || !isHost || !finished || pending || !response?.rematch?.canPropose);
     const pendingRoot = $("#onlineRematchPending");
     pendingRoot?.classList.toggle("hidden", !finished || (!pending && !declined));
     if (pendingRoot && (pending || declined)) {
@@ -1546,9 +1755,9 @@
         if (detail) detail.textContent = isHost ? t("online.proposal.waiting") : "";
       }
     }
-    $("#onlineRematchGuestActions")?.classList.toggle("hidden", !finished || isHost || !response?.rematch?.canRespond);
+    $("#onlineRematchGuestActions")?.classList.toggle("hidden", ranked || !finished || isHost || !response?.rematch?.canRespond);
     const sessionManagement = $("#onlineSessionManagement");
-    sessionManagement?.classList.toggle("hidden", !isHost || !opponentPresent || (!finished && !waiting));
+    sessionManagement?.classList.toggle("hidden", ranked || !isHost || !opponentPresent || (!finished && !waiting));
     $("#resetOnlineSessionBtn")?.classList.toggle("hidden", !finished);
     const chatInput = $("#onlineLobbyChatInput");
     const chatButton = $("#onlineLobbyChatForm button[type='submit']");
@@ -2053,7 +2262,11 @@
     $(`#${name}View`)?.classList.add("active");
     navigation?.setActive(name);
     if (name === "multiplayer") {
-      checkMultiplayerServer().then(online => { if (online) refreshRoomBrowser(); });
+      checkMultiplayerServer().then(online => {
+        if (!online) return;
+        refreshRoomBrowser();
+        initializeOnlineAccount().then(() => refreshRankedLeaderboard()).catch(() => {});
+      });
       beginRoomBrowserPolling();
     } else {
       clearInterval(roomBrowserPoll);
@@ -2061,7 +2274,10 @@
     }
     if (name === "tournament") renderTournament();
     if (name === "cards") renderCollectionPage();
-    if (name === "profile") renderPlayerProfile();
+    if (name === "profile") {
+      renderPlayerProfile();
+      initializeOnlineAccount({ renderProfile: true }).catch(() => {});
+    }
     if (name === "rules") renderRuleset();
     syncBackgroundMusicScene();
   }
@@ -5389,7 +5605,30 @@
     const multi = stats.multiplayer || {};
     const storedName = profile.playerName || localStorage.getItem("arcane.playerName") || t("ui.player");
     const achievements = A.PROFILE_ACHIEVEMENTS || [];
+    const online = onlineAccountSnapshot || {};
+    const onlineProgress = online.progression || {};
+    const onlineRating = online.rating || {};
+    const onlineProfile = online.profile || {};
+    const onlineCard = !online.configured
+      ? ""
+      : online.error
+        ? `<section class="profile-online-card ornate-subpanel"><div><small>${t("profile.onlineAccount")}</small><strong>${t("ranked.accountError")}</strong></div></section>`
+        : `<section class="profile-online-card ornate-subpanel">
+            <div class="profile-online-heading">
+              <div><small>${t("profile.onlineAccount")}</small><strong>${escapeHtml(onlineProfile.display_name || storedName)}</strong><span>${online.user?.isAnonymous ? t("profile.guestAccount") : escapeHtml(online.user?.email || "")}</span></div>
+              <div class="profile-online-rating"><small>${t("profile.rankedRating")}</small><strong>${Number(onlineRating.rating || 1000)}</strong></div>
+            </div>
+            <div class="profile-online-stats">
+              <span><small>${t("profile.onlineLevel", { level: Number(onlineProgress.level || 1) })}</small><strong>${t("profile.onlineXp", { xp: Number(onlineProgress.xp || 0) })}</strong></span>
+              <span><small>${Number(onlineProgress.games_played || 0)} ${t("profile.gamesPlayed", { value: "" }).replace(/^\s+|\s+$/g, "")}</small><strong>${t("profile.onlineRecord", { wins: Number(onlineProgress.wins || 0), losses: Number(onlineProgress.losses || 0), draws: Number(onlineProgress.draws || 0) })}</strong></span>
+            </div>
+            <div class="profile-online-edit classic-config-grid">
+              <label><span>${t("profile.username")}</span><input id="profileOnlineUsernameInput" type="text" maxlength="20" autocomplete="username" value="${escapeHtml(onlineProfile.username || "")}"></label>
+              <button id="saveOnlineProfileBtn" type="button" class="classic-stone-button">${t("profile.saveOnline")}</button>
+            </div>
+          </section>`;
     root.innerHTML = `
+      ${onlineCard}
       <section class="profile-identity-card ornate-subpanel classic-config-grid">
         <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
         <button id="saveProfileNameBtn" type="button" class="classic-stone-button">${t("profile.saveName")}</button>
@@ -5429,14 +5668,33 @@
         <button class="classic-stone-button" type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>
         <button class="classic-stone-button" type="button" data-view-jump="diagnostics">${t("nav.options")}</button>
       </div>`;
-    $("#saveProfileNameBtn")?.addEventListener("click", () => {
+    $("#saveProfileNameBtn")?.addEventListener("click", async () => {
       const name = normalizedPlayerName($("#profilePlayerNameInput")?.value, t("ui.player"));
       profile.playerName = name;
       A.saveProfile(profile);
       localStorage.setItem("arcane.playerName", name);
       if ($("#playerNameInput")) $("#playerNameInput").value = name;
       if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = name;
+      if (onlineAccountSnapshot?.user && A.onlineAccount?.configured?.()) {
+        try {
+          await A.onlineAccount.updateProfile({ displayName: name });
+          onlineAccountSnapshot = A.onlineAccount.snapshot();
+        } catch {}
+      }
       renderPlayerProfile();
+    });
+    $("#saveOnlineProfileBtn")?.addEventListener("click", async () => {
+      try {
+        await A.onlineAccount.updateProfile({
+          displayName: normalizedPlayerName($("#profilePlayerNameInput")?.value || storedName, t("ui.player")),
+          username: $("#profileOnlineUsernameInput")?.value || ""
+        });
+        onlineAccountSnapshot = await A.onlineAccount.refreshData();
+        renderOnlineAccountState();
+        renderPlayerProfile();
+      } catch (error) {
+        if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+      }
     });
     root.querySelectorAll("[data-view-jump]").forEach(button => {
       button.addEventListener("click", () => switchView(button.dataset.viewJump));
@@ -6323,6 +6581,9 @@
       remoteRoomInspectTimer = window.setTimeout(() => inspectRemoteRoom(normalized, { silent: true }), 250);
     }
   });
+  $("#findRankedMatchBtn")?.addEventListener("click", startRankedSearch);
+  $("#cancelRankedSearchBtn")?.addEventListener("click", cancelRankedSearch);
+  $("#refreshRankedLeaderboardBtn")?.addEventListener("click", refreshRankedLeaderboard);
   $("#createOnlineRoomBtn")?.addEventListener("click", async () => {
     if (!await checkMultiplayerServer({ force: true })) return;
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
@@ -6436,6 +6697,9 @@
   });
 
   syncMultiplayerAvailability();
+  initializeOnlineAccount().then(() => {
+    if ($("#profileView")?.classList.contains("active")) renderPlayerProfile();
+  }).catch(() => {});
   setupDifficultyOptions();
   if ($("#playerNameInput") || $("#onlinePlayerNameInput") || $("#optionsPlayerNameInput")) {
     const storedPlayerName = localStorage.getItem("arcane.playerName") || profile?.playerName;
