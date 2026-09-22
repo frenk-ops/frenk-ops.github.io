@@ -291,6 +291,7 @@
         error.code = payload.code;
         error.expectedVersion = payload.expectedVersion;
         error.expectedProtocolVersion = payload.expectedProtocolVersion;
+        error.retryAfterMs = payload.retryAfterMs;
         error.sync = payload.sync;
         throw error;
       }

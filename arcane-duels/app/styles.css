@@ -10702,6 +10702,15 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   font-variant-numeric:tabular-nums;
   letter-spacing:.02em;
 }
+.online-turn-timer.is-own-turn {
+  border-color:rgba(104,255,154,.62);
+  color:#a9ffbd !important;
+  box-shadow:0 0 8px rgba(72,220,119,.16);
+}
+.online-turn-timer.is-opponent-turn {
+  border-color:rgba(118,193,255,.58);
+  color:#b9ddff !important;
+}
 .online-turn-timer.is-warning {
   border-color:rgba(255,184,77,.78);
   color:#ffd28a !important;
@@ -10716,9 +10725,13 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     gap:3px;
   }
   .classic-duel-status .online-turn-timer {
+    max-width:150px;
     min-width:40px;
     padding:1px 4px;
     font-size:.48rem;
+    white-space:normal;
+    line-height:1.12;
+    text-align:center;
   }
 }
 

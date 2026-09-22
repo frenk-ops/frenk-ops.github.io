@@ -472,6 +472,7 @@
   let remoteRoomPoll = null;
   let remoteHeartbeatTimer = null;
   let remoteTurnTimerTicker = null;
+  let remoteLastAnnouncedTurnSide = null;
   let roomBrowserPoll = null;
   let remoteQuickChatToastTimer = null;
   let remoteSeenMessageIds = new Set();
@@ -989,6 +990,7 @@
     remoteRoomPoll = null;
     remoteHeartbeatTimer = null;
     remoteTurnTimerTicker = null;
+    remoteLastAnnouncedTurnSide = null;
     renderRemoteTurnTimer(null);
   }
 
@@ -1022,17 +1024,41 @@
     const timer = response?.turnTimer;
     const active = Boolean(remoteDuelActive && response?.lifecycle?.status === "active" && timer?.actorSide && timer?.deadlineAt);
     root.classList.toggle("hidden", !active);
-    if (!active) return;
+    if (!active) {
+      remoteLastAnnouncedTurnSide = null;
+      root.classList.remove("is-own-turn", "is-opponent-turn", "is-warning", "is-danger");
+      return;
+    }
     const remainingMs = Math.max(0, Number(timer.deadlineAt) - Date.now());
     const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
     const streak = Number(timer.streaks?.[timer.actorSide] || 0);
     const max = Number(timer.maxConsecutiveTimeouts || 3);
-    root.textContent = `⏳ ${seconds}s${streak > 0 ? ` · ${streak}/${max}` : ""}`;
-    const afkWarning = timer.actorSide === remoteRoomClient?.side && streak >= Math.max(2, max - 1);
+    const ownTurn = timer.actorSide === remoteRoomClient?.side;
+    const opponentName = currentOpponentName || t("ui.opponent");
+    const baseLabel = ownTurn
+      ? t("online.yourTurnTimer", { seconds })
+      : t("online.opponentTurnTimer", { name: opponentName, seconds });
+    root.textContent = streak > 0 ? `${baseLabel} · ${streak}/${max}` : baseLabel;
+    const afkWarning = ownTurn && streak >= Math.max(2, max - 1);
+    root.classList.toggle("is-own-turn", ownTurn);
+    root.classList.toggle("is-opponent-turn", !ownTurn);
     root.classList.toggle("is-warning", seconds <= 15 || afkWarning);
     root.classList.toggle("is-danger", seconds <= 5);
-    if (afkWarning) root.textContent = `⚠ ${seconds}s · ${streak}/${max}`;
+    if (afkWarning) root.textContent = `⚠ ${baseLabel} · ${streak}/${max}`;
     root.title = streak > 0 ? `${t("online.afkWarning")} ${streak}/${max}` : t("online.turnTimer");
+
+    if (remoteLastAnnouncedTurnSide !== timer.actorSide) {
+      const previousSide = remoteLastAnnouncedTurnSide;
+      remoteLastAnnouncedTurnSide = timer.actorSide;
+      if (previousSide) {
+        if (ownTurn) {
+          playCardReadySound();
+          showTurnBanner(t("online.yourTurn"), "player", 800);
+        } else {
+          showTurnBanner(t("online.opponentTurn", { name: opponentName }), "enemy", 700);
+        }
+      }
+    }
   }
 
   function renderRemoteConnectionQuality() {
@@ -1388,6 +1414,26 @@
     root.scrollTop = root.scrollHeight;
   }
 
+  function renderRemoteSessionHistory(response) {
+    const root = $("#onlineSessionHistory");
+    const itemsRoot = $("#onlineSessionHistoryItems");
+    if (!root || !itemsRoot) return;
+    const history = Array.isArray(response?.sessionHistory) ? response.sessionHistory.slice(-5) : [];
+    root.classList.toggle("hidden", !history.length);
+    if (!history.length) {
+      itemsRoot.innerHTML = "";
+      return;
+    }
+    const ownSide = remoteRoomClient?.side || "player";
+    itemsRoot.innerHTML = history.map(entry => {
+      const winner = entry?.winner;
+      const result = !winner ? "draw" : winner === ownSide ? "win" : "loss";
+      const label = t(`online.history.${result}`);
+      const matchNumber = Math.max(1, Number(entry?.matchNumber || 1));
+      return `<span class="multiplayer-session-history-chip is-${result}" title="#${matchNumber}">${escapeHtml(label)}</span>`;
+    }).join("");
+  }
+
   function syncLobbySpecializationVisibility() {
     const hostSpecialized = $("#onlineLobbySpecializationsSelect")?.value === "on";
     $("#onlineLobbyHostSpecializationField")?.classList.toggle("hidden", !hostSpecialized);
@@ -1450,6 +1496,7 @@
     scoreRoot?.classList.toggle("hidden", !response?.roomPresence?.enemy);
     if ($("#onlinePlayerOneScore")) $("#onlinePlayerOneScore").textContent = String(Math.max(0, Number(sessionScore.player || 0)));
     if ($("#onlinePlayerTwoScore")) $("#onlinePlayerTwoScore").textContent = String(Math.max(0, Number(sessionScore.enemy || 0)));
+    renderRemoteSessionHistory(response);
 
     const lobbyReady = response?.lobbyReady || {};
     const opponentPresent = remoteRoomClient?.side === "player"
@@ -1500,6 +1547,9 @@
       }
     }
     $("#onlineRematchGuestActions")?.classList.toggle("hidden", !finished || isHost || !response?.rematch?.canRespond);
+    const sessionManagement = $("#onlineSessionManagement");
+    sessionManagement?.classList.toggle("hidden", !isHost || !opponentPresent || (!finished && !waiting));
+    $("#resetOnlineSessionBtn")?.classList.toggle("hidden", !finished);
     const chatInput = $("#onlineLobbyChatInput");
     const chatButton = $("#onlineLobbyChatForm button[type='submit']");
     if (chatInput) chatInput.disabled = !opponentPresent;
@@ -1517,6 +1567,35 @@
     } catch (error) {
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
       return null;
+    }
+  }
+
+  async function manageRemoteSession(action) {
+    if (!remoteRoomClient || remoteRoomClient.side !== "player") return null;
+    const resetButton = $("#resetOnlineSessionBtn");
+    const opponentButton = $("#newOnlineOpponentBtn");
+    if (resetButton) resetButton.disabled = true;
+    if (opponentButton) opponentButton.disabled = true;
+    try {
+      const response = await remoteRoomClient.sessionAction(action);
+      lastRemoteRoomState = response;
+      remoteDuelActive = false;
+      remoteBattleSuspendedToMenu = false;
+      remoteRenderedSnapshotKey = "";
+      remoteMatchStartedAt = null;
+      remoteRecordedMatchId = "";
+      remoteLastAnnouncedTurnSide = null;
+      engine = null;
+      renderRemoteLobby(response, { deferBattle: true });
+      saveRemoteRoom();
+      beginRemotePolling();
+      refreshRoomBrowser();
+      return response;
+    } catch (error) {
+      if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+      return null;
+    } finally {
+      if (lastRemoteRoomState) renderRemoteLobbyControls(lastRemoteRoomState);
     }
   }
 
@@ -6181,6 +6260,8 @@
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
     }
   });
+  $("#resetOnlineSessionBtn")?.addEventListener("click", () => manageRemoteSession("reset"));
+  $("#newOnlineOpponentBtn")?.addEventListener("click", () => manageRemoteSession("new_opponent"));
   $("#proposeSameCardsBtn")?.addEventListener("click", () => proposeRemoteDuel("same"));
   $("#proposeNewDuelBtn")?.addEventListener("click", () => proposeRemoteDuel("new"));
   $("#acceptRematchBtn")?.addEventListener("click", () => respondToRemoteDuel("accept"));
