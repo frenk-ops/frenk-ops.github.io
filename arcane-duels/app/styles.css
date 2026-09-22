@@ -11208,3 +11208,39 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   .multiplayer-identity { grid-template-columns:auto minmax(0,1fr); }
   .ranked-panel { padding:14px !important; }
 }
+
+
+/* 0.23.4 — stable player tag identity. */
+.profile-name-tag {
+  margin-left:2px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.72em;
+  font-weight:700;
+  letter-spacing:.035em;
+  opacity:.72;
+}
+.profile-player-tag {
+  display:grid;
+  gap:4px;
+  min-width:0;
+  padding:8px 10px;
+  border:1px solid rgba(116,75,35,.20);
+  border-radius:10px;
+  background:rgba(255,248,225,.48);
+}
+.profile-player-tag > span {
+  font-size:.78rem;
+  font-weight:700;
+}
+.profile-player-tag > strong {
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:1rem;
+  letter-spacing:.045em;
+}
+.profile-player-tag > small {
+  opacity:.68;
+  line-height:1.25;
+}
+@media (max-width:720px) {
+  .profile-player-tag { width:100%; }
+}

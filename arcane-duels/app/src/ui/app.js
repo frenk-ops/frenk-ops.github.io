@@ -981,8 +981,8 @@
       const title = document.createElement("strong");
       title.textContent = entry.displayName || "Incantatore";
       const meta = document.createElement("span");
-      meta.textContent = entry.username
-        ? `@${entry.username} · ${t("ranked.gamesShort", { games: Number(entry.gamesPlayed || 0) })}`
+      meta.textContent = entry.playerTag
+        ? `#${entry.playerTag} · ${t("ranked.gamesShort", { games: Number(entry.gamesPlayed || 0) })}`
         : t("ranked.gamesShort", { games: Number(entry.gamesPlayed || 0) });
       copy.append(title, meta);
       const rating = document.createElement("strong");
@@ -5721,7 +5721,7 @@
             <div class="profile-online-heading">
               <div class="profile-online-identity">
                 ${profileAvatarMarkup(selectedAvatar, onlineProfile.display_name || storedName, "profile-avatar profile-avatar-hero")}
-                <div class="profile-online-identity-copy"><small>${t("profile.onlineAccount")}</small><strong>${escapeHtml(onlineProfile.display_name || storedName)}</strong><span>${online.user?.isAnonymous ? t("profile.guestAccount") : escapeHtml(online.user?.email || "")}</span></div>
+                <div class="profile-online-identity-copy"><small>${t("profile.onlineAccount")}</small><strong>${escapeHtml(onlineProfile.display_name || storedName)}${onlineProfile.player_tag ? `<span class="profile-name-tag">#${escapeHtml(onlineProfile.player_tag)}</span>` : ""}</strong><span>${online.user?.isAnonymous ? t("profile.guestAccount") : escapeHtml(online.user?.email || "")}</span></div>
               </div>
               <div class="profile-online-rating"><small>${t("profile.rankedRating")}</small><strong>${Number(onlineRating.rating || 1000)}</strong><span>${t("ranked.classic")}</span></div>
             </div>
@@ -5736,7 +5736,7 @@
         <div class="profile-section-heading"><div><h3>${t("profile.identityTitle")}</h3><p>${t("profile.identityIntro")}</p></div></div>
         <div class="profile-identity-editor">
           <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
-          ${online.configured && !online.error ? `<label><span>${t("profile.username")}</span><input id="profileOnlineUsernameInput" type="text" maxlength="20" autocomplete="username" value="${escapeHtml(onlineProfile.username || "")}"></label>` : ""}
+          ${online.configured && !online.error ? `<div class="profile-player-tag"><span>${t("profile.playerTag")}</span><strong>${onlineProfile.player_tag ? `#${escapeHtml(onlineProfile.player_tag)}` : "—"}</strong><small>${t("profile.playerTagHint")}</small></div>` : ""}
           <button id="saveProfileIdentityBtn" type="button" class="classic-stone-button">${t("profile.saveIdentity")}</button>
         </div>
         <div class="profile-avatar-editor">
@@ -5816,7 +5816,6 @@
         try {
           await A.onlineAccount.updateProfile({
             displayName: name,
-            username: $("#profileOnlineUsernameInput")?.value || "",
             avatarUrl: draftAvatar
           });
           onlineAccountSnapshot = await A.onlineAccount.refreshData();

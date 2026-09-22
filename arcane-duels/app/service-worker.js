@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.23.3-f7dd5d9";
+const BUILD_REVISION = "0.23.4-bebf62b";
 const SHELL_CACHE = `arcane-duels-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `arcane-duels-runtime-${BUILD_REVISION}`;
 

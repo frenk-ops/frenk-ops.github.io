@@ -145,7 +145,7 @@
     async loadProfile() {
       if (!this.user?.id) return null;
       const id = encodeURIComponent(this.user.id);
-      const rows = await this.rest(`profiles?user_id=eq.${id}&select=user_id,display_name,username,avatar_url,created_at,updated_at&limit=1`);
+      const rows = await this.rest(`profiles?user_id=eq.${id}&select=user_id,display_name,player_tag,avatar_url,created_at,updated_at&limit=1`);
       this.profile = rows?.[0] || null;
       return this.profile;
     }
@@ -178,15 +178,6 @@
       if (!this.user?.id) await this.ensureSession();
       const body = {};
       if (input.displayName !== undefined) body.display_name = String(input.displayName || "").replace(/\s+/g, " ").trim().slice(0, 24) || "Giocatore";
-      if (input.username !== undefined) {
-        const username = String(input.username || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
-        if (username && username.length < 3) {
-          const error = new Error("Lo username deve contenere almeno 3 caratteri.");
-          error.code = "USERNAME_INVALID";
-          throw error;
-        }
-        body.username = username || null;
-      }
       if (input.avatarUrl !== undefined) {
         const avatarUrl = String(input.avatarUrl || "").trim();
         if (avatarUrl && !/^card:[a-z0-9_-]+$/i.test(avatarUrl)) {
@@ -199,7 +190,7 @@
       if (!Object.keys(body).length) return this.profile;
       body.updated_at = new Date().toISOString();
       const id = encodeURIComponent(this.user.id);
-      const rows = await this.rest(`profiles?user_id=eq.${id}&select=user_id,display_name,username,avatar_url,created_at,updated_at`, {
+      const rows = await this.rest(`profiles?user_id=eq.${id}&select=user_id,display_name,player_tag,avatar_url,created_at,updated_at`, {
         method: "PATCH",
         body,
         prefer: "return=representation"
