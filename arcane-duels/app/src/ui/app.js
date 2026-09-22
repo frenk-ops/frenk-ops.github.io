@@ -502,6 +502,7 @@
   let rankedTicket = "";
   let rankedPoll = null;
   let rankedSearchStartedAt = 0;
+  let multiplayerEntryMode = preference("multiplayerEntryMode", "free") === "ranked" ? "ranked" : "free";
   let onlineAccountSnapshot = A.onlineAccount?.snapshot?.() || { configured: false, ready: false };
   let currentPlayerName = "";
   let currentOpponentName = "";
@@ -763,9 +764,34 @@
     rankedPoll = null;
   }
 
+  function renderMultiplayerEntryMode() {
+    const ranked = multiplayerEntryMode === "ranked";
+    $("#multiplayerFreePanel")?.classList.toggle("hidden", ranked);
+    $("#rankedPanel")?.classList.toggle("hidden", !ranked);
+    $$("[data-multiplayer-entry-mode]").forEach(button => {
+      const active = button.dataset.multiplayerEntryMode === multiplayerEntryMode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+      button.disabled = Boolean(rankedTicket) && button.dataset.multiplayerEntryMode !== "ranked";
+    });
+  }
+
+  function setMultiplayerEntryMode(mode, options = {}) {
+    const next = mode === "ranked" ? "ranked" : "free";
+    if (rankedTicket && next !== "ranked") return false;
+    multiplayerEntryMode = next;
+    if (options.persist !== false) {
+      try { localStorage.setItem("arcane.multiplayerEntryMode", next); } catch {}
+    }
+    renderMultiplayerEntryMode();
+    if (next === "ranked") {
+      initializeOnlineAccount().then(() => refreshRankedLeaderboard()).catch(() => {});
+    }
+    return true;
+  }
+
   function renderOnlineAccountState() {
     const snapshot = onlineAccountSnapshot || {};
-    $("#rankedPanel")?.classList.toggle("hidden", !snapshot.configured);
     const accountState = $("#rankedAccountState");
     const findButton = $("#findRankedMatchBtn");
     const ratingBadge = $("#rankedRatingBadge");
@@ -784,6 +810,7 @@
     if (findButton) {
       findButton.disabled = Boolean(rankedTicket) || multiplayerServerStatus !== "online" || !snapshot.configured || !snapshot.user || Boolean(snapshot.error);
     }
+    renderMultiplayerEntryMode();
   }
 
   async function initializeOnlineAccount(options = {}) {
@@ -855,6 +882,7 @@
   }
 
   async function startRankedSearch() {
+    setMultiplayerEntryMode("ranked");
     if (!await checkMultiplayerServer({ force: true })) return;
     if (remoteRoomClient?.code) {
       if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = t("ranked.finishCurrentRoom");
@@ -2262,6 +2290,7 @@
     $(`#${name}View`)?.classList.add("active");
     navigation?.setActive(name);
     if (name === "multiplayer") {
+      renderMultiplayerEntryMode();
       checkMultiplayerServer().then(online => {
         if (!online) return;
         refreshRoomBrowser();
@@ -6581,6 +6610,9 @@
       remoteRoomInspectTimer = window.setTimeout(() => inspectRemoteRoom(normalized, { silent: true }), 250);
     }
   });
+  $$("[data-multiplayer-entry-mode]").forEach(button => button.addEventListener("click", () => {
+    setMultiplayerEntryMode(button.dataset.multiplayerEntryMode);
+  }));
   $("#findRankedMatchBtn")?.addEventListener("click", startRankedSearch);
   $("#cancelRankedSearchBtn")?.addEventListener("click", cancelRankedSearch);
   $("#refreshRankedLeaderboardBtn")?.addEventListener("click", refreshRankedLeaderboard);
@@ -6697,6 +6729,7 @@
   });
 
   syncMultiplayerAvailability();
+  renderMultiplayerEntryMode();
   initializeOnlineAccount().then(() => {
     if ($("#profileView")?.classList.contains("active")) renderPlayerProfile();
   }).catch(() => {});

@@ -2987,6 +2987,50 @@ body:has(#setupPanel:not(.hidden)) #restartBtn { visibility: hidden; }
 @keyframes multiplayer-server-pulse{50%{transform:scale(1.18);opacity:.55}}
 #retryMultiplayerServerBtn{padding:8px 12px;border:1px solid #8a6335;border-radius:7px;background:#5a3c25;color:#fff0bf}
 .multiplayer-lobby-actions{display:grid;gap:16px}
+.multiplayer-mode-switcher{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  padding:5px;
+  border:1px solid rgba(89,51,31,.34);
+  border-radius:13px;
+  background:rgba(89,51,31,.08);
+}
+.multiplayer-mode-tab{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  min-height:70px;
+  padding:10px 12px;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:#6e3b24;
+  text-align:left;
+  transition:background .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.multiplayer-mode-tab:hover:not(:disabled){background:rgba(255,247,221,.42)}
+.multiplayer-mode-tab.is-active{
+  border-color:#9c722d;
+  background:linear-gradient(180deg,#33485b,#17394b);
+  color:#ffe49a;
+  box-shadow:inset 0 0 0 1px rgba(255,228,154,.12),0 4px 12px rgba(44,31,22,.14);
+}
+.multiplayer-mode-tab:disabled{cursor:default;opacity:.68}
+.multiplayer-mode-tab>span:last-child{display:grid;gap:3px;min-width:0}
+.multiplayer-mode-tab strong{font-size:1.02rem}
+.multiplayer-mode-tab small{color:inherit;opacity:.76;line-height:1.25}
+.multiplayer-mode-tab-icon{
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  border:1px solid currentColor;
+  border-radius:50%;
+  font-size:1rem;
+}
+.multiplayer-entry-panel{min-width:0}
 .multiplayer-identity{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(180px,.8fr);gap:12px}
 .multiplayer-identity label{display:grid;gap:6px;padding:12px;border:1px solid rgba(89,51,31,.38);border-radius:10px;background:rgba(255,247,221,.45);color:#59331f;font-weight:700}
 .multiplayer-identity input,.multiplayer-identity select{margin:0;min-width:0}
@@ -3058,6 +3102,12 @@ body:has(#setupPanel:not(.hidden)) #restartBtn { visibility: hidden; }
   .multiplayer-choice-card{min-height:0}
   .multiplayer-server-state{grid-template-columns:auto minmax(0,1fr)}
   #retryMultiplayerServerBtn{grid-column:1/-1;width:100%}
+}
+@media (max-width:560px){
+  .multiplayer-mode-switcher{gap:5px;padding:4px}
+  .multiplayer-mode-tab{grid-template-columns:1fr;justify-items:center;min-height:64px;padding:8px;text-align:center}
+  .multiplayer-mode-tab-icon{width:30px;height:30px}
+  .multiplayer-mode-tab small{display:none}
 }
 @media (max-width:460px){
   .online-join-row{display:grid;grid-template-columns:1fr}
