@@ -10497,6 +10497,25 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   font-weight:800;
 }
 .multiplayer-lobby-chat-panel { padding:0 10px 10px; }
+.multiplayer-mute-row {
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:7px;
+  margin:0 0 6px;
+  color:#5c4636;
+  font-size:.72rem;
+  font-weight:700;
+}
+.multiplayer-mute-row input { width:auto;margin:0;accent-color:#77563e; }
+.multiplayer-mute-row-dark {
+  justify-content:space-between;
+  margin:0 0 8px;
+  color:#e8dcc1;
+}
+.multiplayer-mute-row-dark strong { color:#f3dfaa; }
+.multiplayer-mute-row-dark label { display:flex;align-items:center;gap:6px;font-size:.68rem;font-weight:700; }
+.multiplayer-mute-row-dark input { accent-color:#d5ad59; }
 .multiplayer-lobby-chat-messages {
   display:flex;
   flex-direction:column;
@@ -10566,11 +10585,6 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   border-radius:10px;
   background:rgba(13,17,23,.97);
   box-shadow:0 10px 34px rgba(0,0,0,.55);
-}
-.duel-quick-chat-panel > strong {
-  display:block;
-  margin-bottom:7px;
-  color:#f3dfaa;
 }
 .duel-quick-chat-grid {
   display:grid;

@@ -476,6 +476,8 @@
   let remoteQuickChatToastTimer = null;
   let remoteSeenMessageIds = new Set();
   let remoteMessagesInitialized = false;
+  let muteRemoteLobbyChat = preference("muteRemoteLobbyChat", "0") === "1";
+  let muteRemoteQuickPhrases = preference("muteRemoteQuickPhrases", "0") === "1";
   let remoteRecordedMatchId = "";
   let remoteDuelActive = false;
   let remoteBattleSuspendedToMenu = false;
@@ -1255,6 +1257,24 @@
     }
   }
 
+  function setRemoteMutePreference(key, value) {
+    try { localStorage.setItem(`arcane.${key}`, value ? "1" : "0"); } catch {}
+  }
+
+  function syncRemoteMuteControls() {
+    const chatToggle = $("#muteOnlineChatCheckbox");
+    const phraseToggle = $("#muteOnlinePhrasesCheckbox");
+    if (chatToggle) chatToggle.checked = muteRemoteLobbyChat;
+    if (phraseToggle) phraseToggle.checked = muteRemoteQuickPhrases;
+  }
+
+  function remoteMessageMuted(message) {
+    if (!message || message.side === remoteRoomClient?.side) return false;
+    if (message.kind === "text") return muteRemoteLobbyChat;
+    if (message.kind === "phrase") return muteRemoteQuickPhrases;
+    return false;
+  }
+
   function remotePhraseLabel(phraseId) {
     const key = `online.phrase.${String(phraseId || "")}`;
     const translated = t(key);
@@ -1262,7 +1282,7 @@
   }
 
   function showRemotePhraseToast(message, response) {
-    if (!message || message.side === remoteRoomClient?.side || message.kind !== "phrase" || !remoteDuelActive) return;
+    if (!message || message.side === remoteRoomClient?.side || message.kind !== "phrase" || !remoteDuelActive || muteRemoteQuickPhrases) return;
     const toast = $("#duelQuickChatToast");
     if (!toast) return;
     const senderName = normalizedPlayerName(response?.playerNames?.[message.side], t("ui.opponent"));
@@ -1284,10 +1304,12 @@
         remoteSeenMessageIds.add(message.id);
       }
     }
+    syncRemoteMuteControls();
     const root = $("#onlineLobbyChatMessages");
     if (!root) return;
     const names = response?.playerNames || {};
-    root.innerHTML = messages.map(message => {
+    const visibleMessages = messages.filter(message => !remoteMessageMuted(message));
+    root.innerHTML = visibleMessages.map(message => {
       const own = message.side === remoteRoomClient?.side;
       const sender = normalizedPlayerName(names[message.side], own ? t("ui.player") : t("ui.opponent"));
       const body = message.kind === "phrase" ? remotePhraseLabel(message.phraseId) : String(message.text || "");
@@ -6077,6 +6099,21 @@
   $("#proposeNewDuelBtn")?.addEventListener("click", () => proposeRemoteDuel("new"));
   $("#acceptRematchBtn")?.addEventListener("click", () => respondToRemoteDuel("accept"));
   $("#declineRematchBtn")?.addEventListener("click", () => respondToRemoteDuel("decline"));
+  $("#muteOnlineChatCheckbox")?.addEventListener("change", event => {
+    muteRemoteLobbyChat = Boolean(event.currentTarget.checked);
+    setRemoteMutePreference("muteRemoteLobbyChat", muteRemoteLobbyChat);
+    if (lastRemoteRoomState) renderRemoteMessages(lastRemoteRoomState);
+  });
+  $("#muteOnlinePhrasesCheckbox")?.addEventListener("change", event => {
+    muteRemoteQuickPhrases = Boolean(event.currentTarget.checked);
+    setRemoteMutePreference("muteRemoteQuickPhrases", muteRemoteQuickPhrases);
+    if (muteRemoteQuickPhrases) {
+      window.clearTimeout(remoteQuickChatToastTimer);
+      remoteQuickChatToastTimer = null;
+      $("#duelQuickChatToast")?.classList.add("hidden");
+    }
+    if (lastRemoteRoomState) renderRemoteMessages(lastRemoteRoomState);
+  });
   $("#onlineLobbyChatForm")?.addEventListener("submit", async event => {
     event.preventDefault();
     const input = $("#onlineLobbyChatInput");
