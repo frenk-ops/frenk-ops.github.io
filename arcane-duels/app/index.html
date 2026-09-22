@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827">
   <meta name="application-name" content="Arcane Duels">
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
-  <meta name="arcane-app-version" content="0.22.31">
+  <meta name="arcane-app-version" content="0.22.32">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Arcane Duels">
@@ -14,8 +14,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <title>Arcane Duels</title>
-  <link rel="stylesheet" href="styles.css?v=0.22.31-d1f2903">
-  <link rel="stylesheet" href="pwa.css?v=0.22.31-d1f2903">
+  <link rel="stylesheet" href="styles.css?v=0.22.32-f007fb1">
+  <link rel="stylesheet" href="pwa.css?v=0.22.32-f007fb1">
 </head>
 <body class="pages-static-profile">
   <div class="shell">
@@ -23,7 +23,7 @@
       <div class="classic-brand">
         <span class="classic-brand-main">Arcane</span>
         <span class="classic-brand-sub">Duels</span>
-        <small class="app-version-badge" data-arcane-version>v0.22.31 · build d1f2903</small>
+        <small class="app-version-badge" data-arcane-version>v0.22.32 · build f007fb1</small>
       </div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab active" data-view="game" data-i18n="nav.play">Gioca</button>
@@ -456,12 +456,28 @@
                   <strong><span id="onlinePlayerOneScore">0</span><span aria-hidden="true">—</span><span id="onlinePlayerTwoScore">0</span></strong>
                 </div>
 
+                <div id="onlineSessionHistory" class="multiplayer-session-history hidden" aria-live="polite">
+                  <small data-i18n="online.sessionHistory">Ultimi duelli</small>
+                  <div id="onlineSessionHistoryItems" class="multiplayer-session-history-items"></div>
+                </div>
+
                 <div id="onlineInitialReadyActions" class="multiplayer-ready-actions hidden">
                   <button id="toggleOnlineReadyBtn" class="classic-stone-button" type="button" data-i18n="online.markReady">Pronto</button>
                   <small id="onlineReadyHint" data-i18n="online.readyHint">Il duello inizia quando entrambi siete pronti.</small>
                 </div>
 
                 <div id="onlinePostMatchResult" class="multiplayer-post-match-result hidden"></div>
+
+                <div id="onlineSessionManagement" class="multiplayer-session-management hidden">
+                  <button id="resetOnlineSessionBtn" class="classic-stone-button" type="button">
+                    <strong data-i18n="online.resetSession">Nuova sessione</strong>
+                    <small data-i18n="online.resetSessionHint">Azzera punteggio e storico mantenendo l'avversario</small>
+                  </button>
+                  <button id="newOnlineOpponentBtn" class="classic-stone-button ghost" type="button">
+                    <strong data-i18n="online.newOpponent">Cambia avversario</strong>
+                    <small data-i18n="online.newOpponentHint">Libera il posto e riapre la stanza</small>
+                  </button>
+                </div>
 
                 <section class="multiplayer-lobby-rules">
                   <div class="multiplayer-lobby-rules-head">
@@ -647,7 +663,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.22.31 · build d1f2903</span></p>
+          <p class="app-version-info">Arcane Duels <span data-arcane-version>v0.22.32 · build f007fb1</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -696,36 +712,36 @@
     </div>
   </div>
 
-  <script src="src/core/constants.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/rng.js?v=0.22.31-d1f2903"></script>
-  <script src="src/data/cards.js?v=0.22.31-d1f2903"></script>
-  <script src="src/data/original-cards.js?v=0.22.31-d1f2903"></script>
-  <script src="src/i18n/en.js?v=0.22.31-d1f2903"></script>
-  <script src="src/i18n/it.js?v=0.22.31-d1f2903"></script>
-  <script src="src/i18n/ui-labels.js?v=0.22.31-d1f2903"></script>
-  <script src="src/i18n/index.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/card-schema.js?v=0.22.31-d1f2903"></script>
-  <script src="src/data/astral-ai-card-metadata.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/original-rules.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/generator.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/astral-abilities-re.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/astral-spellbook-re.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/passives.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/effects.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/astral-card-effects-re.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/game-engine.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/multiplayer-protocol.js?v=0.22.31-d1f2903"></script>
-  <script src="src/multiplayer/remote-room-client.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/ai.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/astral-ai-re.js?v=0.22.31-d1f2903"></script>
-  <script src="src/core/tournament.js?v=0.22.31-d1f2903"></script>
-  <script src="tests/golden-replay-fixtures.js?v=0.22.31-d1f2903"></script>
-  <script src="tests/test-suite.js?v=0.22.31-d1f2903"></script>
-  <script src="src/ui/navigation.js?v=0.22.31-d1f2903"></script>
-  <script src="src/ui/pause-menu.js?v=0.22.31-d1f2903"></script>
-  <script src="src/ui/tournament-view.js?v=0.22.31-d1f2903"></script>
-  <script src="src/ui/app.js?v=0.22.31-d1f2903"></script>
-  <script src="pwa-install-v2.js?v=0.22.31-d1f2903"></script>
+  <script src="src/core/constants.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/rng.js?v=0.22.32-f007fb1"></script>
+  <script src="src/data/cards.js?v=0.22.32-f007fb1"></script>
+  <script src="src/data/original-cards.js?v=0.22.32-f007fb1"></script>
+  <script src="src/i18n/en.js?v=0.22.32-f007fb1"></script>
+  <script src="src/i18n/it.js?v=0.22.32-f007fb1"></script>
+  <script src="src/i18n/ui-labels.js?v=0.22.32-f007fb1"></script>
+  <script src="src/i18n/index.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/card-schema.js?v=0.22.32-f007fb1"></script>
+  <script src="src/data/astral-ai-card-metadata.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/original-rules.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/generator.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/astral-abilities-re.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/astral-spellbook-re.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/passives.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/effects.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/astral-card-effects-re.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/game-engine.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/multiplayer-protocol.js?v=0.22.32-f007fb1"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/ai.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/astral-ai-re.js?v=0.22.32-f007fb1"></script>
+  <script src="src/core/tournament.js?v=0.22.32-f007fb1"></script>
+  <script src="tests/golden-replay-fixtures.js?v=0.22.32-f007fb1"></script>
+  <script src="tests/test-suite.js?v=0.22.32-f007fb1"></script>
+  <script src="src/ui/navigation.js?v=0.22.32-f007fb1"></script>
+  <script src="src/ui/pause-menu.js?v=0.22.32-f007fb1"></script>
+  <script src="src/ui/tournament-view.js?v=0.22.32-f007fb1"></script>
+  <script src="src/ui/app.js?v=0.22.32-f007fb1"></script>
+  <script src="pwa-install-v2.js?v=0.22.32-f007fb1"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -744,7 +760,7 @@
           registration.waiting.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
           return true;
         };
-        navigator.serviceWorker.register("./service-worker.js?v=0.22.31-d1f2903", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=0.22.32-f007fb1", { updateViaCache: "none" })
           .then(registration => {
             activateWaitingWorker(registration);
             registration.addEventListener("updatefound", () => {

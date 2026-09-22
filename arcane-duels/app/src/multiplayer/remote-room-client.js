@@ -187,6 +187,15 @@
       }));
     }
 
+    async sessionAction(action) {
+      this.ensureIdentity();
+      return this.accept(await this.request(`/api/rooms/${encodeURIComponent(this.code)}/session`, {
+        method: "POST",
+        token: this.token,
+        body: { action }
+      }));
+    }
+
     async sendMessage(text) {
       this.ensureIdentity();
       return this.request(`/api/rooms/${encodeURIComponent(this.code)}/messages`, {
