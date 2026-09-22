@@ -153,4 +153,76 @@
     if (typeof A.astralCleanupDeaths === "function") A.astralCleanupDeaths(engine, events, side);
     return { events };
   };
+
+  function catalogSignature(cards) {
+    return JSON.stringify((cards || []).map(card => [
+      card.id,
+      card.school,
+      card.type,
+      card.level,
+      card.cost,
+      card.attack,
+      card.health,
+      card.text,
+      card.keyword
+    ]));
+  }
+
+  function formulaCatalogForEngine(engine) {
+    if (!engine || typeof A.buildSigianFormulaCatalog !== "function") return null;
+    const cards = engine.cards || [];
+    const signature = catalogSignature(cards);
+    const cached = engine.__sigianFormulaCatalog;
+    if (cached?.signature === signature) return cached.catalog;
+
+    const catalog = A.buildSigianFormulaCatalog(cards);
+    Object.defineProperty(engine, "__sigianFormulaCatalog", {
+      configurable: true,
+      enumerable: false,
+      writable: true,
+      value: { signature, catalog }
+    });
+    return catalog;
+  }
+
+  A.getSigianFormulaCatalogForEngine = function getSigianFormulaCatalogForEngine(engine) {
+    return formulaCatalogForEngine(engine);
+  };
+
+  A.resolveSigianCardEffect = function resolveSigianCardEffect(engine, side, source, trigger, events) {
+    const output = Array.isArray(events) ? events : [];
+    const cardId = source?.id;
+    if (!cardId) throw new Error("Router Sigian: carta senza id.");
+    if (!["onSummon", "onPlay"].includes(trigger)) {
+      throw new Error(`Router Sigian: trigger non supportato ${trigger}.`);
+    }
+
+    const catalog = formulaCatalogForEngine(engine);
+    const formula = catalog?.byId?.[cardId] || null;
+
+    if (formula?.source?.mode === A.SIGIAN_MIGRATION_MODES.NATIVE) {
+      const result = A.executeSigianFormula(engine, side, formula, { trigger });
+      output.push(...result.events);
+      return {
+        mode: A.SIGIAN_MIGRATION_MODES.NATIVE,
+        formulaId: formula.id,
+        events: result.events
+      };
+    }
+
+    if (trigger === "onSummon" && typeof A.astralOnSummon === "function") {
+      A.astralOnSummon(engine, side, source, output);
+    } else if (trigger === "onPlay" && typeof A.astralOnSpell === "function") {
+      A.astralOnSpell(engine, side, source, output);
+    } else {
+      throw new Error(`Router Sigian: dispatcher legacy mancante per ${cardId}/${trigger}.`);
+    }
+
+    return {
+      mode: formula?.source?.mode || A.SIGIAN_MIGRATION_MODES.LEGACY_DELEGATED,
+      formulaId: formula?.id || cardId,
+      events: output
+    };
+  };
+
 })(window.Arcane = window.Arcane || {});
