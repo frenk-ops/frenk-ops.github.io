@@ -3010,6 +3010,10 @@ body:has(#setupPanel:not(.hidden)) #restartBtn { visibility: hidden; }
 .multiplayer-players small,.multiplayer-players strong{display:block}
 .multiplayer-players small{color:#72513b}
 .multiplayer-players strong{margin-top:3px;color:#3c2a20;font-size:1.05rem}
+.multiplayer-session-score{display:grid;justify-items:center;gap:2px;width:max-content;min-width:112px;margin:-5px auto 14px;padding:7px 14px;border:1px solid rgba(89,51,31,.3);border-radius:999px;background:rgba(255,247,221,.5);color:#4b3425}
+.multiplayer-session-score small{font-size:.63rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7b5a43}
+.multiplayer-session-score strong{display:flex;align-items:center;gap:9px;font:800 1.05rem/1 Georgia,serif;color:#17394b}
+.multiplayer-session-score.hidden{display:none!important}
 .multiplayer-ready-state{display:inline-flex!important;width:max-content;margin:7px auto 0;padding:3px 8px;border:1px solid rgba(139,94,25,.35);border-radius:999px;background:rgba(139,94,25,.08);color:#8b5e19;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
 .multiplayer-ready-state.is-ready{border-color:rgba(42,138,74,.42);background:rgba(42,138,74,.1);color:#2a7b45}
 .multiplayer-ready-state.hidden{display:none!important}

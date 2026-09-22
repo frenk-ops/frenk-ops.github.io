@@ -1375,6 +1375,12 @@
       }
     }
 
+    const sessionScore = response?.sessionScore || {};
+    const scoreRoot = $("#onlineSessionScore");
+    scoreRoot?.classList.toggle("hidden", !response?.roomPresence?.enemy);
+    if ($("#onlinePlayerOneScore")) $("#onlinePlayerOneScore").textContent = String(Math.max(0, Number(sessionScore.player || 0)));
+    if ($("#onlinePlayerTwoScore")) $("#onlinePlayerTwoScore").textContent = String(Math.max(0, Number(sessionScore.enemy || 0)));
+
     const lobbyReady = response?.lobbyReady || {};
     const opponentPresent = remoteRoomClient?.side === "player"
       ? response?.roomPresence?.enemy !== false
