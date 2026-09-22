@@ -187,6 +187,15 @@
         }
         body.username = username || null;
       }
+      if (input.avatarUrl !== undefined) {
+        const avatarUrl = String(input.avatarUrl || "").trim();
+        if (avatarUrl && !/^card:[a-z0-9_-]+$/i.test(avatarUrl)) {
+          const error = new Error("Immagine profilo non valida.");
+          error.code = "AVATAR_INVALID";
+          throw error;
+        }
+        body.avatar_url = avatarUrl || null;
+      }
       if (!Object.keys(body).length) return this.profile;
       body.updated_at = new Date().toISOString();
       const id = encodeURIComponent(this.user.id);

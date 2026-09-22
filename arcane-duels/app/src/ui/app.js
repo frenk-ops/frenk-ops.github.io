@@ -496,6 +496,7 @@
   let multiplayerServerRetryTimer = null;
   let multiplayerControlsLocked = false;
   let multiplayerUpdateRequested = false;
+  let multiplayerUpdateReady = false;
   let inspectedRemoteRoomCode = "";
   let inspectedRemoteRoomSettings = null;
   let remoteRoomInspectTimer = null;
@@ -514,6 +515,22 @@
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
 
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
+  const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
+  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "profile", "rules", "diagnostics"]);
+
+  function rememberedView() {
+    try {
+      const value = sessionStorage.getItem(ACTIVE_VIEW_KEY) || "";
+      return RESTORABLE_VIEWS.has(value) ? value : "game";
+    } catch {
+      return "game";
+    }
+  }
+
+  function rememberView(name) {
+    if (!RESTORABLE_VIEWS.has(name)) return;
+    try { sessionStorage.setItem(ACTIVE_VIEW_KEY, name); } catch {}
+  }
 
   function clearPersistedLocalDuel() {
     try { localStorage.removeItem(ACTIVE_LOCAL_DUEL_KEY); } catch {}
@@ -798,6 +815,14 @@
     const progression = snapshot.progression || {};
     const rating = snapshot.rating || {};
     if (ratingBadge) ratingBadge.textContent = String(Number(rating.rating || 1000));
+    const avatarRoot = $("#onlinePlayerAvatar");
+    if (avatarRoot) {
+      avatarRoot.innerHTML = profileAvatarMarkup(
+        snapshot.profile?.avatar_url || localStorage.getItem("arcane.profileAvatar") || "",
+        snapshot.profile?.display_name || selectedPlayerName(),
+        "profile-avatar"
+      );
+    }
     if (accountState) {
       if (!snapshot.configured) accountState.textContent = t("ranked.accountUnavailable");
       else if (snapshot.error) accountState.textContent = t("ranked.accountError");
@@ -819,9 +844,15 @@
     if (onlineAccountSnapshot?.user && onlineAccountSnapshot?.profile) {
       const localName = selectedPlayerName();
       const remoteName = String(onlineAccountSnapshot.profile.display_name || "");
-      if (localName && remoteName === "Giocatore" && localName !== "Giocatore" && localName !== "Player") {
+      const localAvatar = normalizeProfileAvatar(localStorage.getItem("arcane.profileAvatar") || "");
+      const shouldSyncName = localName && remoteName === "Giocatore" && localName !== "Giocatore" && localName !== "Player";
+      const shouldSyncAvatar = localAvatar && !normalizeProfileAvatar(onlineAccountSnapshot.profile.avatar_url || "");
+      if (shouldSyncName || shouldSyncAvatar) {
         try {
-          await A.onlineAccount.updateProfile({ displayName: localName });
+          await A.onlineAccount.updateProfile({
+            ...(shouldSyncName ? { displayName: localName } : {}),
+            ...(shouldSyncAvatar ? { avatarUrl: localAvatar } : {})
+          });
           onlineAccountSnapshot = A.onlineAccount.snapshot();
         } catch {}
       }
@@ -1018,7 +1049,12 @@
             ? "online.updatingClient"
             : "online.serverWakeHint"
     );
-    $("#retryMultiplayerServerBtn")?.classList.toggle("hidden", state !== "offline");
+    const retryButton = $("#retryMultiplayerServerBtn");
+    if (retryButton) {
+      const visible = state === "offline" || state === "updating";
+      retryButton.classList.toggle("hidden", !visible);
+      retryButton.textContent = state === "updating" ? t("online.updateNow") : t("online.retry");
+    }
     setMultiplayerControlsDisabled(multiplayerControlsLocked);
   }
 
@@ -1036,31 +1072,46 @@
     return Boolean($("#battlePanel") && !$("#battlePanel").classList.contains("hidden"));
   }
 
-  async function activateWaitingAppUpdateIfSafe() {
-    if (duelIsVisible() || !("serviceWorker" in navigator)) return false;
+  async function waitForInstalledAppWorker(registration) {
+    if (!registration) return null;
+    await registration.update();
+    let worker = registration.waiting;
+    if (!worker && registration.installing) {
+      worker = registration.installing;
+      if (worker.state !== "installed") {
+        await new Promise(resolve => {
+          const timeout = window.setTimeout(resolve, 6000);
+          const onStateChange = () => {
+            if (!["installed", "redundant"].includes(worker.state)) return;
+            window.clearTimeout(timeout);
+            worker.removeEventListener("statechange", onStateChange);
+            resolve();
+          };
+          worker.addEventListener("statechange", onStateChange);
+        });
+      }
+      worker = registration.waiting || (worker.state === "installed" ? worker : null);
+    }
+    return worker?.state === "installed" ? worker : registration.waiting || null;
+  }
+
+  async function activateWaitingAppUpdateIfSafe(options = {}) {
+    if (!options.explicit || duelIsVisible() || !("serviceWorker" in navigator)) return false;
     try {
       const registration = await navigator.serviceWorker.getRegistration();
       if (!registration) return false;
-      await registration.update();
-      let worker = registration.waiting;
-      if (!worker && registration.installing) {
-        worker = registration.installing;
-        if (worker.state !== "installed") {
-          await new Promise(resolve => {
-            const timeout = window.setTimeout(resolve, 6000);
-            const onStateChange = () => {
-              if (!["installed", "redundant"].includes(worker.state)) return;
-              window.clearTimeout(timeout);
-              worker.removeEventListener("statechange", onStateChange);
-              resolve();
-            };
-            worker.addEventListener("statechange", onStateChange);
-          });
-        }
-        worker = registration.waiting || worker;
-      }
-      if (!worker || worker.state !== "installed") return false;
+      const worker = await waitForInstalledAppWorker(registration);
+      if (!worker) return false;
+      rememberView("multiplayer");
+      let reloaded = false;
+      const reload = () => {
+        if (reloaded) return;
+        reloaded = true;
+        location.reload();
+      };
+      navigator.serviceWorker.addEventListener("controllerchange", reload, { once: true });
       worker.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
+      window.setTimeout(reload, 1800);
       return true;
     } catch {
       return false;
@@ -1072,43 +1123,24 @@
       setMultiplayerServerState("updating", t("online.updateAfterDuel"));
       return;
     }
-    if (multiplayerUpdateRequested) return;
+    if (multiplayerUpdateRequested) {
+      if (multiplayerUpdateReady) setMultiplayerServerState("updating", t("online.updateReady"));
+      return;
+    }
     multiplayerUpdateRequested = true;
     setMultiplayerServerState("updating", t("online.updatingClient"));
-    let activationRequested = false;
     try {
       if ("serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.getRegistration();
-        if (registration) {
-          await registration.update();
-          let worker = registration.waiting;
-          if (!worker && registration.installing) {
-            worker = registration.installing;
-            if (worker.state !== "installed") {
-              await new Promise(resolve => {
-                const timeout = window.setTimeout(resolve, 6000);
-                const onStateChange = () => {
-                  if (!["installed", "redundant"].includes(worker.state)) return;
-                  window.clearTimeout(timeout);
-                  worker.removeEventListener("statechange", onStateChange);
-                  resolve();
-                };
-                worker.addEventListener("statechange", onStateChange);
-              });
-            }
-            worker = registration.waiting || worker;
-          }
-          if (worker?.state === "installed" || registration.waiting === worker) {
-            worker.postMessage({ type: "ACTIVATE_UPDATE", safeToActivate: true });
-            activationRequested = true;
-          }
-        }
+        multiplayerUpdateReady = Boolean(await waitForInstalledAppWorker(registration));
       }
-    } catch {}
-    window.setTimeout(() => {
-      const duelActive = Boolean($("#battlePanel") && !$("#battlePanel").classList.contains("hidden"));
-      if (!duelActive) location.reload();
-    }, activationRequested ? 900 : 1000);
+    } catch {
+      multiplayerUpdateReady = false;
+    }
+    setMultiplayerServerState(
+      "updating",
+      multiplayerUpdateReady ? t("online.updateReady") : t("online.updatingClient")
+    );
   }
 
   function scheduleMultiplayerServerRetry(delay = 4000) {
@@ -1470,7 +1502,7 @@
     renderRemoteLobby(lastRemoteRoomState, { deferBattle: true });
     renderRecoverableMatch();
     syncBackgroundMusicScene();
-    activateWaitingAppUpdateIfSafe();
+    if (multiplayerUpdateRequested) requestLatestAppVersion();
   }
 
   function clearRemoteRoomPreview() {
@@ -2286,9 +2318,11 @@
   }
 
   function switchView(name) {
-    $$(".view").forEach(view => view.classList.remove("active"));
+    name = RESTORABLE_VIEWS.has(name) ? name : "game";
+    document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
     $(`#${name}View`)?.classList.add("active");
     navigation?.setActive(name);
+    rememberView(name);
     if (name === "multiplayer") {
       renderMultiplayerEntryMode();
       checkMultiplayerServer().then(online => {
@@ -2865,7 +2899,7 @@
     clearFxLayer();
     setMessage("");
     syncBackgroundMusicScene();
-    activateWaitingAppUpdateIfSafe();
+    if (multiplayerUpdateRequested) requestLatestAppVersion();
   }
 
   function pauseSubtitle() {
@@ -5625,6 +5659,44 @@
     }
   }
 
+  function normalizeProfileAvatar(value) {
+    const raw = String(value || "").trim();
+    if (!raw.startsWith("card:")) return "";
+    const id = raw.slice(5);
+    return allAstralCards().some(card => card.id === id) ? `card:${id}` : "";
+  }
+
+  function profileAvatarCard(value) {
+    const normalized = normalizeProfileAvatar(value);
+    if (!normalized) return null;
+    const id = normalized.slice(5);
+    return allAstralCards().find(card => card.id === id) || null;
+  }
+
+  function profileAvatarChoices(selectedValue = "") {
+    const creatures = allAstralCards().filter(card => card?.type === "creature");
+    if (!creatures.length) return [];
+    const target = Math.min(18, creatures.length);
+    const picked = [];
+    for (let index = 0; index < target; index += 1) {
+      const card = creatures[Math.floor(index * creatures.length / target)];
+      if (card && !picked.some(item => item.id === card.id)) picked.push(card);
+    }
+    const selected = profileAvatarCard(selectedValue);
+    if (selected && !picked.some(card => card.id === selected.id)) picked.unshift(selected);
+    return picked.slice(0, 18);
+  }
+
+  function profileAvatarImage(card) {
+    return remasteredCardImage(card) || originalCardImage(card);
+  }
+
+  function profileAvatarMarkup(value, name = "", className = "profile-avatar") {
+    const card = profileAvatarCard(value);
+    const label = String(name || t("ui.player")).trim().charAt(0).toUpperCase() || "?";
+    if (!card) return `<span class="${className}" aria-hidden="true">${escapeHtml(label)}</span>`;
+    return `<span class="${className}" aria-hidden="true"><img src="${escapeHtml(profileAvatarImage(card))}" alt="" loading="lazy" draggable="false"></span>`;
+  }
   function renderPlayerProfile() {
     const root = $("#playerProfileContent");
     if (!root) return;
@@ -5638,29 +5710,46 @@
     const onlineProgress = online.progression || {};
     const onlineRating = online.rating || {};
     const onlineProfile = online.profile || {};
+    const selectedAvatar = normalizeProfileAvatar(onlineProfile.avatar_url || localStorage.getItem("arcane.profileAvatar") || "");
+    const avatarCards = profileAvatarChoices(selectedAvatar);
+    let draftAvatar = selectedAvatar;
     const onlineCard = !online.configured
       ? ""
       : online.error
         ? `<section class="profile-online-card ornate-subpanel"><div><small>${t("profile.onlineAccount")}</small><strong>${t("ranked.accountError")}</strong></div></section>`
         : `<section class="profile-online-card ornate-subpanel">
             <div class="profile-online-heading">
-              <div><small>${t("profile.onlineAccount")}</small><strong>${escapeHtml(onlineProfile.display_name || storedName)}</strong><span>${online.user?.isAnonymous ? t("profile.guestAccount") : escapeHtml(online.user?.email || "")}</span></div>
-              <div class="profile-online-rating"><small>${t("profile.rankedRating")}</small><strong>${Number(onlineRating.rating || 1000)}</strong></div>
+              <div class="profile-online-identity">
+                ${profileAvatarMarkup(selectedAvatar, onlineProfile.display_name || storedName, "profile-avatar profile-avatar-hero")}
+                <div class="profile-online-identity-copy"><small>${t("profile.onlineAccount")}</small><strong>${escapeHtml(onlineProfile.display_name || storedName)}</strong><span>${online.user?.isAnonymous ? t("profile.guestAccount") : escapeHtml(online.user?.email || "")}</span></div>
+              </div>
+              <div class="profile-online-rating"><small>${t("profile.rankedRating")}</small><strong>${Number(onlineRating.rating || 1000)}</strong><span>${t("ranked.classic")}</span></div>
             </div>
             <div class="profile-online-stats">
               <span><small>${t("profile.onlineLevel", { level: Number(onlineProgress.level || 1) })}</small><strong>${t("profile.onlineXp", { xp: Number(onlineProgress.xp || 0) })}</strong></span>
               <span><small>${Number(onlineProgress.games_played || 0)} ${t("profile.gamesPlayed", { value: "" }).replace(/^\s+|\s+$/g, "")}</small><strong>${t("profile.onlineRecord", { wins: Number(onlineProgress.wins || 0), losses: Number(onlineProgress.losses || 0), draws: Number(onlineProgress.draws || 0) })}</strong></span>
             </div>
-            <div class="profile-online-edit classic-config-grid">
-              <label><span>${t("profile.username")}</span><input id="profileOnlineUsernameInput" type="text" maxlength="20" autocomplete="username" value="${escapeHtml(onlineProfile.username || "")}"></label>
-              <button id="saveOnlineProfileBtn" type="button" class="classic-stone-button">${t("profile.saveOnline")}</button>
-            </div>
           </section>`;
     root.innerHTML = `
       ${onlineCard}
-      <section class="profile-identity-card ornate-subpanel classic-config-grid">
-        <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
-        <button id="saveProfileNameBtn" type="button" class="classic-stone-button">${t("profile.saveName")}</button>
+      <section class="profile-customize-card ornate-subpanel">
+        <div class="profile-section-heading"><div><h3>${t("profile.identityTitle")}</h3><p>${t("profile.identityIntro")}</p></div></div>
+        <div class="profile-identity-editor">
+          <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
+          ${online.configured && !online.error ? `<label><span>${t("profile.username")}</span><input id="profileOnlineUsernameInput" type="text" maxlength="20" autocomplete="username" value="${escapeHtml(onlineProfile.username || "")}"></label>` : ""}
+          <button id="saveProfileIdentityBtn" type="button" class="classic-stone-button">${t("profile.saveIdentity")}</button>
+        </div>
+        <div class="profile-avatar-editor">
+          <div class="profile-avatar-editor-copy"><strong>${t("profile.avatar")}</strong><small>${t("profile.avatarHint")}</small></div>
+          <div class="profile-avatar-grid" role="listbox" aria-label="${escapeHtml(t("profile.avatar"))}">
+            <button class="profile-avatar-option ${selectedAvatar ? "" : "is-selected"}" type="button" data-profile-avatar="" title="${escapeHtml(t("profile.noAvatar"))}" aria-selected="${selectedAvatar ? "false" : "true"}"><span class="profile-avatar-initial">${escapeHtml(storedName.charAt(0).toUpperCase() || "?")}</span></button>
+            ${avatarCards.map(card => {
+              const value = `card:${card.id}`;
+              const selected = selectedAvatar === value;
+              return `<button class="profile-avatar-option ${selected ? "is-selected" : ""}" type="button" data-profile-avatar="${escapeHtml(value)}" title="${escapeHtml(cardName(card))}" aria-selected="${selected ? "true" : "false"}"><img src="${escapeHtml(profileAvatarImage(card))}" alt="" loading="lazy" draggable="false"></button>`;
+            }).join("")}
+          </div>
+        </div>
       </section>
       <div class="profile-mode-grid">
         <article class="profile-mode-card"><span>${t("profile.singlePlayer")}</span><strong>${t("profile.record", { wins: single.wins || 0, losses: single.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: single.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(single.fastestWinMs)}</small></article>
@@ -5697,33 +5786,46 @@
         <button class="classic-stone-button" type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>
         <button class="classic-stone-button" type="button" data-view-jump="diagnostics">${t("nav.options")}</button>
       </div>`;
-    $("#saveProfileNameBtn")?.addEventListener("click", async () => {
+    root.querySelectorAll("[data-profile-avatar]").forEach(button => {
+      button.addEventListener("click", () => {
+        draftAvatar = normalizeProfileAvatar(button.dataset.profileAvatar || "");
+        root.querySelectorAll("[data-profile-avatar]").forEach(option => {
+          const selected = normalizeProfileAvatar(option.dataset.profileAvatar || "") === draftAvatar;
+          option.classList.toggle("is-selected", selected);
+          option.setAttribute("aria-selected", selected ? "true" : "false");
+        });
+        const preview = root.querySelector(".profile-avatar-hero");
+        if (preview) {
+          const card = profileAvatarCard(draftAvatar);
+          preview.innerHTML = card
+            ? `<img src="${escapeHtml(profileAvatarImage(card))}" alt="" loading="eager" draggable="false">`
+            : escapeHtml((($("#profilePlayerNameInput")?.value || storedName).trim().charAt(0).toUpperCase()) || "?");
+        }
+      });
+    });
+    $("#saveProfileIdentityBtn")?.addEventListener("click", async () => {
       const name = normalizedPlayerName($("#profilePlayerNameInput")?.value, t("ui.player"));
       profile.playerName = name;
       A.saveProfile(profile);
       localStorage.setItem("arcane.playerName", name);
+      if (draftAvatar) localStorage.setItem("arcane.profileAvatar", draftAvatar);
+      else localStorage.removeItem("arcane.profileAvatar");
       if ($("#playerNameInput")) $("#playerNameInput").value = name;
       if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = name;
       if (onlineAccountSnapshot?.user && A.onlineAccount?.configured?.()) {
         try {
-          await A.onlineAccount.updateProfile({ displayName: name });
-          onlineAccountSnapshot = A.onlineAccount.snapshot();
-        } catch {}
+          await A.onlineAccount.updateProfile({
+            displayName: name,
+            username: $("#profileOnlineUsernameInput")?.value || "",
+            avatarUrl: draftAvatar
+          });
+          onlineAccountSnapshot = await A.onlineAccount.refreshData();
+          renderOnlineAccountState();
+        } catch (error) {
+          if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
+        }
       }
       renderPlayerProfile();
-    });
-    $("#saveOnlineProfileBtn")?.addEventListener("click", async () => {
-      try {
-        await A.onlineAccount.updateProfile({
-          displayName: normalizedPlayerName($("#profilePlayerNameInput")?.value || storedName, t("ui.player")),
-          username: $("#profileOnlineUsernameInput")?.value || ""
-        });
-        onlineAccountSnapshot = await A.onlineAccount.refreshData();
-        renderOnlineAccountState();
-        renderPlayerProfile();
-      } catch (error) {
-        if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
-      }
     });
     root.querySelectorAll("[data-view-jump]").forEach(button => {
       button.addEventListener("click", () => switchView(button.dataset.viewJump));
@@ -6021,6 +6123,8 @@
     if (musicUnlockListenersArmed) return;
     musicUnlockListenersArmed = true;
     window.addEventListener("pointerdown", unlockMusicFromGesture, true);
+    window.addEventListener("touchstart", unlockMusicFromGesture, { capture: true, passive: true });
+    window.addEventListener("click", unlockMusicFromGesture, true);
     window.addEventListener("keydown", unlockMusicFromGesture, true);
   }
 
@@ -6028,6 +6132,8 @@
     if (!musicUnlockListenersArmed) return;
     musicUnlockListenersArmed = false;
     window.removeEventListener("pointerdown", unlockMusicFromGesture, true);
+    window.removeEventListener("touchstart", unlockMusicFromGesture, true);
+    window.removeEventListener("click", unlockMusicFromGesture, true);
     window.removeEventListener("keydown", unlockMusicFromGesture, true);
   }
 
@@ -6201,6 +6307,7 @@
       resume() {
         suspended = document.visibilityState === "hidden";
         if (suspended) return;
+        if (bgmEnabled && !unlocked) armMusicUnlock();
 
         // iOS may emit visibilitychange, pageshow and focus for the same foreground
         // transition. Collapse them into one resume sequence so overlapping play()
@@ -6508,7 +6615,17 @@
     });
   }
 
-  $("#retryMultiplayerServerBtn")?.addEventListener("click", () => checkMultiplayerServer({ force: true }));
+  $("#retryMultiplayerServerBtn")?.addEventListener("click", async () => {
+    if (multiplayerServerStatus === "updating") {
+      const activated = await activateWaitingAppUpdateIfSafe({ explicit: true });
+      if (!activated) {
+        rememberView("multiplayer");
+        location.reload();
+      }
+      return;
+    }
+    checkMultiplayerServer({ force: true });
+  });
   $("#refreshRoomBrowserBtn")?.addEventListener("click", refreshRoomBrowser);
   $("#showAvailableRoomsOnly")?.addEventListener("change", refreshRoomBrowser);
   $("#resumeOnlineMatchBtn")?.addEventListener("click", async () => {
@@ -6770,7 +6887,7 @@
   inspectedCardId = allAstralCards()[0]?.id || null;
   collectionSelectedCardId = inspectedCardId;
   renderCollectionPanels();
-  switchView("game");
+  switchView(rememberedView());
   let restoredRemoteRoom = false;
   try {
     const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
