@@ -182,10 +182,28 @@
   };
 
   A.materializeLegacyCardFromFormula = function materializeLegacyCardFromFormula(formula) {
-    if (!formula?.legacySnapshot) {
-      throw new Error(`La Formula ${formula?.id || "senza-id"} non contiene uno snapshot legacy.`);
-    }
-    return clone(formula.legacySnapshot);
+    if (!formula) throw new Error("Impossibile materializzare una Formula assente.");
+    if (formula.legacySnapshot) return clone(formula.legacySnapshot);
+
+    const generated = {
+      id: formula.id,
+      name: formula.presentation?.name || formula.id,
+      school: formula.school,
+      cost: Math.max(0, Number(formula.stats?.cost || 0)),
+      level: Math.max(0, Number(formula.stats?.cost || 0)),
+      type: formula.type,
+      attack: Math.max(0, Number(formula.stats?.attack || 0)),
+      hp: Math.max(0, Number(formula.stats?.health || 0)),
+      health: Math.max(0, Number(formula.stats?.health || 0)),
+      dynamicAttack: null,
+      text: formula.presentation?.text || "",
+      keyword: formula.presentation?.keyword || "",
+      set: formula.source?.set || "custom",
+      art: formula.presentation?.art || "",
+      imageKey: formula.presentation?.imageKey ?? null,
+      effects: []
+    };
+    return typeof A.normalizeCard === "function" ? A.normalizeCard(generated) : generated;
   };
 
   A.buildFormulaCatalog = function buildFormulaCatalog(cards) {
