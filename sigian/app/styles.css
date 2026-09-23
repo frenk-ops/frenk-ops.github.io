@@ -12382,10 +12382,18 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 .sigian-sigil-entry.is-primary:only-child .sigian-sigil-medallion {
   margin-top:0 !important;
 }
-.sigian-modifier-chip,
+/* 0.23.9 — keep modifier badge typography/contrast canonical in Cards and duel. */
+.sigian-modifier-chip {
+  font-family:system-ui,sans-serif !important;
+  font-weight:700 !important;
+}
 .sigian-modifier-chip > span,
 .sigian-modifier-chip .sigian-modifier-glyph {
   color:inherit !important;
+}
+.sigian-modifier-chip > span {
+  font-family:inherit !important;
+  font-weight:inherit !important;
 }
 .sigian-sigil-name {
   color:#2a2018 !important;
