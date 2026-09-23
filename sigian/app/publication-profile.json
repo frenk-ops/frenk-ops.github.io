@@ -9,9 +9,9 @@
   "multiplayerServerIncluded": false,
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
-  "version": "0.23.6",
-  "build": "a38efc5",
-  "revision": "0.23.6-sigian-a38efc5",
+  "version": "0.23.7",
+  "build": "fff1cda",
+  "revision": "0.23.7-sigian-fff1cda",
   "formulaFoundation": {
     "nativeCards": 65,
     "legacyDelegatedCards": 0,
@@ -33,6 +33,7 @@
       "type",
       "cost"
     ],
-    "schoolAccentOnly": true
+    "schoolAccentOnly": true,
+    "sigilPrimaryCollisionFixed": true
   }
 }
