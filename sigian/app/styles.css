@@ -12070,3 +12070,264 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   .page-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
   .sigian-full-card { width:min(100%,324px) !important; }
 }
+
+
+/* 0.23.6 Sigian — Cards/Collection readability pass.
+   This block intentionally wins over the older Arcane menu skin. */
+#cardsView .collection-page-filters {
+  display:grid;
+  gap:9px;
+  padding:12px 14px !important;
+  border:1px solid rgba(108,179,208,.34) !important;
+  border-radius:12px !important;
+  background:
+    radial-gradient(circle at 82% 12%,rgba(59,150,184,.08),transparent 30%),
+    linear-gradient(180deg,#0b2031 0%,#071624 100%) !important;
+  color:#f6e7bd !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.025),
+    0 6px 18px rgba(0,0,0,.18) !important;
+}
+#cardsView .collection-page-filter-row {
+  display:grid !important;
+  grid-template-columns:74px minmax(0,1fr);
+  align-items:center !important;
+  gap:9px !important;
+  min-width:0;
+}
+#cardsView .collection-page-filter-row > span {
+  flex:none !important;
+  color:#f2dda7 !important;
+  font:800 .68rem/1 system-ui,sans-serif !important;
+  letter-spacing:.09em !important;
+  text-transform:uppercase !important;
+}
+#cardsView .collection-page-filter-row .mini-filter-grid {
+  display:flex !important;
+  flex-wrap:wrap;
+  gap:6px !important;
+  min-width:0;
+}
+#cardsView .mini-filter-btn {
+  min-width:0 !important;
+  min-height:34px !important;
+  padding:6px 10px !important;
+  border:1px solid #415568 !important;
+  border-radius:8px !important;
+  background:linear-gradient(180deg,#1a2c3d,#101d2a) !important;
+  color:#f3e7c4 !important;
+  font:700 .78rem/1 Georgia,serif !important;
+  text-shadow:0 1px 1px rgba(0,0,0,.8) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035) !important;
+  transition:border-color .14s ease,background .14s ease,box-shadow .14s ease,color .14s ease,transform .14s ease;
+}
+#cardsView .mini-filter-btn:hover {
+  transform:translateY(-1px);
+  border-color:#7a93a8 !important;
+  background:linear-gradient(180deg,#21384d,#132435) !important;
+  color:#fff2cf !important;
+}
+#cardsView .mini-filter-btn.active {
+  border:1px solid #d7af56 !important;
+  background:linear-gradient(180deg,#6c5425,#3b2d15) !important;
+  color:#fff1b5 !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,236,166,.16),
+    0 0 0 1px rgba(215,175,86,.12) !important;
+}
+/* School filters use the actual school accent only on the active edge/icon. */
+#cardsView .collection-page-filter-schools .mini-filter-btn[data-filter-value="fire"].active {
+  border-color:#e7774a !important;
+  box-shadow:inset 0 0 0 1px rgba(231,119,74,.17),0 0 8px rgba(231,119,74,.10) !important;
+}
+#cardsView .collection-page-filter-schools .mini-filter-btn[data-filter-value="water"].active {
+  border-color:#60b9e4 !important;
+  box-shadow:inset 0 0 0 1px rgba(96,185,228,.16),0 0 8px rgba(96,185,228,.10) !important;
+}
+#cardsView .collection-page-filter-schools .mini-filter-btn[data-filter-value="air"].active {
+  border-color:#79d7e9 !important;
+  background:linear-gradient(180deg,#245062,#16323f) !important;
+  color:#e9fbff !important;
+  box-shadow:inset 0 0 0 1px rgba(121,215,233,.18),0 0 8px rgba(121,215,233,.12) !important;
+}
+#cardsView .collection-page-filter-schools .mini-filter-btn[data-filter-value="nature"].active {
+  border-color:#97c668 !important;
+  box-shadow:inset 0 0 0 1px rgba(151,198,104,.16),0 0 8px rgba(151,198,104,.10) !important;
+}
+#cardsView .collection-page-filter-schools .mini-filter-btn[data-filter-value="death"].active {
+  border-color:#bd83c7 !important;
+  box-shadow:inset 0 0 0 1px rgba(189,131,199,.16),0 0 8px rgba(189,131,199,.10) !important;
+}
+#cardsView .school-filter-icon {
+  width:16px !important;
+  height:16px !important;
+  vertical-align:-3px;
+  color:currentColor !important;
+}
+#cardsView .collection-type-filters .mini-filter-btn {
+  min-width:84px !important;
+}
+#cardsView .level-filters.wide .mini-filter-btn {
+  width:35px !important;
+  min-width:35px !important;
+  padding-inline:0 !important;
+  font-family:system-ui,sans-serif !important;
+  font-size:.74rem !important;
+}
+#cardsView .level-filters.wide .mini-filter-btn:first-child {
+  width:auto !important;
+  min-width:56px !important;
+  padding-inline:9px !important;
+  font-family:Georgia,serif !important;
+}
+#cardsView .collection-page-filter-search {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end;
+  gap:12px !important;
+  padding-top:2px;
+}
+#cardsView .collection-page-filter-search .search-label {
+  display:grid;
+  gap:5px !important;
+  color:#f2dda7 !important;
+  font:800 .68rem/1.2 system-ui,sans-serif !important;
+}
+#cardsView .collection-page-filter-search input {
+  min-height:40px !important;
+  padding:8px 12px !important;
+  border:1px solid #8a7445 !important;
+  border-radius:8px !important;
+  background:#f0dfad !important;
+  color:#241b12 !important;
+  font:600 .84rem/1.2 system-ui,sans-serif !important;
+  box-shadow:inset 0 1px 3px rgba(68,45,20,.17) !important;
+}
+#cardsView .collection-page-filter-search input:focus {
+  outline:2px solid rgba(107,204,230,.35) !important;
+  outline-offset:1px;
+  border-color:#6ec9df !important;
+}
+#cardsView .collection-page-filter-search input::placeholder {
+  color:#715f45 !important;
+  opacity:.88 !important;
+}
+#cardsView .collection-page-count {
+  margin:0 0 9px !important;
+  color:#f6df9c !important;
+  font:800 .78rem/1.15 Georgia,serif !important;
+  white-space:nowrap;
+}
+
+/* Collection/card surfaces: remove the accidental purple/blue color blocks. */
+#cardsView .collection-page-inspector,
+#cardsView .collection-page-main {
+  border-color:rgba(120,151,171,.30) !important;
+  background:
+    linear-gradient(180deg,rgba(7,24,37,.96),rgba(4,14,25,.98)) !important;
+  color:#f4e5bf !important;
+}
+#cardsView .collection-page-inspector {
+  box-shadow:inset 0 0 0 1px rgba(215,170,95,.08),0 10px 24px rgba(0,0,0,.24) !important;
+}
+#cardsView .collection-page-main {
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.018) !important;
+}
+
+/* Full card stays parchment. School color is an accent, never a large background fill. */
+.sigian-full-card {
+  background:
+    linear-gradient(90deg,rgba(113,74,34,.055),transparent 10%,transparent 90%,rgba(113,74,34,.055)),
+    radial-gradient(circle at 50% 12%,rgba(255,255,255,.60),transparent 35%),
+    #e7d4a4 !important;
+}
+.sigian-full-card .sigian-full-sigil-area,
+.sigian-full-card.type-spell .sigian-full-sigil-area,
+.sigian-full-card.type-spell .sigian-full-spell-sigil-area {
+  background:
+    radial-gradient(circle at 50% 10%,rgba(105,80,42,.07),transparent 33%),
+    repeating-linear-gradient(0deg,rgba(83,58,31,.018) 0 1px,transparent 1px 5px),
+    #e7d4a4 !important;
+  color:#2c2117 !important;
+}
+.sigian-sigil-name {
+  color:#2b2017 !important;
+  text-shadow:none !important;
+}
+.sigian-full-rules {
+  color:#33271c !important;
+  border-top-color:rgba(92,61,29,.28) !important;
+  border-bottom-color:rgba(92,61,29,.16) !important;
+  background:rgba(255,250,229,.22) !important;
+}
+.sigian-sigil-medallion {
+  border-color:#9b783c !important;
+  background:radial-gradient(circle,#1b2025 0 44%,#30414a 46% 50%,#11161a 52% 70%,#b28b48 72% 74%,#151411 76%) !important;
+  color:#f0c36a !important;
+  box-shadow:0 0 0 3px rgba(101,74,35,.12),0 3px 9px rgba(0,0,0,.24),inset 0 0 10px #000 !important;
+}
+.sigian-full-card.school-air .sigian-sigil-medallion {
+  border-color:#6ebbc9 !important;
+  color:#d9f7ff !important;
+  background:radial-gradient(circle,#10232b 0 44%,#244b58 46% 50%,#0d171c 52% 70%,#6d9ca7 72% 74%,#101517 76%) !important;
+}
+.sigian-modifier-chip {
+  border:1px solid #8f7746 !important;
+  background:linear-gradient(180deg,#28251f,#11120f) !important;
+  color:#fff0c7 !important;
+  text-shadow:none !important;
+}
+.sigian-modifier-chip.school-air,
+.sigian-modifier-chip.scale.school-air {
+  border-color:#6fc7d9 !important;
+  color:#dff9ff !important;
+  background:linear-gradient(180deg,#18343e,#0b1c22) !important;
+}
+.sigian-modifier-chip.school-fire {
+  border-color:#cf704a !important;
+  color:#ffc9a7 !important;
+  background:linear-gradient(180deg,#44241a,#1e100c) !important;
+}
+
+/* Grid labels: match in-game black/gold readability and remove muddy brown text. */
+#cardsView .page-grid .collection-tile-body {
+  border-color:#b89751 !important;
+  background:rgba(4,8,12,.93) !important;
+}
+#cardsView .page-grid .collection-tile-body strong {
+  color:#fff1c6 !important;
+}
+#cardsView .page-grid .collection-tile-body small {
+  color:#f0c96f !important;
+}
+#cardsView .collection-tile-cost {
+  border-color:#d9bc6e !important;
+  background:radial-gradient(circle at 35% 26%,#87d8e8,#286b7d 43%,#102634 78%) !important;
+  color:#fff !important;
+}
+
+@media (max-width:900px) {
+  #cardsView .collection-page-filter-row {
+    grid-template-columns:1fr !important;
+    gap:5px !important;
+  }
+  #cardsView .collection-page-filter-row > span {
+    padding-left:2px;
+  }
+  #cardsView .collection-page-filter-row .mini-filter-grid {
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    padding-bottom:3px;
+    scrollbar-width:thin;
+  }
+  #cardsView .collection-page-filter-row .mini-filter-btn {
+    flex:0 0 auto !important;
+  }
+  #cardsView .collection-page-filter-search {
+    grid-template-columns:1fr !important;
+  }
+  #cardsView .collection-page-count {
+    margin:0 !important;
+    white-space:normal;
+  }
+}
