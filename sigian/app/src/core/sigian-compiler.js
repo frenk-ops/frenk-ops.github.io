@@ -116,9 +116,16 @@
     throw new Error(`FormulaRecipe ${recipe.id}: scaling non compilabile ${scaling.id}.`);
   }
 
+  function runtimeTrigger(recipe, trigger) {
+    const canonical = String(trigger || "");
+    if (canonical !== "onDeploy") return canonical;
+    return recipe.type === "spell" ? "onPlay" : "onSummon";
+  }
+
   function activationPlan(recipe, recipeSigil, baseTrigger) {
     const activation = modifierByFamily(recipeSigil, "activation");
-    if (!activation) return { trigger: String(baseTrigger), condition: null, activation: null };
+    const resolvedTrigger = runtimeTrigger(recipe, baseTrigger);
+    if (!activation) return { trigger: resolvedTrigger, condition: null, activation: null };
 
     const params = activation.params || {};
     if (activation.id === "activation-on-any-death") {
@@ -128,7 +135,7 @@
     if (activation.id === "activation-power-threshold") {
       const side = params.side === "enemy" ? A.SIGIAN_TARGET_SIDES.ENEMY : A.SIGIAN_TARGET_SIDES.SELF;
       return {
-        trigger: String(baseTrigger),
+        trigger: resolvedTrigger,
         condition: conditionModifier(recipeSigil.slotId, {
           left: {
             side,
@@ -144,7 +151,7 @@
 
     if (activation.id === "activation-power-comparison") {
       return {
-        trigger: String(baseTrigger),
+        trigger: resolvedTrigger,
         condition: conditionModifier(recipeSigil.slotId, {
           left: {
             side: params.leftSide === "enemy" ? A.SIGIAN_TARGET_SIDES.ENEMY : A.SIGIAN_TARGET_SIDES.SELF,
@@ -209,7 +216,7 @@
   });
 
   A.registerSigianSigilCompiler("wave", function compileWave({ recipe, sigil, definition, context }) {
-    const trigger = String(sigil.config.when || "onPlay");
+    const trigger = runtimeTrigger(recipe, sigil.config.when || "onDeploy");
     const scope = String(sigil.config.scope || "field");
     const scale = scaleModifier(recipe, sigil, definition, context);
     const friendly = modifierByFamily(sigil, "constraint");
@@ -343,25 +350,36 @@
   });
 
   A.registerSigianSigilCompiler("infusion", function compileInfusion({ recipe, sigil, definition, context }) {
-    const activation = activationPlan(recipe, sigil, sigil.config.when || "onPlay");
-    const scope = String(sigil.config.scope || "power");
-    const school = String(sigil.config.school || recipe.school);
+    const activation = activationPlan(recipe, sigil, sigil.config.when || "onDeploy");
     const amount = baseGradeValue(recipe, sigil, definition, context);
     const config = activation.activation?.id === "activation-on-any-death"
       ? configModifier(sigil.slotId, { eventType: "astralDeathKeeper" })
       : null;
-    return [technicalSigil(
-      sigil,
-      "infusion",
-      activation.trigger,
-      scope === "all-powers" ? A.SIGIAN_EFFECTS.POWER_ALL : A.SIGIAN_EFFECTS.POWER,
-      [
-        powerTarget(sigil.slotId, A.SIGIAN_TARGET_SIDES.SELF, scope, school),
+    const schools = sigil.config.schools === "all"
+      ? "all"
+      : [...new Set((Array.isArray(sigil.config.schools) ? sigil.config.schools : [recipe.school]).map(String))];
+
+    if (schools === "all") {
+      return [technicalSigil(sigil, "infusion-all", activation.trigger, A.SIGIAN_EFFECTS.POWER_ALL, [
+        targetModifier(sigil.slotId, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.POWERS),
         signedConstantScale(sigil.slotId, amount),
         activation.condition,
         config
+      ])];
+    }
+
+    return schools.map((school, index) => technicalSigil(
+      sigil,
+      `infusion-${school}-${index + 1}`,
+      activation.trigger,
+      A.SIGIAN_EFFECTS.POWER,
+      [
+        targetModifier(`${sigil.slotId}:${school}`, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.POWER, { school }),
+        signedConstantScale(`${sigil.slotId}:${school}`, amount),
+        activation.condition,
+        config
       ]
-    )];
+    ));
   });
 
   A.registerSigianSigilCompiler("subtraction", function compileSubtraction({ recipe, sigil, definition, context }) {
@@ -546,12 +564,25 @@
 
   A.registerSigianSigilCompiler("rebirth", function compileRebirth({ recipe, sigil }) {
     const activation = activationPlan(recipe, sigil, sigil.config.when || "onSelfDeath");
-    const maxRevives = sigil.grade === "infinite" ? null : Math.max(1, Math.trunc(Number(sigil.grade || 1)));
+    const maxRevives = Math.max(1, Math.trunc(Number(sigil.grade || 1)));
     return [technicalSigil(sigil, "rebirth", activation.trigger, A.SIGIAN_EFFECTS.RESURRECT, [
       targetModifier(sigil.slotId, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.SOURCE),
       scaleTechnicalModifier(sigil.slotId, { mode: A.SIGIAN_SCALE_MODES.FULL_HEALTH }),
       activation.condition,
       configModifier(sigil.slotId, { maxRevives })
+    ])];
+  });
+
+  A.registerSigianSigilCompiler("eternal-rebirth", function compileEternalRebirth({ recipe, sigil }) {
+    const activation = activationPlan(recipe, sigil, sigil.config.when || "onSelfDeath");
+    if (!activation.condition) {
+      throw new Error(`FormulaRecipe ${recipe.id}: Rinascita Eterna richiede una condizione di Attivazione.`);
+    }
+    return [technicalSigil(sigil, "eternal-rebirth", activation.trigger, A.SIGIAN_EFFECTS.RESURRECT, [
+      targetModifier(sigil.slotId, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.SOURCE),
+      scaleTechnicalModifier(sigil.slotId, { mode: A.SIGIAN_SCALE_MODES.FULL_HEALTH }),
+      activation.condition,
+      configModifier(sigil.slotId, { maxRevives:null, eternal:true })
     ])];
   });
 

@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const RECIPE_SCHEMA_VERSION = 1;
+  const RECIPE_SCHEMA_VERSION = 2;
   const MAX_PRIMARY_SIGILS = 3;
 
   function clone(value) {
@@ -15,6 +15,57 @@
 
   function asRecord(value) {
     return value && typeof value === "object" && !Array.isArray(value) ? clone(value) : {};
+  }
+
+  function normalizeDeployTiming(config, sigilId) {
+    const next = asRecord(config);
+    const definition = A.getCanonicalSigil?.(sigilId);
+    const supportsDeploy = Array.isArray(definition?.configSchema?.when) && definition.configSchema.when.includes("onDeploy");
+    if (supportsDeploy && (next.when === "onPlay" || next.when === "onSummon")) next.when = "onDeploy";
+    return next;
+  }
+
+  function normalizeSigilItem(item, index, formulaSchool) {
+    let sigilId = id(item.sigilId || item.id);
+    let grade = item.grade == null ? null : item.grade;
+
+    // v1 compatibility: Rinascita ∞ was encoded as a Grade. It is now an
+    // atomic Sigillo because unlimited revival only makes sense with a
+    // mandatory activation condition.
+    if (sigilId === "rebirth" && grade === "infinite") {
+      sigilId = "eternal-rebirth";
+      grade = 1;
+    }
+
+    const config = normalizeDeployTiming(item.config, sigilId);
+
+    // v1 compatibility: Infusione used power/all-powers + one school.
+    // Canonically the effect now targets one, two, three or all Schools.
+    if (sigilId === "infusion") {
+      if (config.schools == null) {
+        config.schools = config.scope === "all-powers"
+          ? "all"
+          : [id(config.school, formulaSchool)].filter(Boolean);
+      } else if (Array.isArray(config.schools)) {
+        config.schools = [...new Set(config.schools.map(value => id(value)).filter(Boolean))].slice(0, 3);
+      }
+      delete config.scope;
+      delete config.school;
+    }
+
+    return {
+      slotId: id(item.slotId, `sigil-${index + 1}`),
+      sigilId,
+      grade,
+      affinity: item.affinity == null
+        ? null
+        : (A.normalizeSigianAffinity?.(item.affinity, formulaSchool) || asRecord(item.affinity)),
+      config,
+      modifiers: (item.modifiers || []).map(modifier => ({
+        id: id(modifier.id),
+        params: asRecord(modifier.params)
+      }))
+    };
   }
 
   A.SIGIAN_RECIPE_SCHEMA_VERSION = RECIPE_SCHEMA_VERSION;
@@ -42,16 +93,7 @@
         art: String(source.presentation?.art || ""),
         imageKey: source.presentation?.imageKey == null ? null : String(source.presentation.imageKey)
       },
-      sigils: (source.sigils || []).map((item, index) => ({
-        slotId: id(item.slotId, `sigil-${index + 1}`),
-        sigilId: id(item.sigilId || item.id),
-        grade: item.grade == null ? null : item.grade,
-        config: asRecord(item.config),
-        modifiers: (item.modifiers || []).map(modifier => ({
-          id: id(modifier.id),
-          params: asRecord(modifier.params)
-        }))
-      })),
+      sigils: (source.sigils || []).map((item, index) => normalizeSigilItem(item, index, id(source.school))),
       metadata: asRecord(source.metadata)
     };
   };
@@ -80,6 +122,20 @@
       if (rule === "school") {
         const school = A.getSigianSchool?.(value);
         if (!school || school.status !== "active") errors.push(`${label}: scuola di configurazione non valida (${value}).`);
+        return;
+      }
+      if (rule === "schools") {
+        if (value === "all") return;
+        if (!Array.isArray(value) || value.length < 1 || value.length > 3) {
+          errors.push(`${label}: selezione Scuole non valida.`);
+          return;
+        }
+        const unique = new Set(value.map(item => String(item || "")));
+        if (unique.size !== value.length) errors.push(`${label}: Scuole duplicate non ammesse.`);
+        value.forEach(schoolId => {
+          const school = A.getSigianSchool?.(schoolId);
+          if (!school || school.status !== "active") errors.push(`${label}: scuola di configurazione non valida (${schoolId}).`);
+        });
       }
     });
   }
@@ -125,10 +181,18 @@
 
       if (recipeSigil.grade != null) {
         const numeric = Number(recipeSigil.grade);
-        const validGrade = recipeSigil.grade === "infinite" || (Number.isInteger(numeric) && numeric > 0);
+        const validGrade = Number.isInteger(numeric) && numeric > 0;
         if (!validGrade) errors.push(`${label}: Grade non valido ${recipeSigil.grade}.`);
+        if (definition.atomic && numeric !== 1) errors.push(`${label}: il Sigillo atomico ${definition.id} usa Grade I.`);
       } else if (!options.allowUncalibratedGrade) {
         errors.push(`${label}: Grade mancante.`);
+      }
+
+      if (recipeSigil.affinity != null) {
+        const affinityValidation = A.validateSigianAffinity?.(recipeSigil.affinity);
+        if (affinityValidation && !affinityValidation.valid) {
+          affinityValidation.errors.forEach(error => errors.push(`${label}: ${error}`));
+        }
       }
 
       validateConfigAgainstSchema(recipeSigil.config, definition.configSchema, label, errors);
@@ -162,8 +226,8 @@
         errors.push(`${label}: oltre due famiglie Modifier avanzate indipendenti.`);
       }
 
-      if (definition.id === "rebirth" && recipeSigil.grade === "infinite" && !seenFamilies.has("activation")) {
-        errors.push(`${label}: Rinascita ∞ richiede un Modifier di Attivazione.`);
+      if (definition.id === "eternal-rebirth" && !seenFamilies.has("activation")) {
+        errors.push(`${label}: Rinascita Eterna richiede un Modifier di Attivazione.`);
       }
     });
 

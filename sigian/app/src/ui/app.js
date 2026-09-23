@@ -4369,6 +4369,7 @@
       destruction: A.SIGIAN_EFFECTS?.DESTROY,
       annihilation: A.SIGIAN_EFFECTS?.DESTROY,
       rebirth: A.SIGIAN_EFFECTS?.RESURRECT,
+      "eternal-rebirth": A.SIGIAN_EFFECTS?.RESURRECT,
       domination: A.SIGIAN_EFFECTS?.FORCE_ATTACK
     })[sigilId] || A.SIGIAN_EFFECTS?.PASSIVE;
   }
@@ -4397,6 +4398,7 @@
       destruction: '<path d="m20 17 12 8 12-8-5 14 9 7-13 1-3 12-4-12-13-1 10-7Z" fill="currentColor"/>',
       annihilation: '<path d="m18 17 8 8 6-13 6 13 8-8-3 14 10 4-12 5 2 12-11-7-11 7 2-12-12-5 10-4Z" fill="currentColor"/>',
       rebirth: '<path d="M31 45c-8-5-11-12-7-19 2 5 5 6 7 2 2-4 1-8 0-12 8 5 13 12 10 20-1 4-5 8-10 9Z" fill="currentColor"/><path d="M45 20a19 19 0 0 1 3 19M48 39l-6-3m6 3-2 6M19 44a19 19 0 0 1-3-19M16 25l6 3m-6-3 2-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+      "eternal-rebirth": '<path d="M31 45c-8-5-11-12-7-19 2 5 5 6 7 2 2-4 1-8 0-12 8 5 13 12 10 20-1 4-5 8-10 9Z" fill="currentColor"/><path d="M13 32c0-10 8-18 18-18 7 0 13 4 16 10M51 32c0 10-8 18-18 18-7 0-13-4-16-10M47 15v10H37M17 49V39h10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
       domination: '<path d="M12 32s7-12 20-12 20 12 20 12-7 12-20 12S12 32 12 32Zm20-7a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z" fill="currentColor"/><path d="M29 29h6v6h-6Z" fill="#0b0b12"/>'
     })[sigilId] || '<path d="M20 32h24M32 20v24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
     return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">${common}${path}</svg>`;
@@ -4411,10 +4413,10 @@
       "arcane-amplification":"arcaneAmplification", "combat-fury":"fury",
       "total-assault":"totalAssault", "arcane-attack":"arcaneAttack",
       absorption:"absorption", destruction:"destruction", annihilation:"annihilation",
-      rebirth:"rebirth", domination:"domination"
+      rebirth:"rebirth", "eternal-rebirth":"eternalRebirth", domination:"domination"
     })[sigil.sigilId];
     const label = key ? t(`sigian.canonical.${key}`) : sigil.sigilId;
-    return sigil.sigilId === "rebirth" && sigil.grade === "infinite" ? `${label} ∞` : label;
+    return label;
   }
 
   function sigianCanonicalValue(card, sigil) {
@@ -4469,13 +4471,10 @@
     const advancedTiming = activation?.id === "activation-on-any-death";
 
     if (!advancedTiming && config.when) {
-      chips.push({ className:"trigger", text:sigianTriggerLabel(config.when), glyph:"✦" });
-    }
-    if (!advancedTiming && !config.when && [
-      "protection", "arcane-amplification", "combat-fury",
-      "total-assault", "arcane-attack", "absorption"
-    ].includes(sigil.sigilId)) {
-      chips.push({ className:"trigger", text:sigianTriggerLabel("passive"), glyph:"✦" });
+      const timingLabel = config.when === "onDeploy"
+        ? (card.type === "spell" ? t("sigian.trigger.play") : t("sigian.trigger.summon"))
+        : sigianTriggerLabel(config.when);
+      chips.push({ className:"trigger", text:timingLabel, glyph:"✦" });
     }
     if (config.reaction === "damaged") {
       chips.push({ className:"trigger", text:t("sigian.trigger.damaged"), glyph:"✦" });
@@ -4514,7 +4513,19 @@
     }
     if (sigil.sigilId === "regeneration") chips.push({ className:"target", text:t("sigian.modifier.thisCreature") });
 
-    if (["infusion","subtraction","channeling","erosion","tribute"].includes(sigil.sigilId)) {
+    if (sigil.sigilId === "infusion") {
+      const schools = config.schools === "all" ? "all" : (Array.isArray(config.schools) ? config.schools : [card.school]);
+      if (schools === "all") {
+        chips.push({ className:"target", text:t("forge.option.allSchools") });
+      } else {
+        const names = schools.map(schoolName);
+        chips.push({
+          className:`target${schools.length === 1 ? ` school-${schools[0]}` : ""}`,
+          text:names.join(" · "),
+          school:schools.length === 1 ? schools[0] : null
+        });
+      }
+    } else if (["subtraction","channeling","erosion","tribute"].includes(sigil.sigilId)) {
       const enemy = sigil.sigilId === "subtraction" || (sigil.sigilId === "erosion" && config.side === "enemy");
       const all = config.scope === "all-powers";
       const text = all
@@ -4613,7 +4624,7 @@
     if (card?.__forgePreview && sigil.grade != null) {
       modifiers.unshift({
         className:"grade",
-        text:sigil.grade === "infinite" ? `${t("forge.gradeOne")} ∞` : (Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${escapeHtml(sigil.grade)}`)
+        text:Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${escapeHtml(sigil.grade)}`
       });
     }
 
@@ -4884,6 +4895,15 @@
     return labels[value] || String(value);
   }
 
+  function forgeAffinityLabel(affinity) {
+    if (!affinity) return t("forge.affinityLegacy");
+    if (affinity.mode === "universal") return t("forge.affinityUniversal");
+    const modeKey = `forge.affinity.${affinity.mode}`;
+    const mode = t(modeKey) === modeKey ? affinity.mode : t(modeKey);
+    const schools = (affinity.schools || []).map(schoolName).join(" · ");
+    return schools ? `${mode} · ${schools}` : mode;
+  }
+
   function forgeSchemaControlMarkup(sigil, key, schema, value, dataAttrs) {
     const labelKey = `forge.config.${key}`;
     const rawLabel = t(labelKey);
@@ -4897,6 +4917,26 @@
         `<option value="${escapeHtml(school.id)}" ${String(value) === String(school.id) ? "selected" : ""}>${escapeHtml(schoolName(school.id))}</option>`
       ).join("");
       return `<label class="forge-model-field"><span>${escapeHtml(label)}</span><select ${dataAttrs}>${options}</select></label>`;
+    }
+    if (schema === "schools") {
+      const activeSchools = A.listSigianSchools?.({ status:"active" }) || [];
+      const all = value === "all";
+      const selected = all ? [] : (Array.isArray(value) ? value : []);
+      const count = all ? "all" : String(Math.max(1, Math.min(3, selected.length || 1)));
+      const countOptions = [
+        ["1", t("forge.option.oneSchool")],
+        ["2", t("forge.option.twoSchools")],
+        ["3", t("forge.option.threeSchools")],
+        ["all", t("forge.option.allSchools")]
+      ].map(([option, optionLabel]) => `<option value="${option}" ${count === option ? "selected" : ""}>${escapeHtml(optionLabel)}</option>`).join("");
+      const schoolButtons = activeSchools.map(school => {
+        const checked = all || selected.includes(school.id);
+        return `<button type="button" class="forge-school-choice ${checked ? "active" : ""}" data-forge-school-choice="${escapeHtml(school.id)}" data-forge-slot="${escapeHtml(sigil.slotId)}" ${all ? "disabled" : ""}>${schoolIconMarkup(school.id, "school-icon-svg forge-school-choice-icon")}<span>${escapeHtml(schoolName(school.id))}</span></button>`;
+      }).join("");
+      return `<div class="forge-model-field forge-schools-field">
+        <label><span>${escapeHtml(t("forge.config.scope"))}</span><select data-forge-schools-count data-forge-slot="${escapeHtml(sigil.slotId)}">${countOptions}</select></label>
+        <div class="forge-school-choice-grid">${schoolButtons}</div>
+      </div>`;
     }
     if (schema === "number") {
       return `<label class="forge-model-field"><span>${escapeHtml(label)}</span><input type="number" step="1" value="${value == null ? "" : escapeHtml(value)}" ${dataAttrs}></label>`;
@@ -4945,6 +4985,10 @@
       </div>`;
     }).join("");
 
+    const gradeOptions = definition.atomic
+      ? `<option value="1" selected>${escapeHtml(t("forge.gradeOne"))}</option>`
+      : [1,2,3].map(grade => `<option value="${grade}" ${Number(sigil.grade) === grade ? "selected" : ""}>Grado ${grade === 1 ? "I" : grade === 2 ? "II" : "III"}</option>`).join("");
+
     return `<section class="forge-sigil-modeler">
       <div class="forge-modeler-heading">
         <div class="forge-modeler-title">
@@ -4954,6 +4998,17 @@
         <button type="button" class="classic-stone-button ghost" data-forge-close-modeler>${escapeHtml(t("forge.backToCatalog"))}</button>
       </div>
       <p class="forge-modeling-note">${escapeHtml(t("forge.modelingNotice"))}</p>
+      <div class="forge-model-meta">
+        <label class="forge-model-field">
+          <span>${escapeHtml(t("forge.grade"))}</span>
+          <select data-forge-grade data-forge-slot="${escapeHtml(sigil.slotId)}" ${definition.atomic ? "disabled" : ""}>${gradeOptions}</select>
+        </label>
+        <div class="forge-model-field forge-affinity-readonly">
+          <span>${escapeHtml(t("forge.affinity"))}</span>
+          <strong>${escapeHtml(forgeAffinityLabel(sigil.affinity))}</strong>
+          <small>${escapeHtml(t("forge.affinityOwnedCopy"))}</small>
+        </div>
+      </div>
       <h4>${escapeHtml(t("forge.baseConfig"))}</h4>
       <div class="forge-model-grid">${configFields || `<span class="forge-model-none">—</span>`}</div>
       <h4>${escapeHtml(t("forge.advancedModifiers"))}</h4>
@@ -5132,8 +5187,44 @@
       if (forgeSelectedSigilSlotId === slotId) forgeSelectedSigilSlotId = null;
       renderForgePage();
     }));
+    root.querySelectorAll("[data-forge-grade]").forEach(control => control.addEventListener("change", () => {
+      session.setSigilGrade(control.dataset.forgeSlot, Number(control.value));
+      renderForgePage();
+    }));
     root.querySelectorAll("[data-forge-config-key]").forEach(control => control.addEventListener("change", () => {
       session.setSigilConfig(control.dataset.forgeSlot, control.dataset.forgeConfigKey, control.value);
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-schools-count]").forEach(control => control.addEventListener("change", () => {
+      const slotId = control.dataset.forgeSlot;
+      const recipeNow = session.snapshot().draft.recipe;
+      const sigilNow = recipeNow.sigils.find(item => item.slotId === slotId);
+      const requested = control.value;
+      if (requested === "all") {
+        session.setSigilConfig(slotId, "schools", "all");
+      } else {
+        const wanted = Math.max(1, Math.min(3, Number(requested || 1)));
+        const activeIds = (A.listSigianSchools?.({ status:"active" }) || []).map(item => item.id);
+        const current = sigilNow?.config?.schools === "all" ? [] : [...(sigilNow?.config?.schools || [])];
+        const next = [...new Set(current.filter(id => activeIds.includes(id)))];
+        if (!next.length && recipeNow.school) next.push(recipeNow.school);
+        for (const id of activeIds) {
+          if (next.length >= wanted) break;
+          if (!next.includes(id)) next.push(id);
+        }
+        session.setSigilConfig(slotId, "schools", next.slice(0, wanted));
+      }
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-school-choice]").forEach(button => button.addEventListener("click", () => {
+      if (button.disabled) return;
+      const slotId = button.dataset.forgeSlot;
+      const schoolId = button.dataset.forgeSchoolChoice;
+      const sigilNow = session.snapshot().draft.recipe.sigils.find(item => item.slotId === slotId);
+      const current = sigilNow?.config?.schools === "all" ? [] : [...(sigilNow?.config?.schools || [])];
+      const next = current.includes(schoolId) ? current.filter(id => id !== schoolId) : [...current, schoolId];
+      if (next.length < 1 || next.length > 3) return;
+      session.setSigilConfig(slotId, "schools", next);
       renderForgePage();
     }));
     root.querySelectorAll("select[data-forge-modifier-family]").forEach(control => control.addEventListener("change", () => {

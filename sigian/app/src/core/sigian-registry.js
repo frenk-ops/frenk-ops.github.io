@@ -71,7 +71,7 @@
         activation: ["activation-power-threshold", "activation-power-comparison", "activation-critical-life"]
       },
       configSchema: {
-        when: ["onPlay", "onSummon"],
+        when: ["onDeploy"],
         target: ["enemy-hero", "enemy-creature"],
         selector: ["strongest-health", "strongest-attack"]
       }
@@ -83,7 +83,7 @@
         scaling: ["scale-power-half", "scale-power", "scale-target-attack"],
         constraint: ["constraint-friendly-fire", "constraint-friendly-fire-power-threshold"]
       },
-      configSchema: { when: ["onPlay", "onSummon"], scope: ["field", "front"] }
+      configSchema: { when: ["onDeploy"], scope: ["field", "front"] }
     },
     {
       id: "backlash", family: "damage",
@@ -91,7 +91,7 @@
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
-      configSchema: { when: ["onSummon", "onBeforeAttack"], target: ["self-hero"] }
+      configSchema: { when: ["onDeploy", "onBeforeAttack"], target: ["self-hero"] }
     },
     {
       id: "retaliation", family: "damage",
@@ -110,7 +110,7 @@
         activation: ["activation-power-threshold", "activation-power-comparison", "activation-critical-life", "activation-on-any-death"]
       },
       configSchema: {
-        when: ["onPlay", "onSummon", "onBeforeAttack"],
+        when: ["onDeploy", "onBeforeAttack"],
         target: ["self-hero", "allied-creature"]
       }
     },
@@ -122,7 +122,7 @@
         activation: ["activation-power-threshold", "activation-critical-life"]
       },
       configSchema: {
-        when: ["onPlay", "onSummon", "onBeforeAttack"],
+        when: ["onDeploy", "onBeforeAttack"],
         scope: ["field", "front"]
       }
     },
@@ -140,7 +140,8 @@
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-power-comparison", "activation-on-any-death"]
       },
-      configSchema: { when: ["onPlay", "onSummon"], scope: ["power", "all-powers"], school: "school" }
+      gradeModel: { type: "magnitude", unit: "power" },
+      configSchema: { when: ["onDeploy"], schools: "schools" }
     },
     {
       id: "subtraction", family: "power",
@@ -149,7 +150,7 @@
         selector: [],
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
-      configSchema: { when: ["onPlay", "onSummon"], scope: ["power", "all-powers"], school: "school" }
+      configSchema: { when: ["onDeploy"], scope: ["power", "all-powers"], school: "school" }
     },
     {
       id: "channeling", family: "power",
@@ -179,7 +180,7 @@
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
       configSchema: {
-        when: ["onPlay", "onSummon"],
+        when: ["onDeploy"],
         scope: ["power", "all-powers"],
         school: "school"
       }
@@ -242,7 +243,7 @@
         selector: ["selector-highest-life", "selector-highest-attack"],
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
-      configSchema: { when: ["onPlay", "onSummon"], target: ["enemy-creature"] }
+      configSchema: { when: ["onDeploy"], target: ["enemy-creature"] }
     },
     {
       id: "annihilation", family: "control",
@@ -251,10 +252,22 @@
         constraint: ["constraint-friendly-fire"],
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
-      configSchema: { when: ["onPlay", "onSummon"], scope: ["enemy-field", "all-field"] }
+      configSchema: { when: ["onDeploy"], scope: ["enemy-field", "all-field"] }
     },
     {
       id: "rebirth", family: "control",
+      gradeModel: { type: "revival-count" },
+      modifierFamilies: ["activation"],
+      modifierOptions: {
+        activation: ["activation-power-threshold", "activation-power-comparison"]
+      },
+      configSchema: { when: ["onSelfDeath"], target: ["source"] }
+    },
+    {
+      id: "eternal-rebirth", family: "control",
+      gradeModel: { type: "fixed", grade: 1 },
+      atomic: true,
+      requiredModifierFamilies: ["activation"],
       modifierFamilies: ["activation"],
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-power-comparison"]
@@ -268,12 +281,15 @@
         selector: ["selector-highest-attack"],
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
-      configSchema: { when: ["onPlay"], destination: ["own-hero"] }
+      configSchema: { when: ["onDeploy"], destination: ["own-hero"] }
     }
   ];
 
   SIGIL_DEFINITIONS.forEach(definition => {
     sigils.register({
+      gradeModel: { type: "magnitude" },
+      affinitySupport: ["mono", "dual", "triple", "universal"],
+      rarityPolicy: "derived-from-power-flexibility",
       ...definition,
       status: "active"
     });

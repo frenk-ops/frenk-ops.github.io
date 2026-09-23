@@ -13167,3 +13167,185 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     gap:18px;
   }
 }
+
+
+/* ===== Sigian 0.36.2 — canonical Forge controls and overflow hardening ===== */
+.forge-model-meta {
+  display:grid;
+  grid-template-columns:minmax(130px,.75fr) minmax(180px,1.25fr);
+  gap:8px;
+}
+.forge-affinity-readonly {
+  padding:7px 9px;
+  border:1px solid rgba(106,77,45,.22);
+  border-radius:8px;
+  background:rgba(255,250,232,.6);
+}
+.forge-affinity-readonly strong {
+  min-width:0;
+  color:#402a1c;
+  font-size:.72rem;
+  overflow-wrap:anywhere;
+}
+.forge-affinity-readonly small {
+  color:#90745d;
+  font-size:.58rem;
+  font-weight:600;
+}
+.forge-schools-field {
+  grid-column:1 / -1;
+  gap:7px;
+}
+.forge-schools-field > label {
+  display:grid;
+  gap:4px;
+}
+.forge-school-choice-grid {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:5px;
+}
+.forge-school-choice {
+  min-width:0;
+  min-height:50px;
+  display:grid;
+  place-items:center;
+  gap:2px;
+  padding:5px 2px;
+  border:1px solid rgba(106,77,45,.3);
+  border-radius:8px;
+  background:linear-gradient(180deg,rgba(252,242,207,.78),rgba(213,188,136,.58));
+  color:#4a331f;
+  cursor:pointer;
+}
+.forge-school-choice.active {
+  border-color:#8a5e28;
+  background:linear-gradient(180deg,#fff1b6,#d5aa52);
+  box-shadow:inset 0 0 0 1px rgba(177,119,42,.14);
+}
+.forge-school-choice:disabled {
+  cursor:default;
+  opacity:.72;
+}
+.forge-school-choice span {
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:.55rem;
+}
+.forge-school-choice-icon { width:22px;height:22px; }
+
+.forge-preview-stage .sigian-modifier-row {
+  min-width:0;
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+}
+.forge-preview-stage .sigian-modifier-chip {
+  min-width:0;
+  max-width:100%;
+}
+.forge-preview-stage .sigian-modifier-chip > span:last-child {
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+
+@media (min-width:821px) {
+  .forge-page-heading {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(390px,620px);
+    align-items:start;
+    gap:18px;
+  }
+  .forge-toolbar {
+    width:100%;
+    max-width:620px;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+  }
+  .forge-toolbar .classic-stone-button {
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    white-space:normal;
+    line-height:1.05;
+  }
+
+  .forge-current-sigils {
+    max-height:min(430px,calc(100vh - 490px));
+    min-height:0;
+    overflow:auto;
+    padding-right:3px;
+  }
+
+  .forge-sigil-browser {
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+    max-height:min(760px,calc(100vh - 190px));
+    overflow:hidden;
+  }
+  .forge-sigil-browser > .forge-panel-heading {
+    flex:0 0 auto;
+  }
+  .forge-sigil-modeler {
+    flex:0 1 auto;
+    min-height:0;
+    max-height:min(430px,50vh);
+    overflow:auto;
+    overscroll-behavior:contain;
+  }
+  .forge-catalog-section {
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+    overflow:hidden;
+  }
+  .forge-catalog-section .forge-catalog-note,
+  .forge-catalog-section .forge-limit-note {
+    flex:0 0 auto;
+  }
+  .forge-sigil-grid {
+    flex:1 1 auto;
+    min-height:0;
+    max-height:none;
+    overflow:auto;
+    overscroll-behavior:contain;
+  }
+}
+
+@media (min-width:821px) and (max-width:1120px) {
+  .forge-page-heading {
+    grid-template-columns:1fr;
+  }
+  .forge-toolbar {
+    max-width:none;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+
+@media (max-width:1180px) {
+  .forge-sigil-browser {
+    max-height:none;
+    overflow:visible;
+  }
+  .forge-sigil-modeler {
+    max-height:none;
+    overflow:visible;
+  }
+  .forge-catalog-section {
+    overflow:visible;
+  }
+  .forge-sigil-grid {
+    max-height:none;
+  }
+}
+
+@media (max-width:620px) {
+  .forge-model-meta { grid-template-columns:1fr; }
+  .forge-school-choice-grid { grid-template-columns:repeat(5,minmax(40px,1fr)); }
+}

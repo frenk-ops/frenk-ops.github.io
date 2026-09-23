@@ -46,6 +46,7 @@
   function defaultValueForSchema(schema, school) {
     if (Array.isArray(schema)) return schema.length ? clone(schema[0]) : null;
     if (schema === "school") return school;
+    if (schema === "schools") return [school];
     if (schema === "number") return null;
     return null;
   }
@@ -63,12 +64,17 @@
     const definition = A.getCanonicalSigil?.(sigilId);
     if (!definition) throw new Error(`Sigillo non registrato: ${sigilId}.`);
     if (definition.status !== "active") throw new Error(`Sigillo non attivo: ${sigilId}.`);
+    const modifiers = (definition.requiredModifierFamilies || []).flatMap(family => {
+      const modifierId = (definition.modifierOptions?.[family] || []).find(id => A.getSigianAdvancedModifier?.(id)?.status === "active");
+      return modifierId ? [{ id:modifierId, params:defaultModifierParams(modifierId, school) }] : [];
+    });
     return {
       slotId: `forge-${slotIndex + 1}-${sigilId}`,
       sigilId,
       grade: 1,
+      affinity: A.normalizeSigianAffinity?.({ mode:"mono", schools:[school] }, school) || { mode:"mono", schools:[school] },
       config: defaultConfigForSigil(definition, school),
-      modifiers: []
+      modifiers
     };
   }
 
@@ -327,12 +333,26 @@
         const nextSigil = {
           ...current,
           ...(patch.grade !== undefined ? { grade: patch.grade } : {}),
+          ...(patch.affinity !== undefined ? { affinity: clone(patch.affinity) } : {}),
           ...(patch.config ? { config: { ...current.config, ...clone(patch.config) } } : {}),
           ...(patch.modifiers ? { modifiers: clone(patch.modifiers) } : {})
         };
         const next = clone(draft.recipe.sigils);
         next[index] = nextSigil;
         return commitRecipe(recipeWith({ sigils: next }));
+      },
+
+      setSigilGrade(slotId, grade) {
+        const numeric = Math.max(1, Math.trunc(Number(grade || 1)));
+        return this.updateSigil(slotId, { grade:numeric });
+      },
+
+      setSigilAffinity(slotId, affinity) {
+        const normalized = A.normalizeSigianAffinity?.(affinity, draft.recipe.school);
+        if (!normalized) throw new Error("Affinità Sigillo non valida.");
+        const validation = A.validateSigianAffinity?.(normalized);
+        if (validation && !validation.valid) throw new Error(validation.errors.join(" "));
+        return this.updateSigil(slotId, { affinity:normalized });
       },
 
       setSigilConfig(slotId, key, value) {
@@ -350,6 +370,18 @@
           const school = A.getSigianSchool?.(value);
           if (!school || school.status !== "active") throw new Error(`Scuola non valida per ${key}: ${value}.`);
           normalized = school.id;
+        } else if (schema === "schools") {
+          if (value === "all") {
+            normalized = "all";
+          } else {
+            const requested = Array.isArray(value) ? value : String(value || "").split(",").filter(Boolean);
+            normalized = [...new Set(requested.map(item => String(item || "").trim()).filter(Boolean))];
+            if (normalized.length < 1 || normalized.length > 3) throw new Error("Seleziona da 1 a 3 Scuole, oppure Tutte.");
+            normalized.forEach(schoolId => {
+              const school = A.getSigianSchool?.(schoolId);
+              if (!school || school.status !== "active") throw new Error(`Scuola non valida: ${schoolId}.`);
+            });
+          }
         } else if (Array.isArray(schema) && !schema.includes(value)) {
           throw new Error(`Valore ${value} non supportato per ${key}.`);
         }

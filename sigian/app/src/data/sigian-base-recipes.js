@@ -194,9 +194,9 @@
       values: { damage: 5 }
     },
     astral_air_07: {
-      sigils: [s("rebirth", "rebirth", { when: "onSelfDeath", target: "source" }, [
+      sigils: [s("eternal-rebirth", "eternal-rebirth", { when: "onSelfDeath", target: "source" }, [
         m("activation-power-threshold", { school: "fire", op: "gte", value: 10 })
-      ], "infinite")],
+      ], 1)],
       values: {}
     },
     astral_air_08: {
