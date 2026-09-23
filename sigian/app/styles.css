@@ -12468,18 +12468,6 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   width:min(350px,100%) !important;
   margin:0 auto !important;
 }
-/* Explicit component colors prevent menu typography from leaking into Full. */
-#cardsView .collection-preview-stage .sigian-full-card .sigian-full-type { color:#e8d3a0 !important; }
-#cardsView .collection-preview-stage .sigian-full-card .sigian-full-name { color:#241b15 !important; }
-#cardsView .collection-preview-stage .sigian-full-card .sigian-sigil-name { color:#2a2018 !important; }
-#cardsView .collection-preview-stage .sigian-full-card .sigian-full-rules { color:#30241a !important; }
-#cardsView .collection-preview-stage .sigian-full-card .sigian-modifier-chip,
-#cardsView .collection-preview-stage .sigian-full-card .sigian-modifier-chip > span { color:#fff0c7 !important; }
-#cardsView .collection-preview-stage .sigian-full-card .sigian-modifier-chip.school-fire,
-#cardsView .collection-preview-stage .sigian-full-card .sigian-modifier-chip.school-fire > span { color:#ffc9a7 !important; }
-#cardsView .collection-preview-stage .sigian-full-card .sigian-modifier-chip.school-air,
-#cardsView .collection-preview-stage .sigian-full-card .sigian-modifier-chip.school-air > span { color:#dff9ff !important; }
-
 #cardsView .sigian-preview-hand-host,
 #cardsView .sigian-preview-combat-host {
   width:100%;
@@ -12571,3 +12559,97 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     min-height:300px;
   }
 }
+
+/* 0.24.0 — Full is one self-contained visual component in duel and Collection. */
+.sigian-full-card .sigian-full-cost {
+  color:#fff !important;
+}
+.sigian-full-card .sigian-full-school {
+  color:var(--sigian-school) !important;
+}
+.sigian-full-card .sigian-full-type {
+  color:#e8d3a0 !important;
+}
+.sigian-full-card.type-spell .sigian-full-type {
+  color:#d8c5f1 !important;
+}
+.sigian-full-card .sigian-full-name {
+  color:#241b15 !important;
+}
+.sigian-full-card .sigian-full-attack {
+  color:#ffe49b !important;
+}
+.sigian-full-card .sigian-full-health {
+  color:#ff9da6 !important;
+}
+.sigian-full-card .sigian-full-stat > span,
+.sigian-full-card .sigian-full-stat > b {
+  color:inherit !important;
+}
+.sigian-full-card .sigian-sigil-name {
+  color:#2a2018 !important;
+}
+.sigian-full-card .sigian-full-rules {
+  color:#30241a !important;
+}
+
+/* Stats straddle art/parchment; content starts below them instead of underneath them. */
+.sigian-full-card .sigian-full-sigil-area,
+.sigian-full-card.type-spell .sigian-full-sigil-area,
+.sigian-full-card.type-spell .sigian-full-spell-sigil-area {
+  padding:29px 14px 14px !important;
+  gap:8px !important;
+}
+.sigian-full-card.sigian-sigil-count-1 .sigian-full-sigil-area {
+  padding-top:25px !important;
+}
+.sigian-full-card.type-spell .sigian-full-sigil-area,
+.sigian-full-card.type-spell .sigian-full-spell-sigil-area {
+  padding-top:14px !important;
+}
+.sigian-full-card.sigian-sigil-count-2 .sigian-full-sigil-area,
+.sigian-full-card.sigian-sigil-count-3 .sigian-full-sigil-area {
+  grid-template-rows:minmax(0,1fr) auto;
+  align-content:stretch !important;
+}
+.sigian-full-card.sigian-sigil-count-2 .sigian-sigil-list,
+.sigian-full-card.sigian-sigil-count-3 .sigian-sigil-list {
+  height:100%;
+  align-content:space-evenly;
+  gap:7px;
+}
+.sigian-full-card.sigian-sigil-count-3 .sigian-sigil-entry {
+  align-items:center;
+}
+.sigian-full-card.sigian-sigil-count-2 .sigian-full-rules,
+.sigian-full-card.sigian-sigil-count-3 .sigian-full-rules {
+  margin-top:0 !important;
+}
+
+/* Duel inspection is an overlay, not a second framed modal around the card. */
+.duel-card-zoom-panel:has(.sigian-full-card) {
+  width:auto !important;
+  max-width:min(94vw,350px) !important;
+  max-height:none !important;
+  overflow:visible !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.duel-card-zoom-content:has(.sigian-full-card) {
+  display:grid;
+  place-items:center;
+  background:transparent !important;
+}
+.duel-card-zoom-panel:has(.sigian-full-card) .duel-card-zoom-close {
+  top:-12px !important;
+  right:-18px !important;
+  width:36px !important;
+  height:36px !important;
+  margin:0 !important;
+  z-index:12 !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.45) !important;
+}
+

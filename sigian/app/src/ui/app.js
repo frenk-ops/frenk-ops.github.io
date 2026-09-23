@@ -4631,7 +4631,6 @@
     } else if (collectionPreviewMode === "combat") {
       stage.appendChild(buildCollectionCombatPreview(card));
     } else {
-      stage.classList.add("duel-card-zoom-content");
       renderPreviewInto(stage, card, null);
     }
 
@@ -5900,7 +5899,8 @@
 
   $("#closeDuelCardZoom")?.addEventListener("click", closeDuelCardZoom);
   $("#duelCardZoom")?.addEventListener("click", event => {
-    if (event.target === event.currentTarget) closeDuelCardZoom();
+    if (event.target.closest?.(".sigian-full-card, #closeDuelCardZoom")) return;
+    closeDuelCardZoom();
   });
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeDuelCardZoom();
