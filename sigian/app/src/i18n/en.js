@@ -152,6 +152,7 @@
     "pause.optionsSubtitle": "Duel settings", "pause.back": "Back",
     "cards.title": "Collection", "cards.intro": "Browse all 65 cards and compare their abilities and artwork.",
     "cards.filters": "Filters", "cards.allFeminine": "All", "cards.allMasculine": "All",
+    "cards.previewModes": "Card variants", "cards.previewFull": "Full", "cards.previewCombat": "Combat", "cards.previewHand": "Hand",
     "cards.search": "Search cards", "cards.searchPlaceholder": "Name, school, text...",
     "cards.detail": "Card details", "cards.level": "Level", "cards.levelCost": "Level/cost", "cards.health": "Health", "cards.keyword": "Keyword",
     "cards.rarity": "Rarity", "cards.common": "Common", "cards.rare": "Rare", "cards.legendary": "Legendary",
