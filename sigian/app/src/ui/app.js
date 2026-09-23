@@ -514,10 +514,11 @@
   let navigation = null;
   let pauseMenu = null;
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
+  let forgeSession = null;
 
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
-  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "profile", "rules", "diagnostics"]);
+  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "forge", "profile", "rules", "diagnostics"]);
 
   function rememberedView() {
     try {
@@ -2338,6 +2339,7 @@
     }
     if (name === "tournament") renderTournament();
     if (name === "cards") renderCollectionPage();
+    if (name === "forge") renderForgePage();
     if (name === "profile") {
       renderPlayerProfile();
       initializeOnlineAccount({ renderProfile: true }).catch(() => {});
@@ -4607,6 +4609,13 @@
       "damage","wave","backlash","heal","restoration","regeneration",
       "infusion","subtraction","channeling","erosion","tribute"
     ]);
+    if (card?.__forgePreview && sigil.grade != null) {
+      modifiers.unshift({
+        className:"grade",
+        text:sigil.grade === "infinite" ? `${t("forge.gradeOne")} ∞` : (Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${escapeHtml(sigil.grade)}`)
+      });
+    }
+
     if (!hasScaling && value != null && fixedValueSigils.has(sigil.sigilId)) {
       const growth = ["channeling","erosion"].includes(sigil.sigilId);
       const sign = ["subtraction","erosion","tribute"].includes(sigil.sigilId) ? "−" : value > 0 ? "+" : "";
@@ -4627,8 +4636,9 @@
 
   function sigianCardUiModel(card) {
     const recipe = sigianRecipeForUi(card);
-    if (!recipe?.sigils?.length) return null;
-    const sigils = recipe.sigils.map(sigil => sigianCanonicalSigilUiModel(card, sigil));
+    if (!recipe) return null;
+    if (!recipe.sigils?.length && !card?.__forgePreview) return null;
+    const sigils = (recipe.sigils || []).map(sigil => sigianCanonicalSigilUiModel(card, sigil));
     return {
       recipe,
       formula:recipe,
@@ -4645,7 +4655,7 @@
   function buildSigianFullCard(card, side = null) {
     const model = sigianCardUiModel(card);
     if (!model) return null;
-    const cost = engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0);
+    const cost = card?.__forgePreview ? "—" : (engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0));
     const article = document.createElement("article");
     article.className = `sigian-full-card school-${card.school} type-${card.type} sigian-sigil-count-${model.sigils.length}`;
     article.dataset.cardId = card.id;
@@ -4745,6 +4755,212 @@
     badge.title = model.primary.name;
     badge.innerHTML = model.primary.iconMarkup("sigian-sigil-icon");
     cast.appendChild(badge);
+  }
+
+  function ensureForgeSession() {
+    if (forgeSession) return forgeSession;
+    const persisted = A.loadSigianForgeDraft?.();
+    forgeSession = A.createSigianForgeSession?.({ draft:persisted || undefined }) || null;
+    return forgeSession;
+  }
+
+  function forgePreviewCard(recipe) {
+    const stats = recipe.stats || {};
+    return {
+      id:recipe.id,
+      name:recipe.presentation?.name || t("forge.title"),
+      school:recipe.school,
+      type:recipe.type,
+      attack:recipe.type === "creature" ? Number(stats.attack || 0) : 0,
+      health:recipe.type === "creature" ? Number(stats.health || 1) : 0,
+      hp:recipe.type === "creature" ? Number(stats.health || 1) : 0,
+      level:0,
+      cost:0,
+      text:"",
+      keyword:"",
+      set:"custom",
+      art:recipe.presentation?.art || "",
+      imageKey:recipe.presentation?.imageKey ?? null,
+      formulaRecipe:recipe,
+      __forgePreview:true
+    };
+  }
+
+  function forgeSigilTileMarkup(definition, disabled) {
+    const sigil = { sigilId:definition.id, grade:1 };
+    const name = sigianCanonicalSigilName(sigil);
+    return `<button type="button" class="forge-sigil-tile" data-forge-add-sigil="${escapeHtml(definition.id)}" ${disabled ? "disabled" : ""}>
+      <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(definition.id, "sigian-sigil-icon")}</span>
+      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(t("forge.gradeOne"))}</small></span>
+      <span class="forge-sigil-tile-action">${escapeHtml(t("forge.imprint"))}</span>
+    </button>`;
+  }
+
+  function forgeCurrentSigilsMarkup(recipe) {
+    if (!recipe.sigils.length) return `<p class="forge-empty-note">${escapeHtml(t("forge.emptySigils"))}</p>`;
+    return recipe.sigils.map(sigil => `
+      <div class="forge-current-sigil">
+        <span class="forge-current-sigil-icon">${sigianCanonicalSigilIconMarkup(sigil.sigilId, "sigian-sigil-icon")}</span>
+        <span class="forge-current-sigil-copy">
+          <strong>${escapeHtml(sigianCanonicalSigilName(sigil))}</strong>
+          <small>${escapeHtml(Number(sigil.grade) === 1 ? t("forge.gradeOne") : String(sigil.grade))}</small>
+        </span>
+        <button type="button" class="classic-stone-button ghost forge-remove-sigil" data-forge-remove-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.remove"))}</button>
+      </div>
+    `).join("");
+  }
+
+  function renderForgePage() {
+    const root = $("#forgeContent");
+    const session = ensureForgeSession();
+    if (!root || !session) return;
+
+    const snapshot = session.snapshot();
+    const recipe = snapshot.draft.recipe;
+    const analysis = snapshot.analysis;
+    const activeSchools = A.listSigianSchools?.({ status:"active" }) || [];
+    const activeSigils = A.listCanonicalSigils?.({ status:"active" }) || [];
+    const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
+    const schoolButtons = activeSchools.map(school => `
+      <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
+        ${schoolIconMarkup(school.id, "school-icon-svg forge-school-icon")}
+        <span>${escapeHtml(schoolName(school.id))}</span>
+      </button>
+    `).join("");
+
+    root.innerHTML = `
+      <div class="forge-workspace">
+        <aside class="forge-panel forge-structure-panel ornate-subpanel">
+          <div class="forge-panel-heading">
+            <span class="forge-panel-step">I</span>
+            <h3>${escapeHtml(t("forge.structure"))}</h3>
+          </div>
+          <label class="forge-field">
+            <span>${escapeHtml(t("forge.name"))}</span>
+            <input id="forgeNameInput" type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}">
+          </label>
+          <div class="forge-field">
+            <span>${escapeHtml(t("forge.type"))}</span>
+            <div class="forge-segmented">
+              <button type="button" data-forge-type="creature" class="${recipe.type === "creature" ? "active" : ""}">${escapeHtml(t("ui.creature"))}</button>
+              <button type="button" data-forge-type="spell" class="${recipe.type === "spell" ? "active" : ""}">${escapeHtml(t("ui.spell"))}</button>
+            </div>
+          </div>
+          <div class="forge-field">
+            <span>${escapeHtml(t("forge.school"))}</span>
+            <div class="forge-school-grid">${schoolButtons}</div>
+          </div>
+          ${recipe.type === "creature" ? `
+            <div class="forge-stat-grid">
+              <label class="forge-stat-control">
+                <span>${escapeHtml(t("forge.attack"))}</span>
+                <div><button type="button" data-forge-stat="attack" data-delta="-1">−</button><input id="forgeAttackInput" type="number" min="0" value="${escapeHtml(recipe.stats.attack)}"><button type="button" data-forge-stat="attack" data-delta="1">+</button></div>
+              </label>
+              <label class="forge-stat-control">
+                <span>${escapeHtml(t("forge.health"))}</span>
+                <div><button type="button" data-forge-stat="health" data-delta="-1">−</button><input id="forgeHealthInput" type="number" min="1" value="${escapeHtml(recipe.stats.health)}"><button type="button" data-forge-stat="health" data-delta="1">+</button></div>
+              </label>
+            </div>
+          ` : ""}
+          <div class="forge-current-sigils">
+            <div class="forge-current-sigils-heading">
+              <strong>${escapeHtml(t("forge.sigils"))}</strong>
+              <small>${escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small>
+            </div>
+            ${forgeCurrentSigilsMarkup(recipe)}
+          </div>
+        </aside>
+
+        <section class="forge-center-stage">
+          <div class="forge-panel-heading forge-center-heading">
+            <span class="forge-panel-step">II</span>
+            <h3>${escapeHtml(t("forge.preview"))}</h3>
+            <small id="forgeAutosaveStatus">${escapeHtml(t("forge.autosaved"))}</small>
+          </div>
+          <div id="forgePreviewStage" class="forge-preview-stage"></div>
+          <div class="forge-balance-status ${analysis.valid ? "is-valid" : "is-warning"}">
+            <strong>${escapeHtml(t("forge.balancePending"))}</strong>
+            ${analysis.sealBlockers.includes("spell-requires-sigil") ? `<span>${escapeHtml(t("forge.spellNeedsSigil"))}</span>` : ""}
+          </div>
+        </section>
+
+        <aside class="forge-panel forge-sigil-browser ornate-subpanel">
+          <div class="forge-panel-heading">
+            <span class="forge-panel-step">III</span>
+            <h3>${escapeHtml(t("forge.sigils"))}</h3>
+          </div>
+          <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
+          ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
+          <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
+        </aside>
+      </div>`;
+
+    const previewStage = $("#forgePreviewStage");
+    const preview = buildSigianFullCard(forgePreviewCard(recipe), null);
+    if (previewStage && preview) previewStage.replaceChildren(preview);
+
+    const newButton = $("#forgeNewBtn");
+    const undoButton = $("#forgeUndoBtn");
+    const redoButton = $("#forgeRedoBtn");
+    const tryButton = $("#forgeTryBtn");
+    const sealButton = $("#forgeSealBtn");
+    if (undoButton) undoButton.disabled = !snapshot.canUndo;
+    if (redoButton) redoButton.disabled = !snapshot.canRedo;
+    if (tryButton) {
+      tryButton.disabled = true;
+      tryButton.title = t("forge.balancePending");
+    }
+    if (sealButton) {
+      sealButton.disabled = true;
+      sealButton.title = t("forge.balancePending");
+    }
+
+    if (newButton) newButton.onclick = () => {
+      session.reset({ type:"creature", stats:{ attack:1, health:5 }, presentation:{ name:t("forge.newFormula") } });
+      renderForgePage();
+    };
+    if (undoButton) undoButton.onclick = () => { session.undo(); renderForgePage(); };
+    if (redoButton) redoButton.onclick = () => { session.redo(); renderForgePage(); };
+
+    $("#forgeNameInput")?.addEventListener("input", event => {
+      session.setName(event.currentTarget.value);
+      const cardNameNode = $("#forgePreviewStage .sigian-full-name");
+      if (cardNameNode) cardNameNode.textContent = event.currentTarget.value.trim() || t("forge.newFormula");
+    });
+
+    root.querySelectorAll("[data-forge-type]").forEach(button => button.addEventListener("click", () => {
+      session.setType(button.dataset.forgeType);
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-school]").forEach(button => button.addEventListener("click", () => {
+      session.setSchool(button.dataset.forgeSchool);
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-stat]").forEach(button => button.addEventListener("click", () => {
+      const current = session.snapshot().draft.recipe;
+      const key = button.dataset.forgeStat;
+      const min = key === "attack" ? 0 : 1;
+      const nextValue = Math.max(min, Number(current.stats[key] || min) + Number(button.dataset.delta || 0));
+      session.setCreatureStats({ [key]:nextValue });
+      renderForgePage();
+    }));
+    $("#forgeAttackInput")?.addEventListener("change", event => {
+      session.setCreatureStats({ attack:Number(event.currentTarget.value) });
+      renderForgePage();
+    });
+    $("#forgeHealthInput")?.addEventListener("change", event => {
+      session.setCreatureStats({ health:Number(event.currentTarget.value) });
+      renderForgePage();
+    });
+    root.querySelectorAll("[data-forge-add-sigil]").forEach(button => button.addEventListener("click", () => {
+      if (button.disabled) return;
+      session.addSigil(button.dataset.forgeAddSigil);
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-remove-sigil]").forEach(button => button.addEventListener("click", () => {
+      session.removeSigil(button.dataset.forgeRemoveSigil);
+      renderForgePage();
+    }));
   }
 
   function applyCollectionFilters(cards) {
