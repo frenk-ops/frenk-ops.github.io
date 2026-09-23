@@ -4483,7 +4483,7 @@
     renderFilterGroup("#collectionLevelFilters", "level", levelFilters);
     renderFilterGroup("#collectionPageSchoolFilters", "school", [{ id: "all", label: t("cards.allFeminine") }, ...A.SCHOOLS.map(item => ({ id: item.id, label: `${schoolIconMarkup(item.id, "school-icon-svg school-filter-icon")} ${escapeHtml(schoolName(item.id))}` }))]);
     renderFilterGroup("#collectionPageTypeFilters", "type", typeFilters);
-    renderFilterGroup("#collectionPageLevelFilters", "level", [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 13 }, (_, i) => ({ id: String(i + 1), label: `${t("cards.level")} ${i + 1}` }))]);
+    renderFilterGroup("#collectionPageLevelFilters", "level", [{ id: "all", label: t("cards.allMasculine") }, ...Array.from({ length: 13 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }))]);
   }
 
   function buildCollectionTile(card, compact = false) {
@@ -4538,13 +4538,16 @@
     const filtered = applyCollectionFilters(allCards);
     root.innerHTML = `
       <div class="collection-page-filters collection-page-filters-top ornate-subpanel classic-config-grid">
-        <div class="collection-page-filter-row">
+        <div class="collection-page-filter-row collection-page-filter-schools">
           <span>${t("ui.school")}</span>
           <div id="collectionPageSchoolFilters" class="mini-filter-grid horizontal-school-filters"></div>
         </div>
-        <div class="collection-page-filter-row">
-          <span>${t("cards.filters")}</span>
-          <div id="collectionPageTypeFilters" class="mini-filter-grid"></div>
+        <div class="collection-page-filter-row collection-page-filter-types">
+          <span>${t("ui.type")}</span>
+          <div id="collectionPageTypeFilters" class="mini-filter-grid collection-type-filters"></div>
+        </div>
+        <div class="collection-page-filter-row collection-page-filter-costs">
+          <span>${t("ui.cost")}</span>
           <div id="collectionPageLevelFilters" class="mini-filter-grid level-filters wide"></div>
         </div>
         <div class="collection-page-filter-search">
