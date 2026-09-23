@@ -11494,7 +11494,7 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   color:#f0b25a;
   box-shadow:0 0 0 4px rgba(87,56,27,.18),0 0 19px rgba(224,134,47,.25),inset 0 0 12px #000;
 }
-.sigian-rebirth-sigil { width:54px;height:54px;filter:drop-shadow(0 0 5px rgba(244,152,54,.48)); }
+.sigian-sigil-icon { width:54px;height:54px;filter:drop-shadow(0 0 5px rgba(244,152,54,.48)); }
 .sigian-sigil-name {
   margin-top:-2px;
   color:#2a2018;
@@ -11670,7 +11670,7 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   box-shadow:0 2px 7px rgba(0,0,0,.6),0 0 8px rgba(224,139,50,.16);
   pointer-events:none;
 }
-.sigian-hand-sigil .sigian-rebirth-sigil { width:26px;height:26px; }
+.sigian-hand-sigil .sigian-sigil-icon { width:26px;height:26px; }
 
 /* Combat: no name, cost or textual School. Frame + stats carry the battle information. */
 #battlePanel .classic-board-column .unit.sigian-card-combat {
@@ -11702,7 +11702,7 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   box-shadow:0 2px 6px rgba(0,0,0,.62),0 0 7px rgba(225,143,52,.18);
   pointer-events:none;
 }
-.sigian-combat-sigil .sigian-rebirth-sigil { width:23px;height:23px; }
+.sigian-combat-sigil .sigian-sigil-icon { width:23px;height:23px; }
 
 @media (max-width:820px) {
   .sigian-full-card { width:min(100%,350px); }
@@ -11712,9 +11712,133 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   .sigian-full-art { height:min(43dvh,218px); }
   .sigian-full-sigil-area { padding:29px 12px 12px;gap:7px; }
   .sigian-sigil-medallion { width:62px;height:62px; }
-  .sigian-rebirth-sigil { width:48px;height:48px; }
+  .sigian-sigil-icon { width:48px;height:48px; }
   .sigian-full-rules { min-height:0;padding:9px 10px;font-size:.76rem; }
   .sigian-modifier-chip { padding:4px 7px;font-size:.62rem; }
   .sigian-combat-sigil { width:25px;height:25px;bottom:3px; }
-  .sigian-combat-sigil .sigian-rebirth-sigil { width:20px;height:20px; }
+  .sigian-combat-sigil .sigian-sigil-icon { width:20px;height:20px; }
+}
+
+
+/* Sigian Card UI v1 — spell pilot (Lightning / astral_air_06). */
+.sigian-full-card.type-spell {
+  box-shadow:
+    inset 0 0 0 2px rgba(31,23,52,.84),
+    inset 0 0 0 5px rgba(129,101,177,.22),
+    inset 0 0 30px rgba(94,156,189,.13),
+    0 16px 40px rgba(0,0,0,.46);
+}
+.sigian-full-card.type-spell .sigian-full-top {
+  background:
+    linear-gradient(180deg,rgba(24,27,42,.99),rgba(37,29,49,.97) 45%,rgba(222,205,164,.98) 46%);
+}
+.sigian-full-card.type-spell .sigian-full-type {
+  color:#d8c5f1;
+}
+.sigian-full-card.type-spell .sigian-full-art {
+  border-color:color-mix(in srgb,var(--sigian-school) 45%,#6f568b);
+  box-shadow:
+    inset 0 0 0 1px rgba(124,92,160,.28),
+    inset 0 0 16px rgba(83,178,222,.08);
+}
+.sigian-full-card.type-spell .sigian-full-spell-sigil-area {
+  padding-top:18px;
+  background:
+    radial-gradient(circle at 50% 9%,rgba(104,88,154,.13),transparent 32%),
+    repeating-linear-gradient(0deg,rgba(85,57,29,.025) 0 1px,transparent 1px 5px);
+}
+.sigian-full-card.type-spell .sigian-sigil-medallion {
+  border-color:#8e6aac;
+  background:
+    radial-gradient(circle,#171525 0 43%,#30254b 45% 49%,#11111d 51% 70%,#6e93a6 72% 74%,#111218 76%);
+  color:#d9efff;
+  box-shadow:0 0 0 4px rgba(95,74,125,.15),0 0 21px rgba(111,204,239,.20),inset 0 0 12px #000;
+}
+.sigian-modifier-chip.target {
+  border-color:#6e6a7e;
+  background:linear-gradient(180deg,#353441,#17161e);
+}
+.sigian-modifier-chip.scale.school-air {
+  border-color:#7194aa;
+  background:linear-gradient(180deg,#294450,#13242c);
+  color:#d9f2ff;
+}
+
+/* The Cards page is also the visual lab for the real Sigian pilots. */
+.collection-page-inspector.sigian-pilot-inspector {
+  align-content:start;
+}
+.collection-page-inspector.sigian-pilot-inspector .collection-page-featured.sigian-card-featured {
+  height:auto !important;
+  max-height:none !important;
+  padding:4px;
+  overflow:visible;
+  background:transparent;
+  border:0;
+}
+.collection-page-inspector.sigian-pilot-inspector .collection-page-featured.sigian-card-featured .sigian-full-card {
+  width:min(100%,350px);
+}
+.collection-page-inspector.sigian-pilot-inspector .collection-page-card-copy {
+  display:none;
+}
+
+/* A spell has no persistent Combat card: its battle representation is the cast. */
+.cast-card.sigian-card-cast {
+  border-color:color-mix(in srgb,var(--sigian-school,#bde9ff) 48%,#8f6fb3) !important;
+  box-shadow:
+    0 18px 48px rgba(0,0,0,.7),
+    0 0 30px rgba(113,193,229,.20),
+    inset 0 0 0 2px rgba(89,62,121,.36) !important;
+}
+.sigian-spell-cast-sigil {
+  position:absolute;
+  z-index:8;
+  left:50%;
+  bottom:10px;
+  width:46px;
+  height:46px;
+  display:grid;
+  place-items:center;
+  transform:translateX(-50%);
+  border:1px solid #7a69a0;
+  border-radius:50%;
+  background:radial-gradient(circle,#202033,#0d0e16 72%);
+  color:#d7f0ff;
+  box-shadow:0 3px 10px rgba(0,0,0,.65),0 0 14px rgba(113,205,238,.25);
+  pointer-events:none;
+}
+.sigian-spell-cast-sigil .sigian-sigil-icon {
+  width:38px;
+  height:38px;
+}
+
+/* Hand keeps the same compact grammar, with a slightly more arcane spell edge. */
+#playerHand .game-card.sigian-card-hand.type-spell {
+  border-color:#9bc9dc !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(40,26,65,.88),
+    inset 0 0 0 4px rgba(113,77,160,.22),
+    inset 0 0 15px rgba(100,205,239,.12),
+    0 4px 11px rgba(0,0,0,.38) !important;
+}
+#playerHand .game-card.sigian-card-hand.type-spell .sigian-hand-sigil {
+  border-color:#75639a;
+  background:radial-gradient(circle,#25213b,#0e0d16 72%);
+  color:#d9f1ff;
+}
+
+@media (max-width:820px) {
+  .collection-page-inspector.sigian-pilot-inspector .collection-page-featured.sigian-card-featured .sigian-full-card {
+    width:min(100%,340px);
+  }
+  .sigian-spell-cast-sigil {
+    width:40px;
+    height:40px;
+    bottom:8px;
+  }
+  .sigian-spell-cast-sigil .sigian-sigil-icon {
+    width:32px;
+    height:32px;
+  }
 }
