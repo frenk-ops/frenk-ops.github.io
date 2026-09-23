@@ -10,31 +10,20 @@
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
   "version": "0.23.6",
-  "build": "90e0dc7",
-  "revision": "0.23.6-sigian-90e0dc7",
+  "build": "283f34b",
+  "revision": "0.23.6-sigian-283f34b",
   "formulaFoundation": {
     "nativeCards": 65,
     "legacyDelegatedCards": 0,
     "liveRuntime": true
   },
-  "cardUiPilots": [
-    {
-      "cardId": "astral_air_07",
-      "cardName": "Phoenix / Fenice",
-      "type": "creature",
-      "fullInspect": true,
-      "sharedMobileDesktop": true,
-      "combat": true,
-      "hand": true
-    },
-    {
-      "cardId": "astral_air_06",
-      "cardName": "Lightning / Fulmine",
-      "type": "spell",
-      "fullInspect": true,
-      "sharedMobileDesktop": true,
-      "cast": true,
-      "hand": true
-    }
-  ]
+  "cardUi": {
+    "convertedSchools": [
+      "air"
+    ],
+    "convertedCards": 13,
+    "fixedFullGeometry": true,
+    "collectionRefresh": true,
+    "formulaDriven": true
+  }
 }
