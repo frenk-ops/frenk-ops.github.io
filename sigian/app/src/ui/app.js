@@ -4122,19 +4122,20 @@
     return `${escapeHtml(text.slice(0, index))}<strong class="inline-current-value">${escapeHtml(marker)}</strong> ${escapeHtml(text.slice(index + markerWithSpace.length))}`;
   }
 
-  function sigianFormulaForUi(card) {
+  function sigianRecipeForUi(card) {
     if (!card?.id) return null;
-    if (engine && typeof A.getSigianFormulaFor === "function") {
-      const formula = A.getSigianFormulaFor(engine, card);
-      if (formula) return formula;
-    }
-    if (typeof A.buildSigianFormulaCatalog === "function") {
+    if (card.formulaRecipe && typeof A.createFormulaRecipe === "function") {
       try {
-        return A.buildSigianFormulaCatalog([card])?.byId?.[card.id] || null;
+        const recipe = A.createFormulaRecipe(card.formulaRecipe);
+        return A.validateFormulaRecipe?.(recipe)?.valid ? recipe : null;
       } catch (error) {}
     }
-    const sigils = A.SIGIAN_NATIVE_FORMULA_SPECS?.[card.id];
-    return sigils ? { id: card.id, school: card.school, type: card.type, sigils } : null;
+    if (typeof A.buildSigianBaseRecipeCatalog === "function") {
+      try {
+        return A.buildSigianBaseRecipeCatalog([card])?.byId?.[card.id] || null;
+      } catch (error) {}
+    }
+    return null;
   }
 
   function sigianEffectIconMarkup(effect, className = "") {
@@ -4342,13 +4343,297 @@
     };
   }
 
-  function sigianCardUiModel(card) {
-    const formula = sigianFormulaForUi(card);
-    if (!formula?.sigils?.length) return null;
+  function sigianCanonicalSigilEffect(sigilId) {
+    return ({
+      damage: A.SIGIAN_EFFECTS?.DAMAGE,
+      wave: A.SIGIAN_EFFECTS?.DAMAGE,
+      backlash: A.SIGIAN_EFFECTS?.DAMAGE,
+      retaliation: A.SIGIAN_EFFECTS?.DAMAGE,
+      heal: A.SIGIAN_EFFECTS?.HEAL,
+      restoration: A.SIGIAN_EFFECTS?.HEAL,
+      regeneration: A.SIGIAN_EFFECTS?.HEAL,
+      infusion: A.SIGIAN_EFFECTS?.POWER,
+      subtraction: A.SIGIAN_EFFECTS?.POWER,
+      channeling: A.SIGIAN_EFFECTS?.POWER_GROWTH,
+      erosion: A.SIGIAN_EFFECTS?.POWER_GROWTH,
+      tribute: A.SIGIAN_EFFECTS?.POWER_ALL,
+      protection: A.SIGIAN_EFFECTS?.DAMAGE_REDUCTION,
+      "arcane-amplification": A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS,
+      "combat-fury": A.SIGIAN_EFFECTS?.ATTACK_MULTIPLIER,
+      "total-assault": A.SIGIAN_EFFECTS?.ATTACK_ALL,
+      "arcane-attack": A.SIGIAN_EFFECTS?.ATTACK_FROM_POWER,
+      absorption: A.SIGIAN_EFFECTS?.LIFESTEAL,
+      destruction: A.SIGIAN_EFFECTS?.DESTROY,
+      annihilation: A.SIGIAN_EFFECTS?.DESTROY,
+      rebirth: A.SIGIAN_EFFECTS?.RESURRECT,
+      domination: A.SIGIAN_EFFECTS?.FORCE_ATTACK
+    })[sigilId] || A.SIGIAN_EFFECTS?.PASSIVE;
+  }
+
+  function sigianCanonicalSigilIconMarkup(sigilId, className = "") {
+    const common = '<circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".36"/>';
+    const path = ({
+      damage: '<path d="M36 11 21 34h10l-4 19 17-27H34l2-15Z" fill="currentColor"/>',
+      wave: '<path d="M13 25c6-6 12-6 19 0s13 6 19 0M13 34c6-6 12-6 19 0s13 6 19 0M13 43c6-6 12-6 19 0s13 6 19 0" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>',
+      backlash: '<path d="M41 15 24 30h10l-7 19M18 19h13M18 19l6-6M18 19l6 6" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>',
+      retaliation: '<path d="M18 20h22l-6-6m6 6-6 6M46 44H24l6 6m-6-6 6-6" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>',
+      heal: '<path d="M28 17h8v11h11v8H36v11h-8V36H17v-8h11Z" fill="currentColor"/>',
+      restoration: '<path d="M28 16h8v12h12v8H36v12h-8V36H16v-8h12Z" fill="currentColor"/><circle cx="15" cy="15" r="3" fill="currentColor"/><circle cx="49" cy="49" r="3" fill="currentColor"/>',
+      regeneration: '<path d="M21 22a15 15 0 0 1 24 4M45 26v-9m0 9h-9M43 42a15 15 0 0 1-24-4M19 38v9m0-9h9" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M29 25h6v7h7v6h-7v7h-6v-7h-7v-6h7Z" fill="currentColor"/>',
+      infusion: '<path d="m32 12 7 12 13 8-13 8-7 12-7-12-13-8 13-8Z" fill="currentColor"/><path d="M32 45V19m0 0-6 7m6-7 6 7" fill="none" stroke="#0b0b12" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+      subtraction: '<path d="m32 12 7 12 13 8-13 8-7 12-7-12-13-8 13-8Z" fill="currentColor"/><path d="M22 32h20" fill="none" stroke="#0b0b12" stroke-width="3" stroke-linecap="round"/>',
+      channeling: '<path d="M32 50V18m0 0-8 10m8-10 8 10M18 44l14-14 14 14" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>',
+      erosion: '<path d="M32 14v32m0 0-8-10m8 10 8-10M18 20l14 14 14-14" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>',
+      tribute: '<path d="M18 19h28M22 26h20M26 33h12M32 39v11m0 0-6-7m6 7 6-7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>',
+      protection: '<path d="M32 12 47 18v11c0 10-6 18-15 23-9-5-15-13-15-23V18l15-6Z" fill="none" stroke="currentColor" stroke-width="3.3"/><path d="m24 32 5 5 11-12" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>',
+      "arcane-amplification": '<path d="m32 11 5 13 14 1-11 9 4 14-12-8-12 8 4-14-11-9 14-1Z" fill="currentColor"/><circle cx="32" cy="32" r="4" fill="#0b0b12"/>',
+      "combat-fury": '<path d="M17 45 43 19M17 19l26 26M13 49l9-2-7-7-2 9ZM51 15l-9 2 7 7 2-9Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>',
+      "total-assault": '<path d="M32 48V20m0 0-7 8m7-8 7 8M20 42 12 31m8 11-10-1m10 1-3-9M44 42l8-11m-8 11 10-1m-10 1 3-9" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>',
+      "arcane-attack": '<path d="M18 46 42 22m-5-7 12 12M15 49l9-2-7-7-2 9Z" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="m24 18 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z" fill="currentColor"/>',
+      absorption: '<path d="M32 49S15 39 15 27c0-7 8-11 17-3 9-8 17-4 17 3 0 12-17 22-17 22Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M21 31h22m0 0-6-6m6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>',
+      destruction: '<path d="m20 17 12 8 12-8-5 14 9 7-13 1-3 12-4-12-13-1 10-7Z" fill="currentColor"/>',
+      annihilation: '<path d="m18 17 8 8 6-13 6 13 8-8-3 14 10 4-12 5 2 12-11-7-11 7 2-12-12-5 10-4Z" fill="currentColor"/>',
+      rebirth: '<path d="M31 45c-8-5-11-12-7-19 2 5 5 6 7 2 2-4 1-8 0-12 8 5 13 12 10 20-1 4-5 8-10 9Z" fill="currentColor"/><path d="M45 20a19 19 0 0 1 3 19M48 39l-6-3m6 3-2 6M19 44a19 19 0 0 1-3-19M16 25l6 3m-6-3 2-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+      domination: '<path d="M12 32s7-12 20-12 20 12 20 12-7 12-20 12S12 32 12 32Zm20-7a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z" fill="currentColor"/><path d="M29 29h6v6h-6Z" fill="#0b0b12"/>'
+    })[sigilId] || '<path d="M20 32h24M32 20v24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+    return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">${common}${path}</svg>`;
+  }
+
+  function sigianCanonicalSigilName(sigil) {
+    const key = ({
+      damage:"damage", wave:"wave", backlash:"backlash", retaliation:"retaliation",
+      heal:"heal", restoration:"restoration", regeneration:"regeneration",
+      infusion:"infusion", subtraction:"subtraction", channeling:"channeling",
+      erosion:"erosion", tribute:"tribute", protection:"protection",
+      "arcane-amplification":"arcaneAmplification", "combat-fury":"fury",
+      "total-assault":"totalAssault", "arcane-attack":"arcaneAttack",
+      absorption:"absorption", destruction:"destruction", annihilation:"annihilation",
+      rebirth:"rebirth", domination:"domination"
+    })[sigil.sigilId];
+    const label = key ? t(`sigian.canonical.${key}`) : sigil.sigilId;
+    return sigil.sigilId === "rebirth" && sigil.grade === "infinite" ? `${label} ∞` : label;
+  }
+
+  function sigianCanonicalValue(card, sigil) {
+    const raw = A.SIGIAN_BASE_RECIPE_SPECS?.[card?.id]?.values?.[sigil?.slotId];
+    return Number.isFinite(Number(raw)) ? Number(raw) : null;
+  }
+
+  function sigianCanonicalPowerLabel(schoolId, side = "self") {
+    const base = `${t("sigian.modifier.power")} ${schoolName(schoolId)}`;
+    return side === "enemy" ? `${base} · ${t("sigian.modifier.enemyShort")}` : base;
+  }
+
+  function sigianCanonicalActivationLabel(modifier, card) {
+    const params = modifier?.params || {};
+    if (modifier?.id === "activation-on-any-death") return t("sigian.trigger.anyDeath");
+    if (modifier?.id === "activation-power-threshold") {
+      return `${sigianCanonicalPowerLabel(params.school || card.school, params.side)} ${sigianOperatorLabel(params.op || "gte")} ${Number(params.value || 0)}`;
+    }
+    if (modifier?.id === "activation-power-comparison") {
+      const left = sigianCanonicalPowerLabel(params.leftSchool || card.school, params.leftSide);
+      const right = sigianCanonicalPowerLabel(params.rightSchool || card.school, params.rightSide || "enemy");
+      return `${left} ${sigianOperatorLabel(params.op || "lt")} ${right}`;
+    }
+    if (modifier?.id === "activation-critical-life") {
+      return `${t("ui.life")} ${sigianOperatorLabel(params.op || "lt")} ${Number(params.value || 0)}`;
+    }
+    return "";
+  }
+
+  function sigianCanonicalScalingLabel(modifier, card, sigil, baseValue) {
+    const params = modifier?.params || {};
+    const schoolId = params.school || card.school;
+    const offset = Number(baseValue || 0);
+    const offsetLabel = offset === 0 ? "" : ` ${offset > 0 ? "+" : "−"} ${Math.abs(offset)}`;
+    if (modifier?.id === "scale-power-half") return `½ × ${sigianCanonicalPowerLabel(schoolId)}${offsetLabel}`;
+    if (modifier?.id === "scale-power") return `${sigianCanonicalPowerLabel(schoolId)}${offsetLabel}`;
+    if (modifier?.id === "scale-power-double") return `2 × ${sigianCanonicalPowerLabel(schoolId)}${offsetLabel}`;
+    if (modifier?.id === "scale-target-attack") return t("sigian.modifier.targetAttack");
+    if (modifier?.id === "scale-full-health") return t("sigian.modifier.fullHealth");
+    if (modifier?.id === "scale-creature-count") return `${Math.abs(offset)} × ${t("sigian.modifier.creaturesInPlay")}`;
+    if (modifier?.id === "scale-damage-dealt") {
+      const ratio = sigianRatioLabel(params.numerator, params.denominator);
+      return `${ratio ? `${ratio} ` : ""}${t("sigian.modifier.damageDealt")}`;
+    }
+    return "";
+  }
+
+  function sigianCanonicalBaseConfigChips(card, sigil, value) {
+    const config = sigil.config || {};
+    const chips = [];
+    const activation = (sigil.modifiers || []).find(item => A.getSigianAdvancedModifier?.(item.id)?.family === "activation");
+    const advancedTiming = activation?.id === "activation-on-any-death";
+
+    if (!advancedTiming && config.when) {
+      chips.push({ className:"trigger", text:sigianTriggerLabel(config.when), glyph:"✦" });
+    }
+    if (!advancedTiming && !config.when && [
+      "protection", "arcane-amplification", "combat-fury",
+      "total-assault", "arcane-attack", "absorption"
+    ].includes(sigil.sigilId)) {
+      chips.push({ className:"trigger", text:sigianTriggerLabel("passive"), glyph:"✦" });
+    }
+    if (config.reaction === "damaged") {
+      chips.push({ className:"trigger", text:t("sigian.trigger.damaged"), glyph:"✦" });
+    }
+
+    if (sigil.sigilId === "damage") {
+      if (config.target === "enemy-hero") chips.push({ className:"target", text:t("sigian.modifier.enemyMage") });
+      if (config.target === "enemy-creature") {
+        const text = config.selector === "strongest-health"
+          ? t("sigian.modifier.enemyCreatureMostHealth")
+          : config.selector === "strongest-attack"
+            ? t("sigian.modifier.enemyCreatureMostAttack")
+            : t("sigian.modifier.enemyCreature");
+        chips.push({ className:"target", text });
+      }
+    }
+
+    if (sigil.sigilId === "wave") {
+      chips.push({
+        className:"target",
+        text:config.scope === "front" ? t("sigian.scope.frontEnemies") : t("sigian.scope.enemyField")
+      });
+    }
+
+    if (sigil.sigilId === "backlash") chips.push({ className:"target", text:t("sigian.modifier.ownMage") });
+    if (sigil.sigilId === "retaliation") chips.push({ className:"target", text:t("sigian.modifier.eventSource") });
+
+    if (sigil.sigilId === "heal") {
+      if (config.target === "self-hero") chips.push({ className:"target", text:t("sigian.modifier.ownMage") });
+    }
+    if (sigil.sigilId === "restoration") {
+      chips.push({
+        className:"target",
+        text:config.scope === "front" ? t("sigian.scope.alliedFront") : t("sigian.modifier.alliedCreatures")
+      });
+    }
+    if (sigil.sigilId === "regeneration") chips.push({ className:"target", text:t("sigian.modifier.thisCreature") });
+
+    if (["infusion","subtraction","channeling","erosion","tribute"].includes(sigil.sigilId)) {
+      const enemy = sigil.sigilId === "subtraction" || (sigil.sigilId === "erosion" && config.side === "enemy");
+      const all = config.scope === "all-powers";
+      const text = all
+        ? (enemy ? t("sigian.modifier.enemyPowers") : t("sigian.modifier.ownPowers"))
+        : sigianCanonicalPowerLabel(config.school || card.school, enemy ? "enemy" : "self");
+      chips.push({ className:`target${!all ? ` school-${config.school || card.school}` : ""}`, text, school:all ? null : (config.school || card.school) });
+    }
+
+    if (sigil.sigilId === "protection") {
+      if (config.mode === "halve") {
+        chips.push({ className:"config", text:t("sigian.modifier.mageDamageHalf") });
+      } else {
+        chips.push({
+          className:"config",
+          text:t("sigian.modifier.damageReduction", { value:Math.abs(value || 0), threshold:Number(config.threshold ?? 1) })
+        });
+      }
+      if (config.targetScope === "hero-and-creatures") chips.push({ className:"target", text:t("sigian.scope.alliedFront") });
+    }
+
+    if (sigil.sigilId === "arcane-amplification") {
+      if (config.mode === "multiplier") {
+        chips.push({ className:"config", text:t("sigian.modifier.spellDamageMultiplier", { ratio:`${config.numerator || 3}/${config.denominator || 2}` }) });
+      } else if (value != null) {
+        chips.push({ className:"scale", text:`+${Math.abs(value)} ${t("sigian.modifier.damage")}` });
+      }
+    }
+
+    if (sigil.sigilId === "combat-fury") {
+      chips.push({ className:"config", text:t("sigian.modifier.alliedAttackMultiplier", { ratio:`${config.numerator || 3}/${config.denominator || 2}` }) });
+    }
+    if (sigil.sigilId === "total-assault") chips.push({ className:"target", text:t("sigian.scope.frontEnemies") });
+    if (sigil.sigilId === "arcane-attack") {
+      const schoolId = config.school || card.school;
+      chips.push({ className:`config school-${schoolId}`, text:t("sigian.modifier.attackEqualsPower", { school:schoolName(schoolId) }), school:schoolId });
+    }
+    if (sigil.sigilId === "absorption") {
+      const numerator = Number(config.numerator ?? 1);
+      const denominator = Number(config.denominator ?? 2);
+      const ratio = sigianRatioLabel(numerator, denominator);
+      chips.push({ className:"config", text:t("sigian.modifier.absorbDamage", { ratio:ratio || "1×" }) });
+      if (config.healTarget === "self-hero") chips.push({ className:"target", text:t("sigian.modifier.ownMage") });
+      else chips.push({ className:"target", text:t("sigian.modifier.thisCreature") });
+    }
+    if (sigil.sigilId === "destruction") chips.push({ className:"target", text:t("sigian.modifier.enemyCreature") });
+    if (sigil.sigilId === "annihilation") {
+      chips.push({ className:"target", text:config.scope === "all-field" ? t("sigian.modifier.allCreatures") : t("sigian.modifier.enemyCreatures") });
+    }
+    if (sigil.sigilId === "domination" && value != null) {
+      chips.push({ className:"target", text:t("sigian.modifier.enemyCreaturesTopAttack", { count:Math.abs(value) }) });
+    }
+
+    return chips;
+  }
+
+  function sigianCanonicalSigilUiModel(card, sigil) {
+    const value = sigianCanonicalValue(card, sigil);
+    const effect = sigianCanonicalSigilEffect(sigil.sigilId);
+    const modifiers = sigianCanonicalBaseConfigChips(card, sigil, value);
+    const hasScaling = (sigil.modifiers || []).some(item => A.getSigianAdvancedModifier?.(item.id)?.family === "scaling");
+
+    (sigil.modifiers || []).forEach(item => {
+      const definition = A.getSigianAdvancedModifier?.(item.id);
+      const family = definition?.family;
+      let textValue = "";
+      let className = family || "modifier";
+      let school = item.params?.school || null;
+
+      if (family === "scaling") textValue = sigianCanonicalScalingLabel(item, card, sigil, value);
+      if (family === "activation") textValue = sigianCanonicalActivationLabel(item, card);
+      if (family === "constraint") {
+        if (item.id === "constraint-friendly-fire") textValue = t("sigian.modifier.friendlyFire");
+        if (item.id === "constraint-friendly-fire-power-threshold") {
+          textValue = t("sigian.modifier.friendlyFireWhen", {
+            condition:`${sigianCanonicalPowerLabel(item.params?.school || card.school)} ${sigianOperatorLabel(item.params?.op || "lt")} ${Number(item.params?.value || 0)}`
+          });
+          school = item.params?.school || card.school;
+        }
+      }
+      if (family === "selector") {
+        if (item.id === "selector-highest-life") textValue = t("sigian.modifier.highestLife");
+        if (item.id === "selector-highest-attack") textValue = t("sigian.modifier.highestAttack");
+      }
+      if (!textValue) return;
+      modifiers.push({
+        className:`${className}${school ? ` school-${school}` : ""}`,
+        text:textValue,
+        school
+      });
+    });
+
+    const fixedValueSigils = new Set([
+      "damage","wave","backlash","heal","restoration","regeneration",
+      "infusion","subtraction","channeling","erosion","tribute"
+    ]);
+    if (!hasScaling && value != null && fixedValueSigils.has(sigil.sigilId)) {
+      const growth = ["channeling","erosion"].includes(sigil.sigilId);
+      const sign = ["subtraction","erosion","tribute"].includes(sigil.sigilId) ? "−" : value > 0 ? "+" : "";
+      modifiers.push({
+        className:"scale",
+        text:`${sign}${Math.abs(value)}${growth ? ` ${t("sigian.modifier.perTurn")}` : ""}`
+      });
+    }
+
     return {
-      formula,
-      sigils: formula.sigils.map(sigianSigilUiModel),
-      primary: sigianSigilUiModel(formula.sigils[0])
+      sigilId:sigil.sigilId,
+      effect,
+      name:sigianCanonicalSigilName(sigil),
+      iconMarkup:className => sigianCanonicalSigilIconMarkup(sigil.sigilId, className),
+      modifiers
+    };
+  }
+
+  function sigianCardUiModel(card) {
+    const recipe = sigianRecipeForUi(card);
+    if (!recipe?.sigils?.length) return null;
+    const sigils = recipe.sigils.map(sigil => sigianCanonicalSigilUiModel(card, sigil));
+    return {
+      recipe,
+      formula:recipe,
+      sigils,
+      primary:sigils[0]
     };
   }
 
