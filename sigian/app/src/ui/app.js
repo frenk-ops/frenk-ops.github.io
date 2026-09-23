@@ -3278,6 +3278,7 @@
     const name = document.createElement("small");
     name.textContent = cardName(card);
     art.appendChild(name);
+    syncSigianCombatPresentation(cell, card);
   }
 
   async function animateCardPlay(result, side, slot = null, before = null) {
@@ -3502,6 +3503,7 @@
     }
     health.title = t("ui.life");
     health.innerHTML = '<span aria-hidden="true">♥</span>' + currentHealth;
+    syncSigianCombatPresentation(cell, unit);
   }
 
   function createBoardSlotCell(side, slot) {
@@ -4118,6 +4120,138 @@
     return `${escapeHtml(text.slice(0, index))}<strong class="inline-current-value">${escapeHtml(marker)}</strong> ${escapeHtml(text.slice(index + markerWithSpace.length))}`;
   }
 
+  const SIGIAN_CARD_UI_PILOT_ID = "astral_air_07";
+
+  function isSigianCardUiPilot(card) {
+    return card?.id === SIGIAN_CARD_UI_PILOT_ID;
+  }
+
+  function sigianFormulaForUi(card) {
+    if (!isSigianCardUiPilot(card)) return null;
+    if (engine && typeof A.getSigianFormulaFor === "function") {
+      const formula = A.getSigianFormulaFor(engine, card);
+      if (formula) return formula;
+    }
+    if (typeof A.buildSigianFormulaCatalog === "function") {
+      try {
+        return A.buildSigianFormulaCatalog([card])?.byId?.[card.id] || null;
+      } catch (error) {}
+    }
+    const sigils = A.SIGIAN_NATIVE_FORMULA_SPECS?.[card.id];
+    return sigils ? { id: card.id, school: card.school, type: card.type, sigils } : null;
+  }
+
+  function rebirthSigilMarkup(className = "") {
+    return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2.4"/>
+      <circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/>
+      <path d="M31 45c-8-5-11-12-7-19 2 5 5 6 7 2 2-4 1-8 0-12 8 5 13 12 10 20-1 4-5 8-10 9Z" fill="currentColor" opacity=".92"/>
+      <path d="M45 20a19 19 0 0 1 3 19M48 39l-6-3m6 3-2 6M19 44a19 19 0 0 1-3-19M16 25l6 3m-6-3 2-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
+  function sigianPhoenixUiModel(card) {
+    if (!isSigianCardUiPilot(card)) return null;
+    const formula = sigianFormulaForUi(card);
+    const sigil = formula?.sigils?.find(item => item.effect === A.SIGIAN_EFFECTS?.RESURRECT) || formula?.sigils?.[0] || null;
+    const condition = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.CONDITION)?.params || null;
+    const scale = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.SCALE)?.params || null;
+    const conditionSchool = condition?.left?.school || "fire";
+    const threshold = Number(condition?.right?.value ?? 10);
+    const fullHealth = scale?.mode === A.SIGIAN_SCALE_MODES?.FULL_HEALTH;
+    return {
+      formula,
+      sigil,
+      sigilName: t("sigian.sigil.rebirth"),
+      modifiers: [
+        { className: "trigger", html: `<span class="sigian-modifier-glyph" aria-hidden="true">✦</span>${escapeHtml(t("sigian.modifier.onDeath"))}` },
+        { className: `school-${conditionSchool}`, html: `${schoolIconMarkup(conditionSchool, "school-icon-svg sigian-modifier-school-icon")}<span>${escapeHtml(schoolName(conditionSchool))} ≥ ${escapeHtml(threshold)}</span>` },
+        { className: "result", html: `<span class="sigian-modifier-glyph" aria-hidden="true">♥</span>${escapeHtml(fullHealth ? t("sigian.modifier.fullHealth") : t("ui.life"))}` }
+      ]
+    };
+  }
+
+  function buildSigianFullCard(card, side = null) {
+    const model = sigianPhoenixUiModel(card);
+    if (!model) return null;
+    const cost = engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0);
+    const attack = printedCardAttack(card);
+    const health = Math.max(0, Number(card.currentHealth ?? card.health ?? card.hp ?? 0));
+    const article = document.createElement("article");
+    article.className = `sigian-full-card school-${card.school} type-${card.type}`;
+    article.dataset.cardId = card.id;
+
+    const top = document.createElement("header");
+    top.className = "sigian-full-top";
+    top.innerHTML = `
+      <span class="sigian-full-cost" aria-label="${escapeHtml(t("ui.cost"))} ${escapeHtml(cost)}">${escapeHtml(cost)}</span>
+      <span class="sigian-full-type">${escapeHtml(card.type === "spell" ? t("ui.spell") : t("ui.creature"))}</span>
+      <strong class="sigian-full-name">${escapeHtml(cardName(card))}</strong>
+      <span class="sigian-full-school" aria-label="${escapeHtml(schoolName(card.school))}">${schoolIconMarkup(card.school, "school-icon-svg sigian-full-school-icon")}</span>`;
+    article.appendChild(top);
+
+    const art = document.createElement("div");
+    art.className = "sigian-full-art";
+    art.appendChild(buildArtBlock(card, "sigianFull"));
+    article.appendChild(art);
+
+    const stats = document.createElement("div");
+    stats.className = "sigian-full-stats";
+    stats.innerHTML = `
+      <span class="sigian-full-stat sigian-full-attack" aria-label="${escapeHtml(t("ui.attack"))} ${escapeHtml(attack)}"><span aria-hidden="true">⚔</span><b>${escapeHtml(attack)}</b></span>
+      <span class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></span>`;
+    article.appendChild(stats);
+
+    const sigilArea = document.createElement("section");
+    sigilArea.className = "sigian-full-sigil-area";
+    const modifiers = model.modifiers.map(item => `<span class="sigian-modifier-chip ${escapeHtml(item.className)}">${item.html}</span>`).join("");
+    sigilArea.innerHTML = `
+      <div class="sigian-sigil-medallion">${rebirthSigilMarkup("sigian-rebirth-sigil")}</div>
+      <strong class="sigian-sigil-name">${escapeHtml(model.sigilName)}</strong>
+      <div class="sigian-modifier-row">${modifiers}</div>
+      <p class="sigian-full-rules">${cardDescriptionHtml(card, side || inspectedCardSide)}</p>`;
+    article.appendChild(sigilArea);
+    return article;
+  }
+
+  function decorateSigianHandCard(cardNode, card) {
+    if (!cardNode) return;
+    const enabled = isSigianCardUiPilot(card);
+    cardNode.classList.toggle("sigian-card-hand", enabled);
+    cardNode.querySelector(".sigian-hand-sigil")?.remove();
+    if (!enabled) return;
+    const schoolNode = cardNode.querySelector(".school");
+    if (schoolNode) {
+      schoolNode.innerHTML = schoolIconMarkup(card.school, "school-icon-svg card-school-svg");
+      schoolNode.setAttribute("aria-label", schoolName(card.school));
+      schoolNode.title = schoolName(card.school);
+    }
+    const badge = document.createElement("span");
+    badge.className = "sigian-hand-sigil";
+    badge.title = t("sigian.sigil.rebirth");
+    badge.innerHTML = rebirthSigilMarkup("sigian-rebirth-sigil");
+    cardNode.appendChild(badge);
+  }
+
+  function syncSigianCombatPresentation(cell, unit) {
+    if (!cell) return;
+    const enabled = isSigianCardUiPilot(unit);
+    cell.classList.toggle("sigian-card-combat", enabled);
+    let badge = cell.querySelector(".sigian-combat-sigil");
+    if (!enabled) {
+      badge?.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "sigian-combat-sigil";
+      badge.setAttribute("aria-label", t("sigian.sigil.rebirth"));
+      badge.title = t("sigian.sigil.rebirth");
+      badge.innerHTML = rebirthSigilMarkup("sigian-rebirth-sigil");
+      cell.appendChild(badge);
+    }
+  }
+
   function applyCollectionFilters(cards) {
     const search = (collectionState.search || "").trim().toLowerCase();
     return cards.filter(card => {
@@ -4347,30 +4481,52 @@
   function showMobileCardInspect(card, side = "player") {
     const inspect = $("#mobileCardInspect");
     if (!inspect || !card) return;
-    $("#mobileCardInspectArt")?.replaceChildren(buildArtBlock(card, "mobileInspect"));
-    $("#mobileCardInspectName").textContent = cardName(card);
-    $("#mobileCardInspectKind").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg mobile-inspect-school-icon")}<span>${escapeHtml(schoolName(card.school))} · ${escapeHtml(card.type === "spell" ? t("ui.spell") : t("ui.creature"))}</span>`;
-    $("#mobileCardInspectText").textContent = cardDescription(card, side);
+    const host = inspect.querySelector(".mobile-card-inspect-card");
+    const sigianRoot = $("#mobileCardInspectSigian");
+    const isPilot = isSigianCardUiPilot(card);
+    host?.classList.toggle("sigian-full-mode", isPilot);
 
-    const cost = engine && side ? engine.effectiveCost(side, card) : card.level;
-    const attack = printedCardAttack(card);
-    const health = card.currentHealth ?? card.health ?? 0;
-    const stats = $("#mobileCardInspectStats");
-    if (stats) {
-      stats.innerHTML = card.type === "creature"
-        ? `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>
-           <span class="mobile-inspect-stat mobile-inspect-attack"><small>⚔ ${escapeHtml(t("ui.attack"))}</small><b>${escapeHtml(attack)}</b></span>
-           <span class="mobile-inspect-stat mobile-inspect-health"><small>♥ ${escapeHtml(t("ui.life"))}</small><b>${escapeHtml(health)}</b></span>`
-        : `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>`;
+    if (sigianRoot) {
+      sigianRoot.classList.toggle("hidden", !isPilot);
+      sigianRoot.replaceChildren();
+      if (isPilot) {
+        const fullCard = buildSigianFullCard(card, side);
+        if (fullCard) sigianRoot.appendChild(fullCard);
+      }
     }
-    const currentValue = currentValueData(card, side);
-    const currentValueNode = $("#mobileCardInspectCurrentValue");
-    if (currentValueNode) {
-      currentValueNode.classList.toggle("hidden", !currentValue);
-      currentValueNode.innerHTML = currentValue
-        ? `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`
-        : "";
+
+    const legacyArt = $("#mobileCardInspectArt");
+    const legacyCopy = inspect.querySelector(".mobile-card-inspect-copy");
+    legacyArt?.classList.toggle("hidden", isPilot);
+    legacyCopy?.classList.toggle("hidden", isPilot);
+
+    if (!isPilot) {
+      legacyArt?.replaceChildren(buildArtBlock(card, "mobileInspect"));
+      $("#mobileCardInspectName").textContent = cardName(card);
+      $("#mobileCardInspectKind").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg mobile-inspect-school-icon")}<span>${escapeHtml(schoolName(card.school))} · ${escapeHtml(card.type === "spell" ? t("ui.spell") : t("ui.creature"))}</span>`;
+      $("#mobileCardInspectText").textContent = cardDescription(card, side);
+
+      const cost = engine && side ? engine.effectiveCost(side, card) : card.level;
+      const attack = printedCardAttack(card);
+      const health = card.currentHealth ?? card.health ?? 0;
+      const stats = $("#mobileCardInspectStats");
+      if (stats) {
+        stats.innerHTML = card.type === "creature"
+          ? `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>
+             <span class="mobile-inspect-stat mobile-inspect-attack"><small>⚔ ${escapeHtml(t("ui.attack"))}</small><b>${escapeHtml(attack)}</b></span>
+             <span class="mobile-inspect-stat mobile-inspect-health"><small>♥ ${escapeHtml(t("ui.life"))}</small><b>${escapeHtml(health)}</b></span>`
+          : `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>`;
+      }
+      const currentValue = currentValueData(card, side);
+      const currentValueNode = $("#mobileCardInspectCurrentValue");
+      if (currentValueNode) {
+        currentValueNode.classList.toggle("hidden", !currentValue);
+        currentValueNode.innerHTML = currentValue
+          ? `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`
+          : "";
+      }
     }
+
     inspect.classList.remove("hidden");
     inspect.setAttribute("aria-hidden", "false");
   }
@@ -4649,6 +4805,7 @@
       clone.querySelector(".text").textContent = cardText(card);
       clone.querySelector(".keyword").textContent = visibleCardKeyword(card);
       clone.querySelector(".stats").textContent = card.type === "spell" ? `Lv ${card.level}` : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
+      decorateSigianHandCard(clone, card);
       const inspectHandCard = () => { inspectedCardId = card.id; inspectedCardSide = "player"; inspectedCardInstanceId = null; renderCollectionPanels(); };
       clone.addEventListener("mouseenter", inspectHandCard);
       clone.addEventListener("focus", inspectHandCard);
@@ -5426,6 +5583,12 @@
 
   function renderPreviewInto(target, card, side) {
     target.innerHTML = "";
+    const sigianCard = buildSigianFullCard(card, side);
+    if (sigianCard) {
+      target.appendChild(sigianCard);
+      return;
+    }
+
     const cost = engine && side ? engine.effectiveCost(side, card) : card.level;
     const article = document.createElement("article");
     article.className = `preview-card type-${card.type}`;
