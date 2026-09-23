@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const VALUE_CALIBRATION_SCHEMA_VERSION = 1;
+  const VALUE_CALIBRATION_SCHEMA_VERSION = 2;
   const DEFAULT_TECHNICAL_SEARCH_LIMIT = 256;
 
   function clone(value) {
@@ -20,7 +20,7 @@
     if (reaction || when === "onSelfDeath" || when === "onAnyDeath") return "reactive";
     if (when === "whileAlive") return "persistent";
     if (when === "onBeforeAttack") return "repeatable";
-    if (when === "onPlay" || when === "onSummon") return "immediate";
+    if (when === "onDeploy" || when === "onPlay" || when === "onSummon") return "immediate";
 
     if ([
       "protection",
@@ -40,7 +40,12 @@
     if (config.scope === "field") return "field";
     if (config.scope === "all-field") return "all-field";
     if (config.scope === "enemy-field") return "enemy-field";
-    if (config.scope === "all-powers") return "all-powers";
+    if (config.scope === "all-powers" || config.schools === "all") return "all-powers";
+    if (Array.isArray(config.schools)) {
+      if (config.schools.length === 1) return "one-power";
+      if (config.schools.length === 2) return "two-schools";
+      if (config.schools.length === 3) return "three-schools";
+    }
     if (config.scope === "power") return "one-power";
     if (config.target) return String(config.target);
     if (sigil?.sigilId === "total-assault") return "all-enemy-creatures";
@@ -55,7 +60,8 @@
       "annihilation",
       "total-assault"
     ].includes(sigil?.sigilId)
-      || ["front", "field", "all-field", "enemy-field", "all-powers"].includes(sigil?.config?.scope);
+      || ["front", "field", "all-field", "enemy-field", "all-powers"].includes(sigil?.config?.scope)
+      || sigil?.config?.schools === "all";
   }
 
   function isIntrinsicMalus(sigil) {
@@ -92,6 +98,7 @@
       slotId: sigil.slotId,
       sigilId: sigil.sigilId,
       grade: sigil.grade,
+      affinity: sigil.affinity == null ? null : clone(sigil.affinity),
       recoveredGradeValue: rawGradeValue,
       timing: timingCategory(sigil),
       targetShape: targetShape(sigil),

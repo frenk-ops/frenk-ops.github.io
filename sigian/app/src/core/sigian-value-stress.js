@@ -65,15 +65,25 @@
     });
   }
 
+  function evaluatorModel(evaluator) {
+    return evaluator?.model || evaluator?.fit?.model || null;
+  }
+
+  function evaluatorCapForLevel(evaluator) {
+    return evaluator?.capForLevel || evaluator?.capCandidate?.capForLevel || null;
+  }
+
   function rawValue(model, formula) {
     return finite(model.predict(formula), 0);
   }
 
-  function legalLevel(candidate, formula) {
-    const value = Math.max(0, rawValue(candidate.fit.model, formula));
+  function legalLevel(evaluator, formula) {
+    const model = evaluatorModel(evaluator);
+    const capForLevel = evaluatorCapForLevel(evaluator);
+    const value = Math.max(0, rawValue(model, formula));
     return A.findMinimumLegalSigianLevel({
       evaluateAtLevel: () => value,
-      capForLevel: candidate.capCandidate.capForLevel,
+      capForLevel,
       technicalSearchLimit: 256
     }).level;
   }
@@ -89,8 +99,8 @@
     };
   }
 
-  function interactionCase(candidate, options) {
-    const model = candidate.fit.model;
+  function interactionCase(evaluator, options) {
+    const model = evaluatorModel(evaluator);
     const base = options.base;
     const a = cloneWith(base, options.id + ":a", { sigils: [options.a] });
     const b = cloneWith(base, options.id + ":b", { sigils: [options.b] });
@@ -111,7 +121,7 @@
         bValue,
         comboValue,
         interaction,
-        comboLevel: legalLevel(candidate, combo)
+        comboLevel: legalLevel(evaluator, combo)
       },
       options.expectation || "La combinazione deve avere un premio non lineare positivo rispetto alla semplice somma."
     );
@@ -119,12 +129,12 @@
 
   A.SIGIAN_VALUE_STRESS_SCHEMA_VERSION = STRESS_SCHEMA_VERSION;
 
-  A.runSigianValueCandidateStressSuite = function runSigianValueCandidateStressSuite(candidate) {
-    if (!candidate?.fit?.model?.predict || !candidate?.capCandidate?.capForLevel) {
-      throw new Error("Stress suite Arcane Value: candidate non valido.");
+  A.runSigianValueStressSuite = function runSigianValueStressSuite(evaluator, options = {}) {
+    const model = evaluatorModel(evaluator);
+    const capForLevel = evaluatorCapForLevel(evaluator);
+    if (!model?.predict || typeof capForLevel !== "function") {
+      throw new Error("Stress suite Arcane Value: evaluator non valido.");
     }
-
-    const model = candidate.fit.model;
     const cases = [];
 
     const assault = sigil("total-assault", {
@@ -146,7 +156,7 @@
       {
         lowAttackMarginal: assaultLowMarginal,
         highAttackMarginal: assaultHighMarginal,
-        highFormulaLevel: legalLevel(candidate, highAttackAssault)
+        highFormulaLevel: legalLevel(evaluator, highAttackAssault)
       },
       "Il valore marginale di Total Assault deve crescere quando cresce l'ATT del corpo."
     ));
@@ -170,7 +180,7 @@
       {
         lowHealthMarginal: regenLowMarginal,
         highHealthMarginal: regenHighMarginal,
-        highFormulaLevel: legalLevel(candidate, highHpRegen)
+        highFormulaLevel: legalLevel(evaluator, highHpRegen)
       },
       "Il valore marginale della Rigenerazione deve crescere con la sopravvivenza del corpo."
     ));
@@ -179,7 +189,7 @@
       timing: "persistent",
       targetShape: "intrinsic"
     });
-    cases.push(interactionCase(candidate, {
+    cases.push(interactionCase(evaluator, {
       id: "protection-x-regeneration",
       title: "Protezione × Rigenerazione",
       base: sample("stress:protection-regen:base", { school: "nature", attack: 5, health: 70 }),
@@ -199,7 +209,7 @@
       targetShape: "one-power",
       config: { when: "whileAlive", scope: "power", school: "water" }
     });
-    cases.push(interactionCase(candidate, {
+    cases.push(interactionCase(evaluator, {
       id: "arcane-attack-x-channeling",
       title: "Attacco Arcano × Canalizzazione",
       base: sample("stress:arcane-channeling:base", { school: "water", attack: 0, health: 55 }),
@@ -219,7 +229,7 @@
       targetShape: "intrinsic",
       config: { sourceTarget: "any", healTarget: "self-hero", numerator: 1, denominator: 1 }
     });
-    cases.push(interactionCase(candidate, {
+    cases.push(interactionCase(evaluator, {
       id: "area-damage-x-absorption",
       title: "Danno ad area × Assorbimento",
       base: sample("stress:area-absorption:base", { school: "death", attack: 4, health: 45 }),
@@ -247,7 +257,7 @@
       {
         smallBodyMarginal: smallRebirthMarginal,
         hugeBodyMarginal: hugeRebirthMarginal,
-        hugeFormulaLevel: legalLevel(candidate, hugeRebirth)
+        hugeFormulaLevel: legalLevel(evaluator, hugeRebirth)
       },
       "Rinascita deve valere di più quando ripristina un corpo più forte."
     ));
@@ -277,8 +287,8 @@
       {
         sameSchoolValue: sameInfusionValue,
         offSchoolValue: offInfusionValue,
-        sameSchoolLevel: legalLevel(candidate, sameInfusion),
-        offSchoolLevel: legalLevel(candidate, offInfusion)
+        sameSchoolLevel: legalLevel(evaluator, sameInfusion),
+        offSchoolLevel: legalLevel(evaluator, offInfusion)
       },
       "Infusione nella scuola della Formula deve costare più dell'equivalente fuori scuola perché può rimborsare il costo."
     ));
@@ -315,8 +325,8 @@
       {
         relevantValue,
         unrelatedValue,
-        relevantLevel: legalLevel(candidate, relevantFormula),
-        unrelatedLevel: legalLevel(candidate, unrelatedFormula)
+        relevantLevel: legalLevel(evaluator, relevantFormula),
+        unrelatedLevel: legalLevel(evaluator, unrelatedFormula)
       },
       "Un malus che colpisce la scuola realmente usata dalla Formula deve dare più credito di un malus su una scuola scollegata."
     ));
@@ -336,7 +346,7 @@
       {
         firstMarginal: firstChannelingMarginal,
         secondMarginal: secondChannelingMarginal,
-        twoCopyLevel: legalLevel(candidate, twoChanneling)
+        twoCopyLevel: legalLevel(evaluator, twoChanneling)
       },
       "La seconda Canalizzazione concentrata deve avere un sovrapprezzo rispetto alla prima, non costo perfettamente lineare."
     ));
@@ -360,8 +370,8 @@
       {
         onePowerValue,
         allPowersValue: allPowerValue,
-        onePowerLevel: legalLevel(candidate, onePowerFormula),
-        allPowersLevel: legalLevel(candidate, allPowerFormula)
+        onePowerLevel: legalLevel(evaluator, onePowerFormula),
+        allPowersLevel: legalLevel(evaluator, allPowerFormula)
       },
       "La crescita di tutti i Power deve costare più della crescita di una sola scuola."
     ));
@@ -382,7 +392,7 @@
       {
         firstMarginal: firstDamageMarginal,
         secondMarginal: secondDamageMarginal,
-        twoCopyLevel: legalLevel(candidate, twoDamage)
+        twoCopyLevel: legalLevel(evaluator, twoDamage)
       },
       "Concentrare più moduli di burst nella stessa Formula deve avere un sovrapprezzo non lineare."
     ));
@@ -409,8 +419,8 @@
       {
         firstCredit,
         secondCredit,
-        oneMalusLevel: legalLevel(candidate, oneMalus),
-        twoMalusLevel: legalLevel(candidate, twoMalus)
+        oneMalusLevel: legalLevel(evaluator, oneMalus),
+        twoMalusLevel: legalLevel(evaluator, twoMalus)
       },
       "Il credito ottenuto aggiungendo altri malus deve diminuire e non finanziare positivi in modo lineare illimitato."
     ));
@@ -418,15 +428,19 @@
     const failed = cases.filter(item => !item.passed);
     return {
       schemaVersion: STRESS_SCHEMA_VERSION,
-      evaluator: "oracle75-linear-candidate",
+      evaluator: options.label || evaluator?.evaluator || "arcane-value-evaluator",
       total: cases.length,
       passed: cases.length - failed.length,
       failed: failed.length,
       blockedForProduction: failed.length > 0,
       decision: failed.length
-        ? "Non promuovere il ridge Oracle75 puro: usare un evaluator meccanico ibrido con termini di interazione e regole esplicite per malus/stacking."
-        : "La suite sintetica non ha rilevato blind spot; servono comunque simulazioni prima della promozione.",
+        ? `Evaluator ancora bloccato: ${failed.length} relazioni avversariali non soddisfatte.`
+        : "Tutte le relazioni sintetiche sono soddisfatte; servono comunque confronto sui 65 anchor e simulazioni prima della promozione.",
       cases
     };
+  };
+
+  A.runSigianValueCandidateStressSuite = function runSigianValueCandidateStressSuite(candidate) {
+    return A.runSigianValueStressSuite(candidate, { label:"oracle75-linear-candidate" });
   };
 })(window.Arcane = window.Arcane || {});
