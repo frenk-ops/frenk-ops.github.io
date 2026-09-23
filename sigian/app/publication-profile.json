@@ -10,8 +10,8 @@
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
   "version": "0.23.6",
-  "build": "283f34b",
-  "revision": "0.23.6-sigian-283f34b",
+  "build": "a38efc5",
+  "revision": "0.23.6-sigian-a38efc5",
   "formulaFoundation": {
     "nativeCards": 65,
     "legacyDelegatedCards": 0,
@@ -25,5 +25,14 @@
     "fixedFullGeometry": true,
     "collectionRefresh": true,
     "formulaDriven": true
+  },
+  "collectionUi": {
+    "readabilityPass": true,
+    "filters": [
+      "school",
+      "type",
+      "cost"
+    ],
+    "schoolAccentOnly": true
   }
 }
