@@ -13079,3 +13079,91 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   .forge-model-params { grid-template-columns:1fr; }
   .forge-modeler-heading { align-items:flex-start; }
 }
+
+
+/* ===== Sigian 0.36.1 — Forgia desktop containment and readability ===== */
+@media (min-width:821px) {
+  #forgeView .unified-menu-stage {
+    width:min(1580px,calc(100vw - 48px));
+    max-width:none;
+    margin-inline:auto;
+  }
+
+  #forgeView .forge-page-shell {
+    width:100%;
+    max-width:none;
+    min-width:0;
+    margin:0;
+  }
+
+  .forge-page-heading {
+    min-width:0;
+  }
+
+  .forge-page-heading > div:first-child {
+    min-width:0;
+    flex:1 1 360px;
+  }
+
+  .forge-toolbar {
+    flex:0 1 720px;
+    width:min(100%,720px);
+    min-width:0;
+    max-width:720px;
+  }
+
+  .forge-toolbar .classic-stone-button {
+    flex:1 1 112px;
+    min-width:0;
+    white-space:nowrap;
+  }
+
+  .forge-panel-heading h3 {
+    color:#5b3b24;
+    text-shadow:none;
+  }
+
+  .forge-current-sigil {
+    grid-template-columns:38px minmax(0,1fr) auto;
+    grid-template-rows:auto auto;
+    align-items:center;
+  }
+
+  .forge-current-sigil-icon {
+    grid-column:1;
+    grid-row:1 / 3;
+  }
+
+  .forge-current-sigil-copy {
+    grid-column:2;
+    grid-row:1 / 3;
+    align-self:center;
+  }
+
+  .forge-model-sigil.classic-stone-button {
+    grid-column:3;
+    grid-row:1;
+    min-width:76px;
+  }
+
+  .forge-remove-sigil.classic-stone-button {
+    grid-column:3;
+    grid-row:2;
+    min-width:76px;
+  }
+
+  .forge-sigil-browser {
+    max-height:min(760px,calc(100vh - 190px));
+  }
+
+  .forge-sigil-grid {
+    max-height:min(650px,calc(100vh - 286px));
+  }
+}
+
+@media (min-width:1181px) {
+  .forge-workspace {
+    grid-template-columns:minmax(270px,320px) minmax(360px,430px) minmax(420px,1fr);
+    gap:18px;
+  }
+}
