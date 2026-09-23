@@ -130,6 +130,9 @@
       hp: target.hp,
       reason: options?.reason || null
     });
+    if (typeof A.sigianOnHeroDamageDealt === "function") {
+      A.sigianOnHeroDamageDealt(engine, sourceSide, options?.sourceUnit || null, options?.sourceCard || null, actual, events);
+    }
     return actual;
   }
 
@@ -147,7 +150,7 @@
 
     const sourceUnit = options?.sourceUnit;
     if (typeof A.sigianOnUnitDamageDealt === "function") {
-      A.sigianOnUnitDamageDealt(engine, sourceSide, sourceUnit, actual, events);
+      A.sigianOnUnitDamageDealt(engine, sourceSide, sourceUnit, options?.sourceCard || null, actual, events);
     } else if (sourceUnit?.id === "astral_death_11" && sourceUnit.currentHealth > 0 && actual > 0) {
       const healed = healUnit(sourceUnit, Math.trunc(actual / 2));
       if (healed > 0) events?.push({ type: "astralVampireHeal", side: sourceSide, amount: healed, sourceId: sourceUnit.instanceId });

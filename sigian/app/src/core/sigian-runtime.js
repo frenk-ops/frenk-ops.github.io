@@ -577,14 +577,40 @@
     engine.checkWinner();
   };
 
-  A.sigianOnUnitDamageDealt = function sigianOnUnitDamageDealt(engine, sourceSide, sourceUnit, actual, events) {
-    if (!sourceUnit || actual <= 0) return;
-    const lifesteal = sigilsFor(engine, sourceUnit, { effect: A.SIGIAN_EFFECTS.LIFESTEAL })[0];
-    if (!lifesteal) return;
-    const cfg = configOf(lifesteal);
-    if (cfg.onlyTargetKind && cfg.onlyTargetKind !== "creature") return;
-    const healed = healUnit(sourceUnit, scaleAmount(engine, sourceSide, formulaFor(engine, sourceUnit), lifesteal, { damageDealt: actual }));
+  function absorptionSigilFor(engine, sourceUnit, sourceCard) {
+    const source = sourceUnit || sourceCard;
+    if (!source) return null;
+    const formula = formulaFor(engine, source);
+    if (!formula) return null;
+    const sigil = formula.sigils.find(item => item.effect === A.SIGIAN_EFFECTS.LIFESTEAL) || null;
+    return sigil ? { formula, sigil } : null;
+  }
+
+  function resolveAbsorption(engine, sourceSide, sourceUnit, sourceCard, targetKind, actual, events) {
+    if (actual <= 0) return 0;
+    const found = absorptionSigilFor(engine, sourceUnit, sourceCard);
+    if (!found) return 0;
+    const cfg = configOf(found.sigil);
+    if (cfg.onlyTargetKind && cfg.onlyTargetKind !== targetKind) return 0;
+    const amount = scaleAmount(engine, sourceSide, found.formula, found.sigil, { damageDealt: actual });
+    if (amount <= 0) return 0;
+
+    if (cfg.healTarget === "self-hero") {
+      return healHero(engine, sourceSide, amount, found.formula.id, events);
+    }
+
+    if (!sourceUnit || sourceUnit.currentHealth <= 0) return 0;
+    const healed = healUnit(sourceUnit, amount);
     if (healed > 0) events?.push({ type: "astralVampireHeal", side: sourceSide, amount: healed, sourceId: sourceUnit.instanceId });
+    return healed;
+  }
+
+  A.sigianOnUnitDamageDealt = function sigianOnUnitDamageDealt(engine, sourceSide, sourceUnit, sourceCard, actual, events) {
+    return resolveAbsorption(engine, sourceSide, sourceUnit, sourceCard, "creature", actual, events);
+  };
+
+  A.sigianOnHeroDamageDealt = function sigianOnHeroDamageDealt(engine, sourceSide, sourceUnit, sourceCard, actual, events) {
+    return resolveAbsorption(engine, sourceSide, sourceUnit, sourceCard, "hero", actual, events);
   };
 
   A.sigianOnUnitDamaged = function sigianOnUnitDamaged(engine, targetSide, targetSlot, targetUnit, sourceSide, sourceUnit, actual, events) {

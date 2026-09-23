@@ -386,18 +386,23 @@
     });
   }
 
-  A.SIGIAN_NATIVE_FORMULA_SPECS = Object.freeze(specs);
-  A.SIGIAN_NATIVE_CARD_IDS = Object.freeze(Object.keys(specs));
+  A.SIGIAN_TECHNICAL_ORACLE_SPECS = Object.freeze(specs);
+  A.SIGIAN_NATIVE_FORMULA_SPECS = A.SIGIAN_TECHNICAL_ORACLE_SPECS;
+  A.SIGIAN_NATIVE_CARD_IDS = Object.freeze(
+    Array.isArray(A.SIGIAN_BASE_RECIPE_IDS) && A.SIGIAN_BASE_RECIPE_IDS.length
+      ? [...A.SIGIAN_BASE_RECIPE_IDS]
+      : Object.keys(specs)
+  );
 
-  A.buildSigianFormulaCatalog = function buildSigianFormulaCatalog(cards) {
+  A.buildSigianTechnicalOracleCatalog = function buildSigianTechnicalOracleCatalog(cards) {
     const formulas = (cards || []).map(card => {
       const cardSigils = specs[card.id];
-      if (!cardSigils) throw new Error(`Spec Formula mancante: ${card.id}`);
+      if (!cardSigils) throw new Error(`Spec tecnica oracle mancante: ${card.id}`);
       return nativeFormula(card, cardSigils);
     });
     const byId = {};
     formulas.forEach(formula => {
-      if (byId[formula.id]) throw new Error(`Formula duplicata: ${formula.id}`);
+      if (byId[formula.id]) throw new Error(`Formula oracle duplicata: ${formula.id}`);
       byId[formula.id] = formula;
     });
     return {
@@ -407,5 +412,12 @@
       nativeCount: formulas.length,
       delegatedCount: 0
     };
+  };
+
+  A.buildSigianFormulaCatalog = function buildSigianFormulaCatalog(cards) {
+    if (typeof A.buildSigianCompiledBaseCatalog === "function") {
+      return A.buildSigianCompiledBaseCatalog(cards);
+    }
+    return A.buildSigianTechnicalOracleCatalog(cards);
   };
 })(window.Arcane = window.Arcane || {});

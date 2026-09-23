@@ -81,7 +81,7 @@
       modifierFamilies: ["scaling", "constraint"],
       modifierOptions: {
         scaling: ["scale-power-half", "scale-power", "scale-target-attack"],
-        constraint: ["constraint-friendly-fire"]
+        constraint: ["constraint-friendly-fire", "constraint-friendly-fire-power-threshold"]
       },
       configSchema: { when: ["onPlay", "onSummon"], scope: ["field", "front"] }
     },
@@ -106,7 +106,7 @@
       id: "heal", family: "healing",
       modifierFamilies: ["scaling", "activation"],
       modifierOptions: {
-        scaling: ["scale-power-half", "scale-power", "scale-power-double"],
+        scaling: ["scale-power-half", "scale-power", "scale-power-double", "scale-creature-count"],
         activation: ["activation-power-threshold", "activation-power-comparison", "activation-critical-life", "activation-on-any-death"]
       },
       configSchema: {
@@ -140,7 +140,7 @@
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-power-comparison", "activation-on-any-death"]
       },
-      configSchema: { when: ["onPlay", "onSummon"], scope: ["power", "all-powers"] }
+      configSchema: { when: ["onPlay", "onSummon"], scope: ["power", "all-powers"], school: "school" }
     },
     {
       id: "subtraction", family: "power",
@@ -149,7 +149,7 @@
         selector: [],
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
-      configSchema: { when: ["onPlay", "onSummon"], scope: ["power", "all-powers"] }
+      configSchema: { when: ["onPlay", "onSummon"], scope: ["power", "all-powers"], school: "school" }
     },
     {
       id: "channeling", family: "power",
@@ -157,7 +157,7 @@
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-power-comparison"]
       },
-      configSchema: { when: ["whileAlive"], scope: ["power", "all-powers"] }
+      configSchema: { when: ["whileAlive"], scope: ["power", "all-powers"], school: "school" }
     },
     {
       id: "erosion", family: "power",
@@ -168,7 +168,8 @@
       configSchema: {
         when: ["whileAlive"],
         side: ["self", "enemy"],
-        scope: ["power", "all-powers"]
+        scope: ["power", "all-powers"],
+        school: "school"
       }
     },
     {
@@ -179,7 +180,8 @@
       },
       configSchema: {
         when: ["onPlay", "onSummon"],
-        scope: ["power", "all-powers"]
+        scope: ["power", "all-powers"],
+        school: "school"
       }
     },
     {
@@ -190,7 +192,9 @@
       },
       configSchema: {
         mode: ["halve", "subtract"],
-        targetScope: ["hero", "hero-and-creatures"]
+        targetScope: ["hero", "hero-and-creatures"],
+        stacking: ["per-copy", "presence"],
+        threshold: "number"
       }
     },
     {
@@ -199,7 +203,7 @@
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-critical-life"]
       },
-      configSchema: { mode: ["multiplier", "flat"] }
+      configSchema: { mode: ["multiplier", "flat"], numerator: "number", denominator: "number", stacking: ["per-copy", "presence"] }
     },
     {
       id: "combat-fury", family: "combat",
@@ -207,7 +211,7 @@
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-critical-life"]
       },
-      configSchema: { mode: ["multiplier"] }
+      configSchema: { mode: ["multiplier"], numerator: "number", denominator: "number", stacking: ["per-copy", "presence"] }
     },
     {
       id: "total-assault", family: "combat",
@@ -221,7 +225,7 @@
       modifierOptions: {
         activation: ["activation-power-threshold"]
       },
-      configSchema: {}
+      configSchema: { school: "school" }
     },
     {
       id: "absorption", family: "combat",
@@ -229,7 +233,7 @@
       modifierOptions: {
         activation: ["activation-power-threshold", "activation-critical-life"]
       },
-      configSchema: { sourceTarget: ["creature", "any"] }
+      configSchema: { sourceTarget: ["creature", "any"], healTarget: ["source", "self-hero"], numerator: "number", denominator: "number" }
     },
     {
       id: "destruction", family: "control",
@@ -281,23 +285,24 @@
   ].forEach(definition => sigils.register(definition));
 
   [
-    { id: "scale-power-half", family: "scaling", status: "active" },
-    { id: "scale-power", family: "scaling", status: "active" },
-    { id: "scale-power-double", family: "scaling", status: "active" },
-    { id: "scale-target-attack", family: "scaling", status: "active" },
-    { id: "scale-full-health", family: "scaling", status: "active" },
-    { id: "scale-creature-count", family: "scaling", status: "active" },
-    { id: "scale-damage-dealt", family: "scaling", status: "active" },
+    { id: "scale-power-half", family: "scaling", status: "active", paramsSchema: { school: "school", min: "number" } },
+    { id: "scale-power", family: "scaling", status: "active", paramsSchema: { school: "school", min: "number" } },
+    { id: "scale-power-double", family: "scaling", status: "active", paramsSchema: { school: "school", min: "number" } },
+    { id: "scale-target-attack", family: "scaling", status: "active", paramsSchema: {} },
+    { id: "scale-full-health", family: "scaling", status: "active", paramsSchema: {} },
+    { id: "scale-creature-count", family: "scaling", status: "active", paramsSchema: {} },
+    { id: "scale-damage-dealt", family: "scaling", status: "active", paramsSchema: { numerator: "number", denominator: "number" } },
 
-    { id: "activation-power-threshold", family: "activation", status: "active" },
-    { id: "activation-power-comparison", family: "activation", status: "active" },
-    { id: "activation-critical-life", family: "activation", status: "provisional" },
-    { id: "activation-on-any-death", family: "activation", status: "active" },
+    { id: "activation-power-threshold", family: "activation", status: "active", paramsSchema: { side: ["self", "enemy"], school: "school", op: ["lt", "lte", "gt", "gte", "eq", "neq"], value: "number" } },
+    { id: "activation-power-comparison", family: "activation", status: "active", paramsSchema: { leftSide: ["self", "enemy"], rightSide: ["self", "enemy"], leftSchool: "school", rightSchool: "school", op: ["lt", "lte", "gt", "gte", "eq", "neq"] } },
+    { id: "activation-critical-life", family: "activation", status: "provisional", paramsSchema: { op: ["lt", "lte", "gt", "gte"], value: "number" } },
+    { id: "activation-on-any-death", family: "activation", status: "active", paramsSchema: {} },
 
-    { id: "constraint-friendly-fire", family: "constraint", status: "active" },
+    { id: "constraint-friendly-fire", family: "constraint", status: "active", paramsSchema: {} },
+    { id: "constraint-friendly-fire-power-threshold", family: "constraint", status: "active", paramsSchema: { school: "school", op: ["lt", "lte", "gt", "gte"], value: "number" } },
 
-    { id: "selector-highest-life", family: "selector", status: "active" },
-    { id: "selector-highest-attack", family: "selector", status: "active" }
+    { id: "selector-highest-life", family: "selector", status: "active", paramsSchema: {} },
+    { id: "selector-highest-attack", family: "selector", status: "active", paramsSchema: {} }
   ].forEach(definition => modifiers.register(definition));
 
   A.SIGIAN_SCHOOL_REGISTRY = schools;

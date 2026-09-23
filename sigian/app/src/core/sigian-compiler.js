@@ -5,6 +5,10 @@
     return (recipeSigil.modifiers || []).find(modifier => A.getSigianAdvancedModifier?.(modifier.id)?.family === family) || null;
   }
 
+  function compatibilityFor(context, recipeSigil) {
+    return context?.compatibilityBySlot?.[recipeSigil.slotId] || {};
+  }
+
   function technicalModifier(id, kind, params) {
     return A.createModifier({ id, kind, params });
   }
@@ -98,8 +102,8 @@
     if (scaling.id === "scale-creature-count") {
       return scaleTechnicalModifier(recipeSigil.slotId, {
         mode: A.SIGIAN_SCALE_MODES.CREATURE_COUNT,
-        sides: Array.isArray(params.sides) ? params.sides : [A.SIGIAN_TARGET_SIDES.BOTH],
-        multiplier: Number(params.multiplier ?? base)
+        sides: [A.SIGIAN_TARGET_SIDES.BOTH],
+        multiplier: base
       });
     }
     if (scaling.id === "scale-damage-dealt") {
@@ -209,8 +213,34 @@
     const scope = String(sigil.config.scope || "field");
     const scale = scaleModifier(recipe, sigil, definition, context);
     const friendly = modifierByFamily(sigil, "constraint");
-    const friendlyParams = friendly?.id === "constraint-friendly-fire" ? (friendly.params || {}) : null;
     const output = [];
+
+    // Preserve the historical resolution order for global waves:
+    // allied creatures -> enemy creatures -> enemy mage.
+    // Death cleanup still occurs after the whole Formula trigger, but event order is
+    // observable by replay/multiplayer and therefore part of the compatibility contract.
+    if (friendly) {
+      let condition = null;
+      if (friendly.id === "constraint-friendly-fire-power-threshold") {
+        const params = friendly.params || {};
+        condition = conditionModifier(`${sigil.slotId}:friendly`, {
+          left: {
+            side: A.SIGIAN_TARGET_SIDES.SELF,
+            kind: A.SIGIAN_TARGET_KINDS.POWER,
+            school: String(params.school || recipe.school)
+          },
+          op: String(params.op || "lt"),
+          right: { value: Number(params.value || 0) }
+        });
+      } else if (friendly.id !== "constraint-friendly-fire") {
+        throw new Error(`FormulaRecipe ${recipe.id}: Constraint Onda non compilabile ${friendly.id}.`);
+      }
+      output.push(technicalSigil(sigil, "friendly-creatures", trigger, A.SIGIAN_EFFECTS.DAMAGE, [
+        targetModifier(`${sigil.slotId}:friendly`, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.CREATURES),
+        scale,
+        condition
+      ]));
+    }
 
     output.push(technicalSigil(sigil, "enemy-creatures", trigger, A.SIGIAN_EFFECTS.DAMAGE, [
       targetModifier(sigil.slotId, A.SIGIAN_TARGET_SIDES.ENEMY, A.SIGIAN_TARGET_KINDS.CREATURES),
@@ -226,17 +256,6 @@
       throw new Error(`FormulaRecipe ${recipe.id}: portata Onda non compilabile ${scope}.`);
     }
 
-    if (friendlyParams) {
-      let condition = null;
-      if (friendlyParams.condition) {
-        condition = conditionModifier(`${sigil.slotId}:friendly`, friendlyParams.condition);
-      }
-      output.push(technicalSigil(sigil, "friendly-creatures", trigger, A.SIGIAN_EFFECTS.DAMAGE, [
-        targetModifier(`${sigil.slotId}:friendly`, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.CREATURES),
-        scale,
-        condition
-      ]));
-    }
     return output;
   });
 
@@ -272,8 +291,9 @@
       throw new Error(`FormulaRecipe ${recipe.id}: il target Cura ${target} richiede ancora il targeting interattivo della Forgia.`);
     }
     const scale = scaleModifier(recipe, sigil, definition, context);
+    const compat = compatibilityFor(context, sigil);
     const config = activation.activation?.id === "activation-on-any-death"
-      ? configModifier(sigil.slotId, { reason: recipe.metadata?.legacyReason || recipe.id })
+      ? configModifier(sigil.slotId, { reason: compat.reason || recipe.id })
       : null;
     return [technicalSigil(sigil, "heal", activation.trigger, A.SIGIAN_EFFECTS.HEAL, [
       targetModifier(sigil.slotId, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.HERO),
@@ -290,11 +310,10 @@
     if (scope === "front" && scale.params?.mode === A.SIGIAN_SCALE_MODES.FULL_HEALTH) {
       throw new Error(`FormulaRecipe ${recipe.id}: Restaurazione full-health sul Fronte richiede una regola di Vita massima dell'Incantatore non ancora definita.`);
     }
-    const output = [technicalSigil(sigil, "allied-creatures", activation.trigger, A.SIGIAN_EFFECTS.HEAL, [
-      targetModifier(sigil.slotId, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.CREATURES),
-      scale,
-      activation.condition
-    ])];
+
+    const output = [];
+    // Historical Front restoration resolves the mage first, then allied creatures.
+    // Keep that observable order for event/replay equivalence.
     if (scope === "front") {
       output.push(technicalSigil(sigil, "own-hero", activation.trigger, A.SIGIAN_EFFECTS.HEAL, [
         targetModifier(`${sigil.slotId}:hero`, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.HERO),
@@ -304,6 +323,13 @@
     } else if (scope !== "field") {
       throw new Error(`FormulaRecipe ${recipe.id}: portata Restaurazione non compilabile ${scope}.`);
     }
+
+    output.push(technicalSigil(sigil, "allied-creatures", activation.trigger, A.SIGIAN_EFFECTS.HEAL, [
+      targetModifier(sigil.slotId, A.SIGIAN_TARGET_SIDES.SELF, A.SIGIAN_TARGET_KINDS.CREATURES),
+      scale,
+      activation.condition
+    ]));
+
     return output;
   });
 
@@ -444,19 +470,20 @@
     throw new Error(`FormulaRecipe ${recipe.id}: modalità Amplificazione Arcana non compilabile ${mode}.`);
   });
 
-  A.registerSigianSigilCompiler("combat-fury", function compileCombatFury({ recipe, sigil }) {
+  A.registerSigianSigilCompiler("combat-fury", function compileCombatFury({ recipe, sigil, context }) {
     const activation = activationPlan(recipe, sigil, "passive");
     if (activation.condition) {
       throw new Error(`FormulaRecipe ${recipe.id}: Furia condizionale dinamica richiede ancora il resolver passivo contestuale.`);
     }
+    const compat = compatibilityFor(context, sigil);
     return [technicalSigil(sigil, "combat-fury", "passive", A.SIGIAN_EFFECTS.ATTACK_MULTIPLIER, [
       configModifier(sigil.slotId, {
         numerator: Number(sigil.config.numerator ?? 3),
         denominator: Number(sigil.config.denominator ?? 2),
         stacking: String(sigil.config.stacking || "per-copy"),
         appliesTo: "allied-creatures",
-        ...(Number.isFinite(Number(sigil.config.sourceBaseAttack))
-          ? { sourceBaseAttack: Number(sigil.config.sourceBaseAttack) }
+        ...(Number.isFinite(Number(compat.sourceBaseAttack))
+          ? { sourceBaseAttack: Number(compat.sourceBaseAttack) }
           : {})
       })
     ], A.SIGIAN_SIGIL_KINDS.PASSIVE)];
@@ -488,7 +515,8 @@
         denominator: Number(sigil.config.denominator ?? 2)
       }),
       configModifier(sigil.slotId, {
-        onlyTargetKind: sigil.config.sourceTarget === "any" ? null : "creature"
+        onlyTargetKind: sigil.config.sourceTarget === "any" ? null : "creature",
+        healTarget: sigil.config.healTarget === "self-hero" ? "self-hero" : "source"
       })
     ], A.SIGIAN_SIGIL_KINDS.PASSIVE)];
   });
@@ -564,6 +592,16 @@
       }
       technicalSigils.push(...compiled);
     });
+
+    const compatibilityExtras = typeof options.compatibilityTechnicalSigils === "function"
+      ? options.compatibilityTechnicalSigils({ recipe, technicalSigils: [...technicalSigils] })
+      : options.compatibilityTechnicalSigils;
+    if (Array.isArray(compatibilityExtras)) {
+      compatibilityExtras.forEach(extra => {
+        if (!extra?.id || !extra?.effect) throw new Error(`FormulaRecipe ${recipe.id}: compatibility technical Sigil non valido.`);
+        technicalSigils.push(A.createSigil(extra));
+      });
+    }
 
     const level = Math.max(0, Math.trunc(Number(options.level ?? 0)));
     return A.createFormula({

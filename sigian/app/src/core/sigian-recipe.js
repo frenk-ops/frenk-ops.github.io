@@ -57,10 +57,29 @@
   };
 
   function validateConfigAgainstSchema(config, schema, label, errors) {
-    Object.entries(schema || {}).forEach(([key, allowed]) => {
-      if (!Array.isArray(allowed) || !Object.prototype.hasOwnProperty.call(config || {}, key)) return;
-      if (!allowed.includes(config[key])) {
-        errors.push(`${label}: configurazione ${key} non valida (${config[key]}).`);
+    const source = config || {};
+    const rules = schema || {};
+
+    Object.keys(source).forEach(key => {
+      if (!Object.prototype.hasOwnProperty.call(rules, key)) {
+        errors.push(`${label}: configurazione ${key} non supportata.`);
+      }
+    });
+
+    Object.entries(rules).forEach(([key, rule]) => {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) return;
+      const value = source[key];
+      if (Array.isArray(rule)) {
+        if (!rule.includes(value)) errors.push(`${label}: configurazione ${key} non valida (${value}).`);
+        return;
+      }
+      if (rule === "number") {
+        if (!Number.isFinite(Number(value))) errors.push(`${label}: configurazione ${key} deve essere numerica.`);
+        return;
+      }
+      if (rule === "school") {
+        const school = A.getSigianSchool?.(value);
+        if (!school || school.status !== "active") errors.push(`${label}: scuola di configurazione non valida (${value}).`);
       }
     });
   }
@@ -125,6 +144,7 @@
         if (modifierDefinition.status !== "active" && !options.allowInactiveModifiers) {
           errors.push(`${modifierLabel}: Modifier ${modifier.id} non attivo (${modifierDefinition.status}).`);
         }
+        validateConfigAgainstSchema(modifier.params, modifierDefinition.paramsSchema || {}, `${modifierLabel} params`, errors);
         if (!(definition.modifierFamilies || []).includes(modifierDefinition.family)) {
           errors.push(`${modifierLabel}: famiglia ${modifierDefinition.family} non supportata da ${definition.id}.`);
         }
