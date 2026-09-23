@@ -11880,16 +11880,16 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   align-items:center;
   gap:8px;
 }
-.sigian-sigil-entry.primary:only-child {
+.sigian-sigil-entry.is-primary:only-child {
   grid-template-columns:1fr;
   justify-items:center;
   text-align:center;
 }
-.sigian-sigil-entry.primary:only-child .sigian-sigil-medallion {
+.sigian-sigil-entry.is-primary:only-child .sigian-sigil-medallion {
   width:64px;
   height:64px;
 }
-.sigian-sigil-entry.primary:only-child .sigian-sigil-icon { width:49px;height:49px; }
+.sigian-sigil-entry.is-primary:only-child .sigian-sigil-icon { width:49px;height:49px; }
 .sigian-sigil-entry:not(:only-child) .sigian-sigil-medallion {
   width:48px;
   height:48px;
@@ -12330,4 +12330,21 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     margin:0 !important;
     white-space:normal;
   }
+}
+
+
+/* 0.23.7 — Sigian card Sigil rows are content, never action buttons. */
+.sigian-sigil-entry,
+.sigian-sigil-entry.is-primary,
+.sigian-sigil-entry.is-secondary {
+  background:transparent !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  color:inherit !important;
+}
+.sigian-sigil-entry::before,
+.sigian-sigil-entry::after {
+  background:none !important;
+  box-shadow:none !important;
 }
