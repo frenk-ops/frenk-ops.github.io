@@ -15,6 +15,20 @@
     DAMAGE: "damage",
     HEAL: "heal",
     POWER: "power",
+    POWER_ALL: "power-all",
+    POWER_GROWTH: "power-growth",
+    DESTROY: "destroy",
+    DRAIN: "drain",
+    FORCE_ATTACK: "force-attack",
+    EMIT: "emit",
+    ATTACK_ALL: "attack-all",
+    ATTACK_FROM_POWER: "attack-from-power",
+    ATTACK_MULTIPLIER: "attack-multiplier",
+    SPELL_DAMAGE_MULTIPLIER: "spell-damage-multiplier",
+    SPELL_DAMAGE_BONUS: "spell-damage-bonus",
+    DAMAGE_REDUCTION: "damage-reduction",
+    RESURRECT: "resurrect",
+    LIFESTEAL: "lifesteal",
     SUMMON: "summon",
     PASSIVE: "passive"
   });
@@ -22,19 +36,29 @@
     LEGACY_CARD_REFERENCE: "legacy-card-reference",
     TARGET: "target",
     SCALE: "scale",
-    CONDITION: "condition"
+    CONDITION: "condition",
+    CONFIG: "config"
   });
   const TARGET_SIDES = Object.freeze({
     SELF: "self",
-    ENEMY: "enemy"
+    ENEMY: "enemy",
+    BOTH: "both"
   });
   const TARGET_KINDS = Object.freeze({
     HERO: "hero",
     CREATURES: "creatures",
-    POWER: "power"
+    CREATURE: "creature",
+    SOURCE: "source",
+    POWER: "power",
+    POWERS: "powers"
   });
   const SCALE_MODES = Object.freeze({
-    CONSTANT: "constant"
+    CONSTANT: "constant",
+    SOURCE_POWER: "source-power",
+    TARGET_ATTACK: "target-attack",
+    DAMAGE_DEALT: "damage-dealt",
+    CREATURE_COUNT: "creature-count",
+    FULL_HEALTH: "full-health"
   });
 
   function clone(value) {
@@ -186,7 +210,7 @@
       formula.sigils.forEach((sigil, index) => {
         if (!sigil?.id) errors.push(`Sigillo ${index} senza id.`);
         if (!Array.isArray(sigil?.modifiers)) errors.push(`Sigillo ${sigil?.id || index} senza lista Modifier.`);
-        if (sigil?.kind === SIGIL_KINDS.EFFECT && !Object.values(EFFECTS).includes(sigil.effect)) {
+        if (sigil?.kind !== SIGIL_KINDS.LEGACY_EFFECT && !Object.values(EFFECTS).includes(sigil.effect)) {
           errors.push(`Sigillo ${sigil.id || index} con effetto non riconosciuto: ${sigil.effect}.`);
         }
       });

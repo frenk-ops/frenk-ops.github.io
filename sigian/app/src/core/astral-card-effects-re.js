@@ -62,6 +62,7 @@
 
   function effectiveAttack(engine, side, unit) {
     if (!unit) return 0;
+    if (typeof A.sigianEffectiveAttack === "function") return A.sigianEffectiveAttack(engine, side, unit);
     const cardMeta = meta(unit);
     let attack = Number(unit.attack || 0);
     if (cardMeta?.baseAttack < 0 || unit.dynamicAttack) {
@@ -75,6 +76,7 @@
   }
 
   function combatAttack(engine, side, unit) {
+    if (typeof A.sigianCombatAttack === "function") return A.sigianCombatAttack(engine, side, unit);
     let amount = effectiveAttack(engine, side, unit);
     const warlords = countCard(engine, side, "astral_fire_09");
     if (warlords > 0) amount = Math.trunc((amount * (2 + warlords)) / 2);
@@ -82,6 +84,7 @@
   }
 
   function spellDamage(engine, side, baseAmount) {
+    if (typeof A.sigianSpellDamage === "function") return A.sigianSpellDamage(engine, side, baseAmount);
     let amount = Math.max(0, Math.trunc(baseAmount || 0));
     const dragons = countCard(engine, side, "astral_fire_12");
     if (dragons > 0) amount = Math.trunc((amount * (2 + dragons)) / 2);
@@ -91,6 +94,7 @@
   }
 
   function reduceIncomingDamage(engine, targetSide, targetKind, amount) {
+    if (typeof A.sigianReduceIncomingDamage === "function") return A.sigianReduceIncomingDamage(engine, targetSide, targetKind, amount);
     let result = Math.max(0, Math.trunc(amount || 0));
     if (targetKind === "hero") {
       const guards = countCard(engine, targetSide, "astral_water_06");
@@ -142,7 +146,9 @@
     const actual = Math.max(0, Math.min(before, amount));
 
     const sourceUnit = options?.sourceUnit;
-    if (sourceUnit?.id === "astral_death_11" && sourceUnit.currentHealth > 0 && actual > 0) {
+    if (typeof A.sigianOnUnitDamageDealt === "function") {
+      A.sigianOnUnitDamageDealt(engine, sourceSide, sourceUnit, actual, events);
+    } else if (sourceUnit?.id === "astral_death_11" && sourceUnit.currentHealth > 0 && actual > 0) {
       const healed = healUnit(sourceUnit, Math.trunc(actual / 2));
       if (healed > 0) events?.push({ type: "astralVampireHeal", side: sourceSide, amount: healed, sourceId: sourceUnit.instanceId });
     }
@@ -213,6 +219,14 @@
   }
 
   function deathTrigger(engine, deadSide, deadUnit, events) {
+    if (typeof A.sigianTriggerAnyDeath === "function") {
+      A.sigianTriggerAnyDeath(engine, deadUnit, events);
+      ["player", "enemy"].forEach(side => {
+        const owner = fighter(engine, side);
+        if (owner.passives?.includes("souldrinker")) healHero(engine, side, 2, "souldrinker", events);
+      });
+      return;
+    }
     ["player", "enemy"].forEach(side => {
       const owner = fighter(engine, side);
       const keepers = owner.board.filter(unit => unit?.id === "astral_death_04" && unit.currentHealth > 0).length;
@@ -231,9 +245,10 @@
     const unit = board[slot];
     if (!unit || unit.currentHealth > 0) return false;
 
-    // Phoenix replaces its own death before the generic death event is emitted.
-    // Fire is checked but not consumed; therefore it can rebirth again later.
-    if (unit.id === "astral_air_07" && (fighter(engine, side).power.fire || 0) >= 10) {
+    // Phoenix and future self-death replacements are driven by Formula when available.
+    if (typeof A.sigianResolveSelfDeath === "function") {
+      if (A.sigianResolveSelfDeath(engine, side, slot, unit, events)) return true;
+    } else if (unit.id === "astral_air_07" && (fighter(engine, side).power.fire || 0) >= 10) {
       unit.currentHealth = unit.health;
       if (typeof engine.getOwnerTurnCount === "function") unit.summonedOnOwnerTurn = engine.getOwnerTurnCount(side);
       events?.push({ type: "astralPhoenixRebirth", side, slot, cardId: unit.id, health: unit.currentHealth });
@@ -576,6 +591,10 @@
 
   function beforeUnitAttack(engine, side, slot, unit, events) {
     if (!unit || unit.currentHealth <= 0) return;
+    if (typeof A.sigianBeforeUnitAttack === "function") {
+      A.sigianBeforeUnitAttack(engine, side, slot, unit, events);
+      return;
+    }
     const own = fighter(engine, side);
     const enemy = fighter(engine, opponent(engine, side));
     switch (unit.id) {
@@ -620,8 +639,11 @@
 
     const damage = combatAttack(engine, side, unit);
     const cardMeta = meta(unit);
+    const multiTarget = typeof A.sigianIsMultiTargetAttack === "function"
+      ? A.sigianIsMultiTargetAttack(engine, unit)
+      : Boolean(cardMeta?.multiTarget);
     let primaryEvent = null;
-    if (cardMeta?.multiTarget) {
+    if (multiTarget) {
       enemy.board.forEach((target, targetSlot) => {
         if (target) applyUnitDamage(engine, side, enemySide, targetSlot, damage, { sourceKind: "creature", sourceUnit: unit, reason: "multi_target" }, events);
       });
@@ -649,7 +671,7 @@
 
     if (primaryEvent) primaryEvent.forcedByEffect = options.forcedByEffect === true;
     cleanupDeaths(engine, events, side);
-    return { events, event: primaryEvent, skipped: false, damage, multiTarget: Boolean(cardMeta?.multiTarget) };
+    return { events, event: primaryEvent, skipped: false, damage, multiTarget };
   }
 
   function growthModifierSources(engine, targetSide) {
@@ -705,6 +727,10 @@
 
   function previewCardValue(engine, side, card) {
     if (!isAstral(engine) || !side || !card) return null;
+    if (typeof A.sigianPreviewCardValue === "function") {
+      const preview = A.sigianPreviewCardValue(engine, side, card);
+      if (preview) return preview;
+    }
     const own = fighter(engine, side);
     const targetSide = opponent(engine, side);
     const power = Number(own.power?.[card.school] || 0);
