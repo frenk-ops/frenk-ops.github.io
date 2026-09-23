@@ -43,38 +43,20 @@
     return `formula-${Date.now().toString(36)}`;
   }
 
-  function defaultConfigForSigil(sigilId, school) {
-    switch (sigilId) {
-      case "damage": return { when: "onPlay", target: "enemy-hero" };
-      case "wave": return { when: "onPlay", scope: "field" };
-      case "backlash": return { when: "onSummon", target: "self-hero" };
-      case "retaliation": return { reaction: "damaged", target: "event-source" };
-      case "heal": return { when: "onPlay", target: "self-hero" };
-      case "restoration": return { when: "onPlay", scope: "field" };
-      case "regeneration": return { when: "onBeforeAttack", target: "source" };
-      case "infusion": return { when: "onPlay", scope: "power", school };
-      case "subtraction": return { when: "onPlay", scope: "power", school };
-      case "channeling": return { when: "whileAlive", scope: "power", school };
-      case "erosion": return { when: "whileAlive", side: "enemy", scope: "power", school };
-      case "tribute": return { when: "onSummon", scope: "all-powers", school };
-      case "protection": return { mode: "subtract", targetScope: "hero", stacking: "presence", threshold: 1 };
-      case "arcane-amplification": return { mode: "flat" };
-      case "combat-fury": return { mode: "multiplier", numerator: 3, denominator: 2, stacking: "per-copy" };
-      case "total-assault": return {};
-      case "arcane-attack": return { school };
-      case "absorption": return { sourceTarget: "creature", healTarget: "source", numerator: 1, denominator: 2 };
-      case "destruction": return { when: "onPlay", target: "enemy-creature" };
-      case "annihilation": return { when: "onPlay", scope: "enemy-field" };
-      case "rebirth": return { when: "onSelfDeath", target: "source" };
-      case "domination": return { when: "onPlay", destination: "own-hero" };
-      default: return {};
-    }
+  function defaultValueForSchema(schema, school) {
+    if (Array.isArray(schema)) return schema.length ? clone(schema[0]) : null;
+    if (schema === "school") return school;
+    if (schema === "number") return null;
+    return null;
   }
 
-  function defaultModifiersForSigil(sigilId) {
-    if (sigilId === "destruction") return [{ id: "selector-highest-life", params: {} }];
-    if (sigilId === "domination") return [{ id: "selector-highest-attack", params: {} }];
-    return [];
+  function defaultConfigForSigil(definition, school) {
+    const config = {};
+    Object.entries(definition?.configSchema || {}).forEach(([key, schema]) => {
+      const value = defaultValueForSchema(schema, school);
+      if (value !== null && value !== undefined) config[key] = value;
+    });
+    return config;
   }
 
   function defaultForgeSigil(sigilId, school, slotIndex = 0) {
@@ -85,9 +67,38 @@
       slotId: `forge-${slotIndex + 1}-${sigilId}`,
       sigilId,
       grade: 1,
-      config: defaultConfigForSigil(sigilId, school),
-      modifiers: defaultModifiersForSigil(sigilId)
+      config: defaultConfigForSigil(definition, school),
+      modifiers: []
     };
+  }
+
+  function defaultModifierParams(modifierId, school) {
+    const definition = A.getSigianAdvancedModifier?.(modifierId);
+    const params = {};
+    Object.entries(definition?.paramsSchema || {}).forEach(([key, schema]) => {
+      const value = defaultValueForSchema(schema, school);
+      if (value !== null && value !== undefined) params[key] = value;
+    });
+
+    if (modifierId === "activation-power-threshold") {
+      params.side = params.side || "self";
+      params.op = params.op || "gte";
+      params.value = 6;
+    }
+    if (modifierId === "activation-power-comparison") {
+      params.leftSide = params.leftSide || "self";
+      params.rightSide = params.rightSide || "enemy";
+      params.op = params.op || "lt";
+    }
+    if (modifierId === "constraint-friendly-fire-power-threshold") {
+      params.op = params.op || "lt";
+      params.value = 12;
+    }
+    if (modifierId === "scale-damage-dealt") {
+      params.numerator = 1;
+      params.denominator = 2;
+    }
+    return params;
   }
 
   function normalizeRecipe(input = {}) {
@@ -324,6 +335,77 @@
         return commitRecipe(recipeWith({ sigils: next }));
       },
 
+      setSigilConfig(slotId, key, value) {
+        const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
+        if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+        const definition = A.getCanonicalSigil?.(draft.recipe.sigils[index].sigilId);
+        const schema = definition?.configSchema?.[key];
+        if (schema === undefined) throw new Error(`Configurazione ${key} non supportata da ${definition?.id || "?"}.`);
+
+        let normalized = value;
+        if (schema === "number") {
+          normalized = Number(value);
+          if (!Number.isFinite(normalized)) throw new Error(`Configurazione numerica non valida: ${key}.`);
+        } else if (schema === "school") {
+          const school = A.getSigianSchool?.(value);
+          if (!school || school.status !== "active") throw new Error(`Scuola non valida per ${key}: ${value}.`);
+          normalized = school.id;
+        } else if (Array.isArray(schema) && !schema.includes(value)) {
+          throw new Error(`Valore ${value} non supportato per ${key}.`);
+        }
+        return this.updateSigil(slotId, { config: { [key]:normalized } });
+      },
+
+      setSigilModifier(slotId, family, modifierId) {
+        const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
+        if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+        const sigil = draft.recipe.sigils[index];
+        const definition = A.getCanonicalSigil?.(sigil.sigilId);
+        const allowed = definition?.modifierOptions?.[family];
+        if (!Array.isArray(allowed)) throw new Error(`Famiglia Modifier non supportata: ${family}.`);
+
+        const nextModifiers = clone(sigil.modifiers || []).filter(item => A.getSigianAdvancedModifier?.(item.id)?.family !== family);
+        if (modifierId) {
+          if (!allowed.includes(modifierId)) throw new Error(`Modifier ${modifierId} non ammesso per ${sigil.sigilId}.`);
+          const modifierDefinition = A.getSigianAdvancedModifier?.(modifierId);
+          if (!modifierDefinition || modifierDefinition.status !== "active") throw new Error(`Modifier non attivo: ${modifierId}.`);
+          nextModifiers.push({
+            id: modifierId,
+            params: defaultModifierParams(modifierId, draft.recipe.school)
+          });
+        }
+        return this.updateSigil(slotId, { modifiers:nextModifiers });
+      },
+
+      setSigilModifierParam(slotId, family, key, value) {
+        const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
+        if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+        const sigil = draft.recipe.sigils[index];
+        const modifierIndex = (sigil.modifiers || []).findIndex(item => A.getSigianAdvancedModifier?.(item.id)?.family === family);
+        if (modifierIndex < 0) throw new Error(`Nessun Modifier ${family} attivo nello slot ${slotId}.`);
+
+        const nextModifiers = clone(sigil.modifiers);
+        const modifier = nextModifiers[modifierIndex];
+        const modifierDefinition = A.getSigianAdvancedModifier?.(modifier.id);
+        const schema = modifierDefinition?.paramsSchema?.[key];
+        if (schema === undefined) throw new Error(`Parametro ${key} non supportato da ${modifier.id}.`);
+
+        let normalized = value;
+        if (schema === "number") {
+          normalized = Number(value);
+          if (!Number.isFinite(normalized)) throw new Error(`Parametro numerico non valido: ${key}.`);
+        } else if (schema === "school") {
+          const school = A.getSigianSchool?.(value);
+          if (!school || school.status !== "active") throw new Error(`Scuola non valida per ${key}: ${value}.`);
+          normalized = school.id;
+        } else if (Array.isArray(schema) && !schema.includes(value)) {
+          throw new Error(`Valore ${value} non supportato per ${key}.`);
+        }
+
+        modifier.params = { ...(modifier.params || {}), [key]:normalized };
+        return this.updateSigil(slotId, { modifiers:nextModifiers });
+      },
+
       undo() {
         if (!history.length) return this.snapshot();
         future.push(clone(draft));
@@ -352,6 +434,7 @@
   A.SIGIAN_FORGE_DRAFT_SCHEMA_VERSION = FORGE_DRAFT_SCHEMA_VERSION;
   A.SIGIAN_FORGE_DRAFT_STORAGE_KEY = FORGE_DRAFT_STORAGE_KEY;
   A.createSigianForgeDefaultSigil = defaultForgeSigil;
+  A.createSigianForgeDefaultModifierParams = defaultModifierParams;
   A.normalizeSigianForgeDraft = normalizeDraft;
   A.analyzeSigianForgeDraft = draftAnalysis;
   A.createSigianForgeSession = createSession;

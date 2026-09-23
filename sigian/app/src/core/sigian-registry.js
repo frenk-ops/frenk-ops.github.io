@@ -100,7 +100,7 @@
         scaling: ["scale-power-half", "scale-power"],
         activation: ["activation-power-threshold", "activation-power-comparison", "activation-critical-life"]
       },
-      configSchema: { reaction: ["attacked", "damaged"], target: ["event-source"] }
+      configSchema: { reaction: ["damaged", "attacked"], target: ["event-source"] }
     },
     {
       id: "heal", family: "healing",

@@ -515,6 +515,7 @@
   let pauseMenu = null;
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
   let forgeSession = null;
+  let forgeSelectedSigilSlotId = null;
 
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
@@ -4799,15 +4800,165 @@
   function forgeCurrentSigilsMarkup(recipe) {
     if (!recipe.sigils.length) return `<p class="forge-empty-note">${escapeHtml(t("forge.emptySigils"))}</p>`;
     return recipe.sigils.map(sigil => `
-      <div class="forge-current-sigil">
+      <div class="forge-current-sigil ${forgeSelectedSigilSlotId === sigil.slotId ? "is-selected" : ""}">
         <span class="forge-current-sigil-icon">${sigianCanonicalSigilIconMarkup(sigil.sigilId, "sigian-sigil-icon")}</span>
         <span class="forge-current-sigil-copy">
           <strong>${escapeHtml(sigianCanonicalSigilName(sigil))}</strong>
           <small>${escapeHtml(Number(sigil.grade) === 1 ? t("forge.gradeOne") : String(sigil.grade))}</small>
         </span>
+        <button type="button" class="classic-stone-button ghost forge-model-sigil" data-forge-model-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.model"))}</button>
         <button type="button" class="classic-stone-button ghost forge-remove-sigil" data-forge-remove-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.remove"))}</button>
       </div>
     `).join("");
+  }
+
+  function forgeModifierLabel(modifierId) {
+    const keys = {
+      "scale-power-half":"forge.mod.scalePowerHalf",
+      "scale-power":"forge.mod.scalePower",
+      "scale-power-double":"forge.mod.scalePowerDouble",
+      "scale-target-attack":"forge.mod.scaleTargetAttack",
+      "scale-full-health":"forge.mod.scaleFullHealth",
+      "scale-creature-count":"forge.mod.scaleCreatureCount",
+      "scale-damage-dealt":"forge.mod.scaleDamageDealt",
+      "activation-power-threshold":"forge.mod.activationPowerThreshold",
+      "activation-power-comparison":"forge.mod.activationPowerComparison",
+      "activation-on-any-death":"forge.mod.activationAnyDeath",
+      "constraint-friendly-fire":"forge.mod.friendlyFire",
+      "constraint-friendly-fire-power-threshold":"forge.mod.friendlyFireThreshold",
+      "selector-highest-life":"forge.mod.highestLife",
+      "selector-highest-attack":"forge.mod.highestAttack"
+    };
+    const key = keys[modifierId];
+    return key ? t(key) : String(modifierId || "").replaceAll("-", " ");
+  }
+
+  function forgeFamilyLabel(family) {
+    const key = `forge.family.${family}`;
+    const label = t(key);
+    return label === key ? family : label;
+  }
+
+  function forgeOptionLabel(key, value, sigil) {
+    if (key === "when") return sigianTriggerLabel(value);
+    if (key === "reaction") return value === "damaged" ? t("sigian.trigger.damaged") : (value === "attacked" ? t("forge.option.attacked") : value);
+    if (key === "school") return schoolName(value);
+    if (key === "target") {
+      return ({
+        "enemy-hero":t("sigian.modifier.enemyMage"),
+        "enemy-creature":t("sigian.modifier.enemyCreature"),
+        "self-hero":t("sigian.modifier.ownMage"),
+        "allied-creature":t("sigian.modifier.alliedCreatures"),
+        "source":t("sigian.modifier.thisCreature"),
+        "event-source":t("sigian.modifier.eventSource")
+      })[value] || value;
+    }
+    if (key === "selector") return value === "strongest-attack" ? t("sigian.modifier.highestAttack") : t("sigian.modifier.highestLife");
+    if (key === "scope") {
+      if (value === "field") return sigil.sigilId === "restoration" ? t("sigian.modifier.alliedCreatures") : t("sigian.scope.enemyField");
+      if (value === "front") return sigil.sigilId === "restoration" ? t("sigian.scope.alliedFront") : t("sigian.scope.frontEnemies");
+      return ({
+        "power":t("forge.option.onePower"),
+        "all-powers":t("forge.option.allPowers"),
+        "enemy-field":t("sigian.scope.enemyField"),
+        "all-field":t("sigian.modifier.allCreatures")
+      })[value] || value;
+    }
+    if (key === "side" || key.endsWith("Side")) return value === "enemy" ? t("forge.option.enemy") : t("forge.option.self");
+    if (key === "op") return ({ lt:"<", lte:"≤", gt:">", gte:"≥", eq:"=", neq:"≠" })[value] || value;
+    const labels = {
+      halve:t("forge.option.halve"),
+      subtract:t("forge.option.subtract"),
+      multiplier:t("forge.option.multiplier"),
+      flat:t("forge.option.flat"),
+      "hero":t("forge.option.hero"),
+      "hero-and-creatures":t("forge.option.heroAndCreatures"),
+      "per-copy":t("forge.option.perCopy"),
+      presence:t("forge.option.presence"),
+      creature:t("forge.option.creature"),
+      any:t("forge.option.any"),
+      source:t("forge.option.source"),
+      "self-hero":t("sigian.modifier.ownMage"),
+      "own-hero":t("sigian.modifier.ownMage")
+    };
+    return labels[value] || String(value);
+  }
+
+  function forgeSchemaControlMarkup(sigil, key, schema, value, dataAttrs) {
+    const labelKey = `forge.config.${key}`;
+    const rawLabel = t(labelKey);
+    const label = rawLabel === labelKey ? key : rawLabel;
+    if (Array.isArray(schema)) {
+      const options = schema.map(option => `<option value="${escapeHtml(option)}" ${String(value) === String(option) ? "selected" : ""}>${escapeHtml(forgeOptionLabel(key, option, sigil))}</option>`).join("");
+      return `<label class="forge-model-field"><span>${escapeHtml(label)}</span><select ${dataAttrs}>${options}</select></label>`;
+    }
+    if (schema === "school") {
+      const options = (A.listSigianSchools?.({ status:"active" }) || []).map(school =>
+        `<option value="${escapeHtml(school.id)}" ${String(value) === String(school.id) ? "selected" : ""}>${escapeHtml(schoolName(school.id))}</option>`
+      ).join("");
+      return `<label class="forge-model-field"><span>${escapeHtml(label)}</span><select ${dataAttrs}>${options}</select></label>`;
+    }
+    if (schema === "number") {
+      return `<label class="forge-model-field"><span>${escapeHtml(label)}</span><input type="number" step="1" value="${value == null ? "" : escapeHtml(value)}" ${dataAttrs}></label>`;
+    }
+    return "";
+  }
+
+  function forgeSigilModelerMarkup(recipe, sigil) {
+    if (!sigil) return "";
+    const definition = A.getCanonicalSigil?.(sigil.sigilId);
+    if (!definition) return "";
+    const configFields = Object.entries(definition.configSchema || {}).map(([key, schema]) =>
+      forgeSchemaControlMarkup(
+        sigil,
+        key,
+        schema,
+        sigil.config?.[key],
+        `data-forge-config-key="${escapeHtml(key)}" data-forge-slot="${escapeHtml(sigil.slotId)}"`
+      )
+    ).join("");
+
+    const modifierFamilies = (definition.modifierFamilies || []).map(family => {
+      const allowed = (definition.modifierOptions?.[family] || []).filter(id => A.getSigianAdvancedModifier?.(id)?.status === "active");
+      if (!allowed.length) return "";
+      const current = (sigil.modifiers || []).find(item => A.getSigianAdvancedModifier?.(item.id)?.family === family) || null;
+      const options = [
+        `<option value="">${escapeHtml(t("forge.noModifier"))}</option>`,
+        ...allowed.map(id => `<option value="${escapeHtml(id)}" ${current?.id === id ? "selected" : ""}>${escapeHtml(forgeModifierLabel(id))}</option>`)
+      ].join("");
+      const params = current ? Object.entries(A.getSigianAdvancedModifier(current.id)?.paramsSchema || {}).map(([key, schema]) =>
+        forgeSchemaControlMarkup(
+          sigil,
+          key,
+          schema,
+          current.params?.[key],
+          `data-forge-modifier-param="${escapeHtml(key)}" data-forge-modifier-family="${escapeHtml(family)}" data-forge-slot="${escapeHtml(sigil.slotId)}"`
+        )
+      ).join("") : "";
+
+      return `<div class="forge-modifier-family">
+        <label class="forge-model-field">
+          <span>${escapeHtml(forgeFamilyLabel(family))}</span>
+          <select data-forge-modifier-family="${escapeHtml(family)}" data-forge-slot="${escapeHtml(sigil.slotId)}">${options}</select>
+        </label>
+        ${params ? `<div class="forge-model-params">${params}</div>` : ""}
+      </div>`;
+    }).join("");
+
+    return `<section class="forge-sigil-modeler">
+      <div class="forge-modeler-heading">
+        <div class="forge-modeler-title">
+          <span class="forge-modeler-icon">${sigianCanonicalSigilIconMarkup(sigil.sigilId, "sigian-sigil-icon")}</span>
+          <div><small>${escapeHtml(t("forge.modelSigil"))}</small><strong>${escapeHtml(sigianCanonicalSigilName(sigil))}</strong></div>
+        </div>
+        <button type="button" class="classic-stone-button ghost" data-forge-close-modeler>${escapeHtml(t("forge.backToCatalog"))}</button>
+      </div>
+      <p class="forge-modeling-note">${escapeHtml(t("forge.modelingNotice"))}</p>
+      <h4>${escapeHtml(t("forge.baseConfig"))}</h4>
+      <div class="forge-model-grid">${configFields || `<span class="forge-model-none">—</span>`}</div>
+      <h4>${escapeHtml(t("forge.advancedModifiers"))}</h4>
+      <div class="forge-modifier-list">${modifierFamilies || `<span class="forge-model-none">—</span>`}</div>
+    </section>`;
   }
 
   function renderForgePage() {
@@ -4889,9 +5040,12 @@
             <span class="forge-panel-step">III</span>
             <h3>${escapeHtml(t("forge.sigils"))}</h3>
           </div>
-          <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
-          ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
-          <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
+          ${forgeSigilModelerMarkup(recipe, recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId))}
+          <div class="forge-catalog-section ${forgeSelectedSigilSlotId ? "is-secondary" : ""}">
+            <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
+            ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
+            <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
+          </div>
         </aside>
       </div>`;
 
@@ -4916,10 +5070,16 @@
     }
 
     if (newButton) newButton.onclick = () => {
+      forgeSelectedSigilSlotId = null;
       session.reset({ type:"creature", stats:{ attack:1, health:5 }, presentation:{ name:t("forge.newFormula") } });
       renderForgePage();
     };
-    if (undoButton) undoButton.onclick = () => { session.undo(); renderForgePage(); };
+    if (undoButton) undoButton.onclick = () => {
+      session.undo();
+      const current = session.snapshot().draft.recipe;
+      if (forgeSelectedSigilSlotId && !current.sigils.some(item => item.slotId === forgeSelectedSigilSlotId)) forgeSelectedSigilSlotId = null;
+      renderForgePage();
+    };
     if (redoButton) redoButton.onclick = () => { session.redo(); renderForgePage(); };
 
     $("#forgeNameInput")?.addEventListener("input", event => {
@@ -4954,11 +5114,39 @@
     });
     root.querySelectorAll("[data-forge-add-sigil]").forEach(button => button.addEventListener("click", () => {
       if (button.disabled) return;
-      session.addSigil(button.dataset.forgeAddSigil);
+      const result = session.addSigil(button.dataset.forgeAddSigil);
+      forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
       renderForgePage();
     }));
+    root.querySelectorAll("[data-forge-model-sigil]").forEach(button => button.addEventListener("click", () => {
+      forgeSelectedSigilSlotId = button.dataset.forgeModelSigil;
+      renderForgePage();
+    }));
+    root.querySelector("[data-forge-close-modeler]")?.addEventListener("click", () => {
+      forgeSelectedSigilSlotId = null;
+      renderForgePage();
+    });
     root.querySelectorAll("[data-forge-remove-sigil]").forEach(button => button.addEventListener("click", () => {
-      session.removeSigil(button.dataset.forgeRemoveSigil);
+      const slotId = button.dataset.forgeRemoveSigil;
+      session.removeSigil(slotId);
+      if (forgeSelectedSigilSlotId === slotId) forgeSelectedSigilSlotId = null;
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-config-key]").forEach(control => control.addEventListener("change", () => {
+      session.setSigilConfig(control.dataset.forgeSlot, control.dataset.forgeConfigKey, control.value);
+      renderForgePage();
+    }));
+    root.querySelectorAll("select[data-forge-modifier-family]").forEach(control => control.addEventListener("change", () => {
+      session.setSigilModifier(control.dataset.forgeSlot, control.dataset.forgeModifierFamily, control.value || null);
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-modifier-param]").forEach(control => control.addEventListener("change", () => {
+      session.setSigilModifierParam(
+        control.dataset.forgeSlot,
+        control.dataset.forgeModifierFamily,
+        control.dataset.forgeModifierParam,
+        control.value
+      );
       renderForgePage();
     }));
   }
