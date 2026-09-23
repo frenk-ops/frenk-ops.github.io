@@ -10,11 +10,19 @@
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
   "version": "0.23.6",
-  "build": "4949607",
-  "revision": "0.23.6-sigian-4949607",
+  "build": "61df77f",
+  "revision": "0.23.6-sigian-61df77f",
   "formulaFoundation": {
     "nativeCards": 65,
     "legacyDelegatedCards": 0,
     "liveRuntime": true
+  },
+  "cardUiPilot": {
+    "cardId": "astral_air_07",
+    "cardName": "Phoenix / Fenice",
+    "fullInspect": true,
+    "sharedMobileDesktop": true,
+    "combat": true,
+    "hand": true
   }
 }
