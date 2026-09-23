@@ -5,6 +5,7 @@
     "ui.menu": "MENU", "ui.viewCard": "VEDI CARTA", "ui.passTurn": "PASSA", "ui.dragToPlay": "Trascina per giocare",
     "ui.selectCardForDetails": "Seleziona una carta per visualizzarne i dettagli",
     "ui.noCard": "Nessuna carta selezionata", "ui.currentValue": "Valore attuale", "ui.beforeDefense": "prima delle difese",
+    "sigian.sigil.rebirth": "Rinascita", "sigian.modifier.onDeath": "Alla morte", "sigian.modifier.fullHealth": "Vita piena",
     "log.damageHero": "{source} infligge {amount} danni a {target}.",
     "log.damageHeroReduced": "{source}: {gross} danni, ridotti a {amount} contro {target}.",
     "log.damageCreature": "{source} infligge {amount} danni a {target}.",
