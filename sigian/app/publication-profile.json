@@ -9,9 +9,9 @@
   "multiplayerServerIncluded": false,
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
-  "version": "0.23.7",
-  "build": "fff1cda",
-  "revision": "0.23.7-sigian-fff1cda",
+  "version": "0.23.8",
+  "build": "61e5ef6",
+  "revision": "0.23.8-sigian-61e5ef6",
   "formulaFoundation": {
     "nativeCards": 65,
     "legacyDelegatedCards": 0,
@@ -34,6 +34,14 @@
       "cost"
     ],
     "schoolAccentOnly": true,
-    "sigilPrimaryCollisionFixed": true
+    "sigilPrimaryCollisionFixed": true,
+    "previewModes": [
+      "full",
+      "combat",
+      "hand"
+    ],
+    "canonicalFullRenderer": true,
+    "containedPreview": true,
+    "sigilSpacingFixed": true
   }
 }
