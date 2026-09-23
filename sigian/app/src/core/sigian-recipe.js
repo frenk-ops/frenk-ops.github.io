@@ -122,11 +122,15 @@
           errors.push(`${modifierLabel}: Modifier non registrato ${modifier.id || "(vuoto)"}.`);
           return;
         }
-        if (modifierDefinition.status === "reserved" && !options.allowReservedModifiers) {
-          errors.push(`${modifierLabel}: Modifier ${modifier.id} riservato.`);
+        if (modifierDefinition.status !== "active" && !options.allowInactiveModifiers) {
+          errors.push(`${modifierLabel}: Modifier ${modifier.id} non attivo (${modifierDefinition.status}).`);
         }
         if (!(definition.modifierFamilies || []).includes(modifierDefinition.family)) {
           errors.push(`${modifierLabel}: famiglia ${modifierDefinition.family} non supportata da ${definition.id}.`);
+        }
+        const allowedIds = definition.modifierOptions?.[modifierDefinition.family];
+        if (Array.isArray(allowedIds) && !allowedIds.includes(modifier.id)) {
+          errors.push(`${modifierLabel}: Modifier ${modifier.id} non ammesso per ${definition.id}.`);
         }
         if (seenFamilies.has(modifierDefinition.family)) {
           errors.push(`${modifierLabel}: più Modifier indipendenti della stessa famiglia ${modifierDefinition.family} non sono ammessi nella v1.`);
@@ -138,8 +142,8 @@
         errors.push(`${label}: oltre due famiglie Modifier avanzate indipendenti.`);
       }
 
-      if (definition.id === "rebirth" && recipeSigil.grade === "infinite" && !seenFamilies.has("condition")) {
-        errors.push(`${label}: Rinascita ∞ richiede un Modifier di Condizione.`);
+      if (definition.id === "rebirth" && recipeSigil.grade === "infinite" && !seenFamilies.has("activation")) {
+        errors.push(`${label}: Rinascita ∞ richiede un Modifier di Attivazione.`);
       }
     });
 

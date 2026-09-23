@@ -168,6 +168,9 @@
       health: Math.max(0, target.currentHealth),
       reason: options?.reason || null
     });
+    if (!options?.suppressRetaliation && typeof A.sigianOnUnitDamaged === "function") {
+      A.sigianOnUnitDamaged(engine, targetSide, slot, target, sourceSide, sourceUnit, actual, events);
+    }
     return actual;
   }
 

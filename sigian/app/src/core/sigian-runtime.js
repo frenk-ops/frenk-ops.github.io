@@ -288,11 +288,31 @@
               A.astralApplyUnitDamage(engine, actingSide, targetSide, slot, amount, options, events);
             });
           } else if (target.kind === A.SIGIAN_TARGET_KINDS.CREATURE) {
-            const selected = target.selector === "strongest-health" ? strongestByHealth(engine, targetSide) : null;
+            const selected = target.selector === "strongest-attack"
+              ? strongestByAttack(engine, targetSide)
+              : strongestByHealth(engine, targetSide);
             if (selected) {
               const amount = scaleAmount(engine, actingSide, formula, sigil, { ...context, target: selected.unit, targetSide, slot: selected.slot });
               A.astralApplyUnitDamage(engine, actingSide, targetSide, selected.slot, amount, options, events);
             }
+          } else if (target.kind === A.SIGIAN_TARGET_KINDS.EVENT_SOURCE) {
+            const eventSource = context?.eventSourceUnit;
+            const eventSourceSide = context?.eventSourceSide || targetSide;
+            if (!eventSource || eventSource.currentHealth <= 0) continue;
+            const eventSourceSlot = Number.isInteger(context?.eventSourceSlot)
+              ? context.eventSourceSlot
+              : engine.getFighter(eventSourceSide).board.indexOf(eventSource);
+            if (eventSourceSlot < 0) continue;
+            const amount = scaleAmount(engine, actingSide, formula, sigil, {
+              ...context,
+              target: eventSource,
+              targetSide: eventSourceSide,
+              slot: eventSourceSlot
+            });
+            A.astralApplyUnitDamage(engine, actingSide, eventSourceSide, eventSourceSlot, amount, {
+              ...options,
+              suppressRetaliation: true
+            }, events);
           }
         }
         return { executed: true };
@@ -354,7 +374,9 @@
               if (unit) unit.currentHealth = 0;
             });
           } else if (target.kind === A.SIGIAN_TARGET_KINDS.CREATURE) {
-            const selected = target.selector === "strongest-health" ? strongestByHealth(engine, targetSide) : null;
+            const selected = target.selector === "strongest-attack"
+              ? strongestByAttack(engine, targetSide)
+              : strongestByHealth(engine, targetSide);
             if (selected) selected.unit.currentHealth = 0;
           }
         }
@@ -481,30 +503,38 @@
 
   A.sigianCombatAttack = function sigianCombatAttack(engine, side, unit) {
     let amount = A.sigianEffectiveAttack(engine, side, unit);
-    let linearHalfBonuses = 0;
+    let additiveMultiplierBonus = 0;
     engine.getFighter(side).board.forEach(source => {
       if (!source || source.currentHealth <= 0) return;
       sigilsFor(engine, source, { effect: A.SIGIAN_EFFECTS.ATTACK_MULTIPLIER }).forEach(sigil => {
         const cfg = configOf(sigil);
-        if (cfg.appliesTo === "allied-creatures") linearHalfBonuses += 1;
+        if (cfg.appliesTo !== "allied-creatures") return;
+        const numerator = Number(cfg.numerator ?? 3);
+        const denominator = Number(cfg.denominator ?? 2) || 1;
+        additiveMultiplierBonus += (numerator - denominator) / denominator;
       });
     });
-    if (linearHalfBonuses > 0) amount = Math.trunc((amount * (2 + linearHalfBonuses)) / 2);
+    if (additiveMultiplierBonus !== 0) amount = Math.trunc(amount * (1 + additiveMultiplierBonus));
     return Math.max(0, amount);
   };
 
   A.sigianSpellDamage = function sigianSpellDamage(engine, side, baseAmount) {
     let amount = Math.max(0, Math.trunc(baseAmount || 0));
-    let linearHalfBonuses = 0;
+    let additiveMultiplierBonus = 0;
     let flatBonus = 0;
     engine.getFighter(side).board.forEach(source => {
       if (!source || source.currentHealth <= 0) return;
-      sigilsFor(engine, source, { effect: A.SIGIAN_EFFECTS.SPELL_DAMAGE_MULTIPLIER }).forEach(() => { linearHalfBonuses += 1; });
+      sigilsFor(engine, source, { effect: A.SIGIAN_EFFECTS.SPELL_DAMAGE_MULTIPLIER }).forEach(sigil => {
+        const cfg = configOf(sigil);
+        const numerator = Number(cfg.numerator ?? 3);
+        const denominator = Number(cfg.denominator ?? 2) || 1;
+        additiveMultiplierBonus += (numerator - denominator) / denominator;
+      });
       sigilsFor(engine, source, { effect: A.SIGIAN_EFFECTS.SPELL_DAMAGE_BONUS }).forEach(sigil => {
         flatBonus += scaleAmount(engine, side, formulaFor(engine, source), sigil);
       });
     });
-    if (linearHalfBonuses > 0) amount = Math.trunc((amount * (2 + linearHalfBonuses)) / 2);
+    if (additiveMultiplierBonus !== 0) amount = Math.trunc(amount * (1 + additiveMultiplierBonus));
     amount += flatBonus;
     if (engine.getFighter(side).passives?.includes("battle_lord")) amount += 1;
     return Math.max(0, amount);
@@ -557,13 +587,34 @@
     if (healed > 0) events?.push({ type: "astralVampireHeal", side: sourceSide, amount: healed, sourceId: sourceUnit.instanceId });
   };
 
+  A.sigianOnUnitDamaged = function sigianOnUnitDamaged(engine, targetSide, targetSlot, targetUnit, sourceSide, sourceUnit, actual, events) {
+    if (!targetUnit || targetUnit.currentHealth <= 0 || actual <= 0 || !sourceUnit) return;
+    const formula = formulaFor(engine, targetUnit);
+    if (!formula) return;
+    executeTrigger(engine, targetSide, formula, "onDamaged", {
+      source: targetUnit,
+      slot: targetSlot,
+      eventSourceSide: sourceSide,
+      eventSourceUnit: sourceUnit,
+      eventSourceSlot: engine.getFighter(sourceSide).board.indexOf(sourceUnit),
+      damageDealt: actual
+    }, events);
+  };
+
   A.sigianResolveSelfDeath = function sigianResolveSelfDeath(engine, side, slot, unit, events) {
     const formula = formulaFor(engine, unit);
     if (!formula) return false;
     const sigils = formula.sigils.filter(sigil => sigil.trigger === "onSelfDeath" && sigil.effect === A.SIGIAN_EFFECTS.RESURRECT);
     for (const sigil of sigils) {
       if (!conditionPasses(engine, side, sigil)) continue;
+      const cfg = configOf(sigil);
+      const limited = cfg.maxRevives != null && Number.isFinite(Number(cfg.maxRevives));
+      const maxRevives = limited ? Math.max(0, Math.trunc(Number(cfg.maxRevives))) : null;
+      const used = Math.max(0, Math.trunc(Number(unit.sigianRebirthsUsed || 0)));
+      if (limited && used >= maxRevives) continue;
+
       unit.currentHealth = unit.health;
+      if (limited) unit.sigianRebirthsUsed = used + 1;
       if (typeof engine.getOwnerTurnCount === "function") unit.summonedOnOwnerTurn = engine.getOwnerTurnCount(side);
       events?.push({ type: "astralPhoenixRebirth", side, slot, cardId: unit.id, health: unit.currentHealth });
       return true;

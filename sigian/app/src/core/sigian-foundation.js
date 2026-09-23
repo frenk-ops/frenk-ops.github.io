@@ -49,6 +49,7 @@
     CREATURES: "creatures",
     CREATURE: "creature",
     SOURCE: "source",
+    EVENT_SOURCE: "event-source",
     POWER: "power",
     POWERS: "powers"
   });
