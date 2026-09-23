@@ -5,6 +5,7 @@
     "ui.menu": "MENU", "ui.viewCard": "VIEW CARD", "ui.passTurn": "PASS", "ui.dragToPlay": "Drag to play",
     "ui.selectCardForDetails": "Select a card to view its details",
     "ui.noCard": "No card selected", "ui.currentValue": "Current value", "ui.beforeDefense": "before defenses",
+    "sigian.sigil.rebirth": "Rebirth", "sigian.modifier.onDeath": "On death", "sigian.modifier.fullHealth": "Full health",
     "log.damageHero": "{source} deals {amount} damage to {target}.",
     "log.damageHeroReduced": "{source}: {gross} damage, reduced to {amount} against {target}.",
     "log.damageCreature": "{source} deals {amount} damage to {target}.",
