@@ -4122,14 +4122,8 @@
     return `${escapeHtml(text.slice(0, index))}<strong class="inline-current-value">${escapeHtml(marker)}</strong> ${escapeHtml(text.slice(index + markerWithSpace.length))}`;
   }
 
-  const SIGIAN_CARD_UI_SCHOOLS = Object.freeze(new Set(["air"]));
-
-  function isSigianCardUiPilot(card) {
-    return Boolean(card?.school && SIGIAN_CARD_UI_SCHOOLS.has(card.school));
-  }
-
   function sigianFormulaForUi(card) {
-    if (!isSigianCardUiPilot(card)) return null;
+    if (!card?.id) return null;
     if (engine && typeof A.getSigianFormulaFor === "function") {
       const formula = A.getSigianFormulaFor(engine, card);
       if (formula) return formula;
@@ -4148,13 +4142,22 @@
     const path = ({
       [A.SIGIAN_EFFECTS?.DAMAGE]: '<path d="M36 11 21 34h10l-4 19 17-27H34l2-15Z" fill="currentColor"/>',
       [A.SIGIAN_EFFECTS?.HEAL]: '<path d="M28 17h8v11h11v8H36v11h-8V36H17v-8h11Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.POWER]: '<path d="m32 12 7 12 13 8-13 8-7 12-7-12-13-8 13-8Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.POWER_ALL]: '<path d="m32 11 5 10 11-3-3 11 9 6-11 4 1 12-12-6-12 6 1-12-11-4 9-6-3-11 11 3Z" fill="currentColor"/>',
       [A.SIGIAN_EFFECTS?.POWER_GROWTH]: '<path d="m18 39 14-17 14 17h-9v10H27V39Z" fill="currentColor"/>',
       [A.SIGIAN_EFFECTS?.FORCE_ATTACK]: '<path d="M12 32s7-12 20-12 20 12 20 12-7 12-20 12S12 32 12 32Zm20-7a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z" fill="currentColor"/>',
       [A.SIGIAN_EFFECTS?.RESURRECT]: '<path d="M31 45c-8-5-11-12-7-19 2 5 5 6 7 2 2-4 1-8 0-12 8 5 13 12 10 20-1 4-5 8-10 9Z" fill="currentColor"/><path d="M45 20a19 19 0 0 1 3 19M48 39l-6-3m6 3-2 6M19 44a19 19 0 0 1-3-19M16 25l6 3m-6-3 2-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
       [A.SIGIAN_EFFECTS?.DESTROY]: '<path d="m20 17 12 8 12-8-5 14 9 7-13 1-3 12-4-12-13-1 10-7Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.DRAIN]: '<path d="M32 13c7 10 13 17 13 25a13 13 0 0 1-26 0c0-8 6-15 13-25Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M22 35c5 5 15 5 20 0M40 31l3 4-4 3" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>',
+      [A.SIGIAN_EFFECTS?.EMIT]: '<circle cx="32" cy="32" r="7" fill="currentColor"/><path d="M32 13v8M32 43v8M13 32h8M43 32h8M19 19l6 6M39 39l6 6M45 19l-6 6M25 39l-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
       [A.SIGIAN_EFFECTS?.ATTACK_FROM_POWER]: '<path d="M14 39c9-1 12-8 18-16 5 8 9 14 18 16M18 45c7-2 10-6 14-12 4 6 7 10 14 12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>',
       [A.SIGIAN_EFFECTS?.ATTACK_ALL]: '<path d="M32 48V20m0 0-7 8m7-8 7 8M20 42 12 31m8 11-10-1m10 1-3-9M44 42l8-11m-8 11 10-1m-10 1 3-9" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>',
-      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS]: '<path d="m32 12 5 14 15 1-12 9 4 15-12-9-12 9 4-15-12-9 15-1Z" fill="currentColor"/>'
+      [A.SIGIAN_EFFECTS?.ATTACK_MULTIPLIER]: '<path d="M17 45 43 19M17 19l26 26M13 49l9-2-7-7-2 9ZM51 15l-9 2 7 7 2-9Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>',
+      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_MULTIPLIER]: '<path d="m32 12 5 14 15 1-12 9 4 15-12-9-12 9 4-15-12-9 15-1Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS]: '<path d="m32 12 5 14 15 1-12 9 4 15-12-9-12 9 4-15-12-9 15-1Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.DAMAGE_REDUCTION]: '<path d="M32 12 47 18v11c0 10-6 18-15 23-9-5-15-13-15-23V18l15-6Z" fill="none" stroke="currentColor" stroke-width="3.3"/><path d="m24 32 5 5 11-12" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>',
+      [A.SIGIAN_EFFECTS?.LIFESTEAL]: '<path d="M32 49S15 39 15 27c0-7 8-11 17-3 9-8 17-4 17 3 0 12-17 22-17 22Z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M23 35c6 3 12 3 18 0" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round"/>',
+      [A.SIGIAN_EFFECTS?.SUMMON]: '<path d="M18 44c3-9 9-15 14-23 5 8 11 14 14 23M22 44h20M27 44V33h10v11" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>'
     })[effect] || '<path d="M20 32h24M32 20v24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
     return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">${common}${path}</svg>`;
   }
@@ -4163,13 +4166,23 @@
     return ({
       [A.SIGIAN_EFFECTS?.DAMAGE]: t("sigian.sigil.damage"),
       [A.SIGIAN_EFFECTS?.HEAL]: t("sigian.sigil.heal"),
+      [A.SIGIAN_EFFECTS?.POWER]: t("sigian.sigil.power"),
+      [A.SIGIAN_EFFECTS?.POWER_ALL]: t("sigian.sigil.power"),
       [A.SIGIAN_EFFECTS?.POWER_GROWTH]: t("sigian.sigil.growth"),
       [A.SIGIAN_EFFECTS?.FORCE_ATTACK]: t("sigian.sigil.control"),
       [A.SIGIAN_EFFECTS?.RESURRECT]: t("sigian.sigil.rebirth"),
       [A.SIGIAN_EFFECTS?.DESTROY]: t("sigian.sigil.destroy"),
+      [A.SIGIAN_EFFECTS?.DRAIN]: t("sigian.sigil.drain"),
+      [A.SIGIAN_EFFECTS?.EMIT]: t("sigian.sigil.ritual"),
       [A.SIGIAN_EFFECTS?.ATTACK_FROM_POWER]: t("sigian.sigil.channel"),
       [A.SIGIAN_EFFECTS?.ATTACK_ALL]: t("sigian.sigil.assault"),
-      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS]: t("sigian.sigil.amplify")
+      [A.SIGIAN_EFFECTS?.ATTACK_MULTIPLIER]: t("sigian.sigil.fury"),
+      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_MULTIPLIER]: t("sigian.sigil.amplify"),
+      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS]: t("sigian.sigil.amplify"),
+      [A.SIGIAN_EFFECTS?.DAMAGE_REDUCTION]: t("sigian.sigil.guard"),
+      [A.SIGIAN_EFFECTS?.LIFESTEAL]: t("sigian.sigil.lifesteal"),
+      [A.SIGIAN_EFFECTS?.SUMMON]: t("sigian.sigil.summon"),
+      [A.SIGIAN_EFFECTS?.PASSIVE]: t("sigian.trigger.passive")
     })[effect] || t("sigian.sigil.effect");
   }
 
@@ -4194,7 +4207,9 @@
     const kind = params.kind;
     const selector = params.selector;
     const count = Number(params.count || 0);
+    if (side === A.SIGIAN_TARGET_SIDES?.SELF && kind === A.SIGIAN_TARGET_KINDS?.HERO) return t("sigian.modifier.ownMage");
     if (side === A.SIGIAN_TARGET_SIDES?.ENEMY && kind === A.SIGIAN_TARGET_KINDS?.HERO) return t("sigian.modifier.enemyMage");
+    if (side === A.SIGIAN_TARGET_SIDES?.BOTH && kind === A.SIGIAN_TARGET_KINDS?.CREATURES) return t("sigian.modifier.allCreatures");
     if (side === A.SIGIAN_TARGET_SIDES?.ENEMY && kind === A.SIGIAN_TARGET_KINDS?.CREATURES) {
       if (selector === "strongest-attack" && count > 0) return t("sigian.modifier.enemyCreaturesTopAttack", { count });
       return t("sigian.modifier.enemyCreatures");
@@ -4205,8 +4220,22 @@
     }
     if (side === A.SIGIAN_TARGET_SIDES?.SELF && kind === A.SIGIAN_TARGET_KINDS?.CREATURES) return t("sigian.modifier.alliedCreatures");
     if (side === A.SIGIAN_TARGET_SIDES?.SELF && kind === A.SIGIAN_TARGET_KINDS?.SOURCE) return t("sigian.modifier.thisCreature");
-    if (kind === A.SIGIAN_TARGET_KINDS?.POWER) return `${t("sigian.modifier.power")} ${schoolName(params.school || "air")}`;
+    if (kind === A.SIGIAN_TARGET_KINDS?.POWER) {
+      const base = `${t("sigian.modifier.power")} ${schoolName(params.school || "air")}`;
+      return side === A.SIGIAN_TARGET_SIDES?.ENEMY ? `${base} · ${t("sigian.modifier.enemyShort")}` : base;
+    }
+    if (kind === A.SIGIAN_TARGET_KINDS?.POWERS) {
+      return side === A.SIGIAN_TARGET_SIDES?.ENEMY ? t("sigian.modifier.enemyPowers") : t("sigian.modifier.ownPowers");
+    }
     return t("sigian.modifier.target");
+  }
+
+  function sigianRatioLabel(numerator, denominator) {
+    const n = Number(numerator ?? 1);
+    const d = Math.max(1, Number(denominator ?? 1));
+    if (n === 1 && d === 2) return "½";
+    if (n === d) return "";
+    return `${n}/${d} ×`;
   }
 
   function sigianScaleLabel(params = {}, effect = "") {
@@ -4223,18 +4252,59 @@
       const numerator = Number(params.numerator ?? 1);
       const denominator = Number(params.denominator ?? 1);
       const offset = Number(params.offset || 0);
-      const coefficient = numerator === denominator ? "" : `${numerator}/${denominator} × `;
+      const coefficient = numerator === denominator ? "" : `${sigianRatioLabel(numerator, denominator)} `;
       const offsetLabel = offset === 0 ? "" : ` ${offset > 0 ? "+" : "−"} ${Math.abs(offset)}`;
       return `${coefficient}${t("sigian.modifier.power")} ${schoolName(school)}${offsetLabel}`;
+    }
+    if (mode === A.SIGIAN_SCALE_MODES?.TARGET_ATTACK) return t("sigian.modifier.targetAttack");
+    if (mode === A.SIGIAN_SCALE_MODES?.DAMAGE_DEALT) {
+      const ratio = sigianRatioLabel(params.numerator, params.denominator);
+      return `${ratio ? `${ratio} ` : ""}${t("sigian.modifier.damageDealt")}`;
+    }
+    if (mode === A.SIGIAN_SCALE_MODES?.CREATURE_COUNT) {
+      const multiplier = Number(params.multiplier ?? 1);
+      return `${multiplier} × ${t("sigian.modifier.creaturesInPlay")}`;
     }
     return "";
   }
 
+  function sigianConditionOperandLabel(value = {}) {
+    if (value.kind === A.SIGIAN_TARGET_KINDS?.POWER) {
+      const base = `${t("sigian.modifier.power")} ${schoolName(value.school || "air")}`;
+      return value.side === A.SIGIAN_TARGET_SIDES?.ENEMY ? `${base} · ${t("sigian.modifier.enemyShort")}` : base;
+    }
+    if (Object.prototype.hasOwnProperty.call(value, "value")) return String(Number(value.value || 0));
+    return "";
+  }
+
   function sigianConditionLabel(params = {}) {
-    const left = params.left || {};
-    const right = params.right || {};
-    if (left.kind === A.SIGIAN_TARGET_KINDS?.POWER) {
-      return `${schoolName(left.school || "air")} ${sigianOperatorLabel(params.op)} ${Number(right.value || 0)}`;
+    const left = sigianConditionOperandLabel(params.left || {});
+    const right = sigianConditionOperandLabel(params.right || {});
+    if (!left || !right) return "";
+    return `${left} ${sigianOperatorLabel(params.op)} ${right}`;
+  }
+
+  function sigianConfigLabel(params = {}, effect = "") {
+    if (params.destination === "own-hero") return t("sigian.modifier.ownMage");
+    if (params.school) return `${t("sigian.modifier.power")} ${schoolName(params.school)}`;
+    if (params.healTarget === A.SIGIAN_TARGET_SIDES?.SELF && params.healKind === A.SIGIAN_TARGET_KINDS?.HERO) {
+      return t("sigian.modifier.healFromDamage");
+    }
+    if (params.mode === "halve") {
+      return params.targetKinds?.includes("hero")
+        ? t("sigian.modifier.mageDamageHalf")
+        : t("sigian.modifier.damageHalf");
+    }
+    if (params.mode === "subtract") {
+      const value = Math.abs(Number(params.value || 0));
+      const threshold = Number(params.threshold || 0);
+      return t("sigian.modifier.damageReduction", { value, threshold });
+    }
+    if (effect === A.SIGIAN_EFFECTS?.ATTACK_MULTIPLIER && params.numerator && params.denominator) {
+      return t("sigian.modifier.alliedAttackMultiplier", { ratio: `${params.numerator}/${params.denominator}` });
+    }
+    if (effect === A.SIGIAN_EFFECTS?.SPELL_DAMAGE_MULTIPLIER && params.numerator && params.denominator) {
+      return t("sigian.modifier.spellDamageMultiplier", { ratio: `${params.numerator}/${params.denominator}` });
     }
     return "";
   }
@@ -4255,8 +4325,7 @@
       if (item.kind === A.SIGIAN_MODIFIER_KINDS?.SCALE) textValue = sigianScaleLabel(params, sigil.effect);
       if (item.kind === A.SIGIAN_MODIFIER_KINDS?.CONDITION) textValue = sigianConditionLabel(params);
       if (item.kind === A.SIGIAN_MODIFIER_KINDS?.CONFIG) {
-        if (params.destination === "own-hero") textValue = t("sigian.modifier.ownMage");
-        if (params.school) textValue = `${t("sigian.modifier.power")} ${schoolName(params.school)}`;
+        textValue = sigianConfigLabel(params, sigil.effect);
       }
       if (!textValue) return;
       modifiers.push({
@@ -4730,53 +4799,11 @@
 
   function showMobileCardInspect(card, side = "player") {
     const inspect = $("#mobileCardInspect");
-    if (!inspect || !card) return;
-    const host = inspect.querySelector(".mobile-card-inspect-card");
-    const sigianRoot = $("#mobileCardInspectSigian");
-    const isPilot = isSigianCardUiPilot(card);
-    host?.classList.toggle("sigian-full-mode", isPilot);
-
-    if (sigianRoot) {
-      sigianRoot.classList.toggle("hidden", !isPilot);
-      sigianRoot.replaceChildren();
-      if (isPilot) {
-        const fullCard = buildSigianFullCard(card, side);
-        if (fullCard) sigianRoot.appendChild(fullCard);
-      }
-    }
-
-    const legacyArt = $("#mobileCardInspectArt");
-    const legacyCopy = inspect.querySelector(".mobile-card-inspect-copy");
-    legacyArt?.classList.toggle("hidden", isPilot);
-    legacyCopy?.classList.toggle("hidden", isPilot);
-
-    if (!isPilot) {
-      legacyArt?.replaceChildren(buildArtBlock(card, "mobileInspect"));
-      $("#mobileCardInspectName").textContent = cardName(card);
-      $("#mobileCardInspectKind").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg mobile-inspect-school-icon")}<span>${escapeHtml(schoolName(card.school))} · ${escapeHtml(card.type === "spell" ? t("ui.spell") : t("ui.creature"))}</span>`;
-      $("#mobileCardInspectText").textContent = cardDescription(card, side);
-
-      const cost = engine && side ? engine.effectiveCost(side, card) : card.level;
-      const attack = printedCardAttack(card);
-      const health = card.currentHealth ?? card.health ?? 0;
-      const stats = $("#mobileCardInspectStats");
-      if (stats) {
-        stats.innerHTML = card.type === "creature"
-          ? `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>
-             <span class="mobile-inspect-stat mobile-inspect-attack"><small>⚔ ${escapeHtml(t("ui.attack"))}</small><b>${escapeHtml(attack)}</b></span>
-             <span class="mobile-inspect-stat mobile-inspect-health"><small>♥ ${escapeHtml(t("ui.life"))}</small><b>${escapeHtml(health)}</b></span>`
-          : `<span class="mobile-inspect-stat mobile-inspect-cost"><small>${escapeHtml(t("ui.cost"))}</small><b>${escapeHtml(cost)}</b></span>`;
-      }
-      const currentValue = currentValueData(card, side);
-      const currentValueNode = $("#mobileCardInspectCurrentValue");
-      if (currentValueNode) {
-        currentValueNode.classList.toggle("hidden", !currentValue);
-        currentValueNode.innerHTML = currentValue
-          ? `<span>${escapeHtml(t("ui.currentValue"))}</span><strong>${escapeHtml(currentValue.effective)}</strong>`
-          : "";
-      }
-    }
-
+    const sigianRoot = $("#mobileCardInspectContent");
+    if (!inspect || !sigianRoot || !card) return;
+    const fullCard = buildSigianFullCard(card, side);
+    if (!fullCard) throw new Error(`Formula Sigian UI mancante per ${card.id || "carta-senza-id"}.`);
+    sigianRoot.replaceChildren(fullCard);
     inspect.classList.remove("hidden");
     inspect.setAttribute("aria-hidden", "false");
   }
@@ -5832,52 +5859,9 @@
   }
 
   function renderPreviewInto(target, card, side) {
-    target.innerHTML = "";
     const sigianCard = buildSigianFullCard(card, side);
-    if (sigianCard) {
-      target.appendChild(sigianCard);
-      return;
-    }
-
-    const cost = engine && side ? engine.effectiveCost(side, card) : card.level;
-    const article = document.createElement("article");
-    article.className = `preview-card type-${card.type}`;
-
-    const art = document.createElement("div");
-    art.className = "preview-art";
-    art.appendChild(buildArtBlock(card, "preview"));
-    article.appendChild(art);
-
-    const title = document.createElement("h3");
-    title.textContent = cardName(card);
-    article.appendChild(title);
-
-    const subtitle = document.createElement("div");
-    subtitle.className = "preview-subtitle";
-    subtitle.innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg preview-school-svg")}<span>${escapeHtml(schoolName(card.school))} · ${escapeHtml(card.type === "spell" ? t("ui.spell") : t("ui.creature"))}</span>`;
-    article.appendChild(subtitle);
-
-    const meta = document.createElement("div");
-    meta.className = "preview-meta";
-    const attack = printedCardAttack(card);
-    const blocks = [
-      { key: "cost", value: cost, label: t("cards.levelCost") },
-      { key: "attack", value: card.type === "spell" ? "—" : attack, label: t("ui.attack") },
-      { key: "health", value: card.type === "spell" ? "—" : (card.currentHealth ?? card.health ?? 0), label: t("ui.life") }
-    ];
-    blocks.forEach(item => {
-      const stat = document.createElement("div");
-      stat.className = `preview-stat preview-stat-${item.key}`;
-      stat.innerHTML = `<strong>${escapeHtml(item.value)}</strong><br><small>${escapeHtml(item.label)}</small>`;
-      meta.appendChild(stat);
-    });
-    article.appendChild(meta);
-
-    const text = document.createElement("p");
-    text.innerHTML = cardDescriptionHtml(card, side || inspectedCardSide);
-    article.appendChild(text);
-
-    target.appendChild(article);
+    if (!sigianCard) throw new Error(`Formula Sigian UI mancante per ${card?.id || "carta-senza-id"}.`);
+    target.replaceChildren(sigianCard);
   }
 
   function openDuelCardZoom(card, side = null) {

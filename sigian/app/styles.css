@@ -8471,100 +8471,6 @@ body:has(#battlePanel:not(.hidden)) .classic-duel-frame {
   from { opacity:.6; transform:translateY(0) scale(.96); }
   to { opacity:1; transform:translateY(-4vh) scale(1.01); }
 }
-.mobile-card-inspect-art {
-  width:118px;
-  aspect-ratio:1;
-  overflow:hidden;
-  align-self:start;
-  border:1px solid rgba(222,187,83,.72);
-  border-radius:9px;
-  background:#08101d;
-}
-.mobile-card-inspect-art .art-media,
-.mobile-card-inspect-art .art-image {
-  width:100% !important;
-  height:100% !important;
-  min-height:0 !important;
-  object-fit:cover !important;
-}
-.mobile-card-inspect-copy {
-  min-width:0;
-  display:grid;
-  align-content:start;
-  gap:6px;
-  text-align:left;
-}
-.mobile-card-inspect-copy > strong {
-  color:#ffe8a4;
-  font:700 1.18rem/1.05 Georgia,serif;
-}
-.mobile-card-inspect-kind {
-  display:flex;
-  align-items:center;
-  gap:5px;
-  color:#bfeeff;
-  font:.76rem/1.1 system-ui,sans-serif;
-}
-#mobileCardInspectStats {
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:5px;
-  margin-top:2px;
-}
-.mobile-inspect-stat {
-  min-width:0 !important;
-  display:grid !important;
-  place-items:center;
-  gap:2px;
-  padding:6px 4px !important;
-  border:1px solid rgba(255,255,255,.16);
-  border-radius:8px;
-  background:rgba(3,10,22,.8);
-  text-align:center;
-}
-.mobile-inspect-stat small {
-  font-size:.54rem !important;
-  font-weight:800;
-  line-height:1.05;
-}
-.mobile-inspect-stat b {
-  font:900 1.02rem/1 Georgia,serif !important;
-}
-.mobile-inspect-attack {
-  border-color:#d9b94c !important;
-  color:#ffe27a !important;
-}
-.mobile-inspect-health {
-  border-color:#dc5f69 !important;
-  color:#ff9da6 !important;
-}
-.mobile-inspect-attack b,
-.mobile-inspect-health b {
-  font-size:1.35rem !important;
-}
-.mobile-current-value {
-  margin:1px 0 0 !important;
-  padding:6px 8px !important;
-  border:1px solid #51d8f1 !important;
-  border-radius:8px !important;
-  background:linear-gradient(180deg,#17677b,#0a445a) !important;
-  color:#a9f1ff !important;
-}
-.mobile-current-value strong {
-  color:#fff09a !important;
-}
-#mobileCardInspectText {
-  margin:0 !important;
-  padding:7px 8px;
-  max-height:96px;
-  overflow:hidden;
-  border:1px solid rgba(129,201,225,.2);
-  border-radius:8px;
-  background:rgba(2,9,18,.42);
-  color:#f3e5c5;
-  font:.78rem/1.28 Georgia,serif;
-}
-
 /* The persistent X-to-close zoom is desktop-only; mobile uses hold-to-preview. */
 @media (max-width:820px) {
   .duel-card-zoom { display:none !important; }
@@ -11301,9 +11207,9 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 }
 
 
-/* Sigian Card UI v1 pilot — Phoenix (astral_air_07).
-   The same Full component is reused by desktop and mobile inspection.
-   Combat and Hand are deliberately reduced projections of the same card. */
+/* Sigian Card UI — canonical visual language for all 65 cards.
+   The same Full component is reused by Collection, desktop and mobile inspection.
+   Combat and Hand are deliberately reduced projections of the same Formula. */
 .sigian-full-card {
   --sigian-school:#a7dcf2;
   --sigian-school-deep:#4d91ad;
@@ -11348,9 +11254,25 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   mix-blend-mode:multiply;
   opacity:.55;
 }
+.sigian-full-card.school-fire {
+  --sigian-school:#ffc09a;
+  --sigian-school-deep:#c65f35;
+}
+.sigian-full-card.school-water {
+  --sigian-school:#a9e5ff;
+  --sigian-school-deep:#478eae;
+}
 .sigian-full-card.school-air {
   --sigian-school:#cbeaff;
   --sigian-school-deep:#77afc9;
+}
+.sigian-full-card.school-nature {
+  --sigian-school:#c8e99a;
+  --sigian-school-deep:#6d9f4a;
+}
+.sigian-full-card.school-death {
+  --sigian-school:#e3b7f0;
+  --sigian-school-deep:#8d5aa0;
 }
 .sigian-full-top {
   position:relative;
@@ -11572,10 +11494,6 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   background:rgba(4,8,12,.72) !important;
   box-shadow:0 18px 50px rgba(0,0,0,.72) !important;
   transform:none !important;
-}
-.mobile-card-inspect-card.sigian-full-mode > .mobile-card-inspect-art,
-.mobile-card-inspect-card.sigian-full-mode > .mobile-card-inspect-copy {
-  display:none !important;
 }
 .mobile-card-inspect-card.sigian-full-mode .mobile-card-inspect-sigian {
   display:block !important;
@@ -11932,10 +11850,22 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   border-color:#da7042 !important;
   color:#ffc09a !important;
 }
+.sigian-modifier-chip.school-water {
+  border-color:#62b9df !important;
+  color:#c8efff !important;
+}
 .sigian-modifier-chip.school-air,
 .sigian-modifier-chip.scale.school-air {
   border-color:#75d9ee !important;
   color:#d8f7ff !important;
+}
+.sigian-modifier-chip.school-nature {
+  border-color:#82b95d !important;
+  color:#d8f4b8 !important;
+}
+.sigian-modifier-chip.school-death {
+  border-color:#a66ab7 !important;
+  color:#edc9f7 !important;
 }
 .sigian-modifier-chip.condition { border-style:dashed !important; }
 .sigian-modifier-chip.trigger { color:#ffe29b !important; }
@@ -12039,9 +11969,17 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   color:#cff4ff !important;
 }
 
-/* All Air cards now use the Sigian Hand / Combat / Cast grammar. */
+/* Every school now uses the same Sigian Hand / Combat / Cast grammar. */
+:is(#playerHand, .sigian-preview-hand-host) .game-card.sigian-card-hand.school-fire { --sigian-school:#ffb08a; }
+:is(#playerHand, .sigian-preview-hand-host) .game-card.sigian-card-hand.school-water { --sigian-school:#a9e5ff; }
 :is(#playerHand, .sigian-preview-hand-host) .game-card.sigian-card-hand.school-air { --sigian-school:#bde9ff; }
+:is(#playerHand, .sigian-preview-hand-host) .game-card.sigian-card-hand.school-nature { --sigian-school:#c3e89a; }
+:is(#playerHand, .sigian-preview-hand-host) .game-card.sigian-card-hand.school-death { --sigian-school:#ddb3ed; }
+:is(#battlePanel .classic-board-column, .sigian-preview-combat-host) .unit.sigian-card-combat.school-fire { --unit-accent:#ffb08a; }
+:is(#battlePanel .classic-board-column, .sigian-preview-combat-host) .unit.sigian-card-combat.school-water { --unit-accent:#a9e5ff; }
 :is(#battlePanel .classic-board-column, .sigian-preview-combat-host) .unit.sigian-card-combat.school-air { --unit-accent:#bde9ff; }
+:is(#battlePanel .classic-board-column, .sigian-preview-combat-host) .unit.sigian-card-combat.school-nature { --unit-accent:#c3e89a; }
+:is(#battlePanel .classic-board-column, .sigian-preview-combat-host) .unit.sigian-card-combat.school-death { --unit-accent:#ddb3ed; }
 
 @media (max-width:1050px) {
   .collection-page-layout { grid-template-columns:minmax(300px,350px) minmax(0,1fr) !important; }
@@ -12277,16 +12215,31 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   color:#fff0c7 !important;
   text-shadow:none !important;
 }
+.sigian-modifier-chip.school-fire {
+  border-color:#cf704a !important;
+  color:#ffc9a7 !important;
+  background:linear-gradient(180deg,#44241a,#1e100c) !important;
+}
+.sigian-modifier-chip.school-water {
+  border-color:#61afd2 !important;
+  color:#d8f3ff !important;
+  background:linear-gradient(180deg,#163643,#0a1d25) !important;
+}
 .sigian-modifier-chip.school-air,
 .sigian-modifier-chip.scale.school-air {
   border-color:#6fc7d9 !important;
   color:#dff9ff !important;
   background:linear-gradient(180deg,#18343e,#0b1c22) !important;
 }
-.sigian-modifier-chip.school-fire {
-  border-color:#cf704a !important;
-  color:#ffc9a7 !important;
-  background:linear-gradient(180deg,#44241a,#1e100c) !important;
+.sigian-modifier-chip.school-nature {
+  border-color:#78aa58 !important;
+  color:#dff5c5 !important;
+  background:linear-gradient(180deg,#24381b,#111d0d) !important;
+}
+.sigian-modifier-chip.school-death {
+  border-color:#9f68af !important;
+  color:#edcef6 !important;
+  background:linear-gradient(180deg,#37213e,#1b0f20) !important;
 }
 
 /* Grid labels: match in-game black/gold readability and remove muddy brown text. */
