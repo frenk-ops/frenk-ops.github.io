@@ -234,6 +234,152 @@
     return { rows:predictions, folds, metrics:metrics(predictions) };
   }
 
+  function continuousMetrics(rows) {
+    if (!rows.length) return { count:0, mae:null, rmse:null, r2:null, pearson:null };
+    const actualMean = rows.reduce((sum,row) => sum + row.actual, 0) / rows.length;
+    let absolute = 0;
+    let squared = 0;
+    let baselineSquared = 0;
+    let covariance = 0;
+    let predictionSquare = 0;
+    let actualSquare = 0;
+    const predictionMean = rows.reduce((sum,row) => sum + row.prediction, 0) / rows.length;
+    rows.forEach(row => {
+      const error = row.prediction - row.actual;
+      absolute += Math.abs(error);
+      squared += error * error;
+      const baseline = row.actual - actualMean;
+      baselineSquared += baseline * baseline;
+      const pd = row.prediction - predictionMean;
+      const ad = row.actual - actualMean;
+      covariance += pd * ad;
+      predictionSquare += pd * pd;
+      actualSquare += ad * ad;
+    });
+    return {
+      count:rows.length,
+      mae:absolute / rows.length,
+      rmse:Math.sqrt(squared / rows.length),
+      r2:baselineSquared > 0 ? 1 - (squared / baselineSquared) : 0,
+      pearson:predictionSquare > 0 && actualSquare > 0 ? covariance / Math.sqrt(predictionSquare * actualSquare) : 0
+    };
+  }
+
+  function fitRidgeTarget(samples, lambda, targetOf) {
+    if (typeof targetOf !== "function") throw new Error("Il fitting target richiede targetOf(sample).");
+    if (!Array.isArray(samples) || samples.length < 2) throw new Error("Servono almeno due campioni per il fitting.");
+    const names = featureNames(samples);
+    const stats = statsForFeatures(samples, names);
+    const rows = samples.map(sample => rowForSample(sample, names, stats));
+    const targets = samples.map(sample => finite(targetOf(sample), NaN));
+    if (targets.some(value => !Number.isFinite(value))) throw new Error("Target di fitting non numerico.");
+    const size = names.length;
+    const xtx = Array.from({ length:size }, () => Array(size).fill(0));
+    const xty = Array(size).fill(0);
+
+    rows.forEach((row, rowIndex) => {
+      for (let i = 0; i < size; i += 1) {
+        xty[i] += row[i] * targets[rowIndex];
+        for (let j = 0; j < size; j += 1) xtx[i][j] += row[i] * row[j];
+      }
+    });
+    for (let i = 1; i < size; i += 1) xtx[i][i] += Math.max(0, finite(lambda, 0));
+    const coefficients = solveLinearSystem(xtx, xty);
+
+    function predict(sample) {
+      const row = rowForSample(sample, names, stats);
+      return row.reduce((sum, value, index) => sum + value * coefficients[index], 0);
+    }
+
+    const rawWeights = {};
+    let rawIntercept = coefficients[0] || 0;
+    names.forEach((name,index) => {
+      if (name === "bias") return;
+      const weight = coefficients[index] / stats.stds[name];
+      rawWeights[name] = weight;
+      rawIntercept -= weight * stats.means[name];
+    });
+
+    return {
+      schemaVersion:FIT_SCHEMA_VERSION,
+      lambda:Math.max(0, finite(lambda, 0)),
+      featureNames:names,
+      standardizedCoefficients:coefficients,
+      rawIntercept,
+      rawWeights,
+      predict
+    };
+  }
+
+  function balancedTargetCrossValidation(samples, lambda, targetOf, foldCount = 5) {
+    const schools = [...new Set((samples || []).map(sample => sample.school))].sort();
+    const schoolIndex = Object.fromEntries(schools.map((school,index) => [school,index]));
+    const buckets = Array.from({ length:foldCount }, () => []);
+    (samples || []).forEach(sample => {
+      const levelIndex = Math.max(0, Math.trunc(finite(sample.printedLevel, 1)) - 1);
+      const fold = (levelIndex + finite(schoolIndex[sample.school], 0)) % foldCount;
+      buckets[fold].push(sample);
+    });
+    const predictions = [];
+    const folds = [];
+    buckets.forEach((test,foldIndex) => {
+      const ids = new Set(test.map(sample => sample.id));
+      const train = samples.filter(sample => !ids.has(sample.id));
+      const model = fitRidgeTarget(train, lambda, targetOf);
+      const rows = test.map(sample => ({
+        id:sample.id,
+        school:sample.school,
+        actual:finite(targetOf(sample), NaN),
+        prediction:model.predict(sample)
+      }));
+      predictions.push(...rows);
+      folds.push({ fold:foldIndex + 1, ...continuousMetrics(rows) });
+    });
+    return { rows:predictions, folds, metrics:continuousMetrics(predictions) };
+  }
+
+  function fitTargetCandidate(samples, options = {}) {
+    const targetOf = options.targetOf;
+    if (typeof targetOf !== "function") throw new Error("fitSigianValueTargetCandidate richiede targetOf(sample).");
+    const lambdas = Array.isArray(options.lambdas) && options.lambdas.length
+      ? options.lambdas.map(value => Math.max(0, finite(value, 0)))
+      : [...DEFAULT_LAMBDAS];
+    const candidates = lambdas.map(lambda => ({
+      lambda,
+      crossValidation:balancedTargetCrossValidation(samples, lambda, targetOf, options.foldCount || 5)
+    })).sort((a,b) =>
+      a.crossValidation.metrics.mae - b.crossValidation.metrics.mae
+      || a.crossValidation.metrics.rmse - b.crossValidation.metrics.rmse
+      || b.lambda - a.lambda
+    );
+    const selected = candidates[0];
+    const model = fitRidgeTarget(samples, selected.lambda, targetOf);
+    const inSampleRows = samples.map(sample => ({
+      id:sample.id,
+      school:sample.school,
+      actual:finite(targetOf(sample), NaN),
+      prediction:model.predict(sample)
+    }));
+    const outliers = [...selected.crossValidation.rows]
+      .map(row => ({ ...row, error:row.prediction-row.actual, absoluteError:Math.abs(row.prediction-row.actual) }))
+      .sort((a,b) => b.absoluteError-a.absoluteError || a.id.localeCompare(b.id));
+    const weights = Object.entries(model.rawWeights)
+      .map(([feature,weight]) => ({ feature,weight }))
+      .sort((a,b) => Math.abs(b.weight)-Math.abs(a.weight) || a.feature.localeCompare(b.feature));
+    return {
+      schemaVersion:FIT_SCHEMA_VERSION,
+      targetName:String(options.targetName || "target"),
+      selectedLambda:selected.lambda,
+      candidates:candidates.map(candidate => ({ lambda:candidate.lambda, crossValidation:candidate.crossValidation.metrics })),
+      crossValidation:selected.crossValidation,
+      inSample:continuousMetrics(inSampleRows),
+      outliers,
+      rawIntercept:model.rawIntercept,
+      weights,
+      model
+    };
+  }
+
   function fitCandidate(samples, options = {}) {
     const lambdas = Array.isArray(options.lambdas) && options.lambdas.length
       ? options.lambdas.map(value => Math.max(0, finite(value, 0)))
@@ -290,4 +436,7 @@
   A.crossValidateSigianValueBySchool = leaveOneSchoolOut;
   A.crossValidateSigianValueBalanced = balancedFiveFold;
   A.fitSigianValueCandidate = fitCandidate;
+  A.fitSigianValueTargetRidge = fitRidgeTarget;
+  A.crossValidateSigianValueTargetBalanced = balancedTargetCrossValidation;
+  A.fitSigianValueTargetCandidate = fitTargetCandidate;
 })(window.Arcane = window.Arcane || {});
