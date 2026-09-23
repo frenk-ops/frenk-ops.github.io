@@ -3318,6 +3318,7 @@
       chrome.appendChild(copy);
       cast.appendChild(art);
       cast.appendChild(chrome);
+      decorateSigianSpellCast(cast, card);
       layer.appendChild(cast);
       requestAnimationFrame(() => cast.classList.add("active"));
       if (card.type === "creature" && battleCryProfile(card)) {
@@ -4120,10 +4121,13 @@
     return `${escapeHtml(text.slice(0, index))}<strong class="inline-current-value">${escapeHtml(marker)}</strong> ${escapeHtml(text.slice(index + markerWithSpace.length))}`;
   }
 
-  const SIGIAN_CARD_UI_PILOT_ID = "astral_air_07";
+  const SIGIAN_CARD_UI_PILOT_IDS = Object.freeze(new Set([
+    "astral_air_06",
+    "astral_air_07"
+  ]));
 
   function isSigianCardUiPilot(card) {
-    return card?.id === SIGIAN_CARD_UI_PILOT_ID;
+    return Boolean(card?.id && SIGIAN_CARD_UI_PILOT_IDS.has(card.id));
   }
 
   function sigianFormulaForUi(card) {
@@ -4150,8 +4154,17 @@
     </svg>`;
   }
 
+  function damageSigilMarkup(className = "") {
+    return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2.4"/>
+      <circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/>
+      <path d="M36 11 21 34h10l-4 19 17-27H34l2-15Z" fill="currentColor"/>
+      <path d="M12 32h6M46 32h6M32 12v5M32 47v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".78"/>
+    </svg>`;
+  }
+
   function sigianPhoenixUiModel(card) {
-    if (!isSigianCardUiPilot(card)) return null;
+    if (card?.id !== "astral_air_07") return null;
     const formula = sigianFormulaForUi(card);
     const sigil = formula?.sigils?.find(item => item.effect === A.SIGIAN_EFFECTS?.RESURRECT) || formula?.sigils?.[0] || null;
     const condition = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.CONDITION)?.params || null;
@@ -4163,6 +4176,7 @@
       formula,
       sigil,
       sigilName: t("sigian.sigil.rebirth"),
+      iconMarkup: className => rebirthSigilMarkup(className),
       modifiers: [
         { className: "trigger", html: `<span class="sigian-modifier-glyph" aria-hidden="true">✦</span>${escapeHtml(t("sigian.modifier.onDeath"))}` },
         { className: `school-${conditionSchool}`, html: `${schoolIconMarkup(conditionSchool, "school-icon-svg sigian-modifier-school-icon")}<span>${escapeHtml(schoolName(conditionSchool))} ≥ ${escapeHtml(threshold)}</span>` },
@@ -4171,12 +4185,41 @@
     };
   }
 
+  function sigianLightningUiModel(card) {
+    if (card?.id !== "astral_air_06") return null;
+    const formula = sigianFormulaForUi(card);
+    const sigil = formula?.sigils?.find(item => item.effect === A.SIGIAN_EFFECTS?.DAMAGE) || formula?.sigils?.[0] || null;
+    const target = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.TARGET)?.params || null;
+    const scale = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.SCALE)?.params || null;
+    const scaleSchool = scale?.school || card.school;
+    const offset = Number(scale?.offset || 0);
+    const offsetLabel = offset === 0 ? "" : ` ${offset > 0 ? "+" : "−"} ${Math.abs(offset)}`;
+    return {
+      formula,
+      sigil,
+      sigilName: t("sigian.sigil.damage"),
+      iconMarkup: className => damageSigilMarkup(className),
+      modifiers: [
+        {
+          className: "target",
+          html: `<span class="sigian-modifier-glyph" aria-hidden="true">◎</span>${escapeHtml(target?.kind === A.SIGIAN_TARGET_KINDS?.HERO ? t("sigian.modifier.enemyMage") : t("sigian.modifier.target"))}`
+        },
+        {
+          className: `scale school-${scaleSchool}`,
+          html: `${schoolIconMarkup(scaleSchool, "school-icon-svg sigian-modifier-school-icon")}<span>${escapeHtml(t("sigian.modifier.power"))} ${escapeHtml(schoolName(scaleSchool))}${escapeHtml(offsetLabel)}</span>`
+        }
+      ]
+    };
+  }
+
+  function sigianCardUiModel(card) {
+    return sigianPhoenixUiModel(card) || sigianLightningUiModel(card);
+  }
+
   function buildSigianFullCard(card, side = null) {
-    const model = sigianPhoenixUiModel(card);
+    const model = sigianCardUiModel(card);
     if (!model) return null;
     const cost = engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0);
-    const attack = printedCardAttack(card);
-    const health = Math.max(0, Number(card.currentHealth ?? card.health ?? card.hp ?? 0));
     const article = document.createElement("article");
     article.className = `sigian-full-card school-${card.school} type-${card.type}`;
     article.dataset.cardId = card.id;
@@ -4195,18 +4238,22 @@
     art.appendChild(buildArtBlock(card, "sigianFull"));
     article.appendChild(art);
 
-    const stats = document.createElement("div");
-    stats.className = "sigian-full-stats";
-    stats.innerHTML = `
-      <span class="sigian-full-stat sigian-full-attack" aria-label="${escapeHtml(t("ui.attack"))} ${escapeHtml(attack)}"><span aria-hidden="true">⚔</span><b>${escapeHtml(attack)}</b></span>
-      <span class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></span>`;
-    article.appendChild(stats);
+    if (card.type === "creature") {
+      const attack = printedCardAttack(card);
+      const health = Math.max(0, Number(card.currentHealth ?? card.health ?? card.hp ?? 0));
+      const stats = document.createElement("div");
+      stats.className = "sigian-full-stats";
+      stats.innerHTML = `
+        <span class="sigian-full-stat sigian-full-attack" aria-label="${escapeHtml(t("ui.attack"))} ${escapeHtml(attack)}"><span aria-hidden="true">⚔</span><b>${escapeHtml(attack)}</b></span>
+        <span class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></span>`;
+      article.appendChild(stats);
+    }
 
     const sigilArea = document.createElement("section");
-    sigilArea.className = "sigian-full-sigil-area";
+    sigilArea.className = `sigian-full-sigil-area ${card.type === "spell" ? "sigian-full-spell-sigil-area" : ""}`;
     const modifiers = model.modifiers.map(item => `<span class="sigian-modifier-chip ${escapeHtml(item.className)}">${item.html}</span>`).join("");
     sigilArea.innerHTML = `
-      <div class="sigian-sigil-medallion">${rebirthSigilMarkup("sigian-rebirth-sigil")}</div>
+      <div class="sigian-sigil-medallion">${model.iconMarkup("sigian-sigil-icon")}</div>
       <strong class="sigian-sigil-name">${escapeHtml(model.sigilName)}</strong>
       <div class="sigian-modifier-row">${modifiers}</div>
       <p class="sigian-full-rules">${cardDescriptionHtml(card, side || inspectedCardSide)}</p>`;
@@ -4216,7 +4263,8 @@
 
   function decorateSigianHandCard(cardNode, card) {
     if (!cardNode) return;
-    const enabled = isSigianCardUiPilot(card);
+    const model = sigianCardUiModel(card);
+    const enabled = Boolean(model);
     cardNode.classList.toggle("sigian-card-hand", enabled);
     cardNode.querySelector(".sigian-hand-sigil")?.remove();
     if (!enabled) return;
@@ -4228,14 +4276,15 @@
     }
     const badge = document.createElement("span");
     badge.className = "sigian-hand-sigil";
-    badge.title = t("sigian.sigil.rebirth");
-    badge.innerHTML = rebirthSigilMarkup("sigian-rebirth-sigil");
+    badge.title = model.sigilName;
+    badge.innerHTML = model.iconMarkup("sigian-sigil-icon");
     cardNode.appendChild(badge);
   }
 
   function syncSigianCombatPresentation(cell, unit) {
     if (!cell) return;
-    const enabled = isSigianCardUiPilot(unit);
+    const model = unit?.type === "creature" ? sigianCardUiModel(unit) : null;
+    const enabled = Boolean(model);
     cell.classList.toggle("sigian-card-combat", enabled);
     let badge = cell.querySelector(".sigian-combat-sigil");
     if (!enabled) {
@@ -4245,11 +4294,24 @@
     if (!badge) {
       badge = document.createElement("span");
       badge.className = "sigian-combat-sigil";
-      badge.setAttribute("aria-label", t("sigian.sigil.rebirth"));
-      badge.title = t("sigian.sigil.rebirth");
-      badge.innerHTML = rebirthSigilMarkup("sigian-rebirth-sigil");
       cell.appendChild(badge);
     }
+    badge.setAttribute("aria-label", model.sigilName);
+    badge.title = model.sigilName;
+    badge.innerHTML = model.iconMarkup("sigian-sigil-icon");
+  }
+
+  function decorateSigianSpellCast(cast, card) {
+    if (!cast || card?.type !== "spell") return;
+    const model = sigianCardUiModel(card);
+    if (!model) return;
+    cast.classList.add("sigian-card-cast");
+    const badge = document.createElement("span");
+    badge.className = "sigian-spell-cast-sigil";
+    badge.setAttribute("aria-label", model.sigilName);
+    badge.title = model.sigilName;
+    badge.innerHTML = model.iconMarkup("sigian-sigil-icon");
+    cast.appendChild(badge);
   }
 
   function applyCollectionFilters(cards) {
@@ -4440,7 +4502,11 @@
     const featured = $("#collectionPageFeatured");
     const meta = $("#collectionPageMeta");
     if (card && featured && meta) {
-      featured.replaceChildren(buildArtBlock(card, "collectionFeatured"));
+      const sigianFull = buildSigianFullCard(card, null);
+      const inspector = featured.closest(".collection-page-inspector");
+      inspector?.classList.toggle("sigian-pilot-inspector", Boolean(sigianFull));
+      featured.classList.toggle("sigian-card-featured", Boolean(sigianFull));
+      featured.replaceChildren(sigianFull || buildArtBlock(card, "collectionFeatured"));
       $("#collectionPageCardTitle").textContent = cardName(card);
       $("#collectionPageCardKind").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg collection-school-svg")} ${escapeHtml(schoolName(card.school))} · ${escapeHtml(t(card.type === "spell" ? "ui.spell" : "ui.creature"))}`;
       $("#collectionPageCardLevel").textContent = `${t("cards.level")} ${card.level}`;
