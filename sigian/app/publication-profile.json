@@ -1,6 +1,6 @@
 {
-  "profile": "github-pages-sigian-foundation",
-  "source": "frenk-ops/sigian",
+  "profile": "github-pages-remastered",
+  "source": "app",
   "cards": {
     "remastered": 65,
     "originalAlias": "remastered"
@@ -9,39 +9,7 @@
   "multiplayerServerIncluded": false,
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
-  "version": "0.23.8",
-  "build": "61e5ef6",
-  "revision": "0.23.8-sigian-61e5ef6",
-  "formulaFoundation": {
-    "nativeCards": 65,
-    "legacyDelegatedCards": 0,
-    "liveRuntime": true
-  },
-  "cardUi": {
-    "convertedSchools": [
-      "air"
-    ],
-    "convertedCards": 13,
-    "fixedFullGeometry": true,
-    "collectionRefresh": true,
-    "formulaDriven": true
-  },
-  "collectionUi": {
-    "readabilityPass": true,
-    "filters": [
-      "school",
-      "type",
-      "cost"
-    ],
-    "schoolAccentOnly": true,
-    "sigilPrimaryCollisionFixed": true,
-    "previewModes": [
-      "full",
-      "combat",
-      "hand"
-    ],
-    "canonicalFullRenderer": true,
-    "containedPreview": true,
-    "sigilSpacingFixed": true
-  }
+  "version": "0.23.9",
+  "build": "4bd0bb4",
+  "revision": "0.23.9-sigian-4bd0bb4"
 }
