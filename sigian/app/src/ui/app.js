@@ -464,6 +464,7 @@
   let inspectedCardSide = null;
   let inspectedCardInstanceId = null;
   let collectionSelectedCardId = null;
+  let collectionPreviewMode = "full";
   const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false;
   let turnBannerTimer = null;
   let presentationLog = [];
@@ -4245,7 +4246,12 @@
       let textValue = "";
       let className = item.kind || "";
       let school = params.school || params.left?.school || null;
-      if (item.kind === A.SIGIAN_MODIFIER_KINDS?.TARGET) textValue = sigianTargetLabel(params);
+      if (item.kind === A.SIGIAN_MODIFIER_KINDS?.TARGET) {
+        const implicitSelfRebirth = sigil.effect === A.SIGIAN_EFFECTS?.RESURRECT
+          && params.side === A.SIGIAN_TARGET_SIDES?.SELF
+          && params.kind === A.SIGIAN_TARGET_KINDS?.SOURCE;
+        if (!implicitSelfRebirth) textValue = sigianTargetLabel(params);
+      }
       if (item.kind === A.SIGIAN_MODIFIER_KINDS?.SCALE) textValue = sigianScaleLabel(params, sigil.effect);
       if (item.kind === A.SIGIAN_MODIFIER_KINDS?.CONDITION) textValue = sigianConditionLabel(params);
       if (item.kind === A.SIGIAN_MODIFIER_KINDS?.CONFIG) {
@@ -4531,6 +4537,120 @@
     renderCollectionPage();
   }
 
+  function buildCollectionHandPreview(card) {
+    const template = $("#smallCardTemplate");
+    if (!template?.content?.firstElementChild) return document.createElement("div");
+    const clone = template.content.firstElementChild.cloneNode(true);
+    clone.classList.add(`school-${card.school}`, `type-${card.type}`);
+    clone.dataset.cardId = card.id;
+    clone.dataset.playable = "true";
+    clone.tabIndex = -1;
+    clone.querySelector(".cost").textContent = Number(card.cost ?? card.level ?? 0);
+    clone.querySelector(".school").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg card-school-svg")} ${escapeHtml(schoolName(card.school))}`;
+    const artNode = clone.querySelector(".art");
+    artNode.innerHTML = "";
+    artNode.appendChild(buildArtBlock(card, "collectionHandPreview"));
+    clone.querySelector(".name").textContent = cardName(card);
+    clone.querySelector(".text").textContent = cardText(card);
+    clone.querySelector(".keyword").textContent = visibleCardKeyword(card);
+    clone.querySelector(".stats").textContent = card.type === "spell"
+      ? `Lv ${card.level}`
+      : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
+    decorateSigianHandCard(clone, card);
+
+    const host = document.createElement("div");
+    host.className = "sigian-preview-hand-host";
+    host.appendChild(clone);
+    return host;
+  }
+
+  function buildCollectionCombatPreview(card) {
+    if (card.type === "spell") {
+      const host = document.createElement("div");
+      host.className = "sigian-preview-combat-host sigian-preview-cast-host";
+      const cast = document.createElement("div");
+      cast.className = `cast-card cast-splash school-${card.school} spell-cast sigian-preview-cast`;
+      const art = document.createElement("div");
+      art.className = "cast-card-art cast-splash-art";
+      art.appendChild(buildArtBlock(card, "collectionCombatPreview"));
+      const chrome = document.createElement("div");
+      chrome.className = "cast-splash-chrome";
+      const schoolBadge = document.createElement("span");
+      schoolBadge.className = "cast-splash-school";
+      schoolBadge.innerHTML = schoolIconMarkup(card.school, "school-icon-svg cast-splash-school-icon");
+      const copy = document.createElement("div");
+      copy.className = "cast-splash-copy";
+      const label = document.createElement("strong");
+      label.className = "cast-splash-name";
+      label.textContent = cardName(card);
+      const kind = document.createElement("small");
+      kind.className = "cast-splash-kind";
+      kind.textContent = t("ui.spell");
+      copy.appendChild(label);
+      copy.appendChild(kind);
+      chrome.appendChild(schoolBadge);
+      chrome.appendChild(copy);
+      cast.appendChild(art);
+      cast.appendChild(chrome);
+      decorateSigianSpellCast(cast, card);
+      cast.classList.add("active");
+      host.appendChild(cast);
+      return host;
+    }
+
+    const host = document.createElement("div");
+    host.className = "sigian-preview-combat-host classic-board-column";
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.tabIndex = -1;
+    cell.className = `unit school-${card.school}`;
+    const art = document.createElement("div");
+    art.className = "unit-art";
+    art.appendChild(buildArtBlock(card, "collectionCombatPreview"));
+    const name = document.createElement("small");
+    name.textContent = cardName(card);
+    art.appendChild(name);
+    const stats = document.createElement("div");
+    stats.className = "unit-stats";
+    stats.innerHTML = `<strong class="unit-attack"><span aria-hidden="true">⚔</span>${escapeHtml(card.attack)}</strong><strong class="unit-health"><span aria-hidden="true">♥</span>${escapeHtml(card.health)}</strong>`;
+    cell.appendChild(art);
+    cell.appendChild(stats);
+    syncSigianCombatPresentation(cell, card);
+    host.appendChild(cell);
+    return host;
+  }
+
+  function renderCollectionCardPreview(card) {
+    const stage = $("#collectionPreviewStage");
+    if (!stage || !card) return;
+    stage.className = `collection-preview-stage mode-${collectionPreviewMode}`;
+    stage.replaceChildren();
+
+    if (collectionPreviewMode === "hand") {
+      stage.appendChild(buildCollectionHandPreview(card));
+    } else if (collectionPreviewMode === "combat") {
+      stage.appendChild(buildCollectionCombatPreview(card));
+    } else {
+      stage.classList.add("duel-card-zoom-content");
+      renderPreviewInto(stage, card, null);
+    }
+
+    document.querySelectorAll("[data-collection-preview-mode]").forEach(button => {
+      const active = button.dataset.collectionPreviewMode === collectionPreviewMode;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  }
+
+  function bindCollectionPreviewModes(card) {
+    document.querySelectorAll("[data-collection-preview-mode]").forEach(button => {
+      button.addEventListener("click", () => {
+        collectionPreviewMode = button.dataset.collectionPreviewMode || "full";
+        renderCollectionCardPreview(card);
+      });
+    });
+  }
+
   function renderCollectionPage() {
     const root = $("#cardsContent");
     if (!root) return;
@@ -4555,21 +4675,20 @@
           <p id="collectionPageStatus" class="collection-page-count">${t("cards.shown", { shown: filtered.length, total: allCards.length })}</p>
         </div>
       </div>
-      <div class="collection-page-layout">
-        <aside class="collection-page-inspector ornate-subpanel">
-          <div class="collection-page-featured" id="collectionPageFeatured"></div>
-          <div class="collection-page-card-copy">
-            <div class="collection-page-card-heading">
-              <div><h3 id="collectionPageCardTitle">${t("cards.detail")}</h3><p id="collectionPageCardKind"></p></div>
-              <strong id="collectionPageCardLevel"></strong>
-            </div>
-            <div id="collectionPageMeta"></div>
+      <div class="collection-page-layout collection-page-layout-v2">
+        <aside class="collection-preview-panel">
+          <div class="collection-preview-toolbar" role="tablist" aria-label="${escapeHtml(t("cards.previewModes"))}">
+            <button type="button" data-collection-preview-mode="full" role="tab">${escapeHtml(t("cards.previewFull"))}</button>
+            <button type="button" data-collection-preview-mode="combat" role="tab">${escapeHtml(t("cards.previewCombat"))}</button>
+            <button type="button" data-collection-preview-mode="hand" role="tab">${escapeHtml(t("cards.previewHand"))}</button>
           </div>
+          <div id="collectionPreviewStage" class="collection-preview-stage"></div>
         </aside>
         <section class="collection-page-main">
           <div id="collectionPageGrid" class="collection-grid page-grid"></div>
         </section>
       </div>`;
+
     buildCollectionFilterButtons();
     const search = $("#collectionPageSearch");
     if (search) {
@@ -4579,32 +4698,17 @@
         renderCollectionPanels();
       };
     }
+
     const card = getCollectionSelectedCard();
-    const featured = $("#collectionPageFeatured");
-    const meta = $("#collectionPageMeta");
-    if (card && featured && meta) {
-      const sigianFull = buildSigianFullCard(card, null);
-      const inspector = featured.closest(".collection-page-inspector");
-      inspector?.classList.toggle("sigian-pilot-inspector", Boolean(sigianFull));
-      featured.classList.toggle("sigian-card-featured", Boolean(sigianFull));
-      featured.replaceChildren(sigianFull || buildArtBlock(card, "collectionFeatured"));
-      $("#collectionPageCardTitle").textContent = cardName(card);
-      $("#collectionPageCardKind").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg collection-school-svg")} ${escapeHtml(schoolName(card.school))} · ${escapeHtml(t(card.type === "spell" ? "ui.spell" : "ui.creature"))}`;
-      $("#collectionPageCardLevel").textContent = `${t("cards.level")} ${card.level}`;
-      const combatDetails = card.type === "spell" ? "" : `
-          <div><small>${t("ui.attack")}</small><strong>${card.attack}</strong></div>
-          <div><small>${t("cards.health")}</small><strong>${card.health}</strong></div>`;
-      meta.innerHTML = `
-        <div class="inspect-meta-grid collection-page-stats">
-          ${combatDetails}
-          ${visibleCardKeyword(card) ? `<div><small>${t("cards.keyword")}</small><strong>${escapeHtml(visibleCardKeyword(card))}</strong></div>` : ""}
-        </div>
-        <div class="inspect-ability-block"><small>${t("cards.cardText")}</small><p>${escapeHtml(cardText(card))}</p></div>`;
+    if (card) {
+      renderCollectionCardPreview(card);
+      bindCollectionPreviewModes(card);
     }
+
     const pageGrid = $("#collectionPageGrid");
     if (pageGrid) {
       pageGrid.innerHTML = "";
-      filtered.forEach(card => pageGrid.appendChild(buildCollectionTile(card, false)));
+      filtered.forEach(item => pageGrid.appendChild(buildCollectionTile(item, false)));
     }
   }
 
