@@ -4121,13 +4121,10 @@
     return `${escapeHtml(text.slice(0, index))}<strong class="inline-current-value">${escapeHtml(marker)}</strong> ${escapeHtml(text.slice(index + markerWithSpace.length))}`;
   }
 
-  const SIGIAN_CARD_UI_PILOT_IDS = Object.freeze(new Set([
-    "astral_air_06",
-    "astral_air_07"
-  ]));
+  const SIGIAN_CARD_UI_SCHOOLS = Object.freeze(new Set(["air"]));
 
   function isSigianCardUiPilot(card) {
-    return Boolean(card?.id && SIGIAN_CARD_UI_PILOT_IDS.has(card.id));
+    return Boolean(card?.school && SIGIAN_CARD_UI_SCHOOLS.has(card.school));
   }
 
   function sigianFormulaForUi(card) {
@@ -4145,75 +4142,144 @@
     return sigils ? { id: card.id, school: card.school, type: card.type, sigils } : null;
   }
 
-  function rebirthSigilMarkup(className = "") {
-    return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2.4"/>
-      <circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/>
-      <path d="M31 45c-8-5-11-12-7-19 2 5 5 6 7 2 2-4 1-8 0-12 8 5 13 12 10 20-1 4-5 8-10 9Z" fill="currentColor" opacity=".92"/>
-      <path d="M45 20a19 19 0 0 1 3 19M48 39l-6-3m6 3-2 6M19 44a19 19 0 0 1-3-19M16 25l6 3m-6-3 2-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
+  function sigianEffectIconMarkup(effect, className = "") {
+    const common = '<circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".42"/>';
+    const path = ({
+      [A.SIGIAN_EFFECTS?.DAMAGE]: '<path d="M36 11 21 34h10l-4 19 17-27H34l2-15Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.HEAL]: '<path d="M28 17h8v11h11v8H36v11h-8V36H17v-8h11Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.POWER_GROWTH]: '<path d="m18 39 14-17 14 17h-9v10H27V39Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.FORCE_ATTACK]: '<path d="M12 32s7-12 20-12 20 12 20 12-7 12-20 12S12 32 12 32Zm20-7a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.RESURRECT]: '<path d="M31 45c-8-5-11-12-7-19 2 5 5 6 7 2 2-4 1-8 0-12 8 5 13 12 10 20-1 4-5 8-10 9Z" fill="currentColor"/><path d="M45 20a19 19 0 0 1 3 19M48 39l-6-3m6 3-2 6M19 44a19 19 0 0 1-3-19M16 25l6 3m-6-3 2-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>',
+      [A.SIGIAN_EFFECTS?.DESTROY]: '<path d="m20 17 12 8 12-8-5 14 9 7-13 1-3 12-4-12-13-1 10-7Z" fill="currentColor"/>',
+      [A.SIGIAN_EFFECTS?.ATTACK_FROM_POWER]: '<path d="M14 39c9-1 12-8 18-16 5 8 9 14 18 16M18 45c7-2 10-6 14-12 4 6 7 10 14 12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>',
+      [A.SIGIAN_EFFECTS?.ATTACK_ALL]: '<path d="M32 48V20m0 0-7 8m7-8 7 8M20 42 12 31m8 11-10-1m10 1-3-9M44 42l8-11m-8 11 10-1m-10 1 3-9" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>',
+      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS]: '<path d="m32 12 5 14 15 1-12 9 4 15-12-9-12 9 4-15-12-9 15-1Z" fill="currentColor"/>'
+    })[effect] || '<path d="M20 32h24M32 20v24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>';
+    return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">${common}${path}</svg>`;
   }
 
-  function damageSigilMarkup(className = "") {
-    return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" stroke-width="2.4"/>
-      <circle cx="32" cy="32" r="19" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/>
-      <path d="M36 11 21 34h10l-4 19 17-27H34l2-15Z" fill="currentColor"/>
-      <path d="M12 32h6M46 32h6M32 12v5M32 47v5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".78"/>
-    </svg>`;
+  function sigianEffectLabel(effect) {
+    return ({
+      [A.SIGIAN_EFFECTS?.DAMAGE]: t("sigian.sigil.damage"),
+      [A.SIGIAN_EFFECTS?.HEAL]: t("sigian.sigil.heal"),
+      [A.SIGIAN_EFFECTS?.POWER_GROWTH]: t("sigian.sigil.growth"),
+      [A.SIGIAN_EFFECTS?.FORCE_ATTACK]: t("sigian.sigil.control"),
+      [A.SIGIAN_EFFECTS?.RESURRECT]: t("sigian.sigil.rebirth"),
+      [A.SIGIAN_EFFECTS?.DESTROY]: t("sigian.sigil.destroy"),
+      [A.SIGIAN_EFFECTS?.ATTACK_FROM_POWER]: t("sigian.sigil.channel"),
+      [A.SIGIAN_EFFECTS?.ATTACK_ALL]: t("sigian.sigil.assault"),
+      [A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS]: t("sigian.sigil.amplify")
+    })[effect] || t("sigian.sigil.effect");
   }
 
-  function sigianPhoenixUiModel(card) {
-    if (card?.id !== "astral_air_07") return null;
-    const formula = sigianFormulaForUi(card);
-    const sigil = formula?.sigils?.find(item => item.effect === A.SIGIAN_EFFECTS?.RESURRECT) || formula?.sigils?.[0] || null;
-    const condition = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.CONDITION)?.params || null;
-    const scale = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.SCALE)?.params || null;
-    const conditionSchool = condition?.left?.school || "fire";
-    const threshold = Number(condition?.right?.value ?? 10);
-    const fullHealth = scale?.mode === A.SIGIAN_SCALE_MODES?.FULL_HEALTH;
+  function sigianTriggerLabel(trigger) {
+    return ({
+      onSummon: t("sigian.trigger.summon"),
+      onPlay: t("sigian.trigger.play"),
+      passive: t("sigian.trigger.passive"),
+      whileAlive: t("sigian.trigger.whileAlive"),
+      onSelfDeath: t("sigian.modifier.onDeath"),
+      onBeforeAttack: t("sigian.trigger.beforeAttack"),
+      onAnyDeath: t("sigian.trigger.anyDeath")
+    })[trigger] || trigger;
+  }
+
+  function sigianOperatorLabel(op) {
+    return ({ gte:"≥", lte:"≤", gt:">", lt:"<", eq:"=", neq:"≠" })[op] || op;
+  }
+
+  function sigianTargetLabel(params = {}) {
+    const side = params.side;
+    const kind = params.kind;
+    const selector = params.selector;
+    const count = Number(params.count || 0);
+    if (side === A.SIGIAN_TARGET_SIDES?.ENEMY && kind === A.SIGIAN_TARGET_KINDS?.HERO) return t("sigian.modifier.enemyMage");
+    if (side === A.SIGIAN_TARGET_SIDES?.ENEMY && kind === A.SIGIAN_TARGET_KINDS?.CREATURES) {
+      if (selector === "strongest-attack" && count > 0) return t("sigian.modifier.enemyCreaturesTopAttack", { count });
+      return t("sigian.modifier.enemyCreatures");
+    }
+    if (side === A.SIGIAN_TARGET_SIDES?.ENEMY && kind === A.SIGIAN_TARGET_KINDS?.CREATURE) {
+      if (selector === "strongest-health") return t("sigian.modifier.enemyCreatureMostHealth");
+      return t("sigian.modifier.enemyCreature");
+    }
+    if (side === A.SIGIAN_TARGET_SIDES?.SELF && kind === A.SIGIAN_TARGET_KINDS?.CREATURES) return t("sigian.modifier.alliedCreatures");
+    if (side === A.SIGIAN_TARGET_SIDES?.SELF && kind === A.SIGIAN_TARGET_KINDS?.SOURCE) return t("sigian.modifier.thisCreature");
+    if (kind === A.SIGIAN_TARGET_KINDS?.POWER) return `${t("sigian.modifier.power")} ${schoolName(params.school || "air")}`;
+    return t("sigian.modifier.target");
+  }
+
+  function sigianScaleLabel(params = {}, effect = "") {
+    const mode = params.mode;
+    if (mode === A.SIGIAN_SCALE_MODES?.FULL_HEALTH) return t("sigian.modifier.fullHealth");
+    if (mode === A.SIGIAN_SCALE_MODES?.CONSTANT) {
+      const value = Number(params.value || 0);
+      if (effect === A.SIGIAN_EFFECTS?.POWER_GROWTH) return `${value >= 0 ? "+" : ""}${value} ${t("sigian.modifier.perTurn")}`;
+      if (effect === A.SIGIAN_EFFECTS?.SPELL_DAMAGE_BONUS) return `+${value} ${t("sigian.modifier.damage")}`;
+      return `${value >= 0 ? "+" : ""}${value}`;
+    }
+    if (mode === A.SIGIAN_SCALE_MODES?.SOURCE_POWER) {
+      const school = params.school || "air";
+      const numerator = Number(params.numerator ?? 1);
+      const denominator = Number(params.denominator ?? 1);
+      const offset = Number(params.offset || 0);
+      const coefficient = numerator === denominator ? "" : `${numerator}/${denominator} × `;
+      const offsetLabel = offset === 0 ? "" : ` ${offset > 0 ? "+" : "−"} ${Math.abs(offset)}`;
+      return `${coefficient}${t("sigian.modifier.power")} ${schoolName(school)}${offsetLabel}`;
+    }
+    return "";
+  }
+
+  function sigianConditionLabel(params = {}) {
+    const left = params.left || {};
+    const right = params.right || {};
+    if (left.kind === A.SIGIAN_TARGET_KINDS?.POWER) {
+      return `${schoolName(left.school || "air")} ${sigianOperatorLabel(params.op)} ${Number(right.value || 0)}`;
+    }
+    return "";
+  }
+
+  function sigianSigilUiModel(sigil) {
+    const modifiers = [{ className:"trigger", text:sigianTriggerLabel(sigil.trigger), glyph:"✦" }];
+    (sigil.modifiers || []).forEach(item => {
+      const params = item.params || {};
+      let textValue = "";
+      let className = item.kind || "";
+      let school = params.school || params.left?.school || null;
+      if (item.kind === A.SIGIAN_MODIFIER_KINDS?.TARGET) textValue = sigianTargetLabel(params);
+      if (item.kind === A.SIGIAN_MODIFIER_KINDS?.SCALE) textValue = sigianScaleLabel(params, sigil.effect);
+      if (item.kind === A.SIGIAN_MODIFIER_KINDS?.CONDITION) textValue = sigianConditionLabel(params);
+      if (item.kind === A.SIGIAN_MODIFIER_KINDS?.CONFIG) {
+        if (params.destination === "own-hero") textValue = t("sigian.modifier.ownMage");
+        if (params.school) textValue = `${t("sigian.modifier.power")} ${schoolName(params.school)}`;
+      }
+      if (!textValue) return;
+      modifiers.push({
+        className: `${className}${school ? ` school-${school}` : ""}`,
+        text: textValue,
+        school
+      });
+    });
     return {
-      formula,
-      sigil,
-      sigilName: t("sigian.sigil.rebirth"),
-      iconMarkup: className => rebirthSigilMarkup(className),
-      modifiers: [
-        { className: "trigger", html: `<span class="sigian-modifier-glyph" aria-hidden="true">✦</span>${escapeHtml(t("sigian.modifier.onDeath"))}` },
-        { className: `school-${conditionSchool}`, html: `${schoolIconMarkup(conditionSchool, "school-icon-svg sigian-modifier-school-icon")}<span>${escapeHtml(schoolName(conditionSchool))} ≥ ${escapeHtml(threshold)}</span>` },
-        { className: "result", html: `<span class="sigian-modifier-glyph" aria-hidden="true">♥</span>${escapeHtml(fullHealth ? t("sigian.modifier.fullHealth") : t("ui.life"))}` }
-      ]
-    };
-  }
-
-  function sigianLightningUiModel(card) {
-    if (card?.id !== "astral_air_06") return null;
-    const formula = sigianFormulaForUi(card);
-    const sigil = formula?.sigils?.find(item => item.effect === A.SIGIAN_EFFECTS?.DAMAGE) || formula?.sigils?.[0] || null;
-    const target = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.TARGET)?.params || null;
-    const scale = sigil?.modifiers?.find(item => item.kind === A.SIGIAN_MODIFIER_KINDS?.SCALE)?.params || null;
-    const scaleSchool = scale?.school || card.school;
-    const offset = Number(scale?.offset || 0);
-    const offsetLabel = offset === 0 ? "" : ` ${offset > 0 ? "+" : "−"} ${Math.abs(offset)}`;
-    return {
-      formula,
-      sigil,
-      sigilName: t("sigian.sigil.damage"),
-      iconMarkup: className => damageSigilMarkup(className),
-      modifiers: [
-        {
-          className: "target",
-          html: `<span class="sigian-modifier-glyph" aria-hidden="true">◎</span>${escapeHtml(target?.kind === A.SIGIAN_TARGET_KINDS?.HERO ? t("sigian.modifier.enemyMage") : t("sigian.modifier.target"))}`
-        },
-        {
-          className: `scale school-${scaleSchool}`,
-          html: `${schoolIconMarkup(scaleSchool, "school-icon-svg sigian-modifier-school-icon")}<span>${escapeHtml(t("sigian.modifier.power"))} ${escapeHtml(schoolName(scaleSchool))}${escapeHtml(offsetLabel)}</span>`
-        }
-      ]
+      effect: sigil.effect,
+      name: sigianEffectLabel(sigil.effect),
+      iconMarkup: className => sigianEffectIconMarkup(sigil.effect, className),
+      modifiers
     };
   }
 
   function sigianCardUiModel(card) {
-    return sigianPhoenixUiModel(card) || sigianLightningUiModel(card);
+    const formula = sigianFormulaForUi(card);
+    if (!formula?.sigils?.length) return null;
+    return {
+      formula,
+      sigils: formula.sigils.map(sigianSigilUiModel),
+      primary: sigianSigilUiModel(formula.sigils[0])
+    };
+  }
+
+  function sigianModifierMarkup(item) {
+    const schoolIcon = item.school ? schoolIconMarkup(item.school, "school-icon-svg sigian-modifier-school-icon") : `<span class="sigian-modifier-glyph" aria-hidden="true">${escapeHtml(item.glyph || "◆")}</span>`;
+    return `<span class="sigian-modifier-chip ${escapeHtml(item.className)}">${schoolIcon}<span>${escapeHtml(item.text)}</span></span>`;
   }
 
   function buildSigianFullCard(card, side = null) {
@@ -4221,7 +4287,7 @@
     if (!model) return null;
     const cost = engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0);
     const article = document.createElement("article");
-    article.className = `sigian-full-card school-${card.school} type-${card.type}`;
+    article.className = `sigian-full-card school-${card.school} type-${card.type} sigian-sigil-count-${model.sigils.length}`;
     article.dataset.cardId = card.id;
 
     const top = document.createElement("header");
@@ -4239,7 +4305,7 @@
     article.appendChild(art);
 
     if (card.type === "creature") {
-      const attack = printedCardAttack(card);
+      const attack = side && engine ? displayedUnitAttack(side, card) : printedCardAttack(card);
       const health = Math.max(0, Number(card.currentHealth ?? card.health ?? card.hp ?? 0));
       const stats = document.createElement("div");
       stats.className = "sigian-full-stats";
@@ -4251,11 +4317,18 @@
 
     const sigilArea = document.createElement("section");
     sigilArea.className = `sigian-full-sigil-area ${card.type === "spell" ? "sigian-full-spell-sigil-area" : ""}`;
-    const modifiers = model.modifiers.map(item => `<span class="sigian-modifier-chip ${escapeHtml(item.className)}">${item.html}</span>`).join("");
+    const sigilMarkup = model.sigils.map((sigil, index) => {
+      const modifiers = sigil.modifiers.map(sigianModifierMarkup).join("");
+      return `<div class="sigian-sigil-entry ${index === 0 ? "primary" : "secondary"}">
+        <div class="sigian-sigil-medallion">${sigil.iconMarkup("sigian-sigil-icon")}</div>
+        <div class="sigian-sigil-copy">
+          <strong class="sigian-sigil-name">${escapeHtml(sigil.name)}</strong>
+          <div class="sigian-modifier-row">${modifiers}</div>
+        </div>
+      </div>`;
+    }).join("");
     sigilArea.innerHTML = `
-      <div class="sigian-sigil-medallion">${model.iconMarkup("sigian-sigil-icon")}</div>
-      <strong class="sigian-sigil-name">${escapeHtml(model.sigilName)}</strong>
-      <div class="sigian-modifier-row">${modifiers}</div>
+      <div class="sigian-sigil-list">${sigilMarkup}</div>
       <p class="sigian-full-rules">${cardDescriptionHtml(card, side || inspectedCardSide)}</p>`;
     article.appendChild(sigilArea);
     return article;
@@ -4276,8 +4349,8 @@
     }
     const badge = document.createElement("span");
     badge.className = "sigian-hand-sigil";
-    badge.title = model.sigilName;
-    badge.innerHTML = model.iconMarkup("sigian-sigil-icon");
+    badge.title = model.primary.name;
+    badge.innerHTML = model.primary.iconMarkup("sigian-sigil-icon");
     cardNode.appendChild(badge);
   }
 
@@ -4296,9 +4369,9 @@
       badge.className = "sigian-combat-sigil";
       cell.appendChild(badge);
     }
-    badge.setAttribute("aria-label", model.sigilName);
-    badge.title = model.sigilName;
-    badge.innerHTML = model.iconMarkup("sigian-sigil-icon");
+    badge.setAttribute("aria-label", model.primary.name);
+    badge.title = model.primary.name;
+    badge.innerHTML = model.primary.iconMarkup("sigian-sigil-icon");
   }
 
   function decorateSigianSpellCast(cast, card) {
@@ -4308,9 +4381,9 @@
     cast.classList.add("sigian-card-cast");
     const badge = document.createElement("span");
     badge.className = "sigian-spell-cast-sigil";
-    badge.setAttribute("aria-label", model.sigilName);
-    badge.title = model.sigilName;
-    badge.innerHTML = model.iconMarkup("sigian-sigil-icon");
+    badge.setAttribute("aria-label", model.primary.name);
+    badge.title = model.primary.name;
+    badge.innerHTML = model.primary.iconMarkup("sigian-sigil-icon");
     cast.appendChild(badge);
   }
 
@@ -4422,8 +4495,13 @@
     art.appendChild(buildArtBlock(card, compact ? "collectionCompact" : "collection"));
     const body = document.createElement("div");
     body.className = "collection-tile-body";
-    body.innerHTML = `<strong>${escapeHtml(cardName(card))}</strong><small>Lv. ${card.level}</small>`;
+    body.innerHTML = `<strong>${escapeHtml(cardName(card))}</strong><small>${escapeHtml(t("ui.cost"))} ${card.level}</small>`;
+    const costBadge = document.createElement("span");
+    costBadge.className = "collection-tile-cost";
+    costBadge.textContent = card.level;
+    costBadge.setAttribute("aria-label", `${t("ui.cost")} ${card.level}`);
     button.appendChild(art);
+    button.appendChild(costBadge);
     button.appendChild(body);
     button.addEventListener("click", () => {
       collectionSelectedCardId = card.id;
