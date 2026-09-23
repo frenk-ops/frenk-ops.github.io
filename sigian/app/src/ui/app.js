@@ -4319,7 +4319,7 @@
     sigilArea.className = `sigian-full-sigil-area ${card.type === "spell" ? "sigian-full-spell-sigil-area" : ""}`;
     const sigilMarkup = model.sigils.map((sigil, index) => {
       const modifiers = sigil.modifiers.map(sigianModifierMarkup).join("");
-      return `<div class="sigian-sigil-entry ${index === 0 ? "primary" : "secondary"}">
+      return `<div class="sigian-sigil-entry ${index === 0 ? "is-primary" : "is-secondary"}">
         <div class="sigian-sigil-medallion">${sigil.iconMarkup("sigian-sigil-icon")}</div>
         <div class="sigian-sigil-copy">
           <strong class="sigian-sigil-name">${escapeHtml(sigil.name)}</strong>
