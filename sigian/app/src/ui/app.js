@@ -516,13 +516,14 @@
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
   let forgeSession = null;
   let forgeSelectedSigilSlotId = null;
-
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
-  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "forge", "profile", "rules", "diagnostics"]);
+  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "forge", "uiLab", "profile", "rules", "diagnostics"]);
 
   function rememberedView() {
     try {
+      const requested = new URLSearchParams(window.location.search).get("view") || "";
+      if (RESTORABLE_VIEWS.has(requested)) return requested;
       const value = sessionStorage.getItem(ACTIVE_VIEW_KEY) || "";
       return RESTORABLE_VIEWS.has(value) ? value : "game";
     } catch {
@@ -2341,6 +2342,12 @@
     if (name === "tournament") renderTournament();
     if (name === "cards") renderCollectionPage();
     if (name === "forge") renderForgePage();
+    if (name === "uiLab") {
+      A.ForgeUiLab?.resetSession?.();
+      A.ForgeUiLab?.render?.($("#forgeUiLabContent"));
+      const backButton = $("#forgeLabBackBtn");
+      if (backButton) backButton.onclick = () => switchView("forge");
+    }
     if (name === "profile") {
       renderPlayerProfile();
       initializeOnlineAccount({ renderProfile: true }).catch(() => {});
@@ -2350,6 +2357,9 @@
   }
 
   navigation = A.UINavigation?.create({ onViewChange: switchView, onReturnToGame: () => { if (!engine) restartDuel(); } });
+  window.addEventListener("sigian:forge-draft-updated", () => {
+    forgeSession = null;
+  });
 
   function ensureAudio() {
     if (!soundEnabled) return null;
@@ -5113,6 +5123,7 @@
     const redoButton = $("#forgeRedoBtn");
     const tryButton = $("#forgeTryBtn");
     const sealButton = $("#forgeSealBtn");
+    const labButton = $("#forgeUiLabBtn");
     if (undoButton) undoButton.disabled = !snapshot.canUndo;
     if (redoButton) redoButton.disabled = !snapshot.canRedo;
     if (tryButton) {
@@ -5123,6 +5134,7 @@
       sealButton.disabled = true;
       sealButton.title = t("forge.balancePending");
     }
+    if (labButton) labButton.onclick = () => switchView("uiLab");
 
     if (newButton) newButton.onclick = () => {
       forgeSelectedSigilSlotId = null;
@@ -5241,6 +5253,7 @@
       renderForgePage();
     }));
   }
+
 
   function applyCollectionFilters(cards) {
     const search = (collectionState.search || "").trim().toLowerCase();
@@ -8099,7 +8112,7 @@
   if (urlParams.get("qa") === "duel") {
     clearPersistedLocalDuel();
     setTimeout(() => startDuel("fire", false, null, "arcane"), 30);
-  } else if (!restoredRemoteRoom) {
+  } else if (!restoredRemoteRoom && (!RESTORABLE_VIEWS.has(urlParams.get("view") || "") || urlParams.get("view") === "game")) {
     restorePersistedLocalDuel();
   }
 
