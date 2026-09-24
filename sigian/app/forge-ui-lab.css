@@ -4316,3 +4316,749 @@
     animation: none !important;
   }
 }
+
+
+/* ===== Sigian 0.45 — card-native Forge interaction pass ===== */
+
+.forge-lab-card-stage {
+  perspective: 680px;
+  perspective-origin: 50% 36%;
+}
+
+/* Art -> materia -> Scuola: l'immagine non finisce, torna dentro la Formula. */
+.forge-lab-card.school-fire  { --lab-fusion-color: #a64a28; }
+.forge-lab-card.school-water { --lab-fusion-color: #3f7fa0; }
+.forge-lab-card.school-air   { --lab-fusion-color: #8879ae; }
+.forge-lab-card.school-earth { --lab-fusion-color: #788357; }
+.forge-lab-card.school-death { --lab-fusion-color: #695a73; }
+
+.forge-lab-card-frame span {
+  background:
+    radial-gradient(ellipse 86% 52% at 50% 72%,
+      color-mix(in srgb, var(--lab-fusion-color) 24%, transparent),
+      transparent 68%),
+    radial-gradient(circle at 8% 8%, rgba(86, 49, 25, .28), transparent 7%),
+    radial-gradient(circle at 93% 22%, rgba(78, 43, 21, .18), transparent 8%),
+    radial-gradient(circle at 11% 87%, rgba(84, 47, 23, .19), transparent 8%),
+    repeating-linear-gradient(19deg, transparent 0 20px, rgba(72, 46, 24, .055) 20px 21px),
+    repeating-linear-gradient(101deg, transparent 0 31px, rgba(255, 248, 219, .032) 31px 32px);
+}
+
+.forge-lab-art-layer {
+  left: .2%;
+  right: .2%;
+  top: 0;
+  height: 84%;
+  border-radius: 25px 25px 20px 20px;
+  touch-action: pan-y;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 48%,
+    rgba(0,0,0,.97) 57%,
+    rgba(0,0,0,.84) 65%,
+    rgba(0,0,0,.64) 73%,
+    rgba(0,0,0,.42) 81%,
+    rgba(0,0,0,.21) 89%,
+    rgba(0,0,0,.07) 95%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 48%,
+    rgba(0,0,0,.97) 57%,
+    rgba(0,0,0,.84) 65%,
+    rgba(0,0,0,.64) 73%,
+    rgba(0,0,0,.42) 81%,
+    rgba(0,0,0,.21) 89%,
+    rgba(0,0,0,.07) 95%,
+    transparent 100%
+  );
+}
+
+.forge-lab-art-layer::before {
+  box-shadow:
+    inset 0 0 25px color-mix(in srgb, var(--lab-paper-1) 18%, transparent),
+    inset 0 -105px 115px color-mix(in srgb, var(--lab-paper-2) 50%, transparent);
+}
+
+.forge-lab-art-layer::after {
+  background:
+    linear-gradient(180deg,
+      transparent 0 48%,
+      color-mix(in srgb, var(--lab-fusion-color) 5%, transparent) 56%,
+      color-mix(in srgb, var(--lab-fusion-color) 13%, transparent) 65%,
+      color-mix(in srgb, var(--lab-paper-1) 24%, transparent) 72%,
+      color-mix(in srgb, var(--lab-fusion-color) 24%, var(--lab-paper-2)) 88%,
+      color-mix(in srgb, var(--lab-paper-2) 94%, var(--lab-fusion-color)) 100%),
+    radial-gradient(ellipse 102% 78% at 50% 68%,
+      transparent 0 38%,
+      color-mix(in srgb, var(--lab-fusion-color) 12%, transparent) 58%,
+      color-mix(in srgb, var(--lab-paper-2) 46%, transparent) 88%,
+      color-mix(in srgb, var(--lab-paper-2) 86%, transparent) 100%);
+}
+
+.forge-lab-art-layer img {
+  filter: contrast(1.02) saturate(.98);
+}
+
+/* Cartiglio nome: un nastro/lamina fantasy, non una barra UI. */
+.forge-lab-nameplate {
+  left: -7.2%;
+  right: -7.2%;
+  top: 46.5%;
+  min-height: 49px;
+  padding: 7px 76px 8px;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(
+    0 28%, 5% 10%, 16% 15%, 28% 6%, 42% 11%, 50% 4%,
+    58% 11%, 72% 6%, 84% 15%, 95% 10%, 100% 28%,
+    98% 73%, 92% 91%, 79% 86%, 65% 95%, 50% 89%,
+    35% 95%, 21% 86%, 8% 91%, 2% 73%
+  );
+  color: #f7e7bf;
+  background:
+    linear-gradient(90deg,
+      rgba(28,18,11,.52) 0%,
+      color-mix(in srgb, var(--lab-school) 26%, #4f3420) 13%,
+      color-mix(in srgb, var(--lab-school) 18%, #6c4b2c) 50%,
+      color-mix(in srgb, var(--lab-school) 26%, #4f3420) 87%,
+      rgba(28,18,11,.52) 100%);
+  box-shadow:
+    0 9px 12px rgba(22,12,7,.24),
+    inset 0 1px rgba(255,239,198,.16),
+    inset 0 -2px rgba(36,18,8,.34),
+    inset 0 0 13px color-mix(in srgb, var(--lab-school) 15%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-lab-nameplate::before,
+.forge-lab-nameplate::after {
+  top: 8px;
+  width: 12%;
+  height: calc(100% - 14px);
+  opacity: .96;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--lab-school) 28%, #49301e),
+      #24170f);
+  box-shadow: 0 6px 10px rgba(16,9,5,.3);
+}
+
+.forge-lab-nameplate::before {
+  left: 1.2%;
+  transform: translateX(-76%) translateZ(-38px) rotateY(70deg) skewY(-8deg);
+  clip-path: polygon(28% 0,100% 10%,100% 90%,0 100%,18% 56%);
+}
+
+.forge-lab-nameplate::after {
+  right: 1.2%;
+  transform: translateX(76%) translateZ(-38px) rotateY(-70deg) skewY(8deg);
+  clip-path: polygon(0 10%,72% 0,82% 56%,100% 100%,0 90%);
+}
+
+.forge-lab-nameplate span {
+  letter-spacing: .035em;
+  text-shadow:
+    0 2px 2px rgba(20,10,5,.82),
+    0 0 7px color-mix(in srgb, var(--lab-school-bright) 18%, transparent);
+}
+
+.forge-lab-name-editing {
+  z-index: 40;
+}
+
+.forge-lab-name-editing input {
+  width: min(100%, 280px);
+  border: 0;
+  outline: 0;
+  padding: 3px 8px;
+  text-align: center;
+  color: #fff0c8;
+  background: transparent;
+  font: 700 1.08rem/1.1 Georgia, serif;
+  letter-spacing: .035em;
+  text-shadow: 0 2px 2px rgba(20,10,5,.82);
+  caret-color: var(--lab-school-bright);
+}
+
+/* Le frecce sono segni arcani, non bottoni. */
+.forge-lab-art-arrow,
+.forge-lab-school-nav {
+  border: 0 !important;
+  border-radius: 0 !important;
+  clip-path: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: color-mix(in srgb, var(--lab-school-bright) 66%, #ead5a6);
+  text-shadow:
+    0 0 7px color-mix(in srgb, var(--lab-school-bright) 40%, transparent),
+    0 2px 3px rgba(0,0,0,.7);
+}
+
+.forge-lab-art-arrow {
+  width: 34px;
+  height: 52px;
+  padding: 0;
+  font: 700 2.45rem/1 Georgia, serif;
+  opacity: .8;
+  transform: translateY(-17px) !important;
+}
+
+.forge-lab-art-arrow:hover,
+.forge-lab-school-nav:hover {
+  opacity: 1;
+  filter: brightness(1.3);
+}
+
+.forge-lab-school-nav {
+  z-index: 36;
+  top: -1.8%;
+  width: 25px;
+  height: 42px;
+  padding: 0;
+  font: 700 1.7rem/1 Georgia, serif;
+  opacity: .84;
+  transform: translateZ(calc(var(--lab-ui-z) + 28px)) !important;
+}
+
+.forge-lab-school-nav.is-prev {
+  right: 17.5%;
+}
+
+.forge-lab-school-nav.is-next {
+  right: -12.8%;
+}
+
+/* Costo e Scuola diventano applicazioni più esterne alla carta. */
+.forge-lab-cost {
+  left: -7.6%;
+  top: -3.8%;
+}
+
+.forge-lab-school {
+  right: -8.2%;
+  top: -4.2%;
+}
+
+.forge-lab-type {
+  top: -1.6%;
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease;
+}
+
+.forge-lab-type:active {
+  filter: brightness(1.3);
+  transform: translateX(-50%) translateZ(var(--lab-ui-z)) scale(.94);
+}
+
+/* Attacco/Vita: artefatti fisici separati, con semantica diversa. */
+.forge-lab-stats {
+  left: -7.3%;
+  right: -7.3%;
+  bottom: -3.7%;
+}
+
+.forge-lab-stat {
+  --lab-control-lean: 0deg;
+  width: 68px;
+  height: 68px;
+  overflow: visible;
+  border-radius: 50%;
+  touch-action: none;
+  transform:
+    translateZ(calc(var(--lab-ui-z) + 8px))
+    rotateZ(var(--lab-control-lean));
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.forge-lab-stat.attack {
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255,232,181,.28), transparent 20%),
+    radial-gradient(circle at 52% 56%, #8b4325 0 30%, #4b291c 55%, #20150f 82%);
+  box-shadow:
+    0 15px 17px rgba(24,13,8,.34),
+    0 0 0 2px #4a2a19,
+    0 0 0 5px #9e693a,
+    0 0 0 7px rgba(236,196,132,.38),
+    0 0 16px rgba(219,100,43,.22),
+    inset 0 0 16px rgba(0,0,0,.3);
+}
+
+.forge-lab-stat.health {
+  background:
+    radial-gradient(circle at 35% 27%, rgba(245,236,191,.22), transparent 20%),
+    radial-gradient(circle at 52% 56%, #536a43 0 31%, #35452e 56%, #192019 83%);
+  box-shadow:
+    0 15px 17px rgba(24,13,8,.34),
+    0 0 0 2px #2c3527,
+    0 0 0 5px #728158,
+    0 0 0 7px rgba(214,210,151,.34),
+    0 0 17px rgba(131,164,91,.2),
+    inset 0 0 16px rgba(0,0,0,.3);
+}
+
+.forge-lab-stat.attack::after {
+  content: "";
+  position: absolute;
+  inset: 15px;
+  z-index: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, transparent 43%, rgba(255,193,111,.22) 44% 49%, transparent 50%),
+    linear-gradient(45deg, transparent 43%, rgba(255,193,111,.13) 44% 49%, transparent 50%);
+}
+
+.forge-lab-stat.health::after {
+  left: 17px;
+  right: 17px;
+  top: 13px;
+  bottom: 11px;
+  background:
+    linear-gradient(180deg, rgba(216,228,183,.2), rgba(125,157,93,.11));
+  box-shadow:
+    inset 0 0 0 1px rgba(224,230,190,.17),
+    inset 0 0 8px rgba(8,18,8,.25);
+}
+
+.forge-lab-stat.is-scrubbing,
+.forge-lab-cost.is-scrubbing {
+  filter: brightness(1.2) saturate(1.15);
+  transform:
+    translateZ(calc(var(--lab-ui-z) + 24px))
+    rotateZ(var(--lab-control-lean))
+    scale(1.08);
+}
+
+.forge-lab-cost {
+  --lab-control-lean: 0deg;
+  touch-action: none;
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.forge-lab-control-feedback {
+  position: absolute;
+  left: 50%;
+  top: -18px;
+  z-index: 30;
+  opacity: 0;
+  transform: translateX(-50%);
+  color: #ffe0a0;
+  font: 800 .75rem/1 Georgia, serif;
+  font-style: normal;
+  text-shadow:
+    0 0 7px rgba(247,152,61,.8),
+    0 2px 3px rgba(0,0,0,.7);
+  pointer-events: none;
+}
+
+.forge-lab-control-feedback.is-pulsing {
+  animation: forgeLabValuePulse .42s ease-out;
+}
+
+/* Ruote contestuali ancorate ai medaglioni: nessuna modale centrale. */
+.forge-lab-inline-wheel {
+  position: absolute;
+  z-index: 42;
+  width: 124px;
+  height: 82px;
+  transform-style: preserve-3d;
+  transform: translateZ(calc(var(--lab-ui-z) + 42px));
+  pointer-events: none;
+}
+
+.forge-lab-inline-wheel::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 13px;
+  height: 62px;
+  border: 1px solid color-mix(in srgb, var(--lab-school-bright) 48%, transparent);
+  border-bottom-color: transparent;
+  border-radius: 70px 70px 0 0;
+  opacity: .62;
+  box-shadow: 0 -4px 12px color-mix(in srgb, var(--lab-school-soft) 62%, transparent);
+}
+
+.forge-lab-inline-wheel.is-attack {
+  left: -12.5%;
+  bottom: 6.2%;
+}
+
+.forge-lab-inline-wheel.is-health {
+  right: -12.5%;
+  bottom: 6.2%;
+}
+
+.forge-lab-inline-wheel.is-cost {
+  left: -12%;
+  top: 8.2%;
+}
+
+.forge-lab-inline-wheel > button {
+  position: absolute;
+  z-index: 3;
+  top: 24px;
+  width: 35px;
+  height: 35px;
+  border: 0;
+  border-radius: 50%;
+  color: #f5ddb0;
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255,239,199,.16), transparent 25%),
+    color-mix(in srgb, var(--lab-school) 46%, #251811);
+  box-shadow:
+    0 4px 9px rgba(0,0,0,.28),
+    inset 0 0 0 1px rgba(230,198,137,.25),
+    0 0 8px var(--lab-school-soft);
+  pointer-events: auto;
+  font: 800 1.15rem/1 Georgia, serif;
+}
+
+.forge-lab-inline-wheel > button.is-minus {
+  left: 3px;
+}
+
+.forge-lab-inline-wheel > button.is-plus {
+  right: 3px;
+}
+
+.forge-lab-inline-wheel-value {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 0;
+  min-width: 58px;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  color: #f5e2b8;
+  text-shadow: 0 2px 3px rgba(0,0,0,.72);
+  pointer-events: none;
+}
+
+.forge-lab-inline-wheel-value small {
+  font: 700 .48rem/1 Georgia, serif;
+  letter-spacing: .1em;
+  opacity: .75;
+}
+
+.forge-lab-inline-wheel-value strong {
+  font: 800 1.3rem/1 Georgia, serif;
+}
+
+/* Corona Scuola ancorata al medaglione. */
+.forge-lab-school-radial {
+  position: absolute;
+  z-index: 43;
+  right: -15%;
+  top: 8.5%;
+  width: 164px;
+  height: 82px;
+  transform: translateZ(calc(var(--lab-ui-z) + 44px));
+  pointer-events: none;
+}
+
+.forge-lab-school-radial::before {
+  content: "";
+  position: absolute;
+  inset: 1px 9px 9px 9px;
+  border: 1px solid color-mix(in srgb, var(--lab-school-bright) 34%, transparent);
+  border-bottom-color: transparent;
+  border-radius: 90px 90px 0 0;
+  opacity: .48;
+}
+
+.forge-lab-school-radial button {
+  position: absolute;
+  left: calc(14px + var(--lab-orbit-index) * 30px);
+  top: calc(35px - abs(2 - var(--lab-orbit-index)) * 7px);
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  color: #f2dfb9;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--lab-school) 46%, #392318), #1e1510 78%);
+  box-shadow:
+    0 4px 9px rgba(0,0,0,.28),
+    0 0 7px var(--lab-school-soft);
+  pointer-events: auto;
+}
+
+.forge-lab-school-radial button.is-selected {
+  filter: brightness(1.32);
+  box-shadow:
+    0 4px 9px rgba(0,0,0,.28),
+    0 0 0 2px rgba(244,220,168,.38),
+    0 0 13px var(--lab-school-soft);
+}
+
+.forge-lab-radial-school-icon {
+  width: 55%;
+  height: 55%;
+  fill: currentColor;
+  color: inherit;
+}
+
+/* Sigillo: marchiatura forgiata calda e leggibile. */
+.forge-lab-sigil-name {
+  color: color-mix(in srgb, #9d431e 78%, var(--lab-sigil-ink));
+  font-weight: 800;
+  text-shadow:
+    0 1px rgba(255,224,159,.62),
+    0 -1px rgba(68,20,7,.46),
+    0 0 4px rgba(214,92,34,.23);
+}
+
+.forge-lab-sigil-glyph {
+  color: color-mix(in srgb, #9b3d1b 62%, var(--lab-sigil-ink));
+}
+
+/* L'atmosfera viene letta su fondo scuro: più luce, filamenti e profondità. */
+.forge-lab-cloud {
+  opacity: .72;
+  filter: blur(21px) saturate(1.28) brightness(1.18);
+  mix-blend-mode: screen;
+}
+
+.forge-lab-wisps {
+  opacity: .88;
+  mix-blend-mode: screen;
+}
+
+.forge-lab-wisps i {
+  opacity: .82;
+  filter: blur(13px) brightness(1.22);
+}
+
+.forge-lab-arcane-filaments {
+  position: absolute;
+  inset: 7% -5% 6%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: .72;
+  mix-blend-mode: screen;
+}
+
+.forge-lab-arcane-filaments i {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 74%;
+  height: 38%;
+  border: 1px solid color-mix(in srgb, var(--lab-stage-magic) 76%, white 10%);
+  border-left-color: transparent;
+  border-bottom-color: color-mix(in srgb, var(--lab-stage-magic-2) 68%, transparent);
+  border-radius: 50%;
+  filter:
+    drop-shadow(0 0 4px color-mix(in srgb, var(--lab-stage-magic) 68%, transparent))
+    blur(.2px);
+  transform-origin: center;
+  animation: forgeLabFilamentOrbit 15s linear infinite;
+}
+
+.forge-lab-arcane-filaments i:nth-child(1) {
+  transform: translate(-50%, -50%) rotate(-11deg);
+}
+
+.forge-lab-arcane-filaments i:nth-child(2) {
+  width: 56%;
+  height: 72%;
+  animation-duration: 21s;
+  animation-direction: reverse;
+}
+
+.forge-lab-arcane-filaments i:nth-child(3) {
+  width: 92%;
+  height: 27%;
+  animation-duration: 26s;
+  opacity: .58;
+}
+
+.forge-lab-arcane-filaments i:nth-child(4) {
+  width: 45%;
+  height: 92%;
+  animation-duration: 32s;
+  animation-direction: reverse;
+  opacity: .48;
+}
+
+.forge-lab-embers i:nth-child(7) { left: 35%; animation-delay: -2.8s; transform: scale(.55); }
+.forge-lab-embers i:nth-child(8) { left: 65%; animation-delay: -1.1s; transform: scale(.72); }
+.forge-lab-embers i:nth-child(9) { left: 44%; animation-delay: -3.7s; transform: scale(.45); }
+.forge-lab-embers i:nth-child(10) { left: 55%; animation-delay: -2s; transform: scale(.9); }
+
+.forge-lab-embers i {
+  opacity: .08;
+  filter: brightness(1.18);
+}
+
+/* Nuovo finale della marchiatura: rame/ambra ancora caldo ma leggibile. */
+@keyframes forgeLabBrandLetter {
+  0% {
+    opacity: 0;
+    color: #ffd17d;
+    filter: blur(2px) brightness(2.1);
+    transform: translateY(2px) scale(1.1);
+    text-shadow:
+      0 0 8px rgba(244,122,36,.88),
+      0 0 2px rgba(255,216,132,.98);
+  }
+  45% {
+    opacity: 1;
+    color: #e47a35;
+    filter: blur(.2px) brightness(1.28);
+  }
+  100% {
+    opacity: 1;
+    color: color-mix(in srgb, #9d431e 78%, var(--lab-sigil-ink));
+    filter: none;
+    transform: translateY(0) scale(1);
+    text-shadow:
+      0 1px rgba(255,224,159,.62),
+      0 -1px rgba(68,20,7,.46),
+      0 0 4px rgba(214,92,34,.23);
+  }
+}
+
+@keyframes forgeLabValuePulse {
+  0% { opacity: 0; transform: translate(-50%, 7px) scale(.75); }
+  28% { opacity: 1; transform: translate(-50%, -4px) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -16px) scale(.92); }
+}
+
+@keyframes forgeLabFilamentOrbit {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .forge-lab-card-stage {
+    perspective: 620px;
+  }
+
+  .forge-lab-art-layer {
+    height: 85%;
+  }
+
+  .forge-lab-cost {
+    left: -6.5%;
+    top: -3%;
+  }
+
+  .forge-lab-school {
+    right: -7%;
+    top: -3.4%;
+  }
+
+  .forge-lab-type {
+    top: -1.1%;
+  }
+
+  .forge-lab-nameplate {
+    left: -6%;
+    right: -6%;
+    min-height: 44px;
+    padding-left: 52px;
+    padding-right: 52px;
+  }
+
+  .forge-lab-art-arrow {
+    width: 29px;
+    font-size: 2rem;
+    transform: translateY(-13px) !important;
+  }
+
+  .forge-lab-school-nav {
+    width: 22px;
+    font-size: 1.45rem;
+  }
+
+  .forge-lab-school-nav.is-prev {
+    right: 17%;
+  }
+
+  .forge-lab-school-nav.is-next {
+    right: -12%;
+  }
+
+  .forge-lab-stats {
+    left: -6.3%;
+    right: -6.3%;
+    bottom: -3%;
+  }
+
+  .forge-lab-stat {
+    width: 58px;
+    height: 58px;
+  }
+
+  .forge-lab-inline-wheel {
+    width: 108px;
+    height: 76px;
+  }
+
+  .forge-lab-inline-wheel.is-attack {
+    left: -10%;
+    bottom: 6%;
+  }
+
+  .forge-lab-inline-wheel.is-health {
+    right: -10%;
+    bottom: 6%;
+  }
+
+  .forge-lab-inline-wheel.is-cost {
+    left: -10%;
+    top: 8%;
+  }
+
+  .forge-lab-inline-wheel > button {
+    width: 32px;
+    height: 32px;
+  }
+
+  .forge-lab-school-radial {
+    right: -11%;
+    top: 8%;
+    transform: translateZ(calc(var(--lab-ui-z) + 36px)) scale(.9);
+    transform-origin: right top;
+  }
+
+  .forge-lab-cloud {
+    opacity: .64;
+  }
+
+  .forge-lab-arcane-filaments {
+    opacity: .62;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-lab-arcane-filaments i,
+  .forge-lab-control-feedback {
+    animation: none !important;
+  }
+}
+
+
+/* Stable radial crown placement across Safari/iOS and Chromium. */
+.forge-lab-school-radial button {
+  left: auto;
+  top: auto;
+}
+.forge-lab-school-radial button:nth-child(1) { left: 8px;   top: 42px; }
+.forge-lab-school-radial button:nth-child(2) { left: 38px;  top: 24px; }
+.forge-lab-school-radial button:nth-child(3) { left: 68px;  top: 15px; }
+.forge-lab-school-radial button:nth-child(4) { left: 98px;  top: 24px; }
+.forge-lab-school-radial button:nth-child(5) { left: 128px; top: 42px; }

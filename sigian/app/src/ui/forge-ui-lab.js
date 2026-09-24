@@ -170,8 +170,10 @@
     tiltX: 18,
     tiltY: -6,
     tiltZ: -2,
-    depth: 42,
-    atmosphere: true
+    depth: 72,
+    atmosphere: true,
+    inlineControl: null,
+    nameEditing: false
   };
 
   const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, char => ({
@@ -281,17 +283,17 @@
   }
 
   function geometryStyle() {
-    const depth = Math.max(0, Math.min(60, Number(state.depth || 0)));
+    const depth = Math.max(0, Math.min(100, Number(state.depth || 0)));
     const px = multiplier => Math.round(depth * multiplier);
     return [
       "--lab-depth:" + depth + "px",
       "--lab-tilt-x:" + Number(state.tiltX || 0) + "deg",
       "--lab-tilt-y:" + Number(state.tiltY || 0) + "deg",
       "--lab-tilt-z:" + Number(state.tiltZ || 0) + "deg",
-      "--lab-art-z:" + px(1.15) + "px",
-      "--lab-ui-z:" + px(1.7) + "px",
-      "--lab-name-z:" + px(1.35) + "px",
-      "--lab-sigil-z:" + px(.12) + "px"
+      "--lab-art-z:" + px(1.28) + "px",
+      "--lab-ui-z:" + px(2.05) + "px",
+      "--lab-name-z:" + px(1.62) + "px",
+      "--lab-sigil-z:" + px(.18) + "px"
     ].join(";");
   }
 
@@ -354,35 +356,77 @@
     return rows.join("");
   }
 
+  function inlineControlMarkup(recipe) {
+    const control = state.inlineControl;
+    if (!control) return "";
+
+    if (control === "school") {
+      const schools = activeSchools();
+      return (
+        '<div class="forge-lab-school-radial" data-lab-inline-wheel="school" aria-label="Scelta rapida scuola">' +
+          schools.map((school, index) =>
+            '<button type="button" class="' + (school.id === recipe.school ? "is-selected" : "") + '" ' +
+              'data-lab-inline-school="' + escapeHtml(school.id) + '" ' +
+              'style="--lab-orbit-index:' + index + ';--lab-orbit-count:' + schools.length + '" ' +
+              'aria-label="' + escapeHtml(schoolLabel(school.id)) + '">' +
+              schoolIconMarkup(school.id, "forge-lab-radial-school-icon") +
+            '</button>'
+          ).join("") +
+        '</div>'
+      );
+    }
+
+    const isCost = control === "cost";
+    const value = isCost
+      ? (state.cost == null ? 0 : Number(state.cost))
+      : Number(recipe.stats?.[control] ?? (control === "health" ? 1 : 0));
+    const label = control === "attack" ? "ATTACCO" : control === "health" ? "VITA" : "COSTO";
+
+    return (
+      '<div class="forge-lab-inline-wheel is-' + escapeHtml(control) + '" data-lab-inline-wheel="' + escapeHtml(control) + '">' +
+        '<button type="button" class="is-minus" data-lab-inline-step="' + escapeHtml(control) + '" data-lab-delta="-1" aria-label="Diminuisci ' + label.toLowerCase() + '">−</button>' +
+        '<span class="forge-lab-inline-wheel-value"><small>' + label + '</small><strong>' + escapeHtml(value) + '</strong></span>' +
+        '<button type="button" class="is-plus" data-lab-inline-step="' + escapeHtml(control) + '" data-lab-delta="1" aria-label="Aumenta ' + label.toLowerCase() + '">+</button>' +
+      '</div>'
+    );
+  }
+
   function cardMarkup(recipe) {
     const art = selectedArtCard(recipe);
     const name = recipe.presentation?.name || "Nuova Formula";
     const cost = state.cost == null ? "—" : String(state.cost);
     const stats = recipe.stats || {};
     const longName = name.length > 34 ? " is-very-long" : name.length > 22 ? " is-long" : "";
+    const nameplate = state.nameEditing
+      ? '<form class="forge-lab-nameplate forge-lab-name-editing' + longName + '" data-lab-name-inline-form>' +
+          '<input name="name" maxlength="48" value="' + escapeHtml(name) + '" aria-label="Nome Formula" autocomplete="off">' +
+        '</form>'
+      : '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-edit-name><span>' + escapeHtml(name) + '</span></button>';
+
     return (
       '<div class="forge-lab-card-shell">' +
         '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
         '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" style="' + geometryStyle() + '">' +
           '<div class="forge-lab-card-frame" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
-          '<button type="button" class="forge-lab-art-layer" data-lab-open="art" aria-label="Scegli illustrazione">' +
+          '<button type="button" class="forge-lab-art-layer" data-lab-art-main aria-label="Scegli o scorri illustrazione">' +
             (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
           '</button>' +
-          '<button type="button" class="forge-lab-cost" data-lab-open="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong></button>' +
-          '<button type="button" class="forge-lab-type" data-lab-open="type">' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
+          '<button type="button" class="forge-lab-cost" data-lab-control="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+          '<button type="button" class="forge-lab-type" data-lab-toggle-type>' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
           '<button type="button" class="forge-lab-school-nav is-prev" data-lab-school-step="-1" aria-label="Scuola precedente">‹</button>' +
-          '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per la successiva; tieni premuto per scegliere">' +
+          '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per scegliere; scorri per cambiare">' +
             schoolIconMarkup(recipe.school, "forge-lab-school-icon") +
           '</button>' +
           '<button type="button" class="forge-lab-school-nav is-next" data-lab-school-step="1" aria-label="Scuola successiva">›</button>' +
-          '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-open="name"><span>' + escapeHtml(name) + '</span></button>' +
+          nameplate +
           (recipe.type === "creature"
             ? '<div class="forge-lab-stats">' +
-                '<button type="button" class="forge-lab-stat attack" data-lab-open="stats"><span aria-hidden="true">⚔</span><strong>' + escapeHtml(stats.attack ?? 0) + '</strong></button>' +
-                '<button type="button" class="forge-lab-stat health" data-lab-open="stats"><span aria-hidden="true">♥</span><strong>' + escapeHtml(stats.health ?? 1) + '</strong></button>' +
+                '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '"><span aria-hidden="true">⚔</span><strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+                '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '"><span aria-hidden="true">♥</span><strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
               '</div>'
             : "") +
+          inlineControlMarkup(recipe) +
           '<section class="forge-lab-sigils" aria-label="Sigilli">' + sigilRowsMarkup(recipe) + '</section>' +
         '</article>' +
         '<button type="button" class="forge-lab-art-arrow is-next" data-lab-art-step="1" aria-label="Illustrazione successiva">›</button>' +
@@ -563,41 +607,6 @@
     if (modal.type === "sigil-picker") return sigilPickerMarkup(recipe, modal.slotId);
     if (modal.type === "sigil-edit") return sigilEditorMarkup(recipe, modal.slotId);
     if (modal.type === "sigil-detail") return sigilDetailMarkup(recipe, modal.slotId);
-    if (modal.type === "name") {
-      return modalShell(
-        '<form class="forge-lab-simple-editor" data-lab-name-form>' +
-          modalHeading("Nome", "Rinomina la Formula", "Il nome resta completo e può andare su due righe.") +
-          '<label>Nome completo<input name="name" maxlength="48" value="' + escapeHtml(recipe.presentation?.name || "") + '" autofocus></label>' +
-          '<button class="classic-stone-button" type="submit">Applica</button>' +
-        '</form>'
-      );
-    }
-    if (modal.type === "cost") {
-      return modalShell(
-        '<form class="forge-lab-simple-editor" data-lab-cost-form>' +
-          modalHeading("Costo", "Costo di anteprima", "Il costo reale non viene modificato dal laboratorio UI.") +
-          '<label>Costo<input name="cost" type="number" min="0" max="30" value="' + escapeHtml(state.cost ?? 0) + '"></label>' +
-          '<div class="forge-lab-editor-actions"><button class="classic-stone-button" type="submit">Applica</button><button class="classic-stone-button ghost" type="button" data-lab-clear-cost>Non definito</button></div>' +
-        '</form>'
-      );
-    }
-    if (modal.type === "type") {
-      return modalShell(
-        '<div class="forge-lab-simple-editor">' +
-          modalHeading("Tipo", "Tipo di Formula", "Il cambio usa la sessione reale della Forgia.") +
-          '<div class="forge-lab-type-picker"><button type="button" data-lab-type="creature" class="' + (recipe.type === "creature" ? "is-selected" : "") + '">Creatura</button><button type="button" data-lab-type="spell" class="' + (recipe.type === "spell" ? "is-selected" : "") + '">Magia</button></div>' +
-        '</div>'
-      );
-    }
-    if (modal.type === "stats") {
-      return modalShell(
-        '<form class="forge-lab-simple-editor" data-lab-stats-form>' +
-          modalHeading("Statistiche", "Attacco e Vita", "I valori vengono salvati nella bozza della Forgia.") +
-          '<div class="forge-lab-stat-editor"><label>Attacco<input name="attack" type="number" min="0" max="99" value="' + escapeHtml(recipe.stats?.attack ?? 0) + '"></label><label>Vita<input name="health" type="number" min="1" max="99" value="' + escapeHtml(recipe.stats?.health ?? 1) + '"></label></div>' +
-          '<button class="classic-stone-button" type="submit">Applica</button>' +
-        '</form>'
-      );
-    }
     return "";
   }
 
@@ -612,7 +621,7 @@
             '<label>Prospettiva verticale <output data-lab-output="tiltX">' + state.tiltX + '°</output><input type="range" min="6" max="28" step="1" value="' + state.tiltX + '" data-lab-tuning="tiltX"></label>' +
             '<label>Sinistra / destra <output data-lab-output="tiltY">' + state.tiltY + '°</output><input type="range" min="-14" max="6" step="1" value="' + state.tiltY + '" data-lab-tuning="tiltY"></label>' +
             '<label>Rotazione <output data-lab-output="tiltZ">' + state.tiltZ + '°</output><input type="range" min="-5" max="4" step="1" value="' + state.tiltZ + '" data-lab-tuning="tiltZ"></label>' +
-            '<label>Separazione elementi <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="60" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
+            '<label>Separazione elementi <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="100" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
           '</div>' +
           '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Nubi, brace e aura rituale</label>' +
           "<p>Su computer il puntatore aggiunge una lieve profondità. Su schermo tattile la carta resta stabile finché non la afferri.</p>" +
@@ -624,15 +633,15 @@
   function applyGeometry(root) {
     const card = root.querySelector(".forge-lab-card");
     if (!card) return;
-    const depth = Math.max(0, Math.min(60, Number(state.depth || 0)));
+    const depth = Math.max(0, Math.min(100, Number(state.depth || 0)));
     card.style.setProperty("--lab-depth", depth + "px");
     card.style.setProperty("--lab-tilt-x", Number(state.tiltX || 0) + "deg");
     card.style.setProperty("--lab-tilt-y", Number(state.tiltY || 0) + "deg");
     card.style.setProperty("--lab-tilt-z", Number(state.tiltZ || 0) + "deg");
-    card.style.setProperty("--lab-art-z", Math.round(depth * 1.15) + "px");
-    card.style.setProperty("--lab-ui-z", Math.round(depth * 1.7) + "px");
-    card.style.setProperty("--lab-name-z", Math.round(depth * 1.35) + "px");
-    card.style.setProperty("--lab-sigil-z", Math.round(depth * .12) + "px");
+    card.style.setProperty("--lab-art-z", Math.round(depth * 1.28) + "px");
+    card.style.setProperty("--lab-ui-z", Math.round(depth * 2.05) + "px");
+    card.style.setProperty("--lab-name-z", Math.round(depth * 1.62) + "px");
+    card.style.setProperty("--lab-sigil-z", Math.round(depth * .18) + "px");
   }
 
   function cycleArt(recipe, delta) {
@@ -679,34 +688,281 @@
     playImprint(slotId, { quick: true });
   }
 
+  function controlValue(recipe, kind) {
+    if (kind === "cost") return state.cost == null ? 0 : Number(state.cost);
+    if (kind === "health") return Number(recipe.stats?.health ?? 1);
+    return Number(recipe.stats?.attack ?? 0);
+  }
+
+  function changeCardControl(session, kind, delta, button = null) {
+    const amount = Number(delta || 0);
+    if (!amount) return 0;
+
+    let next = 0;
+    if (kind === "cost") {
+      const current = state.cost == null ? 0 : Number(state.cost);
+      next = Math.max(0, Math.min(30, Math.trunc(current + amount)));
+      state.cost = next;
+    } else {
+      const liveRecipe = session.snapshot().draft.recipe;
+      const stats = liveRecipe.stats || {};
+      const attack = Number(stats.attack ?? 0);
+      const health = Number(stats.health ?? 1);
+      if (kind === "attack") {
+        next = Math.max(0, Math.min(99, Math.trunc(attack + amount)));
+        mutate(() => session.setCreatureStats({ attack: next, health }));
+      } else {
+        next = Math.max(1, Math.min(99, Math.trunc(health + amount)));
+        mutate(() => session.setCreatureStats({ attack, health: next }));
+      }
+    }
+
+    if (button) {
+      const value = button.querySelector("strong");
+      if (value) value.textContent = String(next);
+      const feedback = button.querySelector(".forge-lab-control-feedback");
+      if (feedback) {
+        feedback.textContent = amount > 0 ? "+" + Math.abs(amount) : "−" + Math.abs(amount);
+        feedback.classList.remove("is-pulsing");
+        void feedback.offsetWidth;
+        feedback.classList.add("is-pulsing");
+      }
+    }
+    return next;
+  }
+
+  function bindDirectControls(root, recipe, session) {
+    root.querySelectorAll("[data-lab-control]").forEach(button => {
+      const kind = button.dataset.labControl;
+      let timer = 0;
+      let active = false;
+      let suppressClick = false;
+      let pointerId = null;
+      let startX = 0;
+      let startY = 0;
+      let lastStep = 0;
+
+      const clearTimer = () => {
+        if (timer) window.clearTimeout(timer);
+        timer = 0;
+      };
+
+      const finish = () => {
+        clearTimer();
+        if (active) {
+          active = false;
+          suppressClick = true;
+          button.classList.remove("is-scrubbing");
+          button.classList.add("is-scrub-return");
+          window.setTimeout(() => button.classList.remove("is-scrub-return"), 260);
+          window.setTimeout(() => { suppressClick = false; }, 0);
+        }
+        pointerId = null;
+      };
+
+      button.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        startX = event.clientX;
+        startY = event.clientY;
+        lastStep = 0;
+        pointerId = event.pointerId;
+        clearTimer();
+        timer = window.setTimeout(() => {
+          active = true;
+          button.classList.add("is-scrubbing");
+          try { button.setPointerCapture(pointerId); } catch {}
+        }, 190);
+      });
+
+      button.addEventListener("pointermove", event => {
+        if (!active || event.pointerId !== pointerId) return;
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        const axis = dx - dy;
+        const step = axis >= 0 ? Math.floor(axis / 22) : Math.ceil(axis / 22);
+        const diff = step - lastStep;
+        if (diff) {
+          changeCardControl(session, kind, diff, button);
+          lastStep = step;
+        }
+        const lean = Math.max(-8, Math.min(8, axis / 18));
+        button.style.setProperty("--lab-control-lean", lean.toFixed(2) + "deg");
+        event.preventDefault();
+      });
+
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach(type => button.addEventListener(type, finish));
+
+      button.addEventListener("click", event => {
+        if (suppressClick) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return;
+        }
+        state.inlineControl = state.inlineControl === kind ? null : kind;
+        render();
+      });
+    });
+
+    root.querySelectorAll("[data-lab-inline-step]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      const kind = button.dataset.labInlineStep;
+      changeCardControl(session, kind, Number(button.dataset.labDelta || 0));
+      render();
+    }));
+
+    root.querySelectorAll("[data-lab-inline-school]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      mutate(() => session.setSchool(button.dataset.labInlineSchool));
+      state.inlineControl = null;
+      render();
+    }));
+  }
+
+  function bindArtControl(root, recipe) {
+    const art = root.querySelector("[data-lab-art-main]");
+    if (!art) return;
+    let startX = 0;
+    let startY = 0;
+    let swiped = false;
+
+    art.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      startX = event.clientX;
+      startY = event.clientY;
+      swiped = false;
+    });
+
+    art.addEventListener("pointermove", event => {
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (Math.abs(dx) > 34 && Math.abs(dx) > Math.abs(dy) * 1.1) {
+        swiped = true;
+        event.preventDefault();
+      }
+    });
+
+    art.addEventListener("pointerup", event => {
+      if (!swiped) return;
+      const dx = event.clientX - startX;
+      cycleArt(recipe, dx > 0 ? -1 : 1);
+    });
+
+    art.addEventListener("click", event => {
+      if (swiped) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        swiped = false;
+        return;
+      }
+      state.modal = { type: "art" };
+      render();
+    });
+  }
+
+  function bindInlineName(root, session) {
+    root.querySelector("[data-lab-edit-name]")?.addEventListener("click", () => {
+      state.inlineControl = null;
+      state.nameEditing = true;
+      render();
+      const input = document.querySelector("#forgeUiLabContent [data-lab-name-inline-form] input");
+      input?.focus();
+      input?.select();
+    });
+
+    const form = root.querySelector("[data-lab-name-inline-form]");
+    const input = form?.querySelector('input[name="name"]');
+    if (!form || !input) return;
+
+    let settled = false;
+    const commit = () => {
+      if (settled) return;
+      settled = true;
+      mutate(() => session.setName(input.value));
+      state.nameEditing = false;
+      window.setTimeout(() => render(), 0);
+    };
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+      commit();
+    });
+    input.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        settled = true;
+        state.nameEditing = false;
+        render();
+      }
+    });
+    input.addEventListener("blur", commit, { once: true });
+  }
+
+  function bindTypeToggle(root, recipe, session) {
+    root.querySelector("[data-lab-toggle-type]")?.addEventListener("click", () => {
+      state.inlineControl = null;
+      mutate(() => session.setType(recipe.type === "creature" ? "spell" : "creature"));
+      render();
+    });
+  }
+
   function bindSchoolControl(root, recipe) {
     const button = root.querySelector("[data-lab-school-main]");
     if (!button) return;
     let timer = 0;
     let longPress = false;
-    const cancel = () => {
+    let swiped = false;
+    let startX = 0;
+    let startY = 0;
+
+    const cancelTimer = () => {
       if (timer) window.clearTimeout(timer);
       timer = 0;
     };
+
     button.addEventListener("pointerdown", event => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
+      startX = event.clientX;
+      startY = event.clientY;
       longPress = false;
-      cancel();
+      swiped = false;
+      cancelTimer();
       timer = window.setTimeout(() => {
         longPress = true;
+        state.inlineControl = null;
         state.modal = { type: "school" };
         render();
-      }, 520);
+      }, 560);
     });
-    ["pointerup", "pointercancel", "pointerleave"].forEach(type => button.addEventListener(type, cancel));
+
+    button.addEventListener("pointermove", event => {
+      if (longPress) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
+      cancelTimer();
+      swiped = true;
+      event.preventDefault();
+    });
+
+    button.addEventListener("pointerup", event => {
+      cancelTimer();
+      if (!swiped || longPress) return;
+      const dx = event.clientX - startX;
+      cycleSchool(recipe, dx > 0 ? -1 : 1);
+    });
+
+    ["pointercancel", "pointerleave"].forEach(type => button.addEventListener(type, cancelTimer));
+
     button.addEventListener("click", event => {
-      if (longPress) {
+      if (longPress || swiped) {
         event.preventDefault();
         event.stopImmediatePropagation();
         longPress = false;
+        swiped = false;
         return;
       }
-      cycleSchool(recipe, 1);
+      state.inlineControl = state.inlineControl === "school" ? null : "school";
+      render();
     });
   }
 
@@ -796,11 +1052,6 @@
     const session = ensureSession();
     if (!session) return;
 
-    root.querySelectorAll("[data-lab-open]").forEach(button => button.addEventListener("click", () => {
-      state.modal = { type: button.dataset.labOpen };
-      render();
-    }));
-
     root.querySelectorAll("[data-lab-art-step]").forEach(button => button.addEventListener("click", () => cycleArt(recipe, button.dataset.labArtStep)));
     root.querySelectorAll(".forge-lab-school-nav[data-lab-school-step]").forEach(button => button.addEventListener("click", event => {
       event.preventDefault();
@@ -835,44 +1086,6 @@
       state.modal = null;
       render();
     }));
-
-    root.querySelectorAll("[data-lab-type]").forEach(button => button.addEventListener("click", () => {
-      mutate(() => session.setType(button.dataset.labType));
-      state.modal = null;
-      render();
-    }));
-
-    root.querySelector("[data-lab-name-form]")?.addEventListener("submit", event => {
-      event.preventDefault();
-      mutate(() => session.setName(new FormData(event.currentTarget).get("name")));
-      state.modal = null;
-      render();
-    });
-
-    root.querySelector("[data-lab-cost-form]")?.addEventListener("submit", event => {
-      event.preventDefault();
-      const value = Number(new FormData(event.currentTarget).get("cost"));
-      state.cost = Math.max(0, Math.min(30, Number.isFinite(value) ? Math.trunc(value) : 0));
-      state.modal = null;
-      render();
-    });
-
-    root.querySelector("[data-lab-clear-cost]")?.addEventListener("click", () => {
-      state.cost = null;
-      state.modal = null;
-      render();
-    });
-
-    root.querySelector("[data-lab-stats-form]")?.addEventListener("submit", event => {
-      event.preventDefault();
-      const form = new FormData(event.currentTarget);
-      mutate(() => session.setCreatureStats({
-        attack: Math.max(0, Math.trunc(Number(form.get("attack") || 0))),
-        health: Math.max(1, Math.trunc(Number(form.get("health") || 1)))
-      }));
-      state.modal = null;
-      render();
-    });
 
     root.querySelectorAll("[data-lab-add-sigil]").forEach(button => button.addEventListener("click", () => {
       const result = mutate(() => session.addSigil(button.dataset.labAddSigil));
@@ -988,6 +1201,10 @@
       card?.style.setProperty("--lab-pointer-y", "0deg");
     });
 
+    bindDirectControls(root, recipe, session);
+    bindArtControl(root, recipe);
+    bindInlineName(root, session);
+    bindTypeToggle(root, recipe, session);
     bindSchoolControl(root, recipe);
     bindCardGrab(root);
     bindLongPress(root);
@@ -1007,9 +1224,10 @@
           '<div class="forge-lab-cloud cloud-one" aria-hidden="true"></div>' +
           '<div class="forge-lab-cloud cloud-two" aria-hidden="true"></div>' +
           '<div class="forge-lab-wisps" aria-hidden="true"><i></i><i></i><i></i></div>' +
-          '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+          '<div class="forge-lab-arcane-filaments" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
+          '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-stage">' + cardMarkup(recipe) + '</div>' +
-          '<p class="forge-lab-gesture-hint">Tocca per modificare · tieni premuta una zona libera e inclina la Formula · al rilascio torna in posa · pressione lunga sul Sigillo per i dettagli</p>' +
+          '<p class="forge-lab-gesture-hint">Tap sui medaglioni per la ruota · tieni premuto e trascina alto/destra o basso/sinistra per cambiare valore · scorri Art e Scuola direttamente sulla Formula</p>' +
         '</section>' +
         tuningMarkup() +
       '</div>' +
