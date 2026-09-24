@@ -367,12 +367,12 @@
           '<div class="forge-lab-card-frame" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<button type="button" class="forge-lab-art-layer" data-lab-open="art" aria-label="Scegli illustrazione">' +
-            (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(art.name) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
+            (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
           '</button>' +
           '<button type="button" class="forge-lab-cost" data-lab-open="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong></button>' +
           '<button type="button" class="forge-lab-type" data-lab-open="type">' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
           '<button type="button" class="forge-lab-school-nav is-prev" data-lab-school-step="-1" aria-label="Scuola precedente">‹</button>' +
-          '<button type="button" class="forge-lab-school" data-lab-school-main data-lab-school-step="1" aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per la successiva; tieni premuto per scegliere">' +
+          '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per la successiva; tieni premuto per scegliere">' +
             schoolIconMarkup(recipe.school, "forge-lab-school-icon") +
           '</button>' +
           '<button type="button" class="forge-lab-school-nav is-next" data-lab-school-step="1" aria-label="Scuola successiva">›</button>' +
@@ -679,7 +679,7 @@
     playImprint(slotId, { quick: true });
   }
 
-  function bindSchoolControl(root) {
+  function bindSchoolControl(root, recipe) {
     const button = root.querySelector("[data-lab-school-main]");
     if (!button) return;
     let timer = 0;
@@ -700,11 +700,14 @@
     });
     ["pointerup", "pointercancel", "pointerleave"].forEach(type => button.addEventListener(type, cancel));
     button.addEventListener("click", event => {
-      if (!longPress) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      longPress = false;
-    }, true);
+      if (longPress) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        longPress = false;
+        return;
+      }
+      cycleSchool(recipe, 1);
+    });
   }
 
   function bindCardGrab(root) {
@@ -799,8 +802,9 @@
     }));
 
     root.querySelectorAll("[data-lab-art-step]").forEach(button => button.addEventListener("click", () => cycleArt(recipe, button.dataset.labArtStep)));
-    root.querySelectorAll("[data-lab-school-step]").forEach(button => button.addEventListener("click", event => {
-      if (event.defaultPrevented) return;
+    root.querySelectorAll(".forge-lab-school-nav[data-lab-school-step]").forEach(button => button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       cycleSchool(recipe, button.dataset.labSchoolStep);
     }));
     root.querySelectorAll("[data-lab-sigil-step]").forEach(button => button.addEventListener("click", () => cycleSigil(recipe, button.dataset.labSlot, button.dataset.labSigilStep)));
@@ -984,7 +988,7 @@
       card?.style.setProperty("--lab-pointer-y", "0deg");
     });
 
-    bindSchoolControl(root);
+    bindSchoolControl(root, recipe);
     bindCardGrab(root);
     bindLongPress(root);
   }
@@ -998,7 +1002,7 @@
 
     root.innerHTML =
       '<div class="forge-lab-layout">' +
-        '<section class="forge-lab-stage ' + (state.atmosphere ? "" : "no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '">' +
+        '<section class="forge-lab-stage school-' + escapeHtml(recipe.school) + ' ' + (state.atmosphere ? "" : "no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '">' +
           '<div class="forge-lab-forge-core" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-cloud cloud-one" aria-hidden="true"></div>' +
           '<div class="forge-lab-cloud cloud-two" aria-hidden="true"></div>' +
