@@ -85,10 +85,10 @@
     modal: null,
     imprintSlotId: null,
     breakSlotId: null,
-    tiltX: 5,
-    tiltY: -8,
+    tiltX: 6,
+    tiltY: -9,
     tiltZ: -2,
-    depth: 30,
+    depth: 42,
     atmosphere: true
   };
 
@@ -247,6 +247,7 @@
         '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
         '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + '" style="' + geometryStyle() + '">' +
           '<div class="forge-lab-card-frame" aria-hidden="true"><span></span></div>' +
+          '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<button type="button" class="forge-lab-art-layer" data-lab-open="art" aria-label="Scegli illustrazione">' +
             (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(art.name) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
           '</button>' +
