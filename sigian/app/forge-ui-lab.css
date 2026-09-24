@@ -5062,3 +5062,723 @@
 .forge-lab-school-radial button:nth-child(3) { left: 68px;  top: 15px; }
 .forge-lab-school-radial button:nth-child(4) { left: 98px;  top: 24px; }
 .forge-lab-school-radial button:nth-child(5) { left: 128px; top: 42px; }
+
+
+/* ===== Sigian 0.47 — deeper material fusion and native micro-controls ===== */
+
+.forge-lab-card-stage {
+  perspective: 555px;
+  perspective-origin: 50% 34%;
+}
+
+/* The image itself fades. The parchment/school material stays visible on top. */
+.forge-lab-art-layer {
+  left: -.2%;
+  right: -.2%;
+  top: -.2%;
+  height: 87%;
+  overflow: hidden;
+  border-radius: 26px 26px 20px 20px;
+  -webkit-mask-image: none;
+  mask-image: none;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--lab-paper-1) 12%, transparent),
+      color-mix(in srgb, var(--lab-paper-2) 42%, var(--lab-fusion-color)) 100%);
+}
+
+.forge-lab-art-main-image,
+.forge-lab-art-echo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.forge-lab-art-main-image {
+  z-index: 1;
+  object-fit: contain;
+  object-position: center top;
+  background: transparent;
+  filter: contrast(1.025) saturate(.99);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 46%,
+    rgba(0,0,0,.97) 54%,
+    rgba(0,0,0,.82) 61%,
+    rgba(0,0,0,.60) 68%,
+    rgba(0,0,0,.36) 74%,
+    rgba(0,0,0,.17) 80%,
+    rgba(0,0,0,.05) 85%,
+    transparent 91%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 46%,
+    rgba(0,0,0,.97) 54%,
+    rgba(0,0,0,.82) 61%,
+    rgba(0,0,0,.60) 68%,
+    rgba(0,0,0,.36) 74%,
+    rgba(0,0,0,.17) 80%,
+    rgba(0,0,0,.05) 85%,
+    transparent 91%
+  );
+}
+
+.forge-lab-art-echo {
+  z-index: 0;
+  object-fit: cover;
+  object-position: center 36%;
+  opacity: .23;
+  filter: blur(11px) saturate(.88) contrast(.9);
+  transform: scale(1.08);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 35%,
+    rgba(0,0,0,.15) 46%,
+    #000 61%,
+    rgba(0,0,0,.78) 76%,
+    rgba(0,0,0,.34) 91%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 35%,
+    rgba(0,0,0,.15) 46%,
+    #000 61%,
+    rgba(0,0,0,.78) 76%,
+    rgba(0,0,0,.34) 91%,
+    transparent 100%
+  );
+}
+
+.forge-lab-art-layer::before {
+  z-index: 2;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 112% 72% at 50% 72%,
+      transparent 0 30%,
+      color-mix(in srgb, var(--lab-fusion-color) 14%, transparent) 49%,
+      color-mix(in srgb, var(--lab-paper-1) 22%, transparent) 65%,
+      color-mix(in srgb, var(--lab-paper-2) 52%, transparent) 83%,
+      color-mix(in srgb, var(--lab-paper-2) 82%, var(--lab-fusion-color)) 100%);
+  box-shadow:
+    inset 0 0 30px color-mix(in srgb, var(--lab-paper-1) 22%, transparent),
+    inset 0 -116px 130px color-mix(in srgb, var(--lab-paper-2) 35%, transparent);
+}
+
+.forge-lab-art-layer::after {
+  z-index: 3;
+  inset: 0;
+  background:
+    repeating-linear-gradient(17deg,
+      transparent 0 23px,
+      color-mix(in srgb, var(--lab-paper-3) 4%, transparent) 23px 24px),
+    linear-gradient(180deg,
+      transparent 0 45%,
+      color-mix(in srgb, var(--lab-fusion-color) 7%, transparent) 54%,
+      color-mix(in srgb, var(--lab-fusion-color) 17%, transparent) 64%,
+      color-mix(in srgb, var(--lab-paper-1) 32%, transparent) 73%,
+      color-mix(in srgb, var(--lab-paper-2) 67%, var(--lab-fusion-color)) 86%,
+      color-mix(in srgb, var(--lab-paper-2) 94%, var(--lab-fusion-color)) 100%);
+  mix-blend-mode: normal;
+}
+
+/* Stronger physical layer separation. */
+.forge-lab-card-frame {
+  transform: translateZ(-6px);
+}
+
+.forge-lab-card-aura {
+  transform: translateZ(-34px);
+}
+
+.forge-lab-nameplate {
+  top: 46.2%;
+  left: -7.8%;
+  right: -7.8%;
+  min-height: 51px;
+  clip-path: polygon(
+    0 33%, 5% 12%, 15% 17%, 27% 7%, 40% 13%, 50% 4%,
+    60% 13%, 73% 7%, 85% 17%, 95% 12%, 100% 33%,
+    98% 70%, 91% 91%, 78% 85%, 64% 96%, 50% 88%,
+    36% 96%, 22% 85%, 9% 91%, 2% 70%
+  );
+  color: #f9e8bd;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(255,231,178,.15), transparent 46%),
+    repeating-linear-gradient(5deg, transparent 0 8px, rgba(255,239,201,.018) 8px 9px),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--lab-school) 20%, #735132) 0%,
+      color-mix(in srgb, var(--lab-school) 25%, #4c321f) 48%,
+      color-mix(in srgb, var(--lab-school) 18%, #261910) 100%);
+  box-shadow:
+    0 13px 14px rgba(20,10,5,.28),
+    inset 0 2px rgba(255,235,186,.17),
+    inset 0 -2px rgba(15,8,4,.48),
+    inset 0 0 0 1px color-mix(in srgb, var(--lab-school-bright) 19%, transparent),
+    0 0 12px color-mix(in srgb, var(--lab-school-soft) 32%, transparent);
+}
+
+.forge-lab-nameplate span::before,
+.forge-lab-nameplate span::after {
+  content: "◆";
+  display: inline-block;
+  margin: 0 12px;
+  color: color-mix(in srgb, var(--lab-school-bright) 68%, #ead6a4);
+  font-size: .48em;
+  vertical-align: .23em;
+  opacity: .72;
+  text-shadow: 0 0 5px var(--lab-school-soft);
+}
+
+.forge-lab-name-editing input {
+  filter: drop-shadow(0 0 5px var(--lab-school-soft));
+}
+
+/* Art navigation sits on the name-ribbon axis and remains a glyph, never a button. */
+.forge-lab-art-arrow {
+  width: 32px;
+  height: 48px;
+  padding: 0;
+  opacity: .78;
+  font-size: 2.2rem;
+  transform: translateY(-2px) !important;
+}
+
+.forge-lab-school-nav {
+  top: -2.7%;
+  opacity: .74;
+  font-size: 1.55rem;
+}
+
+.forge-lab-cost {
+  left: -9.4%;
+  top: -4.8%;
+}
+
+.forge-lab-school {
+  right: -10%;
+  top: -5.1%;
+}
+
+.forge-lab-type {
+  top: -3.2%;
+}
+
+/* Attack/Life share the same artifact family as Cost/School, with distinct inner reliefs. */
+.forge-lab-stats {
+  left: -8.6%;
+  right: -8.6%;
+  bottom: -4.5%;
+  pointer-events: none;
+}
+
+.forge-lab-stat-anchor {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.forge-lab-stat {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 15px 1fr;
+  place-items: center;
+  gap: 0 3px;
+  padding: 8px 11px 9px;
+  overflow: visible;
+  border: 0;
+  border-radius: 50% !important;
+  clip-path: none !important;
+  rotate: 0deg !important;
+  pointer-events: auto;
+  transform:
+    translateZ(calc(var(--lab-ui-z) + 14px))
+    rotateZ(var(--lab-control-lean));
+}
+
+.forge-lab-stat small {
+  grid-column: 1 / -1;
+  font: 700 .47rem/1 Georgia, serif;
+  letter-spacing: .11em;
+  opacity: .76;
+}
+
+.forge-lab-stat > span {
+  justify-self: end;
+  font-size: .82rem;
+}
+
+.forge-lab-stat > strong {
+  justify-self: start;
+  font: 800 1.45rem/1 Georgia, serif;
+}
+
+.forge-lab-stat.attack {
+  background:
+    radial-gradient(circle at 34% 25%, rgba(255,235,187,.28), transparent 21%),
+    repeating-conic-gradient(from 8deg,
+      rgba(230,154,79,.13) 0 4deg,
+      transparent 4deg 30deg),
+    radial-gradient(circle at 52% 56%, #8c4525 0 31%, #4a281a 57%, #1d130e 84%);
+  box-shadow:
+    0 18px 20px rgba(21,11,6,.38),
+    0 0 0 2px #4a2918,
+    0 0 0 5px #a36a38,
+    0 0 0 7px rgba(239,202,139,.42),
+    0 0 22px rgba(224,106,40,.26),
+    inset 0 0 17px rgba(0,0,0,.32);
+}
+
+.forge-lab-stat.health {
+  background:
+    radial-gradient(circle at 34% 25%, rgba(244,239,194,.25), transparent 21%),
+    repeating-conic-gradient(from 8deg,
+      rgba(195,211,142,.12) 0 4deg,
+      transparent 4deg 30deg),
+    radial-gradient(circle at 52% 56%, #596e48 0 31%, #35442e 57%, #182019 84%);
+  box-shadow:
+    0 18px 20px rgba(21,11,6,.38),
+    0 0 0 2px #293326,
+    0 0 0 5px #78875a,
+    0 0 0 7px rgba(219,218,160,.38),
+    0 0 22px rgba(130,168,87,.24),
+    inset 0 0 17px rgba(0,0,0,.32);
+}
+
+.forge-lab-stat.attack::after {
+  inset: 18px;
+  border-radius: 50%;
+  opacity: .8;
+  background:
+    linear-gradient(135deg, transparent 44%, rgba(255,198,116,.25) 45% 48%, transparent 49%),
+    linear-gradient(45deg, transparent 44%, rgba(255,198,116,.16) 45% 48%, transparent 49%);
+}
+
+.forge-lab-stat.health::after {
+  left: 20px;
+  right: 20px;
+  top: 17px;
+  bottom: 14px;
+  clip-path: polygon(50% 0, 88% 14%, 83% 68%, 50% 100%, 17% 68%, 12% 14%);
+  background:
+    linear-gradient(180deg, rgba(225,235,191,.22), rgba(119,151,89,.11));
+  box-shadow:
+    inset 0 0 0 1px rgba(232,237,198,.18),
+    inset 0 0 8px rgba(8,18,8,.25);
+}
+
+/* The contextual wheel is literally anchored to the artifact. */
+.forge-lab-stat-anchor .forge-lab-inline-wheel {
+  left: 50% !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  width: 118px;
+  height: 118px;
+  transform:
+    translate(-50%, -50%)
+    translateZ(calc(var(--lab-ui-z) + 46px));
+}
+
+.forge-lab-stat-anchor .forge-lab-inline-wheel::before {
+  inset: -7px;
+  height: auto;
+  border: 1px solid color-mix(in srgb, var(--lab-school-bright) 46%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--lab-school-bright) 16%, transparent);
+  border-radius: 50%;
+  opacity: .48;
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--lab-school-soft) 55%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--lab-school-soft) 26%, transparent);
+}
+
+.forge-lab-stat-anchor .forge-lab-inline-wheel-value {
+  display: none;
+}
+
+.forge-lab-stat-anchor .forge-lab-inline-wheel > button {
+  top: 4px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255,240,201,.15), transparent 24%),
+    color-mix(in srgb, var(--lab-school) 38%, #211610);
+  box-shadow:
+    0 3px 7px rgba(0,0,0,.26),
+    0 0 8px var(--lab-school-soft),
+    inset 0 0 0 1px rgba(231,205,153,.21);
+}
+
+.forge-lab-stat-anchor .forge-lab-inline-wheel > button.is-minus {
+  left: 2px;
+}
+
+.forge-lab-stat-anchor .forge-lab-inline-wheel > button.is-plus {
+  right: 2px;
+}
+
+.forge-lab-stat.is-scrubbing {
+  transform:
+    translateZ(calc(var(--lab-ui-z) + 34px))
+    rotateZ(var(--lab-control-lean))
+    scale(1.1);
+}
+
+/* Quick Sigil interaction stays on the row; advanced configuration remains explicit. */
+.forge-lab-sigil-row {
+  overflow: visible;
+}
+
+.forge-lab-sigil-quick {
+  position: absolute;
+  z-index: 28;
+  right: 42px;
+  top: 50%;
+  min-width: 154px;
+  height: 44px;
+  padding: 5px 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transform:
+    translateY(-50%)
+    translateZ(calc(var(--lab-ui-z) + 34px));
+  border-radius: 25px;
+  color: #f6dfad;
+  background:
+    radial-gradient(ellipse at center,
+      color-mix(in srgb, var(--lab-school) 28%, #3c2617),
+      rgba(24,15,10,.94) 76%);
+  box-shadow:
+    0 8px 14px rgba(20,10,5,.28),
+    0 0 0 1px color-mix(in srgb, var(--lab-school-bright) 25%, transparent),
+    0 0 15px color-mix(in srgb, var(--lab-school-soft) 55%, transparent);
+}
+
+.forge-lab-sigil-quick > button {
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #f5d99d;
+  background: rgba(79,48,27,.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(239,205,145,.18),
+    0 0 7px var(--lab-school-soft);
+  font: 800 .96rem/1 Georgia, serif;
+}
+
+.forge-lab-sigil-quick > span {
+  min-width: 48px;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.forge-lab-sigil-quick small {
+  font: 700 .42rem/1 Georgia, serif;
+  letter-spacing: .1em;
+  opacity: .72;
+}
+
+.forge-lab-sigil-quick strong {
+  margin-top: 3px;
+  font: 800 1rem/1 Georgia, serif;
+}
+
+.forge-lab-sigil-quick .is-advanced {
+  margin-left: 3px;
+  color: var(--lab-school-bright);
+}
+
+.forge-lab-sigil-quick.is-fixed {
+  min-width: 148px;
+  justify-content: space-between;
+}
+
+.forge-lab-sigil-quick.is-fixed > span {
+  min-width: 92px;
+  align-items: start;
+  justify-items: start;
+}
+
+/* Forged text: darker core + hot metallic rim, readable on every school paper. */
+.forge-lab-sigil-name {
+  color: #6f2d17;
+  font-weight: 800;
+  text-shadow:
+    0 1px rgba(255,231,174,.72),
+    0 -1px rgba(55,18,7,.55),
+    0 0 1px #3c1509,
+    0 0 5px rgba(210,88,29,.20);
+}
+
+.forge-lab-sigil-runes,
+.forge-lab-sigil-glyph {
+  color: color-mix(in srgb, #aa4d22 68%, var(--lab-sigil-metal));
+}
+
+/* Softer, brighter magic: mist dominates, orbital geometry recedes. */
+.forge-lab-arcane-filaments {
+  opacity: .34;
+  filter: blur(.35px);
+}
+
+.forge-lab-arcane-filaments i {
+  border-color: color-mix(in srgb, var(--lab-stage-magic) 56%, white 9%);
+  filter:
+    drop-shadow(0 0 7px color-mix(in srgb, var(--lab-stage-magic) 54%, transparent))
+    blur(.65px);
+}
+
+.forge-lab-cloud {
+  opacity: .82;
+  filter: blur(18px) saturate(1.24) brightness(1.36);
+}
+
+.forge-lab-cloud.cloud-one {
+  width: 76%;
+  height: 31%;
+  left: -18%;
+  top: 11%;
+}
+
+.forge-lab-cloud.cloud-two {
+  width: 78%;
+  height: 33%;
+  right: -19%;
+  bottom: 9%;
+}
+
+.forge-lab-magic-mist {
+  position: absolute;
+  inset: 4% -10% 3%;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  mix-blend-mode: screen;
+}
+
+.forge-lab-magic-mist i {
+  position: absolute;
+  width: 46%;
+  height: 21%;
+  border-radius: 50%;
+  opacity: .58;
+  background:
+    radial-gradient(ellipse,
+      color-mix(in srgb, var(--lab-stage-magic) 72%, rgba(247,246,235,.42)) 0%,
+      color-mix(in srgb, var(--lab-stage-magic-2) 46%, transparent) 48%,
+      transparent 76%);
+  filter: blur(18px) brightness(1.22);
+  animation: forgeLabMistDrift 11s ease-in-out infinite alternate;
+}
+
+.forge-lab-magic-mist i:nth-child(1) { left: 2%; top: 22%; }
+.forge-lab-magic-mist i:nth-child(2) { right: -2%; top: 39%; animation-delay: -4s; }
+.forge-lab-magic-mist i:nth-child(3) { left: 19%; bottom: 8%; animation-delay: -7s; width: 58%; }
+.forge-lab-magic-mist i:nth-child(4) { right: 15%; top: 8%; animation-delay: -2s; width: 36%; opacity: .42; }
+
+.forge-lab-embers i {
+  opacity: .44;
+  width: 4px;
+  height: 4px;
+  filter: brightness(1.32);
+}
+
+.forge-lab-card.is-control-active .forge-lab-card-aura {
+  opacity: 1;
+  filter: brightness(1.35);
+}
+
+.forge-lab-card.is-control-active::after {
+  opacity: .98;
+  filter: blur(19px) brightness(1.25);
+}
+
+@keyframes forgeLabMistDrift {
+  from { transform: translate3d(-6%, 2%, 0) scale(.94); opacity: .38; }
+  to { transform: translate3d(10%, -7%, 0) scale(1.13); opacity: .72; }
+}
+
+@media (max-width: 640px) {
+  .forge-lab-card-stage {
+    perspective: 515px;
+  }
+
+  .forge-lab-art-layer {
+    height: 88%;
+  }
+
+  .forge-lab-cost {
+    left: -8.2%;
+    top: -4.1%;
+  }
+
+  .forge-lab-school {
+    right: -8.8%;
+    top: -4.4%;
+  }
+
+  .forge-lab-type {
+    top: -2.5%;
+  }
+
+  .forge-lab-nameplate {
+    left: -6.5%;
+    right: -6.5%;
+    min-height: 45px;
+  }
+
+  .forge-lab-nameplate span::before,
+  .forge-lab-nameplate span::after {
+    margin: 0 7px;
+  }
+
+  .forge-lab-art-arrow {
+    transform: translateY(-1px) !important;
+  }
+
+  .forge-lab-stats {
+    left: -7.2%;
+    right: -7.2%;
+    bottom: -3.7%;
+  }
+
+  .forge-lab-stat-anchor {
+    width: 64px;
+    height: 64px;
+  }
+
+  .forge-lab-stat {
+    width: 62px;
+    height: 62px;
+    padding: 7px 9px 8px;
+  }
+
+  .forge-lab-stat > strong {
+    font-size: 1.25rem;
+  }
+
+  .forge-lab-stat-anchor .forge-lab-inline-wheel {
+    width: 101px;
+    height: 101px;
+  }
+
+  .forge-lab-stat-anchor .forge-lab-inline-wheel > button {
+    width: 27px;
+    height: 27px;
+    top: 2px;
+  }
+
+  .forge-lab-sigil-quick {
+    right: 34px;
+    min-width: 132px;
+    height: 39px;
+    padding: 4px 5px;
+    gap: 4px;
+  }
+
+  .forge-lab-sigil-quick > button {
+    width: 25px;
+    height: 25px;
+  }
+
+  .forge-lab-magic-mist i {
+    opacity: .52;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-lab-magic-mist i {
+    animation: none !important;
+  }
+}
+
+
+/* Cost wheel is centered on the Cost artifact too. */
+.forge-lab-inline-wheel.is-cost {
+  left: -14.2%;
+  top: -10.2%;
+  width: 118px;
+  height: 118px;
+}
+
+.forge-lab-inline-wheel.is-cost::before {
+  inset: -6px;
+  height: auto;
+  border-radius: 50%;
+  border-bottom-color: color-mix(in srgb, var(--lab-school-bright) 16%, transparent);
+}
+
+.forge-lab-inline-wheel.is-cost .forge-lab-inline-wheel-value {
+  display: none;
+}
+
+.forge-lab-inline-wheel.is-cost > button {
+  top: 3px;
+  width: 30px;
+  height: 30px;
+}
+
+.forge-lab-inline-wheel.is-cost > button.is-minus { left: 2px; }
+.forge-lab-inline-wheel.is-cost > button.is-plus { right: 2px; }
+
+/* The school crown grows from the School medallion rather than floating below it. */
+.forge-lab-school-radial {
+  right: -16.4%;
+  top: -8.8%;
+  width: 176px;
+  height: 126px;
+}
+
+.forge-lab-school-radial::before {
+  inset: -3px 6px 8px;
+  border-bottom-color: color-mix(in srgb, var(--lab-school-bright) 13%, transparent);
+  border-radius: 55%;
+}
+
+.forge-lab-school-radial button:nth-child(1) { left: 4px;   top: 58px; }
+.forge-lab-school-radial button:nth-child(2) { left: 33px;  top: 29px; }
+.forge-lab-school-radial button:nth-child(3) { left: 72px;  top: 14px; }
+.forge-lab-school-radial button:nth-child(4) { left: 112px; top: 29px; }
+.forge-lab-school-radial button:nth-child(5) { left: 141px; top: 58px; }
+
+@media (max-width: 640px) {
+  .forge-lab-inline-wheel.is-cost {
+    left: -12.5%;
+    top: -9%;
+    width: 103px;
+    height: 103px;
+  }
+
+  .forge-lab-school-radial {
+    right: -13%;
+    top: -7%;
+    width: 158px;
+    height: 112px;
+    transform: translateZ(calc(var(--lab-ui-z) + 38px)) scale(.9);
+  }
+
+  .forge-lab-school-radial button:nth-child(1) { left: 2px;   top: 52px; }
+  .forge-lab-school-radial button:nth-child(2) { left: 29px;  top: 25px; }
+  .forge-lab-school-radial button:nth-child(3) { left: 64px;  top: 11px; }
+  .forge-lab-school-radial button:nth-child(4) { left: 100px; top: 25px; }
+  .forge-lab-school-radial button:nth-child(5) { left: 127px; top: 52px; }
+}
