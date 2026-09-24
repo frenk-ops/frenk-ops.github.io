@@ -13349,3 +13349,58 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   .forge-model-meta { grid-template-columns:1fr; }
   .forge-school-choice-grid { grid-template-columns:repeat(5,minmax(40px,1fr)); }
 }
+
+
+/* ===== Sigian 0.43 — atomic collectible Sigils ===== */
+.forge-locked-grade {
+  display:flex;
+  min-height:34px;
+  align-items:center;
+  padding:7px 9px;
+  border:1px solid rgba(118,82,39,.28);
+  border-radius:8px;
+  background:rgba(255,248,222,.58);
+  color:#4a301d;
+  font-size:.76rem;
+}
+.forge-model-field > small {
+  color:#8e7359;
+  font-size:.58rem;
+  line-height:1.2;
+}
+.forge-intensity-field {
+  margin-top:8px;
+  padding:9px;
+  border:1px solid rgba(119,82,38,.22);
+  border-radius:10px;
+  background:rgba(255,249,226,.46);
+}
+.forge-intensity-options {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:5px;
+}
+.forge-intensity-options button {
+  min-width:38px;
+  min-height:34px;
+  padding:5px 10px;
+  border:1px solid rgba(103,72,36,.35);
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(247,232,190,.96),rgba(216,188,126,.88));
+  color:#4a301d;
+  font:700 .72rem Georgia,"Times New Roman",serif;
+  cursor:pointer;
+}
+.forge-intensity-options button.active {
+  border-color:#79501e;
+  background:linear-gradient(180deg,#f6d878,#c99835);
+  box-shadow:0 0 0 2px rgba(206,160,67,.18), inset 0 0 10px rgba(255,245,194,.45);
+}
+.forge-sigil-tile-copy {
+  min-width:0;
+}
+.forge-sigil-tile-copy strong,
+.forge-sigil-tile-copy small {
+  overflow-wrap:anywhere;
+}

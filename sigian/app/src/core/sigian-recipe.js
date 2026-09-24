@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const RECIPE_SCHEMA_VERSION = 2;
+  const RECIPE_SCHEMA_VERSION = 3;
   const MAX_PRIMARY_SIGILS = 3;
 
   function clone(value) {
@@ -55,8 +55,10 @@
 
     return {
       slotId: id(item.slotId, `sigil-${index + 1}`),
+      collectibleId: item.collectibleId == null ? null : id(item.collectibleId),
       sigilId,
       grade,
+      intensity: item.intensity == null ? null : Number(item.intensity),
       affinity: item.affinity == null
         ? null
         : (A.normalizeSigianAffinity?.(item.affinity, formulaSchool) || asRecord(item.affinity)),
@@ -186,6 +188,27 @@
         if (definition.atomic && numeric !== 1) errors.push(`${label}: il Sigillo atomico ${definition.id} usa Grade I.`);
       } else if (!options.allowUncalibratedGrade) {
         errors.push(`${label}: Grade mancante.`);
+      }
+
+      if (recipeSigil.intensity != null && !Number.isFinite(Number(recipeSigil.intensity))) {
+        errors.push(`${label}: intensità non numerica.`);
+      }
+
+      if (recipeSigil.collectibleId) {
+        const collectible = A.getSigianCollectibleSigil?.(recipeSigil.collectibleId);
+        if (!collectible) {
+          errors.push(`${label}: Sigillo collezionabile non registrato ${recipeSigil.collectibleId}.`);
+        } else {
+          if (collectible.baseSigilId !== recipeSigil.sigilId) {
+            errors.push(`${label}: ${recipeSigil.collectibleId} non corrisponde al Sigillo interno ${recipeSigil.sigilId}.`);
+          }
+          if (Number(collectible.grade) !== Number(recipeSigil.grade)) {
+            errors.push(`${label}: il Grado è parte dell'identità di ${recipeSigil.collectibleId} e non può essere modificato.`);
+          }
+          if (!A.sigianCollectibleAllowsIntensity?.(recipeSigil.collectibleId, recipeSigil.intensity)) {
+            errors.push(`${label}: intensità ${recipeSigil.intensity} non ammessa per ${recipeSigil.collectibleId}.`);
+          }
+        }
       }
 
       if (recipeSigil.affinity != null) {

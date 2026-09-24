@@ -34,8 +34,11 @@
   }
 
   function baseGradeValue(recipe, recipeSigil, definition, context) {
+    if (recipeSigil.intensity != null && Number.isFinite(Number(recipeSigil.intensity))) {
+      return Math.trunc(Number(recipeSigil.intensity));
+    }
     if (typeof context.resolveGradeValue !== "function") {
-      throw new Error(`FormulaRecipe ${recipe.id}, Sigillo ${recipeSigil.sigilId}: manca resolveGradeValue; i valori dei Grade non sono ancora calibrati globalmente.`);
+      throw new Error(`FormulaRecipe ${recipe.id}, Sigillo ${recipeSigil.sigilId}: manca intensity/resolveGradeValue.`);
     }
     const value = Number(context.resolveGradeValue({ recipe, sigil: recipeSigil, definition }));
     if (!Number.isFinite(value)) {

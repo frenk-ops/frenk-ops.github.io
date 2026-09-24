@@ -78,6 +78,15 @@
     };
   }
 
+  function defaultForgeCollectibleSigil(collectibleId, school, slotIndex = 0) {
+    const collectible = A.getSigianCollectibleSigil?.(collectibleId);
+    if (!collectible) throw new Error(`Sigillo collezionabile non registrato: ${collectibleId}.`);
+    return A.createRecipeSigilFromCollectible(collectibleId, {
+      formulaSchool:school,
+      slotId:`forge-${slotIndex + 1}-${collectibleId}`
+    });
+  }
+
   function defaultModifierParams(modifierId, school) {
     const definition = A.getSigianAdvancedModifier?.(modifierId);
     const params = {};
@@ -310,6 +319,21 @@
         return commitRecipe(recipeWith({ sigils: next }));
       },
 
+      addCollectibleSigil(collectibleId) {
+        if (draft.recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3)) {
+          throw new Error(`La Formula può contenere al massimo ${A.SIGIAN_MAX_PRIMARY_SIGILS || 3} Sigilli primari.`);
+        }
+        const next = clone(draft.recipe.sigils);
+        let candidate = defaultForgeCollectibleSigil(collectibleId, draft.recipe.school, next.length);
+        let counter = 1;
+        const used = new Set(next.map(item => item.slotId));
+        while (used.has(candidate.slotId)) {
+          candidate.slotId = `forge-${next.length + 1}-${collectibleId}-${counter++}`;
+        }
+        next.push(candidate);
+        return commitRecipe(recipeWith({ sigils:next }));
+      },
+
       removeSigil(slotId) {
         const next = draft.recipe.sigils.filter(item => item.slotId !== slotId);
         if (next.length === draft.recipe.sigils.length) return this.snapshot();
@@ -333,6 +357,8 @@
         const nextSigil = {
           ...current,
           ...(patch.grade !== undefined ? { grade: patch.grade } : {}),
+          ...(patch.intensity !== undefined ? { intensity: patch.intensity } : {}),
+          ...(patch.collectibleId !== undefined ? { collectibleId: patch.collectibleId } : {}),
           ...(patch.affinity !== undefined ? { affinity: clone(patch.affinity) } : {}),
           ...(patch.config ? { config: { ...current.config, ...clone(patch.config) } } : {}),
           ...(patch.modifiers ? { modifiers: clone(patch.modifiers) } : {})
@@ -343,8 +369,23 @@
       },
 
       setSigilGrade(slotId, grade) {
+        const current = draft.recipe.sigils.find(item => item.slotId === slotId);
+        if (current?.collectibleId) {
+          throw new Error("Il Grado appartiene all'identità del Sigillo: scegli direttamente un altro Sigillo dal catalogo.");
+        }
         const numeric = Math.max(1, Math.trunc(Number(grade || 1)));
         return this.updateSigil(slotId, { grade:numeric });
+      },
+
+      setSigilIntensity(slotId, intensity) {
+        const current = draft.recipe.sigils.find(item => item.slotId === slotId);
+        if (!current) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+        if (!current.collectibleId) throw new Error("L'intensità guidata è disponibile solo per i Sigilli collezionabili atomici.");
+        const numeric = Number(intensity);
+        if (!A.sigianCollectibleAllowsIntensity?.(current.collectibleId, numeric)) {
+          throw new Error(`Intensità ${intensity} non ammessa per ${current.collectibleId}.`);
+        }
+        return this.updateSigil(slotId, { intensity:numeric });
       },
 
       setSigilAffinity(slotId, affinity) {
@@ -358,7 +399,12 @@
       setSigilConfig(slotId, key, value) {
         const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
         if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
-        const definition = A.getCanonicalSigil?.(draft.recipe.sigils[index].sigilId);
+        const currentSigil = draft.recipe.sigils[index];
+        const collectible = currentSigil.collectibleId ? A.getSigianCollectibleSigil?.(currentSigil.collectibleId) : null;
+        if (collectible?.hiddenConfigKeys?.includes(key)) {
+          throw new Error(`La configurazione ${key} è incorporata nell'identità di ${collectible.displayName}.`);
+        }
+        const definition = A.getCanonicalSigil?.(currentSigil.sigilId);
         const schema = definition?.configSchema?.[key];
         if (schema === undefined) throw new Error(`Configurazione ${key} non supportata da ${definition?.id || "?"}.`);
 
@@ -392,6 +438,10 @@
         const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
         if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
         const sigil = draft.recipe.sigils[index];
+        const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
+        if (collectible?.hiddenModifierFamilies?.includes(family)) {
+          throw new Error(`La famiglia ${family} è incorporata nell'identità di ${collectible.displayName}.`);
+        }
         const definition = A.getCanonicalSigil?.(sigil.sigilId);
         const allowed = definition?.modifierOptions?.[family];
         if (!Array.isArray(allowed)) throw new Error(`Famiglia Modifier non supportata: ${family}.`);
@@ -466,6 +516,7 @@
   A.SIGIAN_FORGE_DRAFT_SCHEMA_VERSION = FORGE_DRAFT_SCHEMA_VERSION;
   A.SIGIAN_FORGE_DRAFT_STORAGE_KEY = FORGE_DRAFT_STORAGE_KEY;
   A.createSigianForgeDefaultSigil = defaultForgeSigil;
+  A.createSigianForgeCollectibleSigil = defaultForgeCollectibleSigil;
   A.createSigianForgeDefaultModifierParams = defaultModifierParams;
   A.normalizeSigianForgeDraft = normalizeDraft;
   A.analyzeSigianForgeDraft = draftAnalysis;

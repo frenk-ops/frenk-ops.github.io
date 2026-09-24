@@ -4430,6 +4430,7 @@
   }
 
   function sigianCanonicalValue(card, sigil) {
+    if (sigil?.intensity != null && Number.isFinite(Number(sigil.intensity))) return Number(sigil.intensity);
     const raw = A.SIGIAN_BASE_RECIPE_SPECS?.[card?.id]?.values?.[sigil?.slotId];
     return Number.isFinite(Number(raw)) ? Number(raw) : null;
   }
@@ -4593,13 +4594,16 @@
 
   function sigianCanonicalSigilUiModel(card, sigil) {
     const value = sigianCanonicalValue(card, sigil);
+    const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
     const effect = sigianCanonicalSigilEffect(sigil.sigilId);
-    const modifiers = sigianCanonicalBaseConfigChips(card, sigil, value);
+    const modifiers = collectible ? [] : sigianCanonicalBaseConfigChips(card, sigil, value);
+    const hiddenModifierFamilies = new Set(collectible?.hiddenModifierFamilies || []);
     const hasScaling = (sigil.modifiers || []).some(item => A.getSigianAdvancedModifier?.(item.id)?.family === "scaling");
 
     (sigil.modifiers || []).forEach(item => {
       const definition = A.getSigianAdvancedModifier?.(item.id);
       const family = definition?.family;
+      if (hiddenModifierFamilies.has(family)) return;
       let textValue = "";
       let className = family || "modifier";
       let school = item.params?.school || null;
@@ -4631,7 +4635,7 @@
       "damage","wave","backlash","heal","restoration","regeneration",
       "infusion","subtraction","channeling","erosion","tribute"
     ]);
-    if (card?.__forgePreview && sigil.grade != null) {
+    if (card?.__forgePreview && sigil.grade != null && !collectible) {
       modifiers.unshift({
         className:"grade",
         text:Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${escapeHtml(sigil.grade)}`
@@ -4650,8 +4654,8 @@
     return {
       sigilId:sigil.sigilId,
       effect,
-      name:sigianCanonicalSigilName(sigil),
-      iconMarkup:className => sigianCanonicalSigilIconMarkup(sigil.sigilId, className),
+      name:collectible?.displayName || sigianCanonicalSigilName(sigil),
+      iconMarkup:className => sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, className),
       modifiers
     };
   }
@@ -4808,29 +4812,49 @@
     };
   }
 
+  function forgeCollectibleSummary(definition) {
+    const values = definition.intensityValues || [];
+    if (values.length > 1) return `${t("forge.intensity")}: ${values.join(" · ")}`;
+    if (values.length === 1 && Number(values[0]) !== 0) return `${t("forge.intensity")}: ${values[0]}`;
+    if (definition.family?.includes("power") && values.length === 1 && Number(values[0]) === 0) {
+      return t("forge.scalingBuiltIn");
+    }
+    return definition.atomic ? t("forge.atomicSigil") : "";
+  }
+
   function forgeSigilTileMarkup(definition, disabled) {
-    const sigil = { sigilId:definition.id, grade:1 };
-    const name = sigianCanonicalSigilName(sigil);
-    return `<button type="button" class="forge-sigil-tile" data-forge-add-sigil="${escapeHtml(definition.id)}" ${disabled ? "disabled" : ""}>
-      <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(definition.id, "sigian-sigil-icon")}</span>
-      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(t("forge.gradeOne"))}</small></span>
+    const baseSigilId = definition.baseSigilId || definition.id;
+    const name = definition.displayName || sigianCanonicalSigilName({ sigilId:baseSigilId, grade:definition.grade || 1 });
+    const dataAttribute = definition.baseSigilId
+      ? `data-forge-add-collectible="${escapeHtml(definition.id)}"`
+      : `data-forge-add-sigil="${escapeHtml(definition.id)}"`;
+    return `<button type="button" class="forge-sigil-tile" ${dataAttribute} ${disabled ? "disabled" : ""}>
+      <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(baseSigilId, "sigian-sigil-icon")}</span>
+      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small></span>
       <span class="forge-sigil-tile-action">${escapeHtml(t("forge.imprint"))}</span>
     </button>`;
   }
 
   function forgeCurrentSigilsMarkup(recipe) {
     if (!recipe.sigils.length) return `<p class="forge-empty-note">${escapeHtml(t("forge.emptySigils"))}</p>`;
-    return recipe.sigils.map(sigil => `
+    return recipe.sigils.map(sigil => {
+      const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
+      const name = collectible?.displayName || sigianCanonicalSigilName(sigil);
+      const detail = collectible
+        ? (sigil.intensity != null && Number(sigil.intensity) !== 0 ? `${t("forge.intensity")} ${sigil.intensity}` : forgeCollectibleSummary(collectible))
+        : (Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${sigil.grade}`);
+      return `
       <div class="forge-current-sigil ${forgeSelectedSigilSlotId === sigil.slotId ? "is-selected" : ""}">
-        <span class="forge-current-sigil-icon">${sigianCanonicalSigilIconMarkup(sigil.sigilId, "sigian-sigil-icon")}</span>
+        <span class="forge-current-sigil-icon">${sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, "sigian-sigil-icon")}</span>
         <span class="forge-current-sigil-copy">
-          <strong>${escapeHtml(sigianCanonicalSigilName(sigil))}</strong>
-          <small>${escapeHtml(Number(sigil.grade) === 1 ? t("forge.gradeOne") : String(sigil.grade))}</small>
+          <strong>${escapeHtml(name)}</strong>
+          <small>${escapeHtml(detail)}</small>
         </span>
         <button type="button" class="classic-stone-button ghost forge-model-sigil" data-forge-model-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.model"))}</button>
         <button type="button" class="classic-stone-button ghost forge-remove-sigil" data-forge-remove-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.remove"))}</button>
       </div>
-    `).join("");
+    `;
+    }).join("");
   }
 
   function forgeModifierLabel(modifierId) {
@@ -4958,7 +4982,10 @@
     if (!sigil) return "";
     const definition = A.getCanonicalSigil?.(sigil.sigilId);
     if (!definition) return "";
-    const configFields = Object.entries(definition.configSchema || {}).map(([key, schema]) =>
+    const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
+    const hiddenConfigKeys = new Set(collectible?.hiddenConfigKeys || []);
+    const hiddenModifierFamilies = new Set(collectible?.hiddenModifierFamilies || []);
+    const configFields = Object.entries(definition.configSchema || {}).filter(([key]) => !hiddenConfigKeys.has(key)).map(([key, schema]) =>
       forgeSchemaControlMarkup(
         sigil,
         key,
@@ -4968,7 +4995,7 @@
       )
     ).join("");
 
-    const modifierFamilies = (definition.modifierFamilies || []).map(family => {
+    const modifierFamilies = (definition.modifierFamilies || []).filter(family => !hiddenModifierFamilies.has(family)).map(family => {
       const allowed = (definition.modifierOptions?.[family] || []).filter(id => A.getSigianAdvancedModifier?.(id)?.status === "active");
       if (!allowed.length) return "";
       const current = (sigil.modifiers || []).find(item => A.getSigianAdvancedModifier?.(item.id)?.family === family) || null;
@@ -4998,12 +5025,20 @@
     const gradeOptions = definition.atomic
       ? `<option value="1" selected>${escapeHtml(t("forge.gradeOne"))}</option>`
       : [1,2,3].map(grade => `<option value="${grade}" ${Number(sigil.grade) === grade ? "selected" : ""}>Grado ${grade === 1 ? "I" : grade === 2 ? "II" : "III"}</option>`).join("");
+    const intensityValues = collectible?.intensityValues || [];
+    const intensityMarkup = intensityValues.length > 1
+      ? `<div class="forge-model-field forge-intensity-field">
+          <span>${escapeHtml(t("forge.intensity"))}</span>
+          <div class="forge-intensity-options">${intensityValues.map(value => `<button type="button" class="${Number(sigil.intensity) === Number(value) ? "active" : ""}" data-forge-intensity="${escapeHtml(value)}" data-forge-slot="${escapeHtml(sigil.slotId)}">${escapeHtml(value)}</button>`).join("")}</div>
+        </div>`
+      : "";
+    const modelName = collectible?.displayName || sigianCanonicalSigilName(sigil);
 
     return `<section class="forge-sigil-modeler">
       <div class="forge-modeler-heading">
         <div class="forge-modeler-title">
-          <span class="forge-modeler-icon">${sigianCanonicalSigilIconMarkup(sigil.sigilId, "sigian-sigil-icon")}</span>
-          <div><small>${escapeHtml(t("forge.modelSigil"))}</small><strong>${escapeHtml(sigianCanonicalSigilName(sigil))}</strong></div>
+          <span class="forge-modeler-icon">${sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, "sigian-sigil-icon")}</span>
+          <div><small>${escapeHtml(t("forge.modelSigil"))}</small><strong>${escapeHtml(modelName)}</strong></div>
         </div>
         <button type="button" class="classic-stone-button ghost" data-forge-close-modeler>${escapeHtml(t("forge.backToCatalog"))}</button>
       </div>
@@ -5011,7 +5046,11 @@
       <div class="forge-model-meta">
         <label class="forge-model-field">
           <span>${escapeHtml(t("forge.grade"))}</span>
-          <select data-forge-grade data-forge-slot="${escapeHtml(sigil.slotId)}" ${definition.atomic ? "disabled" : ""}>${gradeOptions}</select>
+          ${collectible
+            ? (collectible.atomic
+              ? `<strong class="forge-locked-grade">${escapeHtml(t("forge.atomicSigil"))}</strong>`
+              : `<strong class="forge-locked-grade">Grado ${sigil.grade === 1 ? "I" : sigil.grade === 2 ? "II" : "III"}</strong><small>${escapeHtml(t("forge.gradeLocked"))}</small>`)
+            : `<select data-forge-grade data-forge-slot="${escapeHtml(sigil.slotId)}" ${definition.atomic ? "disabled" : ""}>${gradeOptions}</select>`}
         </label>
         <div class="forge-model-field forge-affinity-readonly">
           <span>${escapeHtml(t("forge.affinity"))}</span>
@@ -5019,6 +5058,7 @@
           <small>${escapeHtml(t("forge.affinityOwnedCopy"))}</small>
         </div>
       </div>
+      ${intensityMarkup}
       <h4>${escapeHtml(t("forge.baseConfig"))}</h4>
       <div class="forge-model-grid">${configFields || `<span class="forge-model-none">—</span>`}</div>
       <h4>${escapeHtml(t("forge.advancedModifiers"))}</h4>
@@ -5035,7 +5075,9 @@
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
     const activeSchools = A.listSigianSchools?.({ status:"active" }) || [];
-    const activeSigils = A.listCanonicalSigils?.({ status:"active" }) || [];
+    const activeSigils = A.listSigianCollectibleSigils?.({ status:"active" })
+      || A.listCanonicalSigils?.({ status:"active" })
+      || [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const schoolButtons = activeSchools.map(school => `
       <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
@@ -5179,6 +5221,12 @@
       session.setCreatureStats({ health:Number(event.currentTarget.value) });
       renderForgePage();
     });
+    root.querySelectorAll("[data-forge-add-collectible]").forEach(button => button.addEventListener("click", () => {
+      if (button.disabled) return;
+      const result = session.addCollectibleSigil(button.dataset.forgeAddCollectible);
+      forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
+      renderForgePage();
+    }));
     root.querySelectorAll("[data-forge-add-sigil]").forEach(button => button.addEventListener("click", () => {
       if (button.disabled) return;
       const result = session.addSigil(button.dataset.forgeAddSigil);
@@ -5201,6 +5249,10 @@
     }));
     root.querySelectorAll("[data-forge-grade]").forEach(control => control.addEventListener("change", () => {
       session.setSigilGrade(control.dataset.forgeSlot, Number(control.value));
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-intensity]").forEach(button => button.addEventListener("click", () => {
+      session.setSigilIntensity(button.dataset.forgeSlot, Number(button.dataset.forgeIntensity));
       renderForgePage();
     }));
     root.querySelectorAll("[data-forge-config-key]").forEach(control => control.addEventListener("change", () => {
