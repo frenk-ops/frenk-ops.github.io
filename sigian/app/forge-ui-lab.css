@@ -2188,3 +2188,564 @@
     transform: translateZ(var(--lab-sigil-z)) scale(.72) translateY(18px) rotate(3deg);
   }
 }
+
+
+/* ===== Sigian 0.40 — Forge UI Lab ritual interaction pass ===== */
+
+.forge-lab-layout {
+  align-items: start;
+}
+
+.forge-lab-stage {
+  min-height: 850px;
+  box-shadow:
+    inset 0 0 120px rgba(0, 0, 0, .6),
+    inset 0 -42px 88px rgba(0, 0, 0, .26),
+    0 22px 48px rgba(0, 0, 0, .3);
+}
+
+.forge-lab-forge-core {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: min(620px, 78%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -48%);
+  pointer-events: none;
+  opacity: .45;
+  filter: blur(.2px);
+}
+
+.forge-lab-forge-core::before,
+.forge-lab-forge-core::after,
+.forge-lab-forge-core i {
+  content: "";
+  position: absolute;
+  inset: 13%;
+  border-radius: 50%;
+  border: 1px solid rgba(230, 196, 127, .16);
+  box-shadow:
+    0 0 30px rgba(206, 143, 69, .08),
+    inset 0 0 30px rgba(206, 143, 69, .05);
+}
+
+.forge-lab-forge-core::before {
+  inset: 2%;
+  border-style: dashed;
+  opacity: .42;
+  animation: forgeLabCoreRotate 42s linear infinite;
+}
+
+.forge-lab-forge-core::after {
+  inset: 24%;
+  border-color: rgba(239, 206, 141, .2);
+  opacity: .55;
+  animation: forgeLabCoreRotate 29s linear infinite reverse;
+}
+
+.forge-lab-forge-core i:nth-child(1) {
+  inset: 9% 22%;
+  border-radius: 46% 54% 48% 52%;
+  transform: rotate(27deg);
+}
+
+.forge-lab-forge-core i:nth-child(2) {
+  inset: 18% 8%;
+  border-radius: 52% 48% 54% 46%;
+  transform: rotate(-31deg);
+}
+
+.forge-lab-forge-core i:nth-child(3) {
+  inset: 33%;
+  border-color: rgba(241, 200, 119, .26);
+  box-shadow:
+    0 0 44px rgba(221, 132, 55, .1),
+    inset 0 0 28px rgba(221, 132, 55, .08);
+}
+
+.forge-lab-stage.is-ritual-active .forge-lab-forge-core {
+  opacity: .88;
+  animation: forgeLabCorePulse 1.45s ease-out both;
+}
+
+.forge-lab-stage.is-ritual-active::before {
+  animation: forgeLabGroundFlare 1.45s ease-out both;
+}
+
+.forge-lab-card.is-ritual-active {
+  animation: forgeLabCardRitual 1.45s cubic-bezier(.18,.8,.28,1) both;
+}
+
+.forge-lab-card.is-ritual-active::after {
+  animation: forgeLabCardAura 1.45s ease-out both;
+}
+
+.forge-lab-card.is-ritual-active .forge-lab-card-aura {
+  animation: forgeLabAuraWake 1.45s ease-out both;
+}
+
+.forge-lab-sigil-burn {
+  position: absolute;
+  z-index: 0;
+  left: 5px;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.forge-lab-sigil-burn::before,
+.forge-lab-sigil-burn::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(111, 50, 18, .45);
+  opacity: .25;
+}
+
+.forge-lab-sigil-burn::after {
+  inset: 5px;
+  border-color: rgba(72, 30, 12, .62);
+  box-shadow:
+    inset 0 0 12px rgba(63, 25, 10, .28),
+    0 0 8px rgba(63, 25, 10, .12);
+}
+
+.forge-lab-sigil-burn i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #e49a45;
+  opacity: 0;
+  box-shadow: 0 0 7px rgba(231, 128, 42, .8);
+}
+
+.forge-lab-sigil-burn i:nth-child(1) { --ash-x: -26px; --ash-y: -37px; }
+.forge-lab-sigil-burn i:nth-child(2) { --ash-x: 18px; --ash-y: -42px; }
+.forge-lab-sigil-burn i:nth-child(3) { --ash-x: 31px; --ash-y: -17px; }
+.forge-lab-sigil-burn i:nth-child(4) { --ash-x: -32px; --ash-y: -12px; }
+.forge-lab-sigil-burn i:nth-child(5) { --ash-x: 7px; --ash-y: -52px; }
+.forge-lab-sigil-burn i:nth-child(6) { --ash-x: -12px; --ash-y: -48px; }
+
+.forge-lab-sigil-row.is-imprinting {
+  z-index: 12;
+}
+
+.forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn {
+  opacity: 1;
+  animation: forgeLabBurnHalo 1.45s ease-out both;
+}
+
+.forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn::before {
+  animation: forgeLabBurnRing 1.45s ease-out both;
+}
+
+.forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn::after {
+  animation: forgeLabBrandSink 1.45s ease-out both;
+}
+
+.forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn i {
+  animation: forgeLabAsh 1.45s ease-out both;
+}
+
+.forge-lab-sigil-row.is-imprinting .forge-lab-sigil-emblem {
+  animation: forgeLabGlyphBrand 1.45s cubic-bezier(.16,.8,.28,1) both;
+}
+
+.forge-lab-sigil-row.is-imprinting .forge-lab-sigil-copy strong,
+.forge-lab-sigil-row.is-imprinting .forge-lab-chip-row {
+  animation: forgeLabInscriptionReveal 1.45s ease-out both;
+}
+
+.forge-lab-sigil-row.is-imprinting .forge-lab-cycle {
+  opacity: .18;
+  pointer-events: none;
+}
+
+.forge-lab-sigil-mark {
+  transition:
+    filter .18s ease,
+    transform .18s ease,
+    text-shadow .18s ease;
+}
+
+.forge-lab-sigil-emblem {
+  transition:
+    color .2s ease,
+    box-shadow .2s ease,
+    transform .2s ease;
+}
+
+.forge-lab-sigil-emblem::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(70, 29, 11, .24);
+  opacity: .8;
+  pointer-events: none;
+}
+
+.forge-lab-sigil-emblem::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  opacity: .4;
+  pointer-events: none;
+  background:
+    conic-gradient(
+      from calc(var(--lab-sigil-index, 0) * 33deg),
+      transparent 0 16%,
+      rgba(77, 33, 13, .22) 17% 18%,
+      transparent 19% 41%,
+      rgba(77, 33, 13, .15) 42% 43%,
+      transparent 44% 74%,
+      rgba(77, 33, 13, .2) 75% 76%,
+      transparent 77%
+    );
+  mask: radial-gradient(circle, transparent 56%, #000 58% 64%, transparent 66%);
+}
+
+.forge-lab-sigil-row:not(.is-empty) .forge-lab-sigil-mark {
+  transform: rotate(calc((var(--lab-sigil-index, 0) - 1) * .18deg));
+}
+
+.forge-lab-empty-sigil {
+  position: relative;
+  overflow: hidden;
+}
+
+.forge-lab-empty-sigil::before {
+  content: "◈";
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 2px;
+  border: 1px dashed rgba(81, 42, 19, .32);
+  border-radius: 50%;
+  color: rgba(76, 39, 18, .43);
+  font: 700 1rem/1 Georgia, serif;
+}
+
+.forge-lab-empty-sigil::after {
+  content: "";
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  bottom: 7px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(85, 43, 19, .24), transparent);
+}
+
+.forge-lab-tuning {
+  overflow: hidden;
+  padding: 0;
+}
+
+.forge-lab-tuning-summary {
+  list-style: none;
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 15px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.forge-lab-tuning-summary::-webkit-details-marker {
+  display: none;
+}
+
+.forge-lab-tuning-summary > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.forge-lab-tuning-summary small {
+  color: rgba(240, 214, 163, .52);
+  font-size: .58rem;
+  letter-spacing: .16em;
+}
+
+.forge-lab-tuning-summary strong {
+  color: #f0dfbb;
+  font: 700 .94rem/1.1 Georgia, serif;
+}
+
+.forge-lab-tuning[open] .forge-lab-tuning-summary {
+  border-bottom: 1px solid rgba(214, 176, 104, .16);
+}
+
+.forge-lab-tuning-body {
+  display: grid;
+  gap: 15px;
+  padding: 15px 17px 17px;
+}
+
+.forge-lab-tuning:not([open]) .forge-lab-tech-badge::after {
+  content: " · apri";
+}
+
+.forge-lab-card button:focus-visible,
+.forge-lab-art-arrow:focus-visible,
+.forge-lab-cycle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--lab-school-bright, #e0bd77) 72%, white);
+  outline-offset: 3px;
+}
+
+@media (hover:hover) and (pointer:fine) {
+  .forge-lab-sigil-mark:hover .forge-lab-sigil-emblem {
+    transform: translateZ(4px) scale(1.045);
+    color: #2e180e;
+    box-shadow:
+      inset 0 0 0 2px rgba(72, 31, 12, .65),
+      inset 0 0 0 5px rgba(130, 65, 24, .18),
+      inset 0 0 14px rgba(65, 25, 9, .4),
+      0 0 10px rgba(116, 61, 24, .12);
+  }
+
+  .forge-lab-sigil-mark:hover {
+    filter: contrast(1.04);
+    text-shadow: 0 1px rgba(255, 236, 190, .38);
+  }
+}
+
+@media (max-width: 980px) {
+  .forge-lab-tuning {
+    order: 2;
+    position: static;
+  }
+
+  .forge-lab-stage {
+    order: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .forge-lab-page-heading {
+    margin-bottom: 8px;
+  }
+
+  .forge-lab-page-heading p {
+    display: none;
+  }
+
+  .forge-lab-stage {
+    min-height: 704px;
+    padding-top: 18px;
+  }
+
+  .forge-lab-forge-core {
+    width: 118%;
+    opacity: .33;
+  }
+
+  .forge-lab-card-stage {
+    min-height: 666px;
+    padding-top: 24px;
+  }
+
+  .forge-lab-tuning {
+    margin-top: 6px;
+    border-radius: 13px;
+    opacity: .92;
+  }
+
+  .forge-lab-tuning-summary {
+    min-height: 50px;
+    padding: 10px 12px;
+  }
+
+  .forge-lab-tuning-summary strong {
+    font-size: .83rem;
+  }
+
+  .forge-lab-tuning-summary .forge-lab-tech-badge {
+    font-size: .56rem;
+  }
+
+  .forge-lab-tuning-body {
+    padding: 12px;
+  }
+
+  .forge-lab-gesture-hint {
+    bottom: 9px;
+    padding-inline: 40px;
+    line-height: 1.25;
+  }
+
+  .forge-lab-sigil-burn {
+    left: 2px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .forge-lab-sigil-row.is-imprinting .forge-lab-cycle {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-lab-forge-core::before,
+  .forge-lab-forge-core::after,
+  .forge-lab-stage.is-ritual-active .forge-lab-forge-core,
+  .forge-lab-stage.is-ritual-active::before,
+  .forge-lab-card.is-ritual-active,
+  .forge-lab-card.is-ritual-active::after,
+  .forge-lab-card.is-ritual-active .forge-lab-card-aura,
+  .forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn,
+  .forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn::before,
+  .forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn::after,
+  .forge-lab-sigil-row.is-imprinting .forge-lab-sigil-burn i,
+  .forge-lab-sigil-row.is-imprinting .forge-lab-sigil-emblem,
+  .forge-lab-sigil-row.is-imprinting .forge-lab-sigil-copy strong,
+  .forge-lab-sigil-row.is-imprinting .forge-lab-chip-row {
+    animation: none !important;
+  }
+}
+
+@keyframes forgeLabCoreRotate {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes forgeLabCorePulse {
+  0% { opacity: .38; filter: brightness(.9) blur(.2px); transform: translate(-50%, -48%) scale(.96); }
+  14% { opacity: 1; filter: brightness(1.8) blur(.1px); transform: translate(-50%, -48%) scale(1.035); }
+  42% { opacity: .78; filter: brightness(1.2) blur(.2px); }
+  100% { opacity: .48; filter: brightness(1) blur(.2px); transform: translate(-50%, -48%) scale(1); }
+}
+
+@keyframes forgeLabGroundFlare {
+  0% { opacity: .3; filter: blur(28px) brightness(.8); }
+  16% { opacity: .95; filter: blur(22px) brightness(1.75); }
+  48% { opacity: .52; }
+  100% { opacity: .3; filter: blur(28px) brightness(1); }
+}
+
+@keyframes forgeLabCardRitual {
+  0% {
+    transform:
+      rotateX(calc(var(--lab-tilt-x) + var(--lab-pointer-x)))
+      rotateY(calc(var(--lab-tilt-y) + var(--lab-pointer-y)))
+      rotateZ(var(--lab-tilt-z))
+      translateZ(0);
+  }
+  16% {
+    transform:
+      rotateX(calc(var(--lab-tilt-x) + var(--lab-pointer-x) - .7deg))
+      rotateY(calc(var(--lab-tilt-y) + var(--lab-pointer-y)))
+      rotateZ(var(--lab-tilt-z))
+      translateZ(9px);
+  }
+  42% {
+    transform:
+      rotateX(calc(var(--lab-tilt-x) + var(--lab-pointer-x) + .22deg))
+      rotateY(calc(var(--lab-tilt-y) + var(--lab-pointer-y)))
+      rotateZ(var(--lab-tilt-z))
+      translateZ(2px);
+  }
+  100% {
+    transform:
+      rotateX(calc(var(--lab-tilt-x) + var(--lab-pointer-x)))
+      rotateY(calc(var(--lab-tilt-y) + var(--lab-pointer-y)))
+      rotateZ(var(--lab-tilt-z))
+      translateZ(0);
+  }
+}
+
+@keyframes forgeLabCardAura {
+  0% { opacity: .55; filter: blur(22px) brightness(1); }
+  18% { opacity: 1; filter: blur(18px) brightness(2); }
+  55% { opacity: .78; filter: blur(23px) brightness(1.25); }
+  100% { opacity: .72; filter: blur(22px) brightness(1); }
+}
+
+@keyframes forgeLabAuraWake {
+  0% { opacity: .55; filter: brightness(.9); }
+  18% { opacity: 1; filter: brightness(1.75); }
+  55% { opacity: .82; }
+  100% { opacity: .82; filter: brightness(1); }
+}
+
+@keyframes forgeLabBurnHalo {
+  0% { opacity: 0; transform: translateY(-50%) scale(.35); filter: blur(3px); }
+  10% { opacity: 1; transform: translateY(-50%) scale(1.28); filter: blur(.5px); }
+  24% { opacity: .94; transform: translateY(-50%) scale(1.05); }
+  52% { opacity: .62; }
+  100% { opacity: .12; transform: translateY(-50%) scale(.98); filter: blur(0); }
+}
+
+@keyframes forgeLabBurnRing {
+  0% { opacity: 0; transform: scale(.5); border-color: rgba(239, 150, 57, .8); box-shadow: 0 0 0 rgba(232, 118, 37, 0); }
+  15% { opacity: 1; transform: scale(1.42); border-color: rgba(244, 175, 77, .9); box-shadow: 0 0 20px rgba(235, 115, 31, .72); }
+  38% { opacity: .72; transform: scale(1.1); }
+  100% { opacity: .2; transform: scale(1); border-color: rgba(89, 39, 16, .5); box-shadow: 0 0 0 rgba(232, 118, 37, 0); }
+}
+
+@keyframes forgeLabBrandSink {
+  0% { opacity: 0; transform: scale(1.4); box-shadow: inset 0 0 0 rgba(65, 24, 8, 0); }
+  18% { opacity: .9; transform: scale(.93); box-shadow: inset 0 0 20px rgba(75, 26, 8, .72), 0 0 12px rgba(235, 115, 31, .28); }
+  42% { opacity: .72; transform: scale(1.02); }
+  100% { opacity: .28; transform: scale(1); box-shadow: inset 0 0 12px rgba(63, 25, 10, .28); }
+}
+
+@keyframes forgeLabAsh {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+  16% { opacity: .95; }
+  52% { opacity: .52; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--ash-x)), calc(-50% + var(--ash-y))) scale(.22);
+  }
+}
+
+@keyframes forgeLabGlyphBrand {
+  0% {
+    opacity: .1;
+    color: #f8c06c;
+    transform: translateZ(24px) scale(1.28);
+    filter: blur(4px) brightness(2.2);
+    box-shadow: 0 0 28px rgba(236, 122, 35, .65);
+  }
+  13% {
+    opacity: 1;
+    color: #ffcd7b;
+    filter: blur(.4px) brightness(2.5);
+  }
+  31% {
+    color: #6f2b13;
+    transform: translateZ(3px) scale(.94);
+    filter: brightness(.72) sepia(1);
+    box-shadow: inset 0 0 17px rgba(63, 20, 7, .58);
+  }
+  52% {
+    color: #2f170d;
+    transform: translateZ(0) scale(1.02);
+    filter: brightness(.78) sepia(.68);
+  }
+  100% {
+    opacity: 1;
+    color: #3a2114;
+    transform: translateZ(0) scale(1);
+    filter: none;
+  }
+}
+
+@keyframes forgeLabInscriptionReveal {
+  0%, 30% { opacity: 0; filter: blur(5px) brightness(1.8); transform: translateX(-5px); }
+  48% { opacity: .32; }
+  70% { opacity: .9; filter: blur(.5px) brightness(.92); }
+  100% { opacity: 1; filter: none; transform: translateX(0); }
+}

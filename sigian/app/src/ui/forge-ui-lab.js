@@ -78,6 +78,9 @@
     "selector-highest-attack": "Attacco più alto"
   });
 
+  const FULL_IMPRINT_MS = 1450;
+  const QUICK_IMPRINT_MS = 780;
+
   const state = {
     session: null,
     artCardId: "",
@@ -220,9 +223,10 @@
       const imprint = state.imprintSlotId === sigil.slotId ? " is-imprinting" : "";
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
-        '<div class="forge-lab-sigil-row' + imprint + breaking + '" data-lab-row="' + escapeHtml(sigil.slotId) + '">' +
+        '<div class="forge-lab-sigil-row' + imprint + breaking + '" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
           '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente">‹</button>' +
           '<button type="button" class="forge-lab-sigil-mark" data-lab-sigil="' + escapeHtml(sigil.slotId) + '">' +
+            '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
             '<span class="forge-lab-sigil-emblem" aria-hidden="true">' + escapeHtml(sigilGlyph(sigil.sigilId)) + '</span>' +
             '<span class="forge-lab-sigil-copy">' +
               '<strong>' + escapeHtml(sigilName(sigil.sigilId)) + '</strong>' +
@@ -245,7 +249,7 @@
     return (
       '<div class="forge-lab-card-shell">' +
         '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
-        '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + '" style="' + geometryStyle() + '">' +
+        '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" style="' + geometryStyle() + '">' +
           '<div class="forge-lab-card-frame" aria-hidden="true"><span></span></div>' +
           '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<button type="button" class="forge-lab-art-layer" data-lab-open="art" aria-label="Scegli illustrazione">' +
@@ -483,18 +487,22 @@
   }
 
   function tuningMarkup() {
+    const expanded = window.matchMedia?.("(min-width: 981px)")?.matches ? " open" : "";
     return (
-      '<section class="forge-lab-tuning" aria-label="Regolazione 2.5D">' +
-        '<div class="forge-lab-tuning-heading"><div><span class="classic-menu-kicker">Regolazione</span><h3>Profondità 2.5D</h3></div><span class="forge-lab-tech-badge">CSS 3D · DOM</span></div>' +
-        '<div class="forge-lab-tuning-grid">' +
-          '<label>Indietro <output data-lab-output="tiltX">' + state.tiltX + '°</output><input type="range" min="-2" max="10" step="1" value="' + state.tiltX + '" data-lab-tuning="tiltX"></label>' +
-          '<label>Sinistra / destra <output data-lab-output="tiltY">' + state.tiltY + '°</output><input type="range" min="-14" max="6" step="1" value="' + state.tiltY + '" data-lab-tuning="tiltY"></label>' +
-          '<label>Rotazione <output data-lab-output="tiltZ">' + state.tiltZ + '°</output><input type="range" min="-5" max="4" step="1" value="' + state.tiltZ + '" data-lab-tuning="tiltZ"></label>' +
-          '<label>Distacco layer <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="50" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
+      '<details class="forge-lab-tuning"' + expanded + '>' +
+        '<summary class="forge-lab-tuning-summary"><span><small>UI LAB</small><strong>Calibrazione 2.5D</strong></span><span class="forge-lab-tech-badge">CSS 3D · DOM</span></summary>' +
+        '<div class="forge-lab-tuning-body">' +
+          '<div class="forge-lab-tuning-heading"><div><span class="classic-menu-kicker">Regolazione</span><h3>Profondità e atmosfera</h3></div></div>' +
+          '<div class="forge-lab-tuning-grid">' +
+            '<label>Indietro <output data-lab-output="tiltX">' + state.tiltX + '°</output><input type="range" min="-2" max="10" step="1" value="' + state.tiltX + '" data-lab-tuning="tiltX"></label>' +
+            '<label>Sinistra / destra <output data-lab-output="tiltY">' + state.tiltY + '°</output><input type="range" min="-14" max="6" step="1" value="' + state.tiltY + '" data-lab-tuning="tiltY"></label>' +
+            '<label>Rotazione <output data-lab-output="tiltZ">' + state.tiltZ + '°</output><input type="range" min="-5" max="4" step="1" value="' + state.tiltZ + '" data-lab-tuning="tiltZ"></label>' +
+            '<label>Distacco layer <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="50" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
+          '</div>' +
+          '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Nubi, brace e aura rituale</label>' +
+          "<p>Desktop: il puntatore aggiunge un parallax lieve. Touch: l'inclinazione resta stabile per non interferire con lo scroll.</p>" +
         '</div>' +
-        '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Nubi, brace e aura rituale</label>' +
-        "<p>Desktop: il puntatore aggiunge un parallax lieve. Touch: l'inclinazione resta stabile per non interferire con lo scroll.</p>" +
-      '</section>'
+      '</details>'
     );
   }
 
@@ -520,6 +528,20 @@
     render();
   }
 
+  function playImprint(slotId, options = {}) {
+    const duration = options.quick ? QUICK_IMPRINT_MS : FULL_IMPRINT_MS;
+    const reopenEditor = Boolean(options.reopenEditor);
+    state.imprintSlotId = slotId;
+    state.modal = null;
+    render();
+    window.setTimeout(() => {
+      if (state.imprintSlotId !== slotId) return;
+      state.imprintSlotId = null;
+      if (reopenEditor) state.modal = { type: "sigil-edit", slotId };
+      render();
+    }, duration);
+  }
+
   function cycleSigil(recipe, slotId, delta) {
     const session = ensureSession();
     const list = activeSigils();
@@ -528,11 +550,7 @@
     const index = Math.max(0, list.findIndex(item => item.id === current.sigilId));
     const next = list[(index + Number(delta) + list.length) % list.length];
     mutate(() => session.replaceSigil(slotId, next.id));
-    state.imprintSlotId = slotId;
-    render();
-    window.setTimeout(() => {
-      if (state.imprintSlotId === slotId) state.imprintSlotId = null;
-    }, 900);
+    playImprint(slotId, { quick: true });
   }
 
   function bindLongPress(root) {
@@ -646,23 +664,14 @@
     root.querySelectorAll("[data-lab-add-sigil]").forEach(button => button.addEventListener("click", () => {
       const result = mutate(() => session.addSigil(button.dataset.labAddSigil));
       const slotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
-      state.imprintSlotId = slotId;
-      state.modal = slotId ? { type: "sigil-edit", slotId } : null;
-      render();
-      window.setTimeout(() => {
-        if (state.imprintSlotId === slotId) state.imprintSlotId = null;
-      }, 900);
+      if (slotId) playImprint(slotId, { reopenEditor: true });
+      else render();
     }));
 
     root.querySelectorAll("[data-lab-replace-sigil]").forEach(button => button.addEventListener("click", () => {
       const slotId = button.dataset.labSlot;
       mutate(() => session.replaceSigil(slotId, button.dataset.labReplaceSigil));
-      state.imprintSlotId = slotId;
-      state.modal = { type: "sigil-edit", slotId };
-      render();
-      window.setTimeout(() => {
-        if (state.imprintSlotId === slotId) state.imprintSlotId = null;
-      }, 900);
+      playImprint(slotId, { reopenEditor: true });
     }));
 
     root.querySelector("[data-lab-open-picker]")?.addEventListener("click", event => {
@@ -686,7 +695,6 @@
       const slotId = state.modal?.slotId;
       if (!slotId) return;
       mutate(() => session.setSigilGrade(slotId, Number(event.currentTarget.value)));
-      state.imprintSlotId = slotId;
       render();
     });
 
@@ -779,7 +787,8 @@
 
     root.innerHTML =
       '<div class="forge-lab-layout">' +
-        '<section class="forge-lab-stage ' + (state.atmosphere ? "" : "no-atmosphere") + '">' +
+        '<section class="forge-lab-stage ' + (state.atmosphere ? "" : "no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '">' +
+          '<div class="forge-lab-forge-core" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-cloud cloud-one" aria-hidden="true"></div>' +
           '<div class="forge-lab-cloud cloud-two" aria-hidden="true"></div>' +
           '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
