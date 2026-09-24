@@ -160,17 +160,30 @@
     const reasons = [];
     if (!validation.valid) reasons.push("recipe-invalid");
     if (draft.recipe.type === "spell" && draft.recipe.sigils.length === 0) reasons.push("spell-requires-sigil");
-    // Arcane Value / minimum legal level is deliberately not invented here.
-    // Sealing becomes available only when the calibrated evaluator is connected.
-    reasons.push("balance-calibration-pending");
+
+    let math = null;
+    let mathError = null;
+    if (typeof A.analyzeSigianForgeRecipe === "function") {
+      try {
+        math = A.analyzeSigianForgeRecipe(draft.recipe);
+      } catch (error) {
+        mathError = String(error?.message || error || "Errore evaluator");
+      }
+    }
+
+    if (math) reasons.push("hybrid-diagnostic-not-production");
+    else reasons.push("balance-calibration-pending");
+
     return {
       valid: validation.valid && !reasons.includes("spell-requires-sigil"),
       validation,
       sigilCount: draft.recipe.sigils.length,
       maxSigils: A.SIGIAN_MAX_PRIMARY_SIGILS || 3,
-      arcaneValue: null,
-      minimumLevel: null,
-      evaluatorStatus: "pending-calibration",
+      arcaneValue: math?.arcaneValue ?? null,
+      minimumLevel: math?.minimumLevel ?? null,
+      evaluatorStatus: math?.status || "pending-calibration",
+      math,
+      mathError,
       canSeal: false,
       sealBlockers: [...new Set(reasons)]
     };

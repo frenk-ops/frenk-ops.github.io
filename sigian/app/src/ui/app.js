@@ -516,6 +516,8 @@
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
   let forgeSession = null;
   let forgeSelectedSigilSlotId = null;
+  let forgeTargetCost = "auto";
+  let forgeMathMode = "simple";
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "forge", "uiLab", "profile", "rules", "diagnostics"]);
@@ -3746,7 +3748,9 @@
 
     const fallback = document.createElement("div");
     fallback.className = "art-fallback";
-    fallback.innerHTML = `<span>${card.art ? escapeHtml(card.art) : schoolIconMarkup(card.school, "school-icon-svg art-fallback-school-icon")}</span><small>${card.type === "spell" ? "MAGIA" : "CREATURA"}</small>`;
+    fallback.innerHTML = card.__forgePreview
+      ? `<span class="forge-art-placeholder-sigil">${schoolIconMarkup(card.school, "school-icon-svg art-fallback-school-icon")}</span><small>${escapeHtml(t("forge.artPlaceholder"))}</small>`
+      : `<span>${card.art ? escapeHtml(card.art) : schoolIconMarkup(card.school, "school-icon-svg art-fallback-school-icon")}</span><small>${card.type === "spell" ? "MAGIA" : "CREATURA"}</small>`;
 
     const status = document.createElement("div");
     status.className = "art-status";
@@ -3773,8 +3777,14 @@
     };
     const loadFallbackCandidate = () => {
       if (fallbackIndex >= candidates.length) {
-        wrapper.classList.add("art-error");
-        status.textContent = "Errore caricamento immagine";
+        if (card.__forgePreview) {
+          wrapper.classList.remove("art-error");
+          wrapper.classList.add("art-placeholder");
+          status.textContent = "";
+        } else {
+          wrapper.classList.add("art-error");
+          status.textContent = "Errore caricamento immagine";
+        }
         return;
       }
       img.onload = markLoaded;
@@ -4790,8 +4800,9 @@
     return forgeSession;
   }
 
-  function forgePreviewCard(recipe) {
+  function forgePreviewCard(recipe, analysis = null) {
     const stats = recipe.stats || {};
+    const calculatedCost = Math.max(0, Number(analysis?.minimumLevel || 0));
     return {
       id:recipe.id,
       name:recipe.presentation?.name || t("forge.title"),
@@ -4800,8 +4811,8 @@
       attack:recipe.type === "creature" ? Number(stats.attack || 0) : 0,
       health:recipe.type === "creature" ? Number(stats.health || 1) : 0,
       hp:recipe.type === "creature" ? Number(stats.health || 1) : 0,
-      level:0,
-      cost:0,
+      level:calculatedCost,
+      cost:calculatedCost,
       text:"",
       keyword:"",
       set:"custom",
@@ -4835,7 +4846,146 @@
     </button>`;
   }
 
-  function forgeCurrentSigilsMarkup(recipe) {
+  function forgeMathNumber(value, digits = 1) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "—";
+    return numeric.toLocaleString("it-IT", {
+      minimumFractionDigits:digits,
+      maximumFractionDigits:digits
+    });
+  }
+
+  function forgeSignedMath(value, digits = 1) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "—";
+    const prefix = numeric > 0 ? "+" : "";
+    return `${prefix}${forgeMathNumber(numeric, digits)}`;
+  }
+
+  function forgeSigilContribution(analysis, slotId) {
+    return analysis?.math?.sigilContributions?.find(item => item.slotId === slotId) || null;
+  }
+
+  function forgeInteractionLabel(kind) {
+    const key = ({
+      "attack-x-total-assault":"forge.math.interaction.totalAssault",
+      "durability-x-regeneration":"forge.math.interaction.regeneration",
+      "protection-x-regeneration":"forge.math.interaction.protectionRegeneration",
+      "arcane-attack-x-channeling":"forge.math.interaction.arcaneChanneling",
+      "area-damage-x-absorption":"forge.math.interaction.areaAbsorption",
+      "body-x-rebirth":"forge.math.interaction.rebirthBody",
+      "stacking":"forge.math.interaction.stacking"
+    })[kind];
+    if (!key) return String(kind || "").replaceAll("-", " ");
+    const label = t(key);
+    return label === key ? String(kind || "").replaceAll("-", " ") : label;
+  }
+
+  function forgeMathBreakdownMarkup(analysis) {
+    const math = analysis?.math;
+    const breakdown = math?.breakdown;
+    if (!math || !breakdown) return "";
+    const rows = [
+      [t("forge.math.body"), breakdown.body],
+      [t("forge.math.sigils"), breakdown.sigilSubtotal],
+      [t("forge.math.scope"), breakdown.scopeSubtotal],
+      [t("forge.math.sameSchoolRefund"), breakdown.sameSchoolRefundSubtotal],
+      [t("forge.math.interactions"), breakdown.interactionSubtotal],
+      [t("forge.math.stacking"), breakdown.stacking?.total],
+      [t("forge.math.schoolAdjustment"), breakdown.schoolAdjustment?.value],
+      [t("forge.math.malusCredit"), -Number(breakdown.malusCredit?.total || 0)]
+    ].filter(([,value]) => Number.isFinite(Number(value)) && Math.abs(Number(value)) > 0.0001);
+
+    const interactions = [
+      ...(breakdown.interactions || []),
+      ...(breakdown.stacking?.details || [])
+    ];
+
+    return `<div class="forge-math-details">
+      <div class="forge-math-breakdown">
+        ${rows.map(([label,value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(forgeSignedMath(value))} AV</strong></div>`).join("")}
+        <div class="forge-math-total"><span>${escapeHtml(t("forge.math.total"))}</span><strong>${escapeHtml(forgeMathNumber(math.arcaneValue))} AV</strong></div>
+      </div>
+      <div class="forge-math-interactions">
+        <strong>${escapeHtml(t("forge.math.activeInteractions"))}</strong>
+        ${interactions.length
+          ? interactions.map(item => `<span>${escapeHtml(forgeInteractionLabel(item.kind))}<b>${escapeHtml(forgeSignedMath(item.value))} AV</b></span>`).join("")
+          : `<small>${escapeHtml(t("forge.math.noInteractions"))}</small>`}
+      </div>
+      <small class="forge-math-provisional">${escapeHtml(t("forge.math.provisional"))}</small>
+    </div>`;
+  }
+
+  function forgeBudgetMarkup(recipe, analysis) {
+    const math = analysis?.math;
+    if (!math) {
+      return `<div class="forge-balance-status is-warning">
+        <strong>${escapeHtml(t("forge.balancePending"))}</strong>
+        ${analysis?.mathError ? `<span>${escapeHtml(analysis.mathError)}</span>` : ""}
+        ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<span>${escapeHtml(t("forge.spellNeedsSigil"))}</span>` : ""}
+      </div>`;
+    }
+
+    const avPercent = Math.max(0, Math.min(100, Number(math.utilization || 0) * 100));
+    const previousPercent = Math.max(0, Math.min(100, Number(math.previousMarker || 0) * 100));
+    const target = forgeTargetCost === "auto" ? null : Math.max(1, Number(forgeTargetCost || 1));
+    const targetCap = target ? Number(A.sigianForgeCapForLevel?.(target)) : null;
+    const targetDelta = target && Number.isFinite(targetCap) ? targetCap - Number(math.arcaneValue) : null;
+    const targetOptions = [
+      `<option value="auto" ${forgeTargetCost === "auto" ? "selected" : ""}>${escapeHtml(t("forge.math.auto"))}</option>`,
+      ...Array.from({ length:20 }, (_,index) => index + 1).map(level =>
+        `<option value="${level}" ${Number(forgeTargetCost) === level ? "selected" : ""}>${escapeHtml(String(level))}</option>`
+      )
+    ].join("");
+
+    return `<section class="forge-math-panel" aria-label="${escapeHtml(t("forge.math.title"))}">
+      <div class="forge-math-head">
+        <div class="forge-math-cost">
+          <small>${escapeHtml(t("forge.math.calculatedCost"))}</small>
+          <strong>${escapeHtml(math.minimumLevel)}</strong>
+          <span>${escapeHtml(t("forge.math.powerRequired", { cost:math.resourceCost, school:schoolName(recipe.school) }))}</span>
+        </div>
+        <div class="forge-math-av">
+          <small>${escapeHtml(t("forge.math.arcaneValue"))}</small>
+          <strong>${escapeHtml(forgeMathNumber(math.arcaneValue))} <span>/ ${escapeHtml(forgeMathNumber(math.currentCap))}</span></strong>
+          <span>${escapeHtml(t("forge.math.margin"))}: ${escapeHtml(forgeMathNumber(math.margin))} AV</span>
+        </div>
+        <label class="forge-math-target">
+          <span>${escapeHtml(t("forge.math.targetCost"))}</span>
+          <select id="forgeTargetCostSelect">${targetOptions}</select>
+        </label>
+      </div>
+
+      <div class="forge-budget-track" aria-label="${escapeHtml(t("forge.math.budgetBar"))}">
+        <div class="forge-budget-fill" style="width:${avPercent}%"></div>
+        ${math.previousLevel ? `<span class="forge-budget-previous" style="left:${previousPercent}%"><i></i><small>Cap ${math.previousLevel}</small></span>` : ""}
+        <span class="forge-budget-current" style="left:${avPercent}%"><i></i><small>AV ${escapeHtml(forgeMathNumber(math.arcaneValue))}</small></span>
+      </div>
+
+      <div class="forge-budget-thresholds">
+        <span>${math.previousLevel ? `Cap ${math.previousLevel}: <b>${escapeHtml(forgeMathNumber(math.previousCap))}</b>` : "—"}</span>
+        <span>Cap ${math.currentLevel}: <b>${escapeHtml(forgeMathNumber(math.currentCap))}</b></span>
+        <span>Cap ${math.nextLevel}: <b>${escapeHtml(forgeMathNumber(math.nextCap))}</b></span>
+      </div>
+
+      ${target ? `<div class="forge-target-status ${targetDelta >= 0 ? "is-within" : "is-over"}">
+        <strong>${escapeHtml(t("forge.math.targetCost"))} ${target}</strong>
+        <span>${targetDelta >= 0
+          ? escapeHtml(t("forge.math.targetRemaining", { value:forgeMathNumber(targetDelta) }))
+          : escapeHtml(t("forge.math.targetExceeded", { value:forgeMathNumber(Math.abs(targetDelta)), cost:math.minimumLevel }))}</span>
+      </div>` : ""}
+
+      <div class="forge-math-mode">
+        <button type="button" data-forge-math-mode="simple" class="${forgeMathMode === "simple" ? "active" : ""}">${escapeHtml(t("forge.math.simple"))}</button>
+        <button type="button" data-forge-math-mode="detailed" class="${forgeMathMode === "detailed" ? "active" : ""}">${escapeHtml(t("forge.math.detailed"))}</button>
+      </div>
+
+      ${forgeMathMode === "detailed" ? forgeMathBreakdownMarkup(analysis) : ""}
+      ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<p class="forge-math-warning">${escapeHtml(t("forge.spellNeedsSigil"))}</p>` : ""}
+    </section>`;
+  }
+
+  function forgeCurrentSigilsMarkup(recipe, analysis) {
     if (!recipe.sigils.length) return `<p class="forge-empty-note">${escapeHtml(t("forge.emptySigils"))}</p>`;
     return recipe.sigils.map(sigil => {
       const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
@@ -4843,14 +4993,19 @@
       const detail = collectible
         ? (sigil.intensity != null && Number(sigil.intensity) !== 0 ? `${t("forge.intensity")} ${sigil.intensity}` : forgeCollectibleSummary(collectible))
         : (Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${sigil.grade}`);
+      const contribution = forgeSigilContribution(analysis, sigil.slotId);
       return `
-      <div class="forge-current-sigil ${forgeSelectedSigilSlotId === sigil.slotId ? "is-selected" : ""}">
+      <div class="forge-current-sigil ${forgeSelectedSigilSlotId === sigil.slotId ? "is-selected" : ""}"
+           data-forge-select-sigil="${escapeHtml(sigil.slotId)}"
+           role="button"
+           tabindex="0"
+           aria-pressed="${forgeSelectedSigilSlotId === sigil.slotId}">
         <span class="forge-current-sigil-icon">${sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, "sigian-sigil-icon")}</span>
         <span class="forge-current-sigil-copy">
           <strong>${escapeHtml(name)}</strong>
           <small>${escapeHtml(detail)}</small>
+          ${contribution ? `<em>${escapeHtml(forgeSignedMath(contribution.net))} AV</em>` : ""}
         </span>
-        <button type="button" class="classic-stone-button ghost forge-model-sigil" data-forge-model-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.model"))}</button>
         <button type="button" class="classic-stone-button ghost forge-remove-sigil" data-forge-remove-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.remove"))}</button>
       </div>
     `;
@@ -4978,7 +5133,7 @@
     return "";
   }
 
-  function forgeSigilModelerMarkup(recipe, sigil) {
+  function forgeSigilModelerMarkup(recipe, sigil, analysis) {
     if (!sigil) return "";
     const definition = A.getCanonicalSigil?.(sigil.sigilId);
     if (!definition) return "";
@@ -5026,23 +5181,53 @@
       ? `<option value="1" selected>${escapeHtml(t("forge.gradeOne"))}</option>`
       : [1,2,3].map(grade => `<option value="${grade}" ${Number(sigil.grade) === grade ? "selected" : ""}>Grado ${grade === 1 ? "I" : grade === 2 ? "II" : "III"}</option>`).join("");
     const intensityValues = collectible?.intensityValues || [];
+    const currentContribution = forgeSigilContribution(analysis, sigil.slotId);
+    const currentFormulaValue = Number(analysis?.math?.arcaneValue);
+
     const intensityMarkup = intensityValues.length > 1
       ? `<div class="forge-model-field forge-intensity-field">
           <span>${escapeHtml(t("forge.intensity"))}</span>
-          <div class="forge-intensity-options">${intensityValues.map(value => `<button type="button" class="${Number(sigil.intensity) === Number(value) ? "active" : ""}" data-forge-intensity="${escapeHtml(value)}" data-forge-slot="${escapeHtml(sigil.slotId)}">${escapeHtml(value)}</button>`).join("")}</div>
+          <div class="forge-intensity-options">${intensityValues.map(value => {
+            let deltaMarkup = "";
+            if (Number.isFinite(currentFormulaValue) && Number(value) !== Number(sigil.intensity) && typeof A.previewSigianForgeIntensity === "function") {
+              try {
+                const preview = A.previewSigianForgeIntensity(recipe, sigil.slotId, value);
+                const delta = Number(preview.arcaneValue) - currentFormulaValue;
+                const costChanged = Number(preview.minimumLevel) !== Number(analysis?.minimumLevel);
+                deltaMarkup = `<small>${escapeHtml(forgeSignedMath(delta))} AV${costChanged ? ` · C${analysis?.minimumLevel}→${preview.minimumLevel}` : ""}</small>`;
+              } catch {}
+            } else if (Number(value) === Number(sigil.intensity)) {
+              deltaMarkup = `<small>${escapeHtml(t("forge.math.current"))}</small>`;
+            }
+            return `<button type="button" class="${Number(sigil.intensity) === Number(value) ? "active" : ""}" data-forge-intensity="${escapeHtml(value)}" data-forge-slot="${escapeHtml(sigil.slotId)}"><b>${escapeHtml(value)}</b>${deltaMarkup}</button>`;
+          }).join("")}</div>
         </div>`
       : "";
+
     const modelName = collectible?.displayName || sigianCanonicalSigilName(sigil);
+    const configSection = configFields
+      ? `<div class="forge-model-section"><h4>${escapeHtml(t("forge.baseConfig"))}</h4><div class="forge-model-grid">${configFields}</div></div>`
+      : "";
+    const modifiersSection = modifierFamilies
+      ? `<div class="forge-model-section"><h4>${escapeHtml(t("forge.advancedModifiers"))}</h4><div class="forge-modifier-list">${modifierFamilies}</div></div>`
+      : `<div class="forge-model-section forge-model-section-empty"><h4>${escapeHtml(t("forge.advancedModifiers"))}</h4><span class="forge-model-none">${escapeHtml(t("forge.math.noCompatibleModifiers"))}</span></div>`;
 
     return `<section class="forge-sigil-modeler">
       <div class="forge-modeler-heading">
         <div class="forge-modeler-title">
           <span class="forge-modeler-icon">${sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, "sigian-sigil-icon")}</span>
-          <div><small>${escapeHtml(t("forge.modelSigil"))}</small><strong>${escapeHtml(modelName)}</strong></div>
+          <div><small>${escapeHtml(t("forge.math.selectedSigil"))}</small><strong>${escapeHtml(modelName)}</strong></div>
         </div>
         <button type="button" class="classic-stone-button ghost" data-forge-close-modeler>${escapeHtml(t("forge.backToCatalog"))}</button>
       </div>
       <p class="forge-modeling-note">${escapeHtml(t("forge.modelingNotice"))}</p>
+
+      ${currentContribution ? `<div class="forge-modeler-av">
+        <span>${escapeHtml(t("forge.math.sigilContribution"))}</span>
+        <strong>${escapeHtml(forgeSignedMath(currentContribution.net))} AV</strong>
+        ${currentContribution.malusCredit > 0 ? `<small>${escapeHtml(t("forge.math.includesMalusCredit", { value:forgeMathNumber(currentContribution.malusCredit) }))}</small>` : ""}
+      </div>` : ""}
+
       <div class="forge-model-meta">
         <label class="forge-model-field">
           <span>${escapeHtml(t("forge.grade"))}</span>
@@ -5058,11 +5243,10 @@
           <small>${escapeHtml(t("forge.affinityOwnedCopy"))}</small>
         </div>
       </div>
+
       ${intensityMarkup}
-      <h4>${escapeHtml(t("forge.baseConfig"))}</h4>
-      <div class="forge-model-grid">${configFields || `<span class="forge-model-none">—</span>`}</div>
-      <h4>${escapeHtml(t("forge.advancedModifiers"))}</h4>
-      <div class="forge-modifier-list">${modifierFamilies || `<span class="forge-model-none">—</span>`}</div>
+      ${configSection}
+      ${modifiersSection}
     </section>`;
   }
 
@@ -5125,7 +5309,7 @@
               <strong>${escapeHtml(t("forge.sigils"))}</strong>
               <small>${escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small>
             </div>
-            ${forgeCurrentSigilsMarkup(recipe)}
+            ${forgeCurrentSigilsMarkup(recipe, analysis)}
           </div>
         </aside>
 
@@ -5136,10 +5320,7 @@
             <small id="forgeAutosaveStatus">${escapeHtml(t("forge.autosaved"))}</small>
           </div>
           <div id="forgePreviewStage" class="forge-preview-stage"></div>
-          <div class="forge-balance-status ${analysis.valid ? "is-valid" : "is-warning"}">
-            <strong>${escapeHtml(t("forge.balancePending"))}</strong>
-            ${analysis.sealBlockers.includes("spell-requires-sigil") ? `<span>${escapeHtml(t("forge.spellNeedsSigil"))}</span>` : ""}
-          </div>
+          ${forgeBudgetMarkup(recipe, analysis)}
         </section>
 
         <aside class="forge-panel forge-sigil-browser ornate-subpanel">
@@ -5147,7 +5328,7 @@
             <span class="forge-panel-step">III</span>
             <h3>${escapeHtml(t("forge.sigils"))}</h3>
           </div>
-          ${forgeSigilModelerMarkup(recipe, recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId))}
+          ${forgeSigilModelerMarkup(recipe, recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId), analysis)}
           <div class="forge-catalog-section ${forgeSelectedSigilSlotId ? "is-secondary" : ""}">
             <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
             ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
@@ -5157,7 +5338,7 @@
       </div>`;
 
     const previewStage = $("#forgePreviewStage");
-    const preview = buildSigianFullCard(forgePreviewCard(recipe), null);
+    const preview = buildSigianFullCard(forgePreviewCard(recipe, analysis), null);
     if (previewStage && preview) previewStage.replaceChildren(preview);
 
     const newButton = $("#forgeNewBtn");
@@ -5170,11 +5351,11 @@
     if (redoButton) redoButton.disabled = !snapshot.canRedo;
     if (tryButton) {
       tryButton.disabled = true;
-      tryButton.title = t("forge.balancePending");
+      tryButton.title = t("forge.math.provisional");
     }
     if (sealButton) {
       sealButton.disabled = true;
-      sealButton.title = t("forge.balancePending");
+      sealButton.title = t("forge.math.sealingBlocked");
     }
     if (labButton) labButton.onclick = () => switchView("uiLab");
 
@@ -5233,15 +5414,28 @@
       forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
       renderForgePage();
     }));
-    root.querySelectorAll("[data-forge-model-sigil]").forEach(button => button.addEventListener("click", () => {
-      forgeSelectedSigilSlotId = button.dataset.forgeModelSigil;
-      renderForgePage();
-    }));
+    root.querySelectorAll("[data-forge-select-sigil]").forEach(row => {
+      const select = () => {
+        forgeSelectedSigilSlotId = row.dataset.forgeSelectSigil;
+        renderForgePage();
+      };
+      row.addEventListener("click", event => {
+        if (event.target.closest("[data-forge-remove-sigil]")) return;
+        select();
+      });
+      row.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target.closest("[data-forge-remove-sigil]")) return;
+        event.preventDefault();
+        select();
+      });
+    });
     root.querySelector("[data-forge-close-modeler]")?.addEventListener("click", () => {
       forgeSelectedSigilSlotId = null;
       renderForgePage();
     });
-    root.querySelectorAll("[data-forge-remove-sigil]").forEach(button => button.addEventListener("click", () => {
+    root.querySelectorAll("[data-forge-remove-sigil]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
       const slotId = button.dataset.forgeRemoveSigil;
       session.removeSigil(slotId);
       if (forgeSelectedSigilSlotId === slotId) forgeSelectedSigilSlotId = null;
@@ -5253,6 +5447,14 @@
     }));
     root.querySelectorAll("[data-forge-intensity]").forEach(button => button.addEventListener("click", () => {
       session.setSigilIntensity(button.dataset.forgeSlot, Number(button.dataset.forgeIntensity));
+      renderForgePage();
+    }));
+    $("#forgeTargetCostSelect")?.addEventListener("change", event => {
+      forgeTargetCost = event.currentTarget.value === "auto" ? "auto" : String(Math.max(1, Number(event.currentTarget.value || 1)));
+      renderForgePage();
+    });
+    root.querySelectorAll("[data-forge-math-mode]").forEach(button => button.addEventListener("click", () => {
+      forgeMathMode = button.dataset.forgeMathMode === "detailed" ? "detailed" : "simple";
       renderForgePage();
     }));
     root.querySelectorAll("[data-forge-config-key]").forEach(control => control.addEventListener("change", () => {

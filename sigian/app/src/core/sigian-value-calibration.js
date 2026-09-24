@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const VALUE_CALIBRATION_SCHEMA_VERSION = 2;
+  const VALUE_CALIBRATION_SCHEMA_VERSION = 3;
   const DEFAULT_TECHNICAL_SEARCH_LIMIT = 256;
 
   function clone(value) {
@@ -90,14 +90,19 @@
   }
 
   function sigilSample(sigil, spec) {
-    const rawGradeValue = Object.prototype.hasOwnProperty.call(spec?.values || {}, sigil.slotId)
-      ? finiteNumber(spec.values[sigil.slotId], 0)
-      : 0;
+    const hasAtomicIntensity = sigil?.intensity != null && Number.isFinite(Number(sigil.intensity));
+    const rawGradeValue = hasAtomicIntensity
+      ? Number(sigil.intensity)
+      : Object.prototype.hasOwnProperty.call(spec?.values || {}, sigil.slotId)
+        ? finiteNumber(spec.values[sigil.slotId], 0)
+        : 0;
     const modifiers = (sigil.modifiers || []).map(modifierFeatures);
     return {
       slotId: sigil.slotId,
+      collectibleId: sigil.collectibleId == null ? null : String(sigil.collectibleId),
       sigilId: sigil.sigilId,
       grade: sigil.grade,
+      intensity: hasAtomicIntensity ? Number(sigil.intensity) : null,
       affinity: sigil.affinity == null ? null : clone(sigil.affinity),
       recoveredGradeValue: rawGradeValue,
       timing: timingCategory(sigil),

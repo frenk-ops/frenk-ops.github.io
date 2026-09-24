@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.44.0-4fd73c4";
+const BUILD_REVISION = "0.45.0-83c8362";
 const SHELL_CACHE = `sigian-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `sigian-runtime-${BUILD_REVISION}`;
 
@@ -25,6 +25,13 @@ const APP_SHELL = [
   "./src/i18n/index.js",
   "./src/core/card-schema.js",
   "./src/core/sigian-foundation.js",
+  "./src/core/sigian-registry.js",
+  "./src/core/sigian-progression-model.js",
+  "./src/core/sigian-collectible-catalog.js",
+  "./src/core/sigian-recipe.js",
+  "./src/core/sigian-forge.js",
+  "./src/core/sigian-compiler.js",
+  "./src/data/sigian-base-recipes.js",
   "./src/data/astral-ai-card-metadata.js",
   "./src/core/original-rules.js",
   "./src/core/generator.js",
@@ -41,6 +48,12 @@ const APP_SHELL = [
   "./src/multiplayer/remote-room-client.js",
   "./src/core/ai.js",
   "./src/core/astral-ai-re.js",
+  "./src/core/sigian-value-calibration.js",
+  "./src/core/sigian-value-fit.js",
+  "./src/core/sigian-value-oracle.js",
+  "./src/core/sigian-value-candidate.js",
+  "./src/core/sigian-value-hybrid.js",
+  "./src/core/sigian-forge-math.js",
   "./src/core/tournament.js",
   "./tests/test-suite.js",
   "./src/ui/navigation.js",

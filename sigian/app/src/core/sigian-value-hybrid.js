@@ -187,7 +187,14 @@
       for (let index = 1; index < sigils.length; index += 1) {
         const value = unit * 0.12 * magnitude(sigils[index]) * index;
         total += value;
-        details.push({ kind:"stacking", sigilId, copy:index + 1, value });
+        details.push({
+          kind:"stacking",
+          sigilId,
+          slotId:sigils[index]?.slotId || null,
+          collectibleId:sigils[index]?.collectibleId || null,
+          copy:index + 1,
+          value
+        });
       }
     });
     return { total, details };
@@ -263,6 +270,8 @@
       const credit = Math.min(remaining, raw * diminishing);
       total += credit;
       details.push({
+        slotId:sigil.slotId || null,
+        collectibleId:sigil.collectibleId || null,
         sigilId:sigil.sigilId,
         relevance,
         diminishing,
@@ -323,8 +332,11 @@
         scopeSubtotal += scope;
         refundSubtotal += refund;
         sigils.push({
+          slotId:sigil.slotId || null,
+          collectibleId:sigil.collectibleId || null,
           sigilId:sigil.sigilId,
           grade:sigil.grade,
+          intensity:sigil.intensity ?? null,
           magnitude:magnitude(sigil),
           base,
           scope,

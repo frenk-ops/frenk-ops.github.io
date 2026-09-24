@@ -13404,3 +13404,371 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 .forge-sigil-tile-copy small {
   overflow-wrap:anywhere;
 }
+
+
+/* ===== Sigian 0.45 — mathematical Forge laboratory ===== */
+.forge-current-sigil {
+  grid-template-columns:38px minmax(0,1fr) auto !important;
+  grid-template-rows:auto !important;
+  cursor:pointer;
+  transition:border-color .14s ease,background .14s ease,box-shadow .14s ease,transform .14s ease;
+}
+.forge-current-sigil:hover,
+.forge-current-sigil:focus-visible {
+  border-color:#a66d2a;
+  background:rgba(255,243,204,.7);
+  box-shadow:0 3px 10px rgba(91,58,25,.12),inset 0 0 0 1px rgba(166,109,42,.12);
+  outline:none;
+}
+.forge-current-sigil:active { transform:translateY(1px); }
+.forge-current-sigil-icon,
+.forge-current-sigil-copy,
+.forge-remove-sigil.classic-stone-button {
+  grid-row:auto !important;
+}
+.forge-current-sigil-icon { grid-column:1 !important; }
+.forge-current-sigil-copy { grid-column:2 !important; }
+.forge-remove-sigil.classic-stone-button {
+  grid-column:3 !important;
+  min-width:70px !important;
+}
+.forge-current-sigil-copy em {
+  color:#7c5a27;
+  font-size:.61rem;
+  font-style:normal;
+  font-weight:800;
+}
+
+.forge-modeler-av {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:3px 10px;
+  padding:9px 10px;
+  border:1px solid rgba(118,82,39,.25);
+  border-radius:9px;
+  background:linear-gradient(180deg,rgba(255,247,215,.72),rgba(226,201,147,.42));
+}
+.forge-modeler-av span {
+  color:#705239;
+  font-size:.67rem;
+  font-weight:700;
+}
+.forge-modeler-av strong {
+  color:#4a301d;
+  font:800 .95rem/1 Georgia,serif;
+}
+.forge-modeler-av small {
+  grid-column:1 / -1;
+  color:#8b6847;
+  font-size:.58rem;
+}
+.forge-model-section {
+  display:grid;
+  gap:7px;
+}
+.forge-model-section-empty {
+  padding:7px 0 0;
+  border-top:1px solid rgba(111,79,48,.13);
+}
+
+.forge-intensity-options button {
+  display:grid;
+  justify-items:center;
+  gap:2px;
+  min-width:58px;
+  min-height:46px;
+  border-radius:10px;
+}
+.forge-intensity-options button b {
+  font:800 .8rem/1 Georgia,"Times New Roman",serif;
+}
+.forge-intensity-options button small {
+  font-size:.52rem;
+  line-height:1.05;
+  font-weight:700;
+  opacity:.78;
+  white-space:nowrap;
+}
+
+.forge-math-panel {
+  display:grid;
+  gap:10px;
+  padding:12px;
+  border:1px solid rgba(129,89,38,.34);
+  border-radius:12px;
+  background:
+    radial-gradient(circle at 12% 0%,rgba(224,180,73,.13),transparent 38%),
+    linear-gradient(180deg,rgba(255,246,210,.86),rgba(225,198,143,.68));
+  color:#4b3422;
+  box-shadow:inset 0 0 18px rgba(255,250,221,.25);
+}
+.forge-math-head {
+  display:grid;
+  grid-template-columns:minmax(96px,.72fr) minmax(150px,1.1fr) minmax(108px,.7fr);
+  gap:10px;
+  align-items:end;
+}
+.forge-math-cost,
+.forge-math-av {
+  display:grid;
+  gap:2px;
+}
+.forge-math-cost small,
+.forge-math-av small,
+.forge-math-target > span {
+  color:#84664a;
+  font-size:.58rem;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.forge-math-cost strong {
+  color:#402814;
+  font:900 2rem/.9 Georgia,"Times New Roman",serif;
+}
+.forge-math-cost span,
+.forge-math-av > span {
+  color:#71543c;
+  font-size:.63rem;
+  font-weight:700;
+}
+.forge-math-av strong {
+  color:#4a301d;
+  font:900 1.2rem/1 Georgia,"Times New Roman",serif;
+}
+.forge-math-av strong span {
+  color:#8a6846;
+  font-size:.75rem;
+  font-weight:700;
+}
+.forge-math-target {
+  display:grid;
+  gap:4px;
+}
+.forge-math-target select {
+  width:100%;
+  height:34px;
+  border:1px solid rgba(105,73,37,.32);
+  border-radius:7px;
+  background:rgba(255,250,231,.9);
+  color:#3f2a1b;
+  font-weight:800;
+}
+
+.forge-budget-track {
+  position:relative;
+  height:18px;
+  margin:9px 4px 18px;
+  border:1px solid rgba(77,53,29,.38);
+  border-radius:999px;
+  background:rgba(88,61,33,.14);
+  box-shadow:inset 0 2px 5px rgba(72,46,22,.18);
+}
+.forge-budget-fill {
+  position:absolute;
+  inset:0 auto 0 0;
+  border-radius:999px;
+  background:linear-gradient(90deg,rgba(184,132,45,.72),rgba(225,182,78,.92));
+}
+.forge-budget-previous,
+.forge-budget-current {
+  position:absolute;
+  top:-5px;
+  transform:translateX(-50%);
+  z-index:2;
+}
+.forge-budget-previous i,
+.forge-budget-current i {
+  display:block;
+  width:2px;
+  height:28px;
+  margin:auto;
+  background:#7d5e3d;
+}
+.forge-budget-current i {
+  width:3px;
+  background:#412b18;
+  box-shadow:0 0 0 2px rgba(255,237,173,.75);
+}
+.forge-budget-previous small,
+.forge-budget-current small {
+  position:absolute;
+  top:29px;
+  left:50%;
+  transform:translateX(-50%);
+  color:#735337;
+  font-size:.5rem;
+  font-weight:800;
+  white-space:nowrap;
+}
+.forge-budget-current small { color:#402a1c; }
+
+.forge-budget-thresholds {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  color:#785a3d;
+  font-size:.58rem;
+  text-align:center;
+}
+.forge-budget-thresholds span {
+  padding:5px 4px;
+  border:1px solid rgba(108,75,39,.16);
+  border-radius:7px;
+  background:rgba(255,250,231,.43);
+}
+.forge-budget-thresholds b { color:#49301d; }
+
+.forge-target-status {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:7px 9px;
+  border-radius:8px;
+  font-size:.63rem;
+}
+.forge-target-status.is-within {
+  border:1px solid rgba(74,125,83,.32);
+  background:rgba(123,168,108,.11);
+  color:#486039;
+}
+.forge-target-status.is-over {
+  border:1px solid rgba(166,75,52,.32);
+  background:rgba(184,88,57,.1);
+  color:#81452f;
+}
+
+.forge-math-mode {
+  display:flex;
+  justify-content:flex-end;
+  gap:5px;
+}
+.forge-math-mode button {
+  min-height:27px;
+  padding:4px 9px;
+  border:1px solid rgba(108,75,39,.24);
+  border-radius:999px;
+  background:rgba(255,250,231,.56);
+  color:#735337;
+  font-size:.57rem;
+  font-weight:800;
+  cursor:pointer;
+}
+.forge-math-mode button.active {
+  border-color:#8a5e28;
+  background:#d8ad56;
+  color:#3e2919;
+}
+.forge-math-details {
+  display:grid;
+  gap:9px;
+  padding-top:8px;
+  border-top:1px solid rgba(108,75,39,.18);
+}
+.forge-math-breakdown {
+  display:grid;
+  gap:3px;
+}
+.forge-math-breakdown > div {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:3px 1px;
+  color:#705239;
+  font-size:.62rem;
+}
+.forge-math-breakdown strong { color:#49301d; }
+.forge-math-breakdown .forge-math-total {
+  margin-top:3px;
+  padding-top:6px;
+  border-top:1px solid rgba(108,75,39,.18);
+  font-weight:800;
+}
+.forge-math-interactions {
+  display:grid;
+  gap:4px;
+  padding:7px;
+  border:1px solid rgba(108,75,39,.14);
+  border-radius:8px;
+  background:rgba(255,250,231,.4);
+}
+.forge-math-interactions > strong {
+  color:#5f422b;
+  font-size:.64rem;
+}
+.forge-math-interactions > span {
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  color:#76583e;
+  font-size:.59rem;
+}
+.forge-math-interactions small,
+.forge-math-provisional {
+  color:#8a6c50;
+  font-size:.56rem;
+  line-height:1.3;
+}
+.forge-math-warning {
+  margin:0;
+  color:#874c35;
+  font-size:.62rem;
+  font-weight:700;
+}
+
+#forgeView .art-media.art-placeholder {
+  background:
+    radial-gradient(circle at 50% 44%,rgba(219,181,85,.13),transparent 30%),
+    linear-gradient(160deg,rgba(9,24,38,.96),rgba(15,35,46,.94));
+}
+#forgeView .art-media.art-placeholder .art-fallback {
+  display:grid;
+  gap:9px;
+  color:#d8bd73;
+}
+#forgeView .forge-art-placeholder-sigil {
+  display:grid;
+  place-items:center;
+}
+#forgeView .forge-art-placeholder-sigil .art-fallback-school-icon {
+  width:58px;
+  height:58px;
+  opacity:.72;
+  filter:drop-shadow(0 0 12px rgba(216,184,104,.22));
+}
+#forgeView .art-media.art-placeholder .art-fallback small {
+  color:#b99b63;
+  font:.62rem/1 Georgia,"Times New Roman",serif;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+@media (min-width:821px) {
+  .forge-sigil-modeler {
+    flex:0 0 auto;
+    min-height:285px;
+    max-height:min(465px,58vh);
+    padding:14px;
+    overflow:auto;
+  }
+  .forge-sigil-browser {
+    max-height:min(850px,calc(100vh - 150px));
+  }
+  .forge-catalog-section {
+    min-height:210px;
+  }
+}
+
+@media (min-width:1181px) {
+  .forge-workspace {
+    grid-template-columns:minmax(270px,315px) minmax(390px,455px) minmax(450px,1fr);
+  }
+}
+
+@media (max-width:720px) {
+  .forge-math-head { grid-template-columns:1fr 1fr; }
+  .forge-math-target { grid-column:1 / -1; }
+  .forge-budget-thresholds { grid-template-columns:1fr; }
+}
