@@ -40,7 +40,16 @@
     erosion: "Erosione",
     tribute: "Tributo",
     protection: "Protezione",
-    "arcane-amplification": "Amplificazione Arcana"
+    "arcane-amplification": "Amplificazione Arcana",
+    "combat-fury": "Furia di Combattimento",
+    "total-assault": "Assalto Totale",
+    "arcane-attack": "Attacco Arcano",
+    absorption: "Assorbimento",
+    destruction: "Distruzione",
+    annihilation: "Annientamento",
+    rebirth: "Rinascita",
+    "eternal-rebirth": "Rinascita Eterna",
+    domination: "Dominazione"
   });
 
   const SIGIL_DESCRIPTIONS = Object.freeze({
@@ -57,7 +66,16 @@
     erosion: "Erode progressivamente uno o più Poteri.",
     tribute: "Consuma Potere come parte dell'effetto della Formula.",
     protection: "Riduce o attenua il danno subito dal bersaglio protetto.",
-    "arcane-amplification": "Amplifica una componente della Formula secondo le condizioni configurate."
+    "arcane-amplification": "Amplifica una componente della Formula secondo le condizioni configurate.",
+    "combat-fury": "Aumenta la pressione offensiva della creatura secondo le condizioni configurate.",
+    "total-assault": "Concentra la Formula su un assalto totale.",
+    "arcane-attack": "Trasforma il Potere della scuola scelta in pressione offensiva.",
+    absorption: "Converte parte dell'effetto subito in recupero di Vita.",
+    destruction: "Distrugge una creatura avversaria secondo i criteri configurati.",
+    annihilation: "Estende la distruzione a più bersagli secondo l'ambito scelto.",
+    rebirth: "Riporta in gioco la creatura quando si verifica la condizione di rinascita.",
+    "eternal-rebirth": "Rende la rinascita parte permanente dell'identità della Formula.",
+    domination: "Prende il controllo del bersaglio previsto dalla configurazione."
   });
 
   const MODIFIER_NAMES = Object.freeze({
@@ -78,6 +96,67 @@
     "selector-highest-attack": "Attacco più alto"
   });
 
+  const IT_LABELS = Object.freeze({
+    damage: "Danno",
+    healing: "Cura",
+    power: "Potere",
+    combat: "Combattimento",
+    control: "Controllo",
+    scaling: "Intensità",
+    activation: "Attivazione",
+    constraint: "Vincolo",
+    selector: "Selettore",
+    when: "Momento",
+    target: "Bersaglio",
+    scope: "Ambito",
+    reaction: "Reazione",
+    schools: "Scuole",
+    school: "Scuola",
+    side: "Lato",
+    mode: "Modalità",
+    targetScope: "Bersagli",
+    stacking: "Cumulabilità",
+    threshold: "Soglia",
+    numerator: "Numeratore",
+    denominator: "Denominatore",
+    sourceTarget: "Origine",
+    healTarget: "Destinazione cura",
+    destination: "Destinazione",
+    min: "Minimo",
+    onDeploy: "All'evocazione",
+    onBeforeAttack: "Prima dell'attacco",
+    onSelfDeath: "Alla propria morte",
+    whileAlive: "Finché è in campo",
+    "enemy-hero": "Incantatore avversario",
+    "enemy-creature": "Creatura avversaria",
+    "self-hero": "Il tuo Incantatore",
+    "allied-creature": "Creatura alleata",
+    source: "Fonte",
+    "event-source": "Fonte dell'evento",
+    field: "Campo",
+    front: "Prima linea",
+    "all-powers": "Tutti i Poteri",
+    self: "Proprio",
+    enemy: "Avversario",
+    halve: "Dimezza",
+    subtract: "Sottrai",
+    hero: "Incantatore",
+    "hero-and-creatures": "Incantatore e creature",
+    "per-copy": "Per copia",
+    presence: "Presenza",
+    multiplier: "Moltiplicatore",
+    flat: "Valore fisso",
+    creature: "Creatura",
+    any: "Qualsiasi",
+    damaged: "Quando subisce danno",
+    attacked: "Quando viene attaccata",
+    "strongest-health": "Vita più alta",
+    "strongest-attack": "Attacco più alto",
+    "enemy-field": "Campo avversario",
+    "all-field": "Tutto il campo",
+    "own-hero": "Il tuo Incantatore"
+  });
+
   const FULL_IMPRINT_MS = 1450;
   const QUICK_IMPRINT_MS = 780;
 
@@ -88,8 +167,8 @@
     modal: null,
     imprintSlotId: null,
     breakSlotId: null,
-    tiltX: 12,
-    tiltY: -9,
+    tiltX: 18,
+    tiltY: -6,
     tiltZ: -2,
     depth: 42,
     atmosphere: true
@@ -106,6 +185,7 @@
   function labelId(value) {
     const id = String(value || "");
     if (MODIFIER_NAMES[id]) return MODIFIER_NAMES[id];
+    if (IT_LABELS[id]) return IT_LABELS[id];
     return id
       .replace(/^activation-/, "")
       .replace(/^constraint-/, "")
@@ -115,13 +195,35 @@
       .replace(/\b\w/g, match => match.toUpperCase());
   }
 
+  function italianText(key, fallback) {
+    const translated = A.i18n?.t?.(key, {}, "it");
+    return translated && translated !== key ? translated : fallback;
+  }
+
   function schoolLabel(id) {
-    const school = A.getSigianSchool?.(id);
-    return school?.name || String(id || "");
+    return italianText("schools." + id, {
+      fire: "Fuoco",
+      water: "Acqua",
+      air: "Aria",
+      earth: "Terra",
+      death: "Morte"
+    }[id] || String(id || ""));
   }
 
   function schoolGlyph(id) {
     return A.getSigianSchool?.(id)?.icon || SCHOOL_GLYPHS[id] || "✦";
+  }
+
+  function schoolIconMarkup(id, className = "forge-lab-school-icon") {
+    if (typeof A.schoolIconMarkup === "function") return A.schoolIconMarkup(id, className);
+    return '<span class="' + escapeHtml(className) + ' school-icon-fallback" aria-hidden="true">' + escapeHtml(schoolGlyph(id)) + '</span>';
+  }
+
+  function cardDisplayName(card) {
+    if (!card) return "";
+    const key = "cards." + card.id + ".name";
+    const translated = A.i18n?.t?.(key, {}, "it");
+    return translated && translated !== key ? translated : (card.name || card.id);
   }
 
   function sigilName(id) {
@@ -179,16 +281,17 @@
   }
 
   function geometryStyle() {
-    const depth = Math.max(0, Math.min(50, Number(state.depth || 0)));
+    const depth = Math.max(0, Math.min(60, Number(state.depth || 0)));
     const px = multiplier => Math.round(depth * multiplier);
     return [
+      "--lab-depth:" + depth + "px",
       "--lab-tilt-x:" + Number(state.tiltX || 0) + "deg",
       "--lab-tilt-y:" + Number(state.tiltY || 0) + "deg",
       "--lab-tilt-z:" + Number(state.tiltZ || 0) + "deg",
-      "--lab-art-z:" + px(.45) + "px",
-      "--lab-ui-z:" + px(.78) + "px",
-      "--lab-name-z:" + px(.98) + "px",
-      "--lab-sigil-z:" + px(1.16) + "px"
+      "--lab-art-z:" + px(1.15) + "px",
+      "--lab-ui-z:" + px(1.7) + "px",
+      "--lab-name-z:" + px(1.35) + "px",
+      "--lab-sigil-z:" + px(.12) + "px"
     ].join(";");
   }
 
@@ -235,7 +338,10 @@
           '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente">‹</button>' +
           '<button type="button" class="forge-lab-sigil-mark" data-lab-sigil="' + escapeHtml(sigil.slotId) + '">' +
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
-            '<span class="forge-lab-sigil-emblem" aria-hidden="true">' + escapeHtml(sigilGlyph(sigil.sigilId)) + '</span>' +
+            '<span class="forge-lab-sigil-emblem" aria-hidden="true">' +
+              '<span class="forge-lab-sigil-runes"><i>ᚨ</i><i>ᚱ</i><i>ᚲ</i><i>ᚾ</i><i>ᛟ</i><i>ᛉ</i></span>' +
+              '<span class="forge-lab-sigil-glyph">' + escapeHtml(sigilGlyph(sigil.sigilId)) + '</span>' +
+            '</span>' +
             '<span class="forge-lab-sigil-copy">' +
               '<strong class="forge-lab-sigil-name">' + sigilNameLettersMarkup(sigilName(sigil.sigilId)) + '</strong>' +
               '<span class="forge-lab-chip-row">' + compactModifierMarkup(sigil) + '</span>' +
@@ -266,9 +372,8 @@
           '<button type="button" class="forge-lab-cost" data-lab-open="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong></button>' +
           '<button type="button" class="forge-lab-type" data-lab-open="type">' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
           '<button type="button" class="forge-lab-school-nav is-prev" data-lab-school-step="-1" aria-label="Scuola precedente">‹</button>' +
-          '<button type="button" class="forge-lab-school" data-lab-school-main data-lab-school-step="1" aria-label="Scuola successiva. Tieni premuto per scegliere">' +
-            '<span class="forge-lab-school-glyph" aria-hidden="true">' + escapeHtml(schoolGlyph(recipe.school)) + '</span>' +
-            '<small>' + escapeHtml(schoolLabel(recipe.school)) + '</small>' +
+          '<button type="button" class="forge-lab-school" data-lab-school-main data-lab-school-step="1" aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per la successiva; tieni premuto per scegliere">' +
+            schoolIconMarkup(recipe.school, "forge-lab-school-icon") +
           '</button>' +
           '<button type="button" class="forge-lab-school-nav is-next" data-lab-school-step="1" aria-label="Scuola successiva">›</button>' +
           '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-open="name"><span>' + escapeHtml(name) + '</span></button>' +
@@ -308,12 +413,12 @@
 
   function artPickerMarkup(recipe) {
     return modalShell(
-      modalHeading("Illustrazione", "Scegli la full art", "La Forgia mantiene l'immagine intera: nessun crop aggressivo.") +
+      modalHeading("Illustrazione", "Scegli l’illustrazione completa", "La Forgia mantiene l’immagine intera e la fonde nella pergamena.") +
       '<div class="forge-lab-art-grid">' +
         cards().map(card =>
           '<button type="button" class="forge-lab-art-choice ' + (card.id === state.artCardId ? "is-selected" : "") + '" data-lab-art-card="' + escapeHtml(card.id) + '">' +
-            '<img src="' + escapeHtml(artUrl(card)) + '" alt="' + escapeHtml(card.name) + '">' +
-            '<small>' + escapeHtml(card.name) + '</small>' +
+            '<img src="' + escapeHtml(artUrl(card)) + '" alt="' + escapeHtml(cardDisplayName(card)) + '">' +
+            '<small>' + escapeHtml(cardDisplayName(card)) + '</small>' +
           '</button>'
         ).join("") +
       '</div>',
@@ -327,7 +432,7 @@
       '<div class="forge-lab-school-picker">' +
         activeSchools().map(school =>
           '<button type="button" class="forge-lab-school-choice school-' + escapeHtml(school.id) + ' ' + (school.id === recipe.school ? "is-selected" : "") + '" data-lab-school="' + escapeHtml(school.id) + '">' +
-            '<span aria-hidden="true">' + escapeHtml(schoolGlyph(school.id)) + '</span><strong>' + escapeHtml(schoolLabel(school.id)) + '</strong>' +
+            '<span aria-hidden="true">' + schoolIconMarkup(school.id, "forge-lab-picker-school-icon") + '</span><strong>' + escapeHtml(schoolLabel(school.id)) + '</strong>' +
           '</button>'
         ).join("") +
       '</div>'
@@ -470,7 +575,7 @@
     if (modal.type === "cost") {
       return modalShell(
         '<form class="forge-lab-simple-editor" data-lab-cost-form>' +
-          modalHeading("Costo", "Costo di anteprima", "Il pricing reale non viene modificato da UI Lab.") +
+          modalHeading("Costo", "Costo di anteprima", "Il costo reale non viene modificato dal laboratorio UI.") +
           '<label>Costo<input name="cost" type="number" min="0" max="30" value="' + escapeHtml(state.cost ?? 0) + '"></label>' +
           '<div class="forge-lab-editor-actions"><button class="classic-stone-button" type="submit">Applica</button><button class="classic-stone-button ghost" type="button" data-lab-clear-cost>Non definito</button></div>' +
         '</form>'
@@ -479,7 +584,7 @@
     if (modal.type === "type") {
       return modalShell(
         '<div class="forge-lab-simple-editor">' +
-          modalHeading("Tipo", "Tipo di Formula", "Il cambio usa la sessione Forge reale.") +
+          modalHeading("Tipo", "Tipo di Formula", "Il cambio usa la sessione reale della Forgia.") +
           '<div class="forge-lab-type-picker"><button type="button" data-lab-type="creature" class="' + (recipe.type === "creature" ? "is-selected" : "") + '">Creatura</button><button type="button" data-lab-type="spell" class="' + (recipe.type === "spell" ? "is-selected" : "") + '">Magia</button></div>' +
         '</div>'
       );
@@ -487,7 +592,7 @@
     if (modal.type === "stats") {
       return modalShell(
         '<form class="forge-lab-simple-editor" data-lab-stats-form>' +
-          modalHeading("Statistiche", "Attacco e Vita", "I valori vengono salvati nel draft Forge.") +
+          modalHeading("Statistiche", "Attacco e Vita", "I valori vengono salvati nella bozza della Forgia.") +
           '<div class="forge-lab-stat-editor"><label>Attacco<input name="attack" type="number" min="0" max="99" value="' + escapeHtml(recipe.stats?.attack ?? 0) + '"></label><label>Vita<input name="health" type="number" min="1" max="99" value="' + escapeHtml(recipe.stats?.health ?? 1) + '"></label></div>' +
           '<button class="classic-stone-button" type="submit">Applica</button>' +
         '</form>'
@@ -500,17 +605,17 @@
     const expanded = window.matchMedia?.("(min-width: 981px)")?.matches ? " open" : "";
     return (
       '<details class="forge-lab-tuning"' + expanded + '>' +
-        '<summary class="forge-lab-tuning-summary"><span><small>UI LAB</small><strong>Calibrazione 2.5D</strong></span><span class="forge-lab-tech-badge">CSS 3D · DOM</span></summary>' +
+        '<summary class="forge-lab-tuning-summary"><span><small>LABORATORIO UI</small><strong>Calibrazione 2.5D</strong></span><span class="forge-lab-tech-badge">CSS 3D · DOM</span></summary>' +
         '<div class="forge-lab-tuning-body">' +
           '<div class="forge-lab-tuning-heading"><div><span class="classic-menu-kicker">Regolazione</span><h3>Profondità e atmosfera</h3></div></div>' +
           '<div class="forge-lab-tuning-grid">' +
-            '<label>Indietro <output data-lab-output="tiltX">' + state.tiltX + '°</output><input type="range" min="-2" max="10" step="1" value="' + state.tiltX + '" data-lab-tuning="tiltX"></label>' +
+            '<label>Prospettiva verticale <output data-lab-output="tiltX">' + state.tiltX + '°</output><input type="range" min="6" max="28" step="1" value="' + state.tiltX + '" data-lab-tuning="tiltX"></label>' +
             '<label>Sinistra / destra <output data-lab-output="tiltY">' + state.tiltY + '°</output><input type="range" min="-14" max="6" step="1" value="' + state.tiltY + '" data-lab-tuning="tiltY"></label>' +
             '<label>Rotazione <output data-lab-output="tiltZ">' + state.tiltZ + '°</output><input type="range" min="-5" max="4" step="1" value="' + state.tiltZ + '" data-lab-tuning="tiltZ"></label>' +
-            '<label>Distacco layer <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="50" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
+            '<label>Separazione elementi <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="60" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
           '</div>' +
           '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Nubi, brace e aura rituale</label>' +
-          "<p>Desktop: il puntatore aggiunge un parallax lieve. Touch: l'inclinazione resta stabile per non interferire con lo scroll.</p>" +
+          "<p>Su computer il puntatore aggiunge una lieve profondità. Su schermo tattile la carta resta stabile finché non la afferri.</p>" +
         '</div>' +
       '</details>'
     );
@@ -519,14 +624,15 @@
   function applyGeometry(root) {
     const card = root.querySelector(".forge-lab-card");
     if (!card) return;
-    const depth = Math.max(0, Math.min(50, Number(state.depth || 0)));
+    const depth = Math.max(0, Math.min(60, Number(state.depth || 0)));
+    card.style.setProperty("--lab-depth", depth + "px");
     card.style.setProperty("--lab-tilt-x", Number(state.tiltX || 0) + "deg");
     card.style.setProperty("--lab-tilt-y", Number(state.tiltY || 0) + "deg");
     card.style.setProperty("--lab-tilt-z", Number(state.tiltZ || 0) + "deg");
-    card.style.setProperty("--lab-art-z", Math.round(depth * .45) + "px");
-    card.style.setProperty("--lab-ui-z", Math.round(depth * .78) + "px");
-    card.style.setProperty("--lab-name-z", Math.round(depth * .98) + "px");
-    card.style.setProperty("--lab-sigil-z", Math.round(depth * 1.16) + "px");
+    card.style.setProperty("--lab-art-z", Math.round(depth * 1.15) + "px");
+    card.style.setProperty("--lab-ui-z", Math.round(depth * 1.7) + "px");
+    card.style.setProperty("--lab-name-z", Math.round(depth * 1.35) + "px");
+    card.style.setProperty("--lab-sigil-z", Math.round(depth * .12) + "px");
   }
 
   function cycleArt(recipe, delta) {
@@ -616,8 +722,10 @@
       if (active) {
         active = false;
         card.classList.remove("is-grabbed");
-        card.style.setProperty("--lab-drag-x", "0px");
-        card.style.setProperty("--lab-drag-y", "0px");
+        card.classList.add("is-returning");
+        card.style.setProperty("--lab-grab-x", "0deg");
+        card.style.setProperty("--lab-grab-y", "0deg");
+        window.setTimeout(() => card.classList.remove("is-returning"), 420);
       }
       pointerId = null;
     };
@@ -630,17 +738,20 @@
       pointerId = event.pointerId;
       timer = window.setTimeout(() => {
         active = true;
+        card.classList.remove("is-returning");
         card.classList.add("is-grabbed");
         try { card.setPointerCapture(pointerId); } catch {}
-      }, 180);
+      }, 150);
     });
 
     card.addEventListener("pointermove", event => {
       if (!active || event.pointerId !== pointerId) return;
-      const dx = Math.max(-18, Math.min(18, event.clientX - startX));
-      const dy = Math.max(-14, Math.min(14, event.clientY - startY));
-      card.style.setProperty("--lab-drag-x", dx.toFixed(1) + "px");
-      card.style.setProperty("--lab-drag-y", dy.toFixed(1) + "px");
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      const rotateY = Math.max(-10, Math.min(10, dx / 7));
+      const rotateX = Math.max(-6, Math.min(6, -dy / 9));
+      card.style.setProperty("--lab-grab-x", rotateX.toFixed(2) + "deg");
+      card.style.setProperty("--lab-grab-y", rotateY.toFixed(2) + "deg");
       event.preventDefault();
     });
 
@@ -861,12 +972,12 @@
     const stage = root.querySelector(".forge-lab-card-stage");
     const card = root.querySelector(".forge-lab-card");
     stage?.addEventListener("pointermove", event => {
-      if (!card || event.pointerType === "touch") return;
+      if (!card || event.pointerType === "touch" || card.classList.contains("is-grabbed")) return;
       const rect = stage.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - .5) * 2;
       const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - .5) * 2;
-      card.style.setProperty("--lab-pointer-x", (-y * 1.4).toFixed(2) + "deg");
-      card.style.setProperty("--lab-pointer-y", (x * 2.1).toFixed(2) + "deg");
+      card.style.setProperty("--lab-pointer-x", (-y * .7).toFixed(2) + "deg");
+      card.style.setProperty("--lab-pointer-y", (x * 1.05).toFixed(2) + "deg");
     });
     stage?.addEventListener("pointerleave", () => {
       card?.style.setProperty("--lab-pointer-x", "0deg");
@@ -894,7 +1005,7 @@
           '<div class="forge-lab-wisps" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-stage">' + cardMarkup(recipe) + '</div>' +
-          '<p class="forge-lab-gesture-hint">Tocca per modificare · tieni premuta una zona libera per muovere la Formula · pressione lunga sul Sigillo per i dettagli</p>' +
+          '<p class="forge-lab-gesture-hint">Tocca per modificare · tieni premuta una zona libera e inclina la Formula · al rilascio torna in posa · pressione lunga sul Sigillo per i dettagli</p>' +
         '</section>' +
         tuningMarkup() +
       '</div>' +
