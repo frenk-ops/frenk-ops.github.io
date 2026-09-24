@@ -88,7 +88,7 @@
     modal: null,
     imprintSlotId: null,
     breakSlotId: null,
-    tiltX: 6,
+    tiltX: 12,
     tiltY: -9,
     tiltZ: -2,
     depth: 42,
@@ -205,6 +205,14 @@
     return chips.join("");
   }
 
+  function sigilNameLettersMarkup(name) {
+    return [...String(name || "")].map((char, index) =>
+      '<span class="forge-lab-sigil-letter" style="--lab-letter:' + index + '">' +
+        (char === " " ? "&nbsp;" : escapeHtml(char)) +
+      '</span>'
+    ).join("");
+  }
+
   function sigilRowsMarkup(recipe) {
     const max = A.SIGIAN_MAX_PRIMARY_SIGILS || 3;
     const rows = [];
@@ -229,7 +237,7 @@
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
             '<span class="forge-lab-sigil-emblem" aria-hidden="true">' + escapeHtml(sigilGlyph(sigil.sigilId)) + '</span>' +
             '<span class="forge-lab-sigil-copy">' +
-              '<strong>' + escapeHtml(sigilName(sigil.sigilId)) + '</strong>' +
+              '<strong class="forge-lab-sigil-name">' + sigilNameLettersMarkup(sigilName(sigil.sigilId)) + '</strong>' +
               '<span class="forge-lab-chip-row">' + compactModifierMarkup(sigil) + '</span>' +
             '</span>' +
           '</button>' +
@@ -250,17 +258,19 @@
       '<div class="forge-lab-card-shell">' +
         '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
         '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" style="' + geometryStyle() + '">' +
-          '<div class="forge-lab-card-frame" aria-hidden="true"><span></span></div>' +
+          '<div class="forge-lab-card-frame" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<button type="button" class="forge-lab-art-layer" data-lab-open="art" aria-label="Scegli illustrazione">' +
             (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(art.name) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
           '</button>' +
           '<button type="button" class="forge-lab-cost" data-lab-open="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong></button>' +
           '<button type="button" class="forge-lab-type" data-lab-open="type">' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
-          '<button type="button" class="forge-lab-school" data-lab-open="school" aria-label="Modifica scuola">' +
+          '<button type="button" class="forge-lab-school-nav is-prev" data-lab-school-step="-1" aria-label="Scuola precedente">‹</button>' +
+          '<button type="button" class="forge-lab-school" data-lab-school-main data-lab-school-step="1" aria-label="Scuola successiva. Tieni premuto per scegliere">' +
             '<span class="forge-lab-school-glyph" aria-hidden="true">' + escapeHtml(schoolGlyph(recipe.school)) + '</span>' +
             '<small>' + escapeHtml(schoolLabel(recipe.school)) + '</small>' +
           '</button>' +
+          '<button type="button" class="forge-lab-school-nav is-next" data-lab-school-step="1" aria-label="Scuola successiva">›</button>' +
           '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-open="name"><span>' + escapeHtml(name) + '</span></button>' +
           (recipe.type === "creature"
             ? '<div class="forge-lab-stats">' +
@@ -528,6 +538,16 @@
     render();
   }
 
+  function cycleSchool(recipe, delta) {
+    const session = ensureSession();
+    const schools = activeSchools();
+    if (!session || !schools.length) return;
+    const index = Math.max(0, schools.findIndex(item => item.id === recipe.school));
+    const next = schools[(index + Number(delta) + schools.length) % schools.length];
+    mutate(() => session.setSchool(next.id));
+    render();
+  }
+
   function playImprint(slotId, options = {}) {
     const duration = options.quick ? QUICK_IMPRINT_MS : FULL_IMPRINT_MS;
     const reopenEditor = Boolean(options.reopenEditor);
@@ -551,6 +571,80 @@
     const next = list[(index + Number(delta) + list.length) % list.length];
     mutate(() => session.replaceSigil(slotId, next.id));
     playImprint(slotId, { quick: true });
+  }
+
+  function bindSchoolControl(root) {
+    const button = root.querySelector("[data-lab-school-main]");
+    if (!button) return;
+    let timer = 0;
+    let longPress = false;
+    const cancel = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = 0;
+    };
+    button.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      longPress = false;
+      cancel();
+      timer = window.setTimeout(() => {
+        longPress = true;
+        state.modal = { type: "school" };
+        render();
+      }, 520);
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(type => button.addEventListener(type, cancel));
+    button.addEventListener("click", event => {
+      if (!longPress) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      longPress = false;
+    }, true);
+  }
+
+  function bindCardGrab(root) {
+    const card = root.querySelector(".forge-lab-card");
+    if (!card) return;
+    let timer = 0;
+    let active = false;
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+
+    const reset = () => {
+      if (timer) window.clearTimeout(timer);
+      timer = 0;
+      if (active) {
+        active = false;
+        card.classList.remove("is-grabbed");
+        card.style.setProperty("--lab-drag-x", "0px");
+        card.style.setProperty("--lab-drag-y", "0px");
+      }
+      pointerId = null;
+    };
+
+    card.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (event.target.closest("button, input, select, textarea, label, a")) return;
+      startX = event.clientX;
+      startY = event.clientY;
+      pointerId = event.pointerId;
+      timer = window.setTimeout(() => {
+        active = true;
+        card.classList.add("is-grabbed");
+        try { card.setPointerCapture(pointerId); } catch {}
+      }, 180);
+    });
+
+    card.addEventListener("pointermove", event => {
+      if (!active || event.pointerId !== pointerId) return;
+      const dx = Math.max(-18, Math.min(18, event.clientX - startX));
+      const dy = Math.max(-14, Math.min(14, event.clientY - startY));
+      card.style.setProperty("--lab-drag-x", dx.toFixed(1) + "px");
+      card.style.setProperty("--lab-drag-y", dy.toFixed(1) + "px");
+      event.preventDefault();
+    });
+
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(type => card.addEventListener(type, reset));
   }
 
   function bindLongPress(root) {
@@ -594,6 +688,10 @@
     }));
 
     root.querySelectorAll("[data-lab-art-step]").forEach(button => button.addEventListener("click", () => cycleArt(recipe, button.dataset.labArtStep)));
+    root.querySelectorAll("[data-lab-school-step]").forEach(button => button.addEventListener("click", event => {
+      if (event.defaultPrevented) return;
+      cycleSchool(recipe, button.dataset.labSchoolStep);
+    }));
     root.querySelectorAll("[data-lab-sigil-step]").forEach(button => button.addEventListener("click", () => cycleSigil(recipe, button.dataset.labSlot, button.dataset.labSigilStep)));
 
     root.querySelectorAll("[data-lab-add-empty]").forEach(button => button.addEventListener("click", () => {
@@ -775,6 +873,8 @@
       card?.style.setProperty("--lab-pointer-y", "0deg");
     });
 
+    bindSchoolControl(root);
+    bindCardGrab(root);
     bindLongPress(root);
   }
 
@@ -791,9 +891,10 @@
           '<div class="forge-lab-forge-core" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-cloud cloud-one" aria-hidden="true"></div>' +
           '<div class="forge-lab-cloud cloud-two" aria-hidden="true"></div>' +
+          '<div class="forge-lab-wisps" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-stage">' + cardMarkup(recipe) + '</div>' +
-          '<p class="forge-lab-gesture-hint">Tocca gli elementi della carta · tieni premuto un Sigillo per il dettaglio</p>' +
+          '<p class="forge-lab-gesture-hint">Tocca per modificare · tieni premuta una zona libera per muovere la Formula · pressione lunga sul Sigillo per i dettagli</p>' +
         '</section>' +
         tuningMarkup() +
       '</div>' +
