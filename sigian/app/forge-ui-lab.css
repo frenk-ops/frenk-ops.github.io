@@ -5782,3 +5782,413 @@
   .forge-lab-school-radial button:nth-child(4) { left: 100px; top: 25px; }
   .forge-lab-school-radial button:nth-child(5) { left: 127px; top: 52px; }
 }
+
+
+/* ===== Sigian 0.48 — mobile parchment restore and iconic combat stats ===== */
+
+/* Restore the Formula as one irregular parchment object.
+   Interactive artifacts stay outside because only the paper/frame itself is clipped. */
+.forge-lab-card-frame {
+  border-radius: 0;
+  clip-path: polygon(
+    3.5% .8%, 15% 1.6%, 28% .5%, 43% 1.4%, 58% .4%, 73% 1.5%, 87% .7%, 96.5% 1.3%,
+    99.4% 4.8%, 98.8% 16%, 99.6% 29%, 99% 43%, 99.7% 58%, 98.9% 72%, 99.5% 86%, 98.2% 95%,
+    94.5% 98.2%, 84% 97.1%, 73% 99.1%, 61% 97.7%, 49% 99.4%, 36% 97.9%, 24% 99.2%, 13% 97.1%, 4.5% 98.3%,
+    1.3% 95%, .5% 84%, 1.1% 70%, .4% 56%, 1% 42%, .3% 28%, 1.1% 14%, .6% 5%
+  );
+  box-shadow:
+    inset 0 0 0 2px rgba(47, 26, 15, .55),
+    inset 0 0 0 5px color-mix(in srgb, var(--lab-school) 44%, #72533a),
+    inset 0 0 25px 8px rgba(46, 24, 12, .26),
+    inset 0 0 60px rgba(42, 21, 11, .37),
+    0 0 34px var(--lab-school-soft);
+}
+
+.forge-lab-card-frame::before {
+  inset: 9px 10px 11px;
+  border-radius: 24px 19px 27px 21px / 19px 25px 21px 27px;
+  opacity: .76;
+  background:
+    linear-gradient(90deg, rgba(79,44,21,.18), transparent 4%, transparent 96%, rgba(79,44,21,.16)),
+    linear-gradient(180deg, rgba(255,239,197,.08), transparent 14%, transparent 84%, rgba(75,38,17,.17));
+}
+
+.forge-lab-card-frame::after {
+  inset: 14px 13px 16px;
+  border-radius: 20px 24px 18px 25px / 24px 18px 26px 20px;
+  opacity: .46;
+}
+
+/* The art follows the parchment sides instead of drawing a rectangular sheet over them. */
+.forge-lab-art-layer {
+  left: .35%;
+  right: .35%;
+  top: .25%;
+  border-radius: 0;
+  clip-path: polygon(
+    3.4% .4%, 15% 1.2%, 28% .3%, 43% 1%, 58% .3%, 73% 1.1%, 87% .4%, 96.5% 1%,
+    99.5% 4.5%, 98.8% 20%, 99.6% 39%, 99% 58%, 99.6% 77%, 98.5% 94%,
+    96% 100%, 4% 100%, 1.4% 94%, .6% 77%, 1.1% 58%, .4% 39%, 1.1% 20%, .5% 4.5%
+  );
+}
+
+/* The free Sigil slot must belong to the same engraving language as populated rows. */
+.forge-lab-sigil-row.is-empty {
+  grid-template-columns: 1fr;
+  padding: 1px 36px;
+}
+
+.forge-lab-sigil-row.is-empty::before {
+  left: 38px;
+  right: 38px;
+  top: 5px;
+  bottom: 5px;
+  opacity: .22;
+}
+
+.forge-lab-empty-sigil {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 48px minmax(0,1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 5px 8px 5px 4px;
+  border: 0;
+  border-radius: 0;
+  color: #64321c;
+  text-align: left;
+  background:
+    radial-gradient(ellipse at 19% 50%, rgba(103,56,25,.11), transparent 33%),
+    linear-gradient(90deg, rgba(113,67,33,.045), rgba(75,42,20,.018), rgba(113,67,33,.045));
+  box-shadow:
+    inset 0 0 8px rgba(75,38,17,.09),
+    inset 0 -1px rgba(85,43,19,.13);
+  clip-path: polygon(1% 12%, 8% 4%, 92% 5%, 99% 14%, 98% 84%, 91% 96%, 8% 95%, 2% 84%);
+}
+
+.forge-lab-empty-emblem {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--lab-school) 42%, rgba(92,55,25,.45));
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--lab-school) 58%, #7f4928);
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--lab-school-soft) 42%, transparent), transparent 68%);
+  box-shadow:
+    inset 0 0 8px rgba(81,42,19,.09),
+    0 0 8px color-mix(in srgb, var(--lab-school-soft) 35%, transparent);
+  font: 700 1.05rem/1 Georgia, serif;
+}
+
+.forge-lab-empty-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.forge-lab-empty-copy strong {
+  color: #66331c;
+  font: 800 .8rem/1 Georgia, serif;
+  letter-spacing: .015em;
+}
+
+.forge-lab-empty-copy small {
+  color: rgba(92,51,27,.58);
+  font: 600 .53rem/1 Georgia, serif;
+  letter-spacing: .035em;
+}
+
+/* Name: replace the dark UI-like slab with a worn parchment scroll. */
+.forge-lab-nameplate {
+  top: 46.8%;
+  left: -6.6%;
+  right: -6.6%;
+  min-height: 45px;
+  padding: 7px 58px 8px;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(
+    2% 24%, 7% 8%, 16% 13%, 25% 5%, 39% 9%, 50% 3%,
+    61% 9%, 75% 5%, 84% 13%, 93% 8%, 98% 24%,
+    100% 50%, 97% 76%, 92% 92%, 82% 87%, 72% 96%, 58% 91%,
+    50% 97%, 42% 91%, 28% 96%, 18% 87%, 8% 92%, 3% 76%, 0 50%
+  );
+  color: #442a19;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255,247,218,.56), transparent 44%),
+    repeating-linear-gradient(8deg, transparent 0 9px, rgba(98,57,30,.035) 9px 10px),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--lab-paper-1) 88%, #ead6a3) 0%,
+      color-mix(in srgb, var(--lab-paper-2) 84%, #d8b879) 48%,
+      color-mix(in srgb, var(--lab-paper-3) 76%, #b7874e) 100%);
+  box-shadow:
+    0 11px 13px rgba(22,11,6,.24),
+    inset 0 1px rgba(255,247,218,.58),
+    inset 0 -2px rgba(76,39,18,.24),
+    inset 0 0 0 1px color-mix(in srgb, var(--lab-school) 20%, rgba(88,49,25,.32)),
+    0 0 11px color-mix(in srgb, var(--lab-school-soft) 24%, transparent);
+}
+
+.forge-lab-nameplate::before,
+.forge-lab-nameplate::after {
+  top: 9px;
+  width: 11%;
+  height: calc(100% - 14px);
+  opacity: .94;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--lab-paper-2) 78%, #bc8a52),
+      color-mix(in srgb, var(--lab-paper-3) 75%, #76502e));
+  box-shadow:
+    0 5px 8px rgba(20,10,5,.25),
+    inset 0 1px rgba(255,236,187,.2);
+}
+
+.forge-lab-nameplate::before {
+  left: 1.3%;
+  transform: translateX(-72%) translateZ(-34px) rotateY(66deg) skewY(-4deg);
+  clip-path: polygon(28% 0,100% 9%,100% 91%,0 100%,19% 55%);
+}
+
+.forge-lab-nameplate::after {
+  right: 1.3%;
+  transform: translateX(72%) translateZ(-34px) rotateY(-66deg) skewY(4deg);
+  clip-path: polygon(0 9%,72% 0,81% 55%,100% 100%,0 91%);
+}
+
+.forge-lab-nameplate span {
+  color: #432817;
+  font-weight: 800;
+  text-shadow:
+    0 1px rgba(255,245,211,.72),
+    0 -1px rgba(78,39,17,.14);
+}
+
+.forge-lab-nameplate span::before,
+.forge-lab-nameplate span::after {
+  content: "•";
+  margin: 0 11px;
+  color: color-mix(in srgb, var(--lab-school) 62%, #7d5533);
+  font-size: .58em;
+  vertical-align: .18em;
+  opacity: .58;
+  text-shadow: none;
+}
+
+/* ATT/VITA: the symbol is the identity. No bulky circular container. */
+.forge-lab-stats {
+  left: -7.7%;
+  right: -7.7%;
+  bottom: -4.1%;
+}
+
+.forge-lab-stat-anchor {
+  width: 72px;
+  height: 78px;
+}
+
+.forge-lab-stat {
+  width: 68px;
+  height: 76px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 42px 28px;
+  place-items: center;
+  gap: 0;
+  padding: 2px 5px 4px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  clip-path: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+  color: #f6e1ad;
+  filter: drop-shadow(0 8px 7px rgba(15,8,5,.34));
+}
+
+.forge-lab-stat::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 3px;
+  height: 30px;
+  z-index: -1;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse,
+      rgba(25,16,11,.74) 0%,
+      rgba(25,16,11,.45) 52%,
+      transparent 75%);
+  filter: blur(.5px);
+  opacity: .86;
+}
+
+.forge-lab-stat.attack::after,
+.forge-lab-stat.health::after {
+  display: none;
+}
+
+.forge-lab-stat-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  transform-origin: center;
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.forge-lab-stat-icon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.forge-lab-stat-icon.attack-icon svg {
+  fill: #e6a055;
+  filter:
+    drop-shadow(0 1px 0 rgba(255,224,165,.35))
+    drop-shadow(0 0 7px rgba(220,104,39,.38))
+    drop-shadow(0 3px 3px rgba(35,16,7,.52));
+}
+
+.forge-lab-stat-icon.health-icon svg {
+  fill: #d66b66;
+  filter:
+    drop-shadow(0 1px 0 rgba(255,226,197,.28))
+    drop-shadow(0 0 7px rgba(210,74,68,.34))
+    drop-shadow(0 3px 3px rgba(35,16,7,.5));
+}
+
+.forge-lab-stat > strong {
+  position: relative;
+  z-index: 2;
+  min-width: 30px;
+  padding: 1px 7px 3px;
+  justify-self: center;
+  color: #fff0be;
+  font: 800 1.48rem/1 Georgia, serif;
+  text-align: center;
+  text-shadow:
+    0 2px 2px rgba(20,9,4,.88),
+    0 0 7px rgba(229,178,88,.22);
+  background:
+    radial-gradient(ellipse, rgba(42,24,14,.78), rgba(26,15,10,.36) 62%, transparent 75%);
+  border-radius: 50%;
+}
+
+.forge-lab-stat.is-scrubbing {
+  filter:
+    brightness(1.15)
+    drop-shadow(0 10px 9px rgba(15,8,5,.38));
+  transform:
+    translateZ(calc(var(--lab-ui-z) + 34px))
+    rotateZ(var(--lab-control-lean))
+    scale(1.08);
+}
+
+.forge-lab-stat.is-scrubbing .forge-lab-stat-icon {
+  transform: scale(1.1);
+}
+
+.forge-lab-stat-anchor .forge-lab-inline-wheel {
+  width: 112px;
+  height: 112px;
+}
+
+/* Mobile-specific compactness: keep the parchment identity visible around the art. */
+@media (max-width: 640px) {
+  .forge-lab-card-frame {
+    clip-path: polygon(
+      4% 1%, 18% 1.7%, 32% .5%, 49% 1.4%, 65% .5%, 82% 1.6%, 96% .7%,
+      99.2% 4.5%, 98.6% 21%, 99.4% 40%, 98.8% 59%, 99.5% 78%, 98% 95%,
+      94% 98.4%, 80% 97.1%, 65% 99%, 49% 97.8%, 33% 99.2%, 18% 97%, 5% 98.2%,
+      1.4% 95%, .5% 78%, 1.1% 59%, .4% 40%, 1% 21%, .7% 4.5%
+    );
+  }
+
+  .forge-lab-art-layer {
+    left: .55%;
+    right: .55%;
+    clip-path: polygon(
+      4% .5%, 18% 1.3%, 32% .3%, 49% 1%, 65% .3%, 82% 1.2%, 96% .5%,
+      99.2% 4.4%, 98.7% 24%, 99.4% 48%, 98.8% 72%, 98% 95%,
+      96% 100%, 4% 100%, 1.7% 95%, .6% 72%, 1.1% 48%, .5% 24%, .8% 4.4%
+    );
+  }
+
+  .forge-lab-nameplate {
+    left: -5.2%;
+    right: -5.2%;
+    min-height: 41px;
+    padding: 6px 43px 7px;
+  }
+
+  .forge-lab-nameplate span {
+    font-size: .93rem;
+  }
+
+  .forge-lab-nameplate span::before,
+  .forge-lab-nameplate span::after {
+    margin: 0 6px;
+  }
+
+  .forge-lab-sigil-row.is-empty {
+    padding-left: 31px;
+    padding-right: 31px;
+  }
+
+  .forge-lab-empty-sigil {
+    grid-template-columns: 39px minmax(0,1fr);
+    gap: 6px;
+    padding: 4px 6px 4px 3px;
+  }
+
+  .forge-lab-empty-emblem {
+    width: 36px;
+    height: 36px;
+    font-size: .9rem;
+  }
+
+  .forge-lab-empty-copy strong {
+    font-size: .72rem;
+  }
+
+  .forge-lab-empty-copy small {
+    font-size: .48rem;
+  }
+
+  .forge-lab-stats {
+    left: -6.8%;
+    right: -6.8%;
+    bottom: -3.5%;
+  }
+
+  .forge-lab-stat-anchor {
+    width: 62px;
+    height: 70px;
+  }
+
+  .forge-lab-stat {
+    width: 60px;
+    height: 68px;
+    grid-template-rows: 37px 27px;
+  }
+
+  .forge-lab-stat-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .forge-lab-stat > strong {
+    font-size: 1.32rem;
+  }
+
+  .forge-lab-stat-anchor .forge-lab-inline-wheel {
+    width: 100px;
+    height: 100px;
+  }
+}

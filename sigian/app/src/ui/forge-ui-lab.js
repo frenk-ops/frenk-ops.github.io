@@ -358,7 +358,8 @@
         rows.push(
           '<div class="forge-lab-sigil-row is-empty">' +
             '<button type="button" class="forge-lab-empty-sigil" data-lab-add-empty="' + index + '">' +
-              '<span>＋</span><small>Imprimi Sigillo</small>' +
+              '<span class="forge-lab-empty-emblem" aria-hidden="true">◇</span>' +
+              '<span class="forge-lab-empty-copy"><strong>Imprimi Sigillo</strong><small>Slot arcano libero</small></span>' +
             '</button>' +
           '</div>'
         );
@@ -416,6 +417,24 @@
     return "";
   }
 
+  function statIconMarkup(kind) {
+    if (kind === "health") {
+      return (
+        '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+          '<path d="M12 20.3 10.7 19.1C5.6 14.5 2.5 11.7 2.5 8.2 2.5 5.4 4.7 3.2 7.5 3.2c1.6 0 3.1.7 4.1 1.9 1-1.2 2.5-1.9 4.1-1.9 2.8 0 5 2.2 5 5 0 3.5-3.1 6.3-8.2 10.9L12 20.3Z"/>' +
+        '</svg>'
+      );
+    }
+    return (
+      '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+        '<path d="M5.2 3.2 9.9 7.9 8.4 9.4 4 5l-.8.8 4.4 4.4-1.4 1.4L1.5 6.9V2.7h4.2L5.2 3.2Z"/>' +
+        '<path d="m18.8 3.2-4.7 4.7 1.5 1.5L20 5l.8.8-4.4 4.4 1.4 1.4 4.7-4.7V2.7h-4.2l.5.5Z"/>' +
+        '<path d="m9.3 11.5 1.5 1.5-5.7 5.7 1.2 1.2-3.6.9.9-3.6 1.2 1.2 5.7-5.7Z"/>' +
+        '<path d="m14.7 11.5-1.5 1.5 5.7 5.7-1.2 1.2 3.6.9-.9-3.6-1.2 1.2-5.7-5.7Z"/>' +
+      '</svg>'
+    );
+  }
+
   function cardMarkup(recipe) {
     const art = selectedArtCard(recipe);
     const name = recipe.presentation?.name || "Nuova Formula";
@@ -452,13 +471,15 @@
             ? '<div class="forge-lab-stats">' +
                 '<div class="forge-lab-stat-anchor is-attack">' +
                   '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '">' +
-                    '<small>ATT</small><span aria-hidden="true">⚔</span><strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
+                    '<span class="forge-lab-stat-icon attack-icon">' + statIconMarkup("attack") + '</span>' +
+                    '<strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
                   '</button>' +
                   (state.inlineControl === "attack" ? valueWheelMarkup("attack", Number(stats.attack ?? 0), "ATTACCO") : "") +
                 '</div>' +
                 '<div class="forge-lab-stat-anchor is-health">' +
                   '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '">' +
-                    '<small>VITA</small><span aria-hidden="true">♥</span><strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
+                    '<span class="forge-lab-stat-icon health-icon">' + statIconMarkup("health") + '</span>' +
+                    '<strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
                   '</button>' +
                   (state.inlineControl === "health" ? valueWheelMarkup("health", Number(stats.health ?? 1), "VITA") : "") +
                 '</div>' +
