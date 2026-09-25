@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.50.0-5fb6f2e";
+const BUILD_REVISION = "0.51.0-b9023c8";
 const SHELL_CACHE = `sigian-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `sigian-runtime-${BUILD_REVISION}`;
 
@@ -32,6 +32,7 @@ const APP_SHELL = [
   "./src/core/sigian-forge.js",
   "./src/core/sigian-compiler.js",
   "./src/data/sigian-base-recipes.js",
+  "./src/core/sigian-inventory.js",
   "./src/data/astral-ai-card-metadata.js",
   "./src/core/original-rules.js",
   "./src/core/generator.js",
@@ -60,6 +61,7 @@ const APP_SHELL = [
   "./src/ui/pause-menu.js",
   "./src/ui/tournament-view.js",
   "./src/ui/forge-ui-lab.js",
+  "./src/ui/archive-browser.js",
   "./src/ui/app.js"
 ];
 

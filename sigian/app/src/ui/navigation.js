@@ -24,7 +24,8 @@
       developerMode,
       setActive(viewName) {
         tabs.forEach(tab => {
-          const active = tab.dataset.view === viewName;
+          const mobileArchive = viewName === "inventory" && tab.classList.contains("mobile-nav-item") && tab.dataset.view === "cards";
+          const active = tab.dataset.view === viewName || mobileArchive;
           tab.classList.toggle("active", active);
           if (active) tab.setAttribute("aria-current", "page");
           else tab.removeAttribute("aria-current");

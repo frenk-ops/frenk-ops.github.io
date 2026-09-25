@@ -515,12 +515,13 @@
   let pauseMenu = null;
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
   let forgeSession = null;
+  let forgeInventoryPreviewCardId = null;
   let forgeSelectedSigilSlotId = null;
   let forgeTargetCost = "auto";
   let forgeMathMode = "simple";
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
-  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "forge", "uiLab", "profile", "rules", "diagnostics"]);
+  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
 
   function rememberedView() {
     try {
@@ -2342,7 +2343,8 @@
       roomBrowserPoll = null;
     }
     if (name === "tournament") renderTournament();
-    if (name === "cards") renderCollectionPage();
+    if (name === "cards") A.SigianArchiveBrowser?.render?.($("#cardsContent"), "collection");
+    if (name === "inventory") A.SigianArchiveBrowser?.render?.($("#inventoryContent"), "inventory");
     if (name === "forge") renderForgePage();
     if (name === "uiLab") {
       A.ForgeUiLab?.resetSession?.();
@@ -2361,6 +2363,24 @@
   navigation = A.UINavigation?.create({ onViewChange: switchView, onReturnToGame: () => { if (!engine) restartDuel(); } });
   window.addEventListener("sigian:forge-draft-updated", () => {
     forgeSession = null;
+  });
+
+  window.addEventListener("sigian:archive-scope-request", event => {
+    const scope = event.detail?.scope === "inventory" ? "inventory" : "collection";
+    switchView(scope === "inventory" ? "inventory" : "cards");
+  });
+
+  window.addEventListener("sigian:inventory-forge-request", event => {
+    const cardId = String(event.detail?.cardId || "");
+    const formula = A.getSigianInventoryFormula?.(cardId);
+    if (!formula) return;
+    const catalog = A.buildSigianBaseRecipeCatalog?.(allAstralCards());
+    const recipe = catalog?.byId?.[cardId];
+    if (!recipe) return;
+    forgeInventoryPreviewCardId = cardId;
+    forgeSelectedSigilSlotId = null;
+    forgeSession = A.createSigianForgeSession?.({ draft:{ recipe } }) || null;
+    switchView("forge");
   });
 
   function ensureAudio() {
@@ -5263,6 +5283,8 @@
       || A.listCanonicalSigils?.({ status:"active" })
       || [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
+    const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
+    const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;
     const schoolButtons = activeSchools.map(school => `
       <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
         ${schoolIconMarkup(school.id, "school-icon-svg forge-school-icon")}
@@ -5271,7 +5293,8 @@
     `).join("");
 
     root.innerHTML = `
-      <div class="forge-workspace">
+      ${inventoryReadOnly ? `<div class="forge-inventory-readonly-note"><div><strong>Formula caricata dall’Inventario</strong><span>${escapeHtml(inventoryFormula?.name || recipe.presentation?.name || "Formula")} · modifica bloccata finché la conversione canonica non è completata.</span></div><button type="button" class="classic-stone-button ghost" data-forge-exit-inventory-preview>Torna alla Forgia libera</button></div>` : ""}
+      <div class="forge-workspace ${inventoryReadOnly ? "is-readonly" : ""}">
         <aside class="forge-panel forge-structure-panel ornate-subpanel">
           <div class="forge-panel-heading">
             <span class="forge-panel-step">I</span>
@@ -5347,8 +5370,8 @@
     const tryButton = $("#forgeTryBtn");
     const sealButton = $("#forgeSealBtn");
     const labButton = $("#forgeUiLabBtn");
-    if (undoButton) undoButton.disabled = !snapshot.canUndo;
-    if (redoButton) redoButton.disabled = !snapshot.canRedo;
+    if (undoButton) undoButton.disabled = inventoryReadOnly || !snapshot.canUndo;
+    if (redoButton) redoButton.disabled = inventoryReadOnly || !snapshot.canRedo;
     if (tryButton) {
       tryButton.disabled = true;
       tryButton.title = t("forge.math.provisional");
@@ -5357,13 +5380,36 @@
       sealButton.disabled = true;
       sealButton.title = t("forge.math.sealingBlocked");
     }
-    if (labButton) labButton.onclick = () => switchView("uiLab");
+    if (labButton) {
+      labButton.disabled = inventoryReadOnly;
+      labButton.onclick = inventoryReadOnly ? null : () => switchView("uiLab");
+    }
 
-    if (newButton) newButton.onclick = () => {
+    if (newButton) {
+      newButton.disabled = inventoryReadOnly;
+    }
+    if (newButton && !inventoryReadOnly) newButton.onclick = () => {
       forgeSelectedSigilSlotId = null;
       session.reset({ type:"creature", stats:{ attack:1, health:5 }, presentation:{ name:t("forge.newFormula") } });
       renderForgePage();
     };
+    if (inventoryReadOnly) {
+      root.querySelectorAll(".forge-workspace input, .forge-workspace select, .forge-workspace textarea, .forge-workspace button").forEach(control => {
+        control.disabled = true;
+        control.setAttribute("aria-disabled", "true");
+      });
+    }
+    root.querySelector("[data-forge-exit-inventory-preview]")?.addEventListener("click", () => {
+      forgeInventoryPreviewCardId = null;
+      forgeSelectedSigilSlotId = null;
+      forgeSession = A.createSigianForgeSession?.({
+        type:"creature",
+        stats:{ attack:1, health:5 },
+        presentation:{ name:t("forge.newFormula") }
+      }) || null;
+      renderForgePage();
+    });
+
     if (undoButton) undoButton.onclick = () => {
       session.undo();
       const current = session.snapshot().draft.recipe;
@@ -5650,7 +5696,7 @@
       filtered.forEach(card => grid.appendChild(buildCollectionTile(card, false)));
     }
     renderInspectPanel();
-    renderCollectionPage();
+    if (!A.SigianArchiveBrowser) renderCollectionPage();
   }
 
   function buildCollectionHandPreview(card) {
