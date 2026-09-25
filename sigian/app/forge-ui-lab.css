@@ -5286,3 +5286,137 @@
   .forge-lab-sigil-anchor [data-lab-sigil-step="-1"] { left: calc(-9% - 34px); }
   .forge-lab-sigil-anchor [data-lab-sigil-step="1"] { right: calc(-9% - 34px); }
 }
+
+
+/* Canonical v2 catalog status: systems visibility only, independent from card visual milestones. */
+.forge-lab-canon-catalog {
+  margin: 14px 0 18px;
+  padding: 14px;
+  border: 1px solid rgba(174, 142, 82, .34);
+  border-radius: 14px;
+  background: rgba(20, 16, 12, .42);
+}
+
+.forge-lab-canon-heading {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.forge-lab-canon-heading small {
+  letter-spacing: .12em;
+  opacity: .72;
+}
+
+.forge-lab-canon-heading strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.forge-lab-canon-heading p,
+.forge-lab-runtime-catalog > p {
+  margin: 0;
+  opacity: .76;
+  line-height: 1.35;
+}
+
+.forge-lab-canon-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, .85fr);
+  gap: 14px;
+}
+
+.forge-lab-canon-columns h4 {
+  margin: 0 0 8px;
+  font-size: .82rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .82;
+}
+
+.forge-lab-canon-list {
+  display: grid;
+  gap: 7px;
+  max-height: 44vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.forge-lab-canon-item {
+  padding: 9px 10px;
+  border: 1px solid rgba(194, 162, 101, .28);
+  border-radius: 10px;
+  background: rgba(255, 248, 222, .045);
+}
+
+.forge-lab-canon-item.is-review {
+  opacity: .46;
+  filter: saturate(.48);
+  border-style: dashed;
+}
+
+.forge-lab-canon-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.forge-lab-canon-item-head strong {
+  font-size: .9rem;
+}
+
+.forge-lab-canon-status {
+  flex: 0 0 auto;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.forge-lab-canon-item.is-approved .forge-lab-canon-status {
+  opacity: .88;
+}
+
+.forge-lab-canon-grades {
+  display: block;
+  margin-top: 3px;
+  opacity: .7;
+}
+
+.forge-lab-canon-item p {
+  margin: 4px 0 0;
+  font-size: .76rem;
+  line-height: 1.32;
+  opacity: .78;
+}
+
+.forge-lab-runtime-catalog {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(174, 142, 82, .24);
+}
+
+.forge-lab-runtime-catalog > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.forge-lab-runtime-catalog > summary span {
+  font-size: .72rem;
+  opacity: .6;
+}
+
+@media (max-width: 760px) {
+  .forge-lab-canon-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .forge-lab-canon-list {
+    max-height: 38vh;
+  }
+}

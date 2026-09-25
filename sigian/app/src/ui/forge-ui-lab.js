@@ -32,7 +32,7 @@
     backlash: "Contraccolpo",
     retaliation: "Ritorsione",
     heal: "Cura",
-    restoration: "Restaurazione",
+    restoration: "Recupero",
     regeneration: "Rigenerazione",
     infusion: "Infusione",
     subtraction: "Sottrazione",
@@ -49,7 +49,7 @@
     annihilation: "Annientamento",
     rebirth: "Rinascita",
     "eternal-rebirth": "Rinascita Eterna",
-    domination: "Dominazione"
+    domination: "Dominio"
   });
 
   const SIGIL_DESCRIPTIONS = Object.freeze({
@@ -58,7 +58,7 @@
     backlash: "Converte una condizione della Formula in danno rivolto al proprio Incantatore.",
     retaliation: "Reagisce a un attacco o a un danno ricevuto colpendo la fonte dell'evento.",
     heal: "Ripristina Vita al bersaglio configurato quando il Sigillo si attiva.",
-    restoration: "Distribuisce cura su più creature alleate.",
+    restoration: "Distribuisce recupero di Vita su più bersagli alleati.",
     regeneration: "Rigenera la creatura che porta il Sigillo durante il combattimento.",
     infusion: "Aumenta uno o più Poteri della scuola scelta.",
     subtraction: "Riduce uno o più Poteri secondo la configurazione del Sigillo.",
@@ -91,7 +91,7 @@
     "activation-critical-life": "Vita critica",
     "activation-on-any-death": "Alla morte",
     "constraint-friendly-fire": "Fuoco amico",
-    "constraint-friendly-fire-power-threshold": "Fuoco amico con soglia",
+    "constraint-friendly-fire-power-threshold": "Fuoco Amico Limite",
     "selector-highest-life": "Vita più alta",
     "selector-highest-attack": "Attacco più alto"
   });
@@ -255,6 +255,46 @@
 
   function activeSigils() {
     return A.listCanonicalSigils?.({ status: "active" }) || [];
+  }
+
+  function canonicalV2Entries(kind) {
+    return A.listSigianCanonicalV2?.({ kind }) || [];
+  }
+
+  function canonicalV2ItemMarkup(item) {
+    const approved = item.status === "approved";
+    const stateClass = approved ? " is-approved" : " is-review";
+    const stateLabel = approved ? "OK" : "DA RIVEDERE";
+    return (
+      '<article class="forge-lab-canon-item' + stateClass + '" role="listitem" ' +
+        (approved ? '' : 'aria-disabled="true"') + '>' +
+        '<div class="forge-lab-canon-item-head">' +
+          '<strong>' + escapeHtml(item.name) + '</strong>' +
+          '<span class="forge-lab-canon-status">' + stateLabel + '</span>' +
+        '</div>' +
+        '<small class="forge-lab-canon-grades">' + escapeHtml(item.grades || "—") + '</small>' +
+        '<p>' + escapeHtml(item.summary || "") + '</p>' +
+      '</article>'
+    );
+  }
+
+  function canonicalV2CatalogMarkup() {
+    const sigils = canonicalV2Entries("sigil");
+    const constraints = canonicalV2Entries("constraint");
+    const approvedSigils = sigils.filter(item => item.status === "approved").length;
+    const approvedConstraints = constraints.filter(item => item.status === "approved").length;
+    return (
+      '<section class="forge-lab-canon-catalog" aria-label="Catalogo canonico v2">' +
+        '<header class="forge-lab-canon-heading">' +
+          '<div><small>CATALOGO CANONICO V2</small><strong>' + approvedSigils + ' Sigilli OK · ' + approvedConstraints + ' Vincoli OK</strong></div>' +
+          '<p>Le voci “Da rivedere” restano visibili ma disabilitate. Il catalogo canonico è separato dal compiler legacy finché la migrazione runtime non è completata.</p>' +
+        '</header>' +
+        '<div class="forge-lab-canon-columns">' +
+          '<section><h4>Sigilli Arcani</h4><div class="forge-lab-canon-list" role="list">' + sigils.map(canonicalV2ItemMarkup).join("") + '</div></section>' +
+          '<section><h4>Vincoli</h4><div class="forge-lab-canon-list" role="list">' + constraints.map(canonicalV2ItemMarkup).join("") + '</div></section>' +
+        '</div>' +
+      '</section>'
+    );
   }
 
   function ensureSession() {
@@ -527,18 +567,23 @@
     const replace = Boolean(slotId);
     const current = replace ? recipe.sigils.find(item => item.slotId === slotId) : null;
     return modalShell(
-      modalHeading("Sigilli Arcani", replace ? "Sostituisci Sigillo" : "Imprimi un Sigillo", "Scegli il marchio da incidere sulla Formula.") +
-      '<div class="forge-lab-sigil-picker">' +
-        activeSigils().map(definition =>
-          '<button type="button" class="forge-lab-sigil-choice ' + (current?.sigilId === definition.id ? "is-selected" : "") + '" ' +
-            (replace ? 'data-lab-replace-sigil="' : 'data-lab-add-sigil="') + escapeHtml(definition.id) + '"' +
-            (replace ? ' data-lab-slot="' + escapeHtml(slotId) + '"' : "") + '>' +
-            '<span aria-hidden="true">' + escapeHtml(sigilGlyph(definition.id)) + '</span>' +
-            '<strong>' + escapeHtml(sigilName(definition.id)) + '</strong>' +
-            '<small>' + escapeHtml(labelId(definition.family || "arcano")) + '</small>' +
-          '</button>'
-        ).join("") +
-      '</div>',
+      modalHeading("Sigilli Arcani", replace ? "Sostituisci Sigillo" : "Imprimi un Sigillo", "Catalogo canonico v2 e compatibilità runtime corrente.") +
+      canonicalV2CatalogMarkup() +
+      '<details class="forge-lab-runtime-catalog">' +
+        '<summary><strong>Editor runtime legacy</strong><span>compatibilità temporanea</span></summary>' +
+        '<p>Questi controlli restano disponibili per non rompere il compiler delle 65 carte durante la migrazione al catalogo v2.</p>' +
+        '<div class="forge-lab-sigil-picker">' +
+          activeSigils().map(definition =>
+            '<button type="button" class="forge-lab-sigil-choice ' + (current?.sigilId === definition.id ? "is-selected" : "") + '" ' +
+              (replace ? 'data-lab-replace-sigil="' : 'data-lab-add-sigil="') + escapeHtml(definition.id) + '"' +
+              (replace ? ' data-lab-slot="' + escapeHtml(slotId) + '"' : "") + '>' +
+              '<span aria-hidden="true">' + escapeHtml(sigilGlyph(definition.id)) + '</span>' +
+              '<strong>' + escapeHtml(sigilName(definition.id)) + '</strong>' +
+              '<small>' + escapeHtml(labelId(definition.family || "arcano")) + '</small>' +
+            '</button>'
+          ).join("") +
+        '</div>' +
+      '</details>',
       "is-wide"
     );
   }

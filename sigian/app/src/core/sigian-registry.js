@@ -321,9 +321,107 @@
     { id: "selector-highest-attack", family: "selector", status: "active", paramsSchema: {} }
   ].forEach(definition => modifiers.register(definition));
 
+
+  // Canonical v2 design catalog.
+  //
+  // This catalog is deliberately separate from the legacy runtime/compiler
+  // registry above. "approved" means the player-facing structure has been
+  // agreed; it does NOT imply that the compiler/runtime migration is complete.
+  // "review" entries stay visible in the UI Lab but disabled until their
+  // structure is explicitly approved.
+  const canonicalV2 = createRegistry("Catalogo canonico v2");
+
+  const FIXED_BANDS = "I 1–3 · II 4–6 · III 7–10 · IV 11–15 · V 16–20";
+  const POWER_OFFSET_BANDS = "I 0–3 · II 4–6 · III 7–10 · IV 11–15 · V 16–20";
+  const TIGHT_FIVE = "I 1 · II 2 · III 3 · IV 4 · V 5";
+
+  [
+    { id:"v2-damage-hero", kind:"sigil", name:"Danno Incantatore", status:"approved", grades:FIXED_BANDS, summary:"Danno fisso all'Incantatore nemico." },
+    { id:"v2-damage-creature", kind:"sigil", name:"Danno Creatura", status:"approved", grades:FIXED_BANDS, summary:"Danno fisso a una creatura nemica scelta." },
+    { id:"v2-abbattimento", kind:"sigil", name:"Abbattimento", status:"approved", grades:FIXED_BANDS, summary:"Danno alla creatura nemica con più Vita." },
+
+    { id:"v2-damage-power-minor-hero", kind:"sigil", name:"Danno Potere Minore <Scuola> — Incantatore", status:"approved", grades:POWER_OFFSET_BANDS, summary:"floor(P/2) + X all'Incantatore nemico." },
+    { id:"v2-damage-power-hero", kind:"sigil", name:"Danno Potere <Scuola> — Incantatore", status:"approved", grades:POWER_OFFSET_BANDS, summary:"P + X all'Incantatore nemico." },
+    { id:"v2-damage-power-major-hero", kind:"sigil", name:"Danno Potere Maggiore <Scuola> — Incantatore", status:"approved", grades:POWER_OFFSET_BANDS, summary:"2P + X all'Incantatore nemico." },
+
+    { id:"v2-wave", kind:"sigil", name:"Onda", status:"approved", grades:FIXED_BANDS, summary:"Danno fisso a tutte le creature nemiche." },
+    { id:"v2-wave-power-minor", kind:"sigil", name:"Onda Potere Minore <Scuola>", status:"approved", grades:POWER_OFFSET_BANDS, summary:"floor(P/2) + X a tutte le creature nemiche." },
+    { id:"v2-wave-power", kind:"sigil", name:"Onda Potere <Scuola>", status:"approved", grades:POWER_OFFSET_BANDS, summary:"P + X a tutte le creature nemiche." },
+    { id:"v2-wave-power-major", kind:"sigil", name:"Onda Potere Maggiore <Scuola>", status:"approved", grades:POWER_OFFSET_BANDS, summary:"2P + X a tutte le creature nemiche." },
+
+    { id:"v2-tide", kind:"sigil", name:"Marea", status:"approved", grades:FIXED_BANDS, summary:"Onda estesa: danno alle creature nemiche e all'Incantatore nemico.", formerName:"Deflagrazione" },
+    { id:"v2-tide-power-minor", kind:"sigil", name:"Marea Potere Minore <Scuola>", status:"approved", grades:POWER_OFFSET_BANDS, summary:"floor(P/2) + X alle creature nemiche e all'Incantatore nemico." },
+    { id:"v2-tide-power", kind:"sigil", name:"Marea Potere <Scuola>", status:"approved", grades:POWER_OFFSET_BANDS, summary:"P + X alle creature nemiche e all'Incantatore nemico." },
+    { id:"v2-tide-power-major", kind:"sigil", name:"Marea Potere Maggiore <Scuola>", status:"approved", grades:POWER_OFFSET_BANDS, summary:"2P + X alle creature nemiche e all'Incantatore nemico." },
+    { id:"v2-tide-power-reduced", kind:"sigil", name:"Marea Potere Ridotta <Scuola>", status:"approved", grades:"speciale · 1 Grado", summary:"max(0, P − 1) alle creature nemiche e all'Incantatore nemico; Chain Lightning anchor." },
+
+    { id:"v2-heal-hero", kind:"sigil", name:"Cura Incantatore", status:"approved", grades:FIXED_BANDS, summary:"Cura fissa al proprio Incantatore." },
+    { id:"v2-heal-power-minor-hero", kind:"sigil", name:"Cura Potere Minore <Scuola> — Incantatore", status:"approved", grades:POWER_OFFSET_BANDS, summary:"floor(P/2) + X Vita al proprio Incantatore." },
+    { id:"v2-heal-power-hero", kind:"sigil", name:"Cura Potere <Scuola> — Incantatore", status:"approved", grades:POWER_OFFSET_BANDS, summary:"P + X Vita al proprio Incantatore." },
+    { id:"v2-heal-power-major-hero", kind:"sigil", name:"Cura Potere Maggiore <Scuola> — Incantatore", status:"approved", grades:POWER_OFFSET_BANDS, summary:"2P + X Vita al proprio Incantatore." },
+
+    { id:"v2-regeneration", kind:"sigil", name:"Rigenerazione", status:"approved", grades:TIGHT_FIVE, summary:"La creatura cura sé stessa al proprio trigger naturale." },
+    { id:"v2-recurring-heal-hero", kind:"sigil", name:"Cura Ricorrente Incantatore", status:"approved", grades:TIGHT_FIVE, summary:"Cura ricorrente del proprio Incantatore." },
+    { id:"v2-recovery", kind:"sigil", name:"Recupero", status:"approved", grades:FIXED_BANDS, summary:"Cura dello stesso X al proprio Incantatore e a tutte le creature alleate." },
+    { id:"v2-recurring-recovery", kind:"sigil", name:"Recupero Ricorrente", status:"approved", grades:TIGHT_FIVE, summary:"Cura ricorrente del proprio Incantatore e di tutte le creature alleate." },
+    { id:"v2-full-recovery", kind:"sigil", name:"Recupero Totale", status:"approved", grades:"speciale · senza Gradi", summary:"Cura completamente tutte le creature alleate." },
+
+    { id:"v2-infusion-school", kind:"sigil", name:"Infusione <Scuola>", status:"approved", grades:FIXED_BANDS, summary:"Aumento immediato del proprio Potere della Scuola." },
+    { id:"v2-subtraction-school", kind:"sigil", name:"Sottrazione <Scuola>", status:"approved", grades:FIXED_BANDS, summary:"Riduzione immediata del Potere nemico della Scuola." },
+    { id:"v2-subtraction-all", kind:"sigil", name:"Sottrazione Totale", status:"approved", grades:FIXED_BANDS, summary:"Riduzione immediata di tutti i Poteri nemici." },
+    { id:"v2-channeling-school", kind:"sigil", name:"Canalizzazione <Scuola>", status:"approved", grades:TIGHT_FIVE, summary:"Aumenta la crescita del proprio Potere della Scuola." },
+    { id:"v2-channeling-all", kind:"sigil", name:"Canalizzazione Totale", status:"approved", grades:TIGHT_FIVE, summary:"Aumenta la crescita di tutti i propri Poteri." },
+    { id:"v2-enemy-erosion-school", kind:"sigil", name:"Erosione Nemica <Scuola>", status:"approved", grades:TIGHT_FIVE, summary:"Riduce la crescita del Potere nemico della Scuola." },
+    { id:"v2-enemy-erosion-all", kind:"sigil", name:"Erosione Nemica Totale", status:"approved", grades:TIGHT_FIVE, summary:"Riduce la crescita di tutti i Poteri nemici." },
+
+    { id:"v2-necromantic-resonance", kind:"sigil", name:"Risonanza Necromantica", status:"approved", grades:TIGHT_FIVE, summary:"A ogni morte di una creatura aumenta il proprio Potere Morte." },
+    { id:"v2-vital-resonance", kind:"sigil", name:"Risonanza Vitale", status:"approved", grades:TIGHT_FIVE, summary:"A ogni morte di una creatura cura il proprio Incantatore." },
+
+    { id:"v2-vampirism", kind:"sigil", name:"Vampirismo", status:"approved", grades:"I 25% · II 50% · III 75% · IV 100%", summary:"La creatura cura sé stessa per una percentuale del danno effettivo che infligge." },
+    { id:"v2-life-drain", kind:"sigil", name:"Drenaggio Vitale", status:"approved", grades:"I 25% · II 50% · III 75% · IV 100%", summary:"Il proprio Incantatore recupera una percentuale del danno effettivo della Formula all'Incantatore nemico." },
+
+    { id:"v2-domination", kind:"sigil", name:"Dominio", status:"approved", grades:"I 1 creatura · II 2 · III 3", summary:"Infligge al nemico la somma dell'Attacco attuale delle N creature nemiche più forti." },
+    { id:"v2-rebirth", kind:"sigil", name:"Rinascita", status:"approved", grades:"I 1 ritorno · II 2 · III 3", summary:"Rinascite finite della creatura." },
+    { id:"v2-eternal-rebirth", kind:"sigil", name:"Rinascita Eterna", status:"approved", grades:"speciale · senza Gradi", summary:"Rinascita ripetuta; Sigillo vincolato a un Vincolo compatibile (Phoenix: Soglia Fuoco ≥ 10)." },
+    { id:"v2-arcane-armor", kind:"sigil", name:"Armatura Arcana", status:"approved", grades:TIGHT_FIVE, summary:"Riduce di 1–5 ogni danno a Incantatore e creature alleate, mai sotto 1; non cumulabile." },
+    { id:"v2-destruction", kind:"sigil", name:"Distruzione", status:"approved", grades:"speciale · senza Gradi", summary:"Distrugge una creatura nemica scelta senza danno normale." },
+    { id:"v2-uprooting", kind:"sigil", name:"Sradicamento", status:"approved", grades:"speciale · senza Gradi", summary:"Distrugge la creatura nemica con più Vita." },
+    { id:"v2-justice", kind:"sigil", name:"Giustizia", status:"approved", grades:"speciale · senza Gradi", summary:"Ogni creatura nemica subisce danno pari al proprio Attacco." },
+    { id:"v2-soul-harvest", kind:"sigil", name:"Mietitura d'Anime", status:"approved", grades:"speciale · senza Gradi", summary:"Distrugge tutte le creature e cura in base alle creature coinvolte." },
+
+    { id:"v2-arcane-attack-school", kind:"sigil", name:"Attacco Arcano <Scuola>", status:"review", grades:"TBD", summary:"Attacco derivato dal Potere della Scuola; formalizzazione finale ancora da approvare." },
+    { id:"v2-protection-hero", kind:"sigil", name:"Protezione Incantatore", status:"review", grades:"TBD", summary:"Ice Guard: dimezza il danno all'Incantatore; struttura finale da confermare." },
+    { id:"v2-allied-amplification", kind:"sigil", name:"Amplificazione Alleati", status:"review", grades:"TBD", summary:"Warlord: +50% danno da combattimento alleato; formalizzazione finale da confermare." },
+    { id:"v2-spell-amplification-flat", kind:"sigil", name:"Amplificazione Magie +1", status:"review", grades:"TBD", summary:"Faerie anchor; cumulabilità/fidelity da chiudere." },
+    { id:"v2-spell-amplification-x15", kind:"sigil", name:"Amplificazione Magie ×1,5", status:"review", grades:"TBD", summary:"Dragon anchor; cumulabilità/fidelity da chiudere." },
+    { id:"v2-total-assault", kind:"sigil", name:"Assalto Totale", status:"review", grades:"TBD", summary:"Attacco della creatura contro Incantatore e tutte le creature nemiche; formalizzazione finale da confermare." },
+    { id:"v2-retaliation", kind:"sigil", name:"Ritorsione", status:"review", grades:"TBD", summary:"Famiglia legacy/proposta senza struttura v2 ancora approvata." },
+    { id:"v2-heal-creature", kind:"sigil", name:"Cura Creatura", status:"review", grades:"TBD", summary:"Possibile famiglia futura; non ancora approvata nel catalogo v2." },
+    { id:"v2-infusion-all", kind:"sigil", name:"Infusione Totale", status:"review", grades:"TBD", summary:"Possibile famiglia futura; non ancora approvata nel catalogo v2." },
+    { id:"v2-annihilation", kind:"sigil", name:"Annientamento", status:"review", grades:"TBD", summary:"Famiglia generica distinta da Mietitura d'Anime ancora da rivedere." },
+
+    { id:"v2-constraint-erosion-school", kind:"constraint", name:"Erosione <Scuola>", status:"approved", grades:TIGHT_FIVE, summary:"Riduce di 1–5 la crescita del proprio Potere della Scuola." },
+    { id:"v2-constraint-threshold-school", kind:"constraint", name:"Soglia <Scuola>", status:"approved", grades:"I 1–3 · II 4–6 · III 7–10 · IV 11–15 · V 16–20", summary:"Gate globale: tutti i Sigilli attivi solo se P ≥ N; il Body resta attivo." },
+    { id:"v2-constraint-limit-school", kind:"constraint", name:"Limite <Scuola>", status:"approved", grades:"I 16–20 · II 11–15 · III 7–10 · IV 4–6 · V 1–3", summary:"Gate globale: tutti i Sigilli attivi solo se P < N; il Body resta attivo." },
+    { id:"v2-constraint-tribute-school", kind:"constraint", name:"Tributo <Scuola>", status:"approved", grades:TIGHT_FIVE, summary:"Dopo i Sigilli perde 1–5 Potere della Scuola; fallback casuale solo se quella Scuola era già a 0, senza residuo." },
+    { id:"v2-constraint-tribute-all", kind:"constraint", name:"Tributo Totale", status:"approved", grades:TIGHT_FIVE, summary:"Dopo i Sigilli perde 1–5 in ogni proprio Potere, con floor 0 e senza redistribuzione." },
+    { id:"v2-constraint-friendly-fire", kind:"constraint", name:"Fuoco Amico", status:"approved", grades:"speciale · senza Gradi", summary:"Il danno ad area compatibile colpisce anche le creature alleate; non il proprio Incantatore." },
+    { id:"v2-constraint-friendly-fire-limit", kind:"constraint", name:"Fuoco Amico Limite <Scuola>", status:"approved", grades:"I 1–3 · II 4–6 · III 7–10 · IV 11–15 · V 16–20", summary:"Fuoco Amico attivo solo se P < N; non spegne mai i Sigilli. Stone Rain: Terra IV / 12." },
+
+    { id:"v2-constraint-backlash", kind:"constraint", name:"Contraccolpo", status:"review", grades:"TBD", summary:"Autodanno al proprio Incantatore; Gradi/semantica finale da fissare." },
+    { id:"v2-constraint-backlash-scarcity", kind:"constraint", name:"Contraccolpo da Carenza", status:"review", grades:"TBD", summary:"Orc: condizione assoluta su un proprio Potere + autodanno; struttura da rivedere." },
+    { id:"v2-constraint-backlash-inferiority", kind:"constraint", name:"Contraccolpo da Inferiorità", status:"review", grades:"TBD", summary:"Sea Sprite: confronto col Potere nemico + autodanno; struttura da rivedere." }
+  ].forEach(definition => canonicalV2.register({
+    ...definition,
+    selectable: definition.status === "approved"
+  }));
+
   A.SIGIAN_SCHOOL_REGISTRY = schools;
   A.SIGIAN_CANONICAL_SIGIL_REGISTRY = sigils;
   A.SIGIAN_ADVANCED_MODIFIER_REGISTRY = modifiers;
+
+  A.SIGIAN_CANONICAL_V2_REGISTRY = canonicalV2;
+
 
   A.registerSigianSchool = function registerSigianSchool(definition, options) {
     return schools.register(definition, options);
@@ -359,6 +457,17 @@
 
   A.listSigianAdvancedModifiers = function listSigianAdvancedModifiers(options) {
     return modifiers.list(options);
+  };
+
+  A.getSigianCanonicalV2 = function getSigianCanonicalV2(id) {
+    return canonicalV2.get(id);
+  };
+
+  A.listSigianCanonicalV2 = function listSigianCanonicalV2(options = {}) {
+    const status = options.status == null ? null : String(options.status);
+    const kind = options.kind == null ? null : String(options.kind);
+    return canonicalV2.list(status ? { status } : {})
+      .filter(item => !kind || item.kind === kind);
   };
 
   A.registerSigianSigilCompiler = function registerSigianSigilCompiler(sigilId, compiler, options = {}) {
