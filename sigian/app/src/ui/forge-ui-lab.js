@@ -157,6 +157,15 @@
     "own-hero": "Il tuo Incantatore"
   });
 
+  const DEPTH_LAYERS = Object.freeze({
+    surface: 0,
+    impressed: .08,
+    art: .34,
+    raised: .52,
+    floating: .68,
+    fx: .84
+  });
+
   const FULL_IMPRINT_MS = 1450;
   const QUICK_IMPRINT_MS = 780;
 
@@ -284,17 +293,23 @@
 
   function geometryStyle() {
     const depth = Math.max(0, Math.min(100, Number(state.depth || 0)));
-    const px = multiplier => Math.round(depth * multiplier);
-    return [
+    return depthGeometryProperties(depth).map(([name, value]) => name + ":" + value).concat([
       "--lab-depth:" + depth + "px",
       "--lab-tilt-x:" + Number(state.tiltX || 0) + "deg",
       "--lab-tilt-y:" + Number(state.tiltY || 0) + "deg",
       "--lab-tilt-z:" + Number(state.tiltZ || 0) + "deg",
-      "--lab-art-z:" + px(1.28) + "px",
-      "--lab-ui-z:" + px(2.05) + "px",
-      "--lab-name-z:" + px(1.62) + "px",
-      "--lab-sigil-z:" + px(.18) + "px"
-    ].join(";");
+      "--lab-art-z:var(--lab-z-art)",
+      "--lab-ui-z:var(--lab-z-floating)",
+      "--lab-name-z:var(--lab-z-raised)",
+      "--lab-sigil-z:var(--lab-z-impressed)"
+    ]).join(";");
+  }
+
+  function depthGeometryProperties(depth) {
+    return Object.entries(DEPTH_LAYERS).map(([name, multiplier]) => [
+      "--lab-z-" + name,
+      Math.round(depth * multiplier) + "px"
+    ]).concat([["--lab-z-control-local", "2px"]]);
   }
 
   function currentModifierForFamily(sigil, family) {
@@ -318,6 +333,25 @@
     ).join("");
   }
 
+  function sigilHasFixedGrade(sigil) {
+    return Boolean(sigil.collectibleId || A.getCanonicalSigil?.(sigil.sigilId)?.gradeModel?.type === "fixed");
+  }
+
+  function sigilQuickMarkup(sigil) {
+    if (state.inlineControl !== "sigil:" + sigil.slotId) return "";
+    const slot = escapeHtml(sigil.slotId);
+    const grade = Number(sigil.grade || 1);
+    const fixed = sigilHasFixedGrade(sigil);
+    return '<div class="forge-lab-sigil-quick" role="group" aria-label="Controllo rapido Sigillo">' +
+      (fixed ? '<span>Grado fisso</span>' :
+        '<button type="button" data-lab-sigil-grade-step="-1" data-lab-slot="' + slot + '" aria-label="Riduci Grado"' + (grade <= 1 ? ' disabled' : '') + '>−</button>' +
+        '<span aria-live="polite">' + grade + '</span>' +
+        '<button type="button" data-lab-sigil-grade-step="1" data-lab-slot="' + slot + '" aria-label="Aumenta Grado"' + (grade >= 3 ? ' disabled' : '') + '>+</button>') +
+      '<button type="button" data-lab-sigil-advanced="' + slot + '" aria-label="Configurazione avanzata">✦</button>' +
+      '<button type="button" data-lab-quick-close aria-label="Chiudi controllo rapido">×</button>' +
+    '</div>';
+  }
+
   function sigilRowsMarkup(recipe) {
     const max = A.SIGIAN_MAX_PRIMARY_SIGILS || 3;
     const rows = [];
@@ -336,7 +370,7 @@
       const imprint = state.imprintSlotId === sigil.slotId ? " is-imprinting" : "";
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
-        '<div class="forge-lab-sigil-row' + imprint + breaking + '" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
+        '<div class="forge-lab-sigil-row forge-lab-control-anchor forge-lab-sigil-anchor' + imprint + breaking + '" data-lab-control-anchor="sigil" data-lab-depth-layer="impressed" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
           '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente">‹</button>' +
           '<button type="button" class="forge-lab-sigil-mark" data-lab-sigil="' + escapeHtml(sigil.slotId) + '">' +
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
@@ -350,6 +384,7 @@
             '</span>' +
           '</button>' +
           '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo successivo">›</button>' +
+          sigilQuickMarkup(sigil) +
         '</div>'
       );
     }
@@ -376,6 +411,7 @@
       );
     }
 
+    if (!["cost", "attack", "health"].includes(control)) return "";
     const isCost = control === "cost";
     const value = isCost
       ? (state.cost == null ? 0 : Number(state.cost))
@@ -391,22 +427,6 @@
     );
   }
 
-  function forgeStatIconMarkup(kind) {
-    if (kind === "health") {
-      return (
-        '<svg class="forge-lab-stat-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' +
-          '<path d="M16 28.1 13.8 26C6.3 19.2 2 15.3 2 10.4 2 6.5 5 3.5 8.9 3.5c2.8 0 5.4 1.3 7.1 3.4 1.7-2.1 4.3-3.4 7.1-3.4 3.9 0 6.9 3 6.9 6.9 0 4.9-4.3 8.8-11.8 15.6L16 28.1Z"/>' +
-        '</svg>'
-      );
-    }
-    return (
-      '<svg class="forge-lab-stat-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' +
-        '<path d="M6.2 3 13 9.8l-2.2 2.2L4.5 5.7 3 7.2l6.3 6.3-2 2L.5 8.7V2.3h6.4L6.2 3Zm19.6 0L19 9.8l2.2 2.2 6.3-6.3L29 7.2l-6.3 6.3 2 2 6.8-6.8V2.3h-6.4l.7.7Z"/>' +
-        '<path d="m12.1 15.5 2.3 2.3-8.2 8.2 1.8 1.8-5.3 1.3 1.3-5.3 1.8 1.8 8.2-8.2Zm7.8 0-2.3 2.3 8.2 8.2-1.8 1.8 5.3 1.3-1.3-5.3-1.8 1.8-8.2-8.2Z"/>' +
-      '</svg>'
-    );
-  }
-
   function cardMarkup(recipe) {
     const art = selectedArtCard(recipe);
     const name = recipe.presentation?.name || "Nuova Formula";
@@ -414,46 +434,42 @@
     const stats = recipe.stats || {};
     const longName = name.length > 34 ? " is-very-long" : name.length > 22 ? " is-long" : "";
     const nameplate = state.nameEditing
-      ? '<form class="forge-lab-nameplate forge-lab-name-editing' + longName + '" data-lab-name-inline-form>' +
+      ? '<form class="forge-lab-nameplate forge-lab-name-editing' + longName + '" data-lab-depth-layer="raised" data-lab-name-inline-form>' +
           '<input name="name" maxlength="48" value="' + escapeHtml(name) + '" aria-label="Nome Formula" autocomplete="off">' +
         '</form>'
-      : '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-edit-name><span>' + escapeHtml(name) + '</span></button>';
+      : '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-depth-layer="raised" data-lab-edit-name><span>' + escapeHtml(name) + '</span></button>';
 
     return (
       '<div class="forge-lab-card-shell">' +
-        '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
         '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" style="' + geometryStyle() + '">' +
-          '<div class="forge-lab-card-frame" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i></div>' +
+          '<div class="forge-lab-card-frame" data-lab-depth-layer="surface" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
-          '<button type="button" class="forge-lab-art-layer" data-lab-art-main aria-label="Scegli o scorri illustrazione">' +
-            (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
-          '</button>' +
-          '<button type="button" class="forge-lab-cost" data-lab-control="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
-          '<button type="button" class="forge-lab-type" data-lab-toggle-type>' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
-          '<button type="button" class="forge-lab-school-nav is-prev" data-lab-school-step="-1" aria-label="Scuola precedente">‹</button>' +
-          '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per scegliere; scorri per cambiare">' +
-            schoolIconMarkup(recipe.school, "forge-lab-school-icon") +
-          '</button>' +
-          '<button type="button" class="forge-lab-school-nav is-next" data-lab-school-step="1" aria-label="Scuola successiva">›</button>' +
+          '<div class="forge-lab-control-anchor forge-lab-art-anchor" data-lab-control-anchor="art" data-lab-depth-layer="art">' +
+            '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
+            '<button type="button" class="forge-lab-art-layer" data-lab-art-main aria-label="Scegli o scorri illustrazione">' +
+              (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
+            '</button>' +
+            '<button type="button" class="forge-lab-art-arrow is-next" data-lab-art-step="1" aria-label="Illustrazione successiva">›</button>' +
+          '</div>' +
+          '<button type="button" class="forge-lab-cost" data-lab-depth-layer="floating" data-lab-control="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+          '<button type="button" class="forge-lab-type" data-lab-depth-layer="floating" data-lab-toggle-type>' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
+          '<div class="forge-lab-control-anchor forge-lab-school-anchor" data-lab-control-anchor="school" data-lab-depth-layer="floating">' +
+            '<button type="button" class="forge-lab-school-nav is-prev" data-lab-school-step="-1" aria-label="Scuola precedente">‹</button>' +
+            '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per scegliere; scorri per cambiare">' +
+              schoolIconMarkup(recipe.school, "forge-lab-school-icon") +
+            '</button>' +
+            '<button type="button" class="forge-lab-school-nav is-next" data-lab-school-step="1" aria-label="Scuola successiva">›</button>' +
+          '</div>' +
           nameplate +
           (recipe.type === "creature"
-            ? '<div class="forge-lab-stats">' +
-                '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '">' +
-                  '<strong>' + escapeHtml(stats.attack ?? 0) + '</strong>' +
-                  '<span class="forge-lab-stat-symbol">' + forgeStatIconMarkup("attack") + '</span>' +
-                  '<em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
-                '</button>' +
-                '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '">' +
-                  '<strong>' + escapeHtml(stats.health ?? 1) + '</strong>' +
-                  '<span class="forge-lab-stat-symbol">' + forgeStatIconMarkup("health") + '</span>' +
-                  '<em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
-                '</button>' +
+            ? '<div class="forge-lab-stats" data-lab-depth-layer="floating">' +
+                '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '"><span aria-hidden="true">⚔</span><strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+                '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '"><span aria-hidden="true">♥</span><strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
               '</div>'
             : "") +
           inlineControlMarkup(recipe) +
           '<section class="forge-lab-sigils" aria-label="Sigilli">' + sigilRowsMarkup(recipe) + '</section>' +
         '</article>' +
-        '<button type="button" class="forge-lab-art-arrow is-next" data-lab-art-step="1" aria-label="Illustrazione successiva">›</button>' +
       '</div>'
     );
   }
@@ -662,10 +678,11 @@
     card.style.setProperty("--lab-tilt-x", Number(state.tiltX || 0) + "deg");
     card.style.setProperty("--lab-tilt-y", Number(state.tiltY || 0) + "deg");
     card.style.setProperty("--lab-tilt-z", Number(state.tiltZ || 0) + "deg");
-    card.style.setProperty("--lab-art-z", Math.round(depth * 1.28) + "px");
-    card.style.setProperty("--lab-ui-z", Math.round(depth * 2.05) + "px");
-    card.style.setProperty("--lab-name-z", Math.round(depth * 1.62) + "px");
-    card.style.setProperty("--lab-sigil-z", Math.round(depth * .18) + "px");
+    depthGeometryProperties(depth).forEach(([name, value]) => card.style.setProperty(name, value));
+    card.style.setProperty("--lab-art-z", "var(--lab-z-art)");
+    card.style.setProperty("--lab-ui-z", "var(--lab-z-floating)");
+    card.style.setProperty("--lab-name-z", "var(--lab-z-raised)");
+    card.style.setProperty("--lab-sigil-z", "var(--lab-z-impressed)");
   }
 
   function cycleArt(recipe, delta) {
@@ -689,14 +706,12 @@
 
   function playImprint(slotId, options = {}) {
     const duration = options.quick ? QUICK_IMPRINT_MS : FULL_IMPRINT_MS;
-    const reopenEditor = Boolean(options.reopenEditor);
     state.imprintSlotId = slotId;
     state.modal = null;
     render();
     window.setTimeout(() => {
       if (state.imprintSlotId !== slotId) return;
       state.imprintSlotId = null;
-      if (reopenEditor) state.modal = { type: "sigil-edit", slotId };
       render();
     }, duration);
   }
@@ -722,6 +737,7 @@
     const amount = Number(delta || 0);
     if (!amount) return 0;
 
+    const previous = controlValue(session.snapshot().draft.recipe, kind);
     let next = 0;
     if (kind === "cost") {
       const current = state.cost == null ? 0 : Number(state.cost);
@@ -744,9 +760,11 @@
     if (button) {
       const value = button.querySelector("strong");
       if (value) value.textContent = String(next);
+      button.setAttribute("aria-label", (kind === "attack" ? "Attacco " : kind === "health" ? "Vita " : "Costo ") + next);
       const feedback = button.querySelector(".forge-lab-control-feedback");
-      if (feedback) {
-        feedback.textContent = amount > 0 ? "+" + Math.abs(amount) : "−" + Math.abs(amount);
+      if (feedback && next !== previous) {
+        const actual = next - previous;
+        feedback.textContent = actual > 0 ? "+" + actual : "−" + Math.abs(actual);
         feedback.classList.remove("is-pulsing");
         void feedback.offsetWidth;
         feedback.classList.add("is-pulsing");
@@ -771,39 +789,52 @@
         timer = 0;
       };
 
-      const finish = () => {
+      const finish = event => {
+        if (event.pointerId !== pointerId) return;
         clearTimer();
-        if (active) {
-          active = false;
-          suppressClick = true;
-          button.classList.remove("is-scrubbing");
-          button.classList.add("is-scrub-return");
-          window.setTimeout(() => button.classList.remove("is-scrub-return"), 260);
-          window.setTimeout(() => { suppressClick = false; }, 0);
-        }
+        suppressClick = suppressClick || active || event.type !== "pointerup";
+        active = false;
+        button.classList.remove("is-scrubbing");
+        button.style.setProperty("--lab-control-lean", "0deg");
+        const id = pointerId;
         pointerId = null;
+        if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
+        event.stopPropagation();
       };
 
       button.addEventListener("pointerdown", event => {
-        if (event.pointerType === "mouse" && event.button !== 0) return;
+        if (pointerId != null || event.isPrimary === false || (event.pointerType === "mouse" && event.button !== 0)) return;
         startX = event.clientX;
         startY = event.clientY;
         lastStep = 0;
+        suppressClick = false;
         pointerId = event.pointerId;
+        button.setPointerCapture(pointerId);
+        event.stopPropagation();
         clearTimer();
         timer = window.setTimeout(() => {
+          timer = 0;
           active = true;
+          state.inlineControl = null;
+          root.querySelectorAll("[data-lab-inline-wheel]").forEach(wheel => wheel.remove());
           button.classList.add("is-scrubbing");
-          try { button.setPointerCapture(pointerId); } catch {}
         }, 190);
       });
 
       button.addEventListener("pointermove", event => {
-        if (!active || event.pointerId !== pointerId) return;
+        if (event.pointerId !== pointerId) return;
+        event.stopPropagation();
         const dx = event.clientX - startX;
         const dy = event.clientY - startY;
-        const axis = dx - dy;
-        const step = axis >= 0 ? Math.floor(axis / 22) : Math.ceil(axis / 22);
+        if (!active) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) > 10) {
+            clearTimer();
+            suppressClick = true;
+          }
+          return;
+        }
+        const axis = Math.abs(dx) > Math.abs(dy) ? dx : -dy;
+        const step = Math.trunc(axis / 22);
         const diff = step - lastStep;
         if (diff) {
           changeCardControl(session, kind, diff, button);
@@ -817,7 +848,8 @@
       ["pointerup", "pointercancel", "lostpointercapture"].forEach(type => button.addEventListener(type, finish));
 
       button.addEventListener("click", event => {
-        if (suppressClick) {
+        if (suppressClick && event.detail !== 0) {
+          suppressClick = false;
           event.preventDefault();
           event.stopImmediatePropagation();
           return;
@@ -842,42 +874,69 @@
     }));
   }
 
+  // One captured pointer; vertical movement remains native page scrolling.
+  function bindHorizontalControl(button, onStep, onTap) {
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let axis = null;
+    let suppressClick = false;
+
+    const release = () => {
+      const id = pointerId;
+      pointerId = null;
+      if (id != null && button.hasPointerCapture(id)) button.releasePointerCapture(id);
+    };
+    button.addEventListener("dragstart", event => event.preventDefault());
+    button.addEventListener("pointerdown", event => {
+      if (pointerId != null || event.isPrimary === false || (event.pointerType === "mouse" && event.button !== 0)) return;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      axis = null;
+      suppressClick = false;
+      button.setPointerCapture(pointerId);
+      event.stopPropagation();
+    });
+    button.addEventListener("pointermove", event => {
+      if (event.pointerId !== pointerId) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (!axis && Math.max(Math.abs(dx), Math.abs(dy)) > 34) {
+        axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? "horizontal" : "vertical";
+        suppressClick = true;
+      }
+      if (axis === "horizontal") event.preventDefault();
+      event.stopPropagation(); // Keep the card tilt still during manipulation.
+    });
+    button.addEventListener("pointerup", event => {
+      if (event.pointerId !== pointerId) return;
+      const dx = event.clientX - startX;
+      const step = axis === "horizontal" && Math.abs(dx) > 34 ? (dx < 0 ? -1 : 1) : 0;
+      release();
+      event.stopPropagation();
+      if (step) onStep(step);
+    });
+    ["pointercancel", "lostpointercapture"].forEach(type => button.addEventListener(type, event => {
+      if (event.pointerId !== pointerId) return;
+      suppressClick = true;
+      release();
+    }));
+    button.addEventListener("click", event => {
+      event.stopPropagation();
+      if (suppressClick && event.detail !== 0) {
+        event.preventDefault();
+        suppressClick = false;
+        return;
+      }
+      onTap();
+    });
+  }
+
   function bindArtControl(root, recipe) {
     const art = root.querySelector("[data-lab-art-main]");
     if (!art) return;
-    let startX = 0;
-    let startY = 0;
-    let swiped = false;
-
-    art.addEventListener("pointerdown", event => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      startX = event.clientX;
-      startY = event.clientY;
-      swiped = false;
-    });
-
-    art.addEventListener("pointermove", event => {
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
-      if (Math.abs(dx) > 34 && Math.abs(dx) > Math.abs(dy) * 1.1) {
-        swiped = true;
-        event.preventDefault();
-      }
-    });
-
-    art.addEventListener("pointerup", event => {
-      if (!swiped) return;
-      const dx = event.clientX - startX;
-      cycleArt(recipe, dx > 0 ? -1 : 1);
-    });
-
-    art.addEventListener("click", event => {
-      if (swiped) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        swiped = false;
-        return;
-      }
+    bindHorizontalControl(art, delta => cycleArt(recipe, delta), () => {
       state.modal = { type: "art" };
       render();
     });
@@ -932,59 +991,7 @@
   function bindSchoolControl(root, recipe) {
     const button = root.querySelector("[data-lab-school-main]");
     if (!button) return;
-    let timer = 0;
-    let longPress = false;
-    let swiped = false;
-    let startX = 0;
-    let startY = 0;
-
-    const cancelTimer = () => {
-      if (timer) window.clearTimeout(timer);
-      timer = 0;
-    };
-
-    button.addEventListener("pointerdown", event => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      startX = event.clientX;
-      startY = event.clientY;
-      longPress = false;
-      swiped = false;
-      cancelTimer();
-      timer = window.setTimeout(() => {
-        longPress = true;
-        state.inlineControl = null;
-        state.modal = { type: "school" };
-        render();
-      }, 560);
-    });
-
-    button.addEventListener("pointermove", event => {
-      if (longPress) return;
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
-      if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
-      cancelTimer();
-      swiped = true;
-      event.preventDefault();
-    });
-
-    button.addEventListener("pointerup", event => {
-      cancelTimer();
-      if (!swiped || longPress) return;
-      const dx = event.clientX - startX;
-      cycleSchool(recipe, dx > 0 ? -1 : 1);
-    });
-
-    ["pointercancel", "pointerleave"].forEach(type => button.addEventListener(type, cancelTimer));
-
-    button.addEventListener("click", event => {
-      if (longPress || swiped) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        longPress = false;
-        swiped = false;
-        return;
-      }
+    bindHorizontalControl(button, delta => cycleSchool(recipe, delta), () => {
       state.inlineControl = state.inlineControl === "school" ? null : "school";
       render();
     });
@@ -1055,6 +1062,7 @@
         cancel();
         timer = window.setTimeout(() => {
           longPress = true;
+          state.inlineControl = null;
           state.modal = { type: "sigil-detail", slotId: button.dataset.labSigil };
           render();
         }, 560);
@@ -1066,10 +1074,36 @@
           longPress = false;
           return;
         }
-        state.modal = { type: "sigil-edit", slotId: button.dataset.labSigil };
+        const slotId = button.dataset.labSigil;
+        state.modal = null;
+        state.inlineControl = state.inlineControl === "sigil:" + slotId ? null : "sigil:" + slotId;
         render();
       });
     });
+  }
+
+  function bindSigilQuick(root, session) {
+    root.querySelectorAll("[data-lab-sigil-grade-step]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      const slotId = button.dataset.labSlot;
+      const sigil = session.snapshot().draft.recipe.sigils.find(item => item.slotId === slotId);
+      if (!sigil || sigilHasFixedGrade(sigil)) return;
+      const grade = Number(sigil.grade || 1);
+      const next = Math.max(1, Math.min(3, grade + Number(button.dataset.labSigilGradeStep)));
+      if (next === grade) return;
+      mutate(() => session.setSigilGrade(slotId, next));
+      state.inlineControl = "sigil:" + slotId;
+      render();
+    }));
+    root.querySelectorAll("[data-lab-sigil-advanced]").forEach(button => button.addEventListener("click", () => {
+      state.inlineControl = null;
+      state.modal = { type: "sigil-edit", slotId: button.dataset.labSigilAdvanced };
+      render();
+    }));
+    root.querySelectorAll("[data-lab-quick-close]").forEach(button => button.addEventListener("click", () => {
+      state.inlineControl = null;
+      render();
+    }));
   }
 
   function bind(root, recipe) {
@@ -1114,14 +1148,17 @@
     root.querySelectorAll("[data-lab-add-sigil]").forEach(button => button.addEventListener("click", () => {
       const result = mutate(() => session.addSigil(button.dataset.labAddSigil));
       const slotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
-      if (slotId) playImprint(slotId, { reopenEditor: true });
-      else render();
+      if (slotId) {
+        state.inlineControl = "sigil:" + slotId;
+        playImprint(slotId);
+      } else render();
     }));
 
     root.querySelectorAll("[data-lab-replace-sigil]").forEach(button => button.addEventListener("click", () => {
       const slotId = button.dataset.labSlot;
       mutate(() => session.replaceSigil(slotId, button.dataset.labReplaceSigil));
-      playImprint(slotId, { reopenEditor: true });
+      state.inlineControl = "sigil:" + slotId;
+      playImprint(slotId);
     }));
 
     root.querySelector("[data-lab-open-picker]")?.addEventListener("click", event => {
@@ -1232,6 +1269,7 @@
     bindSchoolControl(root, recipe);
     bindCardGrab(root);
     bindLongPress(root);
+    bindSigilQuick(root, session);
   }
 
   function render(target) {
