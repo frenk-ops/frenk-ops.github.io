@@ -391,6 +391,22 @@
     );
   }
 
+  function forgeStatIconMarkup(kind) {
+    if (kind === "health") {
+      return (
+        '<svg class="forge-lab-stat-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' +
+          '<path d="M16 28.1 13.8 26C6.3 19.2 2 15.3 2 10.4 2 6.5 5 3.5 8.9 3.5c2.8 0 5.4 1.3 7.1 3.4 1.7-2.1 4.3-3.4 7.1-3.4 3.9 0 6.9 3 6.9 6.9 0 4.9-4.3 8.8-11.8 15.6L16 28.1Z"/>' +
+        '</svg>'
+      );
+    }
+    return (
+      '<svg class="forge-lab-stat-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">' +
+        '<path d="M6.2 3 13 9.8l-2.2 2.2L4.5 5.7 3 7.2l6.3 6.3-2 2L.5 8.7V2.3h6.4L6.2 3Zm19.6 0L19 9.8l2.2 2.2 6.3-6.3L29 7.2l-6.3 6.3 2 2 6.8-6.8V2.3h-6.4l.7.7Z"/>' +
+        '<path d="m12.1 15.5 2.3 2.3-8.2 8.2 1.8 1.8-5.3 1.3 1.3-5.3 1.8 1.8 8.2-8.2Zm7.8 0-2.3 2.3 8.2 8.2-1.8 1.8 5.3 1.3-1.3-5.3-1.8 1.8-8.2-8.2Z"/>' +
+      '</svg>'
+    );
+  }
+
   function cardMarkup(recipe) {
     const art = selectedArtCard(recipe);
     const name = recipe.presentation?.name || "Nuova Formula";
@@ -422,8 +438,16 @@
           nameplate +
           (recipe.type === "creature"
             ? '<div class="forge-lab-stats">' +
-                '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '"><span aria-hidden="true">⚔</span><strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
-                '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '"><span aria-hidden="true">♥</span><strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+                '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '">' +
+                  '<strong>' + escapeHtml(stats.attack ?? 0) + '</strong>' +
+                  '<span class="forge-lab-stat-symbol">' + forgeStatIconMarkup("attack") + '</span>' +
+                  '<em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
+                '</button>' +
+                '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '">' +
+                  '<strong>' + escapeHtml(stats.health ?? 1) + '</strong>' +
+                  '<span class="forge-lab-stat-symbol">' + forgeStatIconMarkup("health") + '</span>' +
+                  '<em class="forge-lab-control-feedback" aria-hidden="true"></em>' +
+                '</button>' +
               '</div>'
             : "") +
           inlineControlMarkup(recipe) +

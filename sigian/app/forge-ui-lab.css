@@ -5062,3 +5062,655 @@
 .forge-lab-school-radial button:nth-child(3) { left: 68px;  top: 15px; }
 .forge-lab-school-radial button:nth-child(4) { left: 98px;  top: 24px; }
 .forge-lab-school-radial button:nth-child(5) { left: 128px; top: 42px; }
+
+
+/* ===== Sigian 0.50 — Arcane parchment card pass (Forge UI Lab only) ===== */
+
+.forge-lab-card {
+  --lab-school-size: 88px;
+  --lab-school-half: 44px;
+  --lab-school-right: -7%;
+  --lab-school-top: -4.2%;
+}
+
+/* One clean arcane parchment, with restrained irregularity and school tint. */
+.forge-lab-card-frame {
+  inset: 0;
+  border: 0;
+  border-radius: 24px;
+  clip-path: polygon(
+    3.2% .7%, 16% 1.4%, 31% .5%, 49% 1.1%, 67% .5%, 84% 1.4%, 96.8% .8%,
+    99.2% 4%, 98.8% 20%, 99.4% 39%, 98.9% 58%, 99.4% 77%, 98.7% 94.5%,
+    95.7% 98.8%, 82% 97.7%, 66% 99.1%, 50% 98.1%, 34% 99.2%, 18% 97.8%, 4.4% 98.8%,
+    1.3% 95%, .6% 78%, 1.1% 59%, .5% 40%, 1.1% 21%, .7% 4%
+  );
+  background:
+    radial-gradient(ellipse at 50% 74%, color-mix(in srgb, var(--lab-school) 18%, transparent), transparent 58%),
+    radial-gradient(circle at 11% 16%, rgba(255,238,193,.16), transparent 18%),
+    radial-gradient(circle at 88% 82%, rgba(88,48,24,.13), transparent 22%),
+    repeating-linear-gradient(17deg, transparent 0 22px, rgba(78,47,27,.032) 22px 23px),
+    repeating-linear-gradient(101deg, transparent 0 34px, rgba(255,245,216,.022) 34px 35px),
+    linear-gradient(180deg, var(--lab-paper-1) 0%, var(--lab-paper-2) 58%, color-mix(in srgb, var(--lab-paper-3) 84%, var(--lab-school)) 100%);
+  box-shadow:
+    inset 0 0 0 2px rgba(72,43,25,.42),
+    inset 0 0 0 5px color-mix(in srgb, var(--lab-school) 46%, #9a7048),
+    inset 0 0 0 7px rgba(242,220,172,.22),
+    inset 0 0 34px rgba(54,30,15,.31),
+    0 0 24px var(--lab-school-soft);
+}
+
+.forge-lab-card-frame::before {
+  inset: 12px 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--lab-school) 28%, rgba(83,52,28,.34));
+  border-radius: 22px 18px 24px 20px / 18px 23px 19px 25px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,239,198,.12),
+    inset 0 0 18px rgba(70,40,20,.08);
+  opacity: .78;
+}
+
+.forge-lab-card-frame::after {
+  inset: 19px 20px 21px;
+  border: 1px dashed color-mix(in srgb, var(--lab-school) 30%, rgba(91,57,31,.2));
+  border-radius: 19px 23px 18px 22px;
+  opacity: .24;
+  box-shadow: none;
+}
+
+.forge-lab-card-frame span {
+  opacity: .42;
+  background:
+    radial-gradient(circle at 10% 86%, rgba(88,49,25,.13), transparent 17%),
+    radial-gradient(circle at 92% 19%, rgba(255,240,199,.09), transparent 16%),
+    repeating-linear-gradient(0deg, transparent 0 27px, rgba(95,56,28,.025) 27px 28px),
+    repeating-linear-gradient(90deg, transparent 0 41px, rgba(95,56,28,.018) 41px 42px);
+  mix-blend-mode: multiply;
+}
+
+/* Artwork keeps its role, but dissolves into the same parchment instead of ending on a hard line. */
+.forge-lab-art-layer {
+  left: 4.2%;
+  right: 4.2%;
+  top: 4.2%;
+  height: 64.5%;
+  border: 0;
+  border-radius: 18px 18px 24px 24px;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.forge-lab-art-layer img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: transparent;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 66%,
+    rgba(0,0,0,.96) 73%,
+    rgba(0,0,0,.78) 80%,
+    rgba(0,0,0,.51) 87%,
+    rgba(0,0,0,.24) 93%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 66%,
+    rgba(0,0,0,.96) 73%,
+    rgba(0,0,0,.78) 80%,
+    rgba(0,0,0,.51) 87%,
+    rgba(0,0,0,.24) 93%,
+    transparent 100%
+  );
+}
+
+.forge-lab-art-layer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 112% 74% at 50% 86%,
+      transparent 0 32%,
+      color-mix(in srgb, var(--lab-school) 7%, transparent) 52%,
+      color-mix(in srgb, var(--lab-paper-2) 22%, transparent) 70%,
+      color-mix(in srgb, var(--lab-paper-2) 58%, transparent) 88%,
+      color-mix(in srgb, var(--lab-paper-2) 86%, var(--lab-school)) 100%);
+}
+
+.forge-lab-art-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg,
+      transparent 0 66%,
+      color-mix(in srgb, var(--lab-paper-1) 8%, transparent) 73%,
+      color-mix(in srgb, var(--lab-school) 10%, transparent) 81%,
+      color-mix(in srgb, var(--lab-paper-2) 34%, transparent) 90%,
+      color-mix(in srgb, var(--lab-paper-2) 74%, var(--lab-school)) 100%);
+}
+
+/* Cost: same control and handler, but the value visually dominates. */
+.forge-lab-cost {
+  min-width: 90px;
+  min-height: 90px;
+  padding: 11px 8px 9px;
+}
+
+.forge-lab-cost small {
+  font-size: .62rem;
+  letter-spacing: .12em;
+  opacity: .84;
+}
+
+.forge-lab-cost strong {
+  font-size: clamp(2.15rem, 5.5vw, 2.75rem);
+  line-height: .9;
+  letter-spacing: -.035em;
+}
+
+/* School navigation sits outside the medallion, perfectly aligned to its center. */
+.forge-lab-school {
+  width: var(--lab-school-size);
+  height: var(--lab-school-size);
+  right: var(--lab-school-right);
+  top: var(--lab-school-top);
+}
+
+.forge-lab-school-nav {
+  z-index: 36;
+  top: calc(var(--lab-school-top) + var(--lab-school-half));
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  background: transparent;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--lab-switch-fg) 88%, white);
+  font: 700 2rem/1 Georgia, serif;
+  opacity: .92;
+  text-shadow:
+    0 0 7px var(--lab-school-soft),
+    0 2px 3px rgba(0,0,0,.72);
+  transform: translateY(-50%) translateZ(calc(var(--lab-ui-z) + 22px)) !important;
+  touch-action: manipulation;
+}
+
+.forge-lab-school-nav.is-prev {
+  right: calc(var(--lab-school-right) + var(--lab-school-size) + 5px);
+}
+
+.forge-lab-school-nav.is-next {
+  right: calc(var(--lab-school-right) - 40px);
+}
+
+/* Name scroll: a real horizontal parchment band that wraps around the Formula. */
+.forge-lab-nameplate {
+  left: -6.2%;
+  right: -6.2%;
+  top: 51.2%;
+  min-height: 52px;
+  padding: 8px 68px 9px;
+  border: 0;
+  border-radius: 0;
+  clip-path: polygon(
+    2% 21%, 8% 8%, 20% 11%, 34% 5%, 50% 8%, 66% 5%, 80% 11%, 92% 8%, 98% 21%,
+    100% 50%, 98% 79%, 92% 92%, 80% 89%, 66% 95%, 50% 92%, 34% 95%, 20% 89%, 8% 92%, 2% 79%, 0 50%
+  );
+  color: #442817;
+  background:
+    radial-gradient(ellipse at 50% 14%, rgba(255,247,218,.5), transparent 46%),
+    repeating-linear-gradient(7deg, transparent 0 9px, rgba(91,53,29,.026) 9px 10px),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--lab-paper-1) 92%, #ead4a0) 0%,
+      color-mix(in srgb, var(--lab-paper-2) 87%, #d6b274) 54%,
+      color-mix(in srgb, var(--lab-paper-3) 72%, #9b693c) 100%);
+  box-shadow:
+    0 11px 13px rgba(25,13,7,.22),
+    inset 0 1px rgba(255,247,220,.58),
+    inset 0 -2px rgba(77,40,19,.22),
+    inset 0 0 0 1px color-mix(in srgb, var(--lab-school) 22%, rgba(89,50,26,.28)),
+    0 0 10px color-mix(in srgb, var(--lab-school-soft) 26%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-lab-nameplate::before,
+.forge-lab-nameplate::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 13%;
+  height: calc(100% - 14px);
+  pointer-events: none;
+  opacity: .96;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--lab-paper-2) 82%, #bd8750),
+      color-mix(in srgb, var(--lab-paper-3) 78%, #70482a));
+  box-shadow:
+    0 5px 8px rgba(21,10,5,.24),
+    inset 0 1px rgba(255,237,191,.18);
+}
+
+.forge-lab-nameplate::before {
+  left: 1.2%;
+  transform: translateX(-74%) translateZ(-34px) rotateY(68deg) skewY(-5deg);
+  clip-path: polygon(28% 0,100% 9%,100% 91%,0 100%,18% 56%);
+}
+
+.forge-lab-nameplate::after {
+  right: 1.2%;
+  transform: translateX(74%) translateZ(-34px) rotateY(-68deg) skewY(5deg);
+  clip-path: polygon(0 9%,72% 0,82% 56%,100% 100%,0 91%);
+}
+
+.forge-lab-nameplate span {
+  color: #452817;
+  font-size: 1.08rem;
+  font-weight: 800;
+  letter-spacing: .015em;
+  text-shadow:
+    0 1px rgba(255,245,211,.74),
+    0 -1px rgba(72,34,15,.12);
+}
+
+.forge-lab-nameplate span::before,
+.forge-lab-nameplate span::after {
+  display: inline-block;
+  margin: 0 13px;
+  color: color-mix(in srgb, var(--lab-school) 58%, #855730);
+  font-size: .6em;
+  vertical-align: .16em;
+  opacity: .7;
+  text-shadow: none;
+  pointer-events: none;
+}
+
+.forge-lab-nameplate span::before { content: "ᚨ ◇"; }
+.forge-lab-nameplate span::after { content: "◇ ᛉ"; }
+
+/* Sigils belong to the same parchment; arrows are controls outside its edge. */
+.forge-lab-sigils {
+  left: 13%;
+  right: 13%;
+  top: 63.4%;
+  bottom: 8.8%;
+  gap: 5px;
+  overflow: visible;
+}
+
+.forge-lab-sigil-row {
+  position: relative;
+  grid-template-columns: minmax(0,1fr);
+  gap: 0;
+  min-height: 0;
+  overflow: visible;
+}
+
+.forge-lab-sigil-row::before {
+  left: 1%;
+  right: 1%;
+  opacity: .24;
+}
+
+.forge-lab-sigil-mark {
+  width: 100%;
+  min-height: 0;
+  padding: 4px 7px 4px 5px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.forge-lab-sigil-copy {
+  gap: 3px;
+}
+
+.forge-lab-sigil-copy strong {
+  font-size: .88rem;
+  line-height: 1.04;
+}
+
+.forge-lab-chip.grade {
+  font-size: .56rem;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--lab-sigil-metal) 12%, rgba(255,247,224,.38));
+}
+
+.forge-lab-sigil-row > .forge-lab-cycle {
+  position: absolute;
+  top: 50%;
+  z-index: 24;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  background: transparent;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--lab-switch-fg) 90%, white);
+  font: 700 2.05rem/1 Georgia, serif;
+  opacity: .9;
+  text-shadow:
+    0 0 7px var(--lab-school-soft),
+    0 2px 3px rgba(0,0,0,.72);
+  touch-action: manipulation;
+}
+
+.forge-lab-sigil-row > .forge-lab-cycle[data-lab-sigil-step="-1"] {
+  left: -18%;
+  right: auto;
+  transform: translateY(-50%) translateZ(calc(var(--lab-ui-z) + 10px)) !important;
+}
+
+.forge-lab-sigil-row > .forge-lab-cycle[data-lab-sigil-step="1"] {
+  right: -18%;
+  left: auto;
+  transform: translateY(-50%) translateZ(calc(var(--lab-ui-z) + 10px)) !important;
+}
+
+/* Attack/Life: number first, iconic SVG second, minimal visual support. */
+.forge-lab-stats {
+  left: -4.4%;
+  right: -4.4%;
+  top: auto;
+  bottom: -5.2%;
+  z-index: 30;
+  align-items: end;
+}
+
+.forge-lab-stat {
+  width: 72px;
+  height: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: end;
+  gap: 2px;
+  padding: 6px 6px 5px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  clip-path: none;
+  rotate: 0deg !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #f5e0ad;
+  text-shadow: none;
+  filter: drop-shadow(0 7px 6px rgba(18,9,5,.34));
+}
+
+.forge-lab-stat::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 1px;
+  height: 57px;
+  z-index: -1;
+  opacity: .86;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse,
+      color-mix(in srgb, var(--lab-school) 18%, rgba(32,20,13,.56)) 0%,
+      rgba(31,19,12,.34) 50%,
+      transparent 76%);
+  -webkit-mask: none;
+  mask: none;
+  pointer-events: none;
+}
+
+.forge-lab-stat::after {
+  display: none !important;
+}
+
+.forge-lab-stat strong {
+  order: 1;
+  position: relative;
+  z-index: 2;
+  min-width: 34px;
+  color: #fff0c1;
+  font: 800 1.55rem/1 Georgia, serif;
+  text-align: center;
+  text-shadow:
+    0 2px 2px rgba(21,10,5,.8),
+    0 0 6px rgba(231,179,89,.2);
+}
+
+.forge-lab-stat-symbol {
+  order: 2;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.forge-lab-stat-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: currentColor;
+}
+
+.forge-lab-stat.attack {
+  color: #e3a45f;
+}
+
+.forge-lab-stat.health {
+  color: #79d77b;
+}
+
+.forge-lab-stat.attack .forge-lab-stat-svg {
+  filter:
+    drop-shadow(0 1px 0 rgba(255,229,171,.35))
+    drop-shadow(0 0 7px rgba(220,108,42,.34))
+    drop-shadow(0 3px 3px rgba(36,16,7,.45));
+}
+
+.forge-lab-stat.health .forge-lab-stat-svg {
+  filter:
+    drop-shadow(0 1px 0 rgba(231,255,211,.3))
+    drop-shadow(0 0 7px rgba(82,195,91,.34))
+    drop-shadow(0 3px 3px rgba(20,36,18,.44));
+}
+
+.forge-lab-stat.is-scrubbing {
+  filter:
+    brightness(1.14)
+    drop-shadow(0 9px 8px rgba(18,9,5,.38));
+  transform:
+    translateZ(calc(var(--lab-ui-z) + 24px))
+    rotateZ(var(--lab-control-lean))
+    scale(1.06);
+}
+
+.forge-lab-inline-wheel.is-attack {
+  left: -10.5%;
+  bottom: 4.4%;
+}
+
+.forge-lab-inline-wheel.is-health {
+  right: -10.5%;
+  bottom: 4.4%;
+}
+
+@media (max-width: 640px) {
+  .forge-lab-card {
+    --lab-school-size: 72px;
+    --lab-school-half: 36px;
+    --lab-school-right: -8%;
+    --lab-school-top: -3.7%;
+  }
+
+  .forge-lab-card-frame {
+    border-radius: 21px;
+  }
+
+  .forge-lab-art-layer {
+    left: 3.6%;
+    right: 3.6%;
+    top: 3.7%;
+    height: 65%;
+  }
+
+  .forge-lab-cost {
+    min-width: 76px;
+    min-height: 76px;
+    left: -7.2%;
+    top: -3.2%;
+    padding: 9px 6px 7px;
+  }
+
+  .forge-lab-cost strong {
+    font-size: 2.25rem;
+  }
+
+  .forge-lab-school-nav {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    font-size: 1.85rem;
+  }
+
+  .forge-lab-school-nav.is-prev {
+    right: calc(var(--lab-school-right) + var(--lab-school-size) + 2px);
+  }
+
+  .forge-lab-school-nav.is-next {
+    right: calc(var(--lab-school-right) - 37px);
+  }
+
+  .forge-lab-nameplate {
+    left: -5.4%;
+    right: -5.4%;
+    top: 51.4%;
+    min-height: 46px;
+    padding: 6px 48px 7px;
+  }
+
+  .forge-lab-nameplate span {
+    font-size: .94rem;
+  }
+
+  .forge-lab-nameplate span::before,
+  .forge-lab-nameplate span::after {
+    margin: 0 7px;
+    font-size: .5em;
+  }
+
+  .forge-lab-sigils {
+    left: 13.8%;
+    right: 13.8%;
+    top: 63.7%;
+    bottom: 9.6%;
+    gap: 3px;
+  }
+
+  .forge-lab-sigil-row > .forge-lab-cycle {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.8rem;
+  }
+
+  .forge-lab-sigil-row > .forge-lab-cycle[data-lab-sigil-step="-1"] {
+    left: -20%;
+  }
+
+  .forge-lab-sigil-row > .forge-lab-cycle[data-lab-sigil-step="1"] {
+    right: -20%;
+  }
+
+  .forge-lab-sigil-mark {
+    grid-template-columns: 38px minmax(0,1fr);
+    gap: 6px;
+    padding: 3px 5px 3px 3px;
+  }
+
+  .forge-lab-sigil-emblem {
+    width: 38px;
+    height: 38px;
+  }
+
+  .forge-lab-sigil-copy strong {
+    font-size: .74rem;
+  }
+
+  .forge-lab-chip.grade {
+    font-size: .5rem;
+  }
+
+  .forge-lab-stats {
+    left: -6.2%;
+    right: -6.2%;
+    bottom: -4.2%;
+  }
+
+  .forge-lab-stat {
+    width: 62px;
+    height: 75px;
+    padding-bottom: 4px;
+  }
+
+  .forge-lab-stat strong {
+    font-size: 1.35rem;
+  }
+
+  .forge-lab-stat-symbol {
+    width: 34px;
+    height: 34px;
+  }
+
+  .forge-lab-inline-wheel.is-attack {
+    left: -9%;
+    bottom: 4%;
+  }
+
+  .forge-lab-inline-wheel.is-health {
+    right: -9%;
+    bottom: 4%;
+  }
+}
+
+@media (max-width: 360px) {
+  .forge-lab-nameplate {
+    left: -4.8%;
+    right: -4.8%;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+
+  .forge-lab-sigils {
+    left: 14.5%;
+    right: 14.5%;
+  }
+
+  .forge-lab-sigil-row > .forge-lab-cycle[data-lab-sigil-step="-1"] {
+    left: -22%;
+  }
+
+  .forge-lab-sigil-row > .forge-lab-cycle[data-lab-sigil-step="1"] {
+    right: -22%;
+  }
+}
