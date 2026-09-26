@@ -322,13 +322,13 @@
   ].forEach(definition => modifiers.register(definition));
 
 
-  // Canonical v2 design catalog.
+  // Canonical v2 content identities.
   //
-  // This catalog is deliberately separate from the legacy runtime/compiler
-  // registry above. "approved" means the player-facing structure has been
-  // agreed; it does NOT imply that the compiler/runtime migration is complete.
-  // "review" entries stay visible in the UI Lab but disabled until their
-  // structure is explicitly approved.
+  // This is the single player-facing Sigillo/Vincolo catalog. Runtime/compiler
+  // primitives above are execution adapters only and must never become a
+  // second content list in Forge, UI Lab, Inventory, Collection or card UI.
+  // "approved" means the content identity is usable; runtime adapter coverage
+  // is tracked separately without changing that identity.
   const canonicalV2 = createRegistry("Catalogo canonico v2");
 
   const FIXED_BANDS = "I 1–3 · II 4–6 · III 7–10 · IV 11–15 · V 16–20";
@@ -396,9 +396,9 @@
     { id:"v2-spell-amplification-powerful", kind:"sigil", name:"Amplificazione Magie Potente", status:"approved", grades:"I 25% · II 50% · III 75% · IV 100%", summary:"Aggiunge una percentuale del danno base della Magia; distinta da Amplificazione Magie e non cumulabile con copie della stessa identità." },
     { id:"v2-total-assault", kind:"sigil", name:"Assalto Totale", status:"approved", grades:"speciale · senza Gradi", summary:"Quando la creatura attacca, colpisce l'Incantatore nemico e tutte le creature nemiche." },
     { id:"v2-retaliation", kind:"sigil", name:"Ritorsione", status:"approved", grades:"I 1 · II 2 · III 3 · IV 4 · V 5", summary:"Dopo aver subito danno da combattimento da una creatura nemica, infligge X danni all'attaccante; si attiva anche se muore, una volta per attacco, e non genera altra Ritorsione." },
-    { id:"v2-heal-creature", kind:"sigil", name:"Cura Creatura", status:"review", grades:"TBD", summary:"Possibile famiglia futura; non ancora approvata nel catalogo v2." },
-    { id:"v2-infusion-all", kind:"sigil", name:"Infusione Totale", status:"review", grades:"TBD", summary:"Possibile famiglia futura; non ancora approvata nel catalogo v2." },
-    { id:"v2-annihilation", kind:"sigil", name:"Annientamento", status:"review", grades:"TBD", summary:"Famiglia generica distinta da Mietitura d'Anime ancora da rivedere." },
+    { id:"v2-heal-creature", kind:"sigil", name:"Cura Creatura", status:"approved", grades:TIGHT_FIVE, summary:"Cura una creatura alleata di 1–5 Vita." },
+    { id:"v2-infusion-all", kind:"sigil", name:"Infusione Totale", status:"approved", grades:TIGHT_FIVE, summary:"Aumenta immediatamente di 1–5 tutti i propri Poteri." },
+    { id:"v2-annihilation", kind:"sigil", name:"Annientamento", status:"approved", grades:"speciale · senza Gradi", summary:"Distrugge tutte le creature sul campo, alleate e nemiche, senza curare." },
 
     { id:"v2-constraint-erosion-school", kind:"constraint", name:"Erosione <Scuola>", status:"approved", grades:TIGHT_FIVE, summary:"Riduce di 1–5 la crescita del proprio Potere della Scuola." },
     { id:"v2-constraint-threshold-school", kind:"constraint", name:"Soglia <Scuola>", status:"approved", grades:"I 1–3 · II 4–6 · III 7–10 · IV 11–15 · V 16–20", summary:"Gate globale: tutti i Sigilli attivi solo se P ≥ N; il Body resta attivo." },

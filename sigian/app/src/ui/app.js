@@ -4725,67 +4725,57 @@
   function sigianCanonicalSigilUiModel(card, sigil) {
     const value = sigianCanonicalValue(card, sigil);
     const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
+    const canonicalOption = sigil.collectibleId
+      ? A.getSigianForgeSigilOption?.(sigil.collectibleId, card?.school || "fire")
+      : null;
     const effect = sigianCanonicalSigilEffect(sigil.sigilId);
-    const modifiers = collectible ? [] : sigianCanonicalBaseConfigChips(card, sigil, value);
-    const hiddenModifierFamilies = new Set(collectible?.hiddenModifierFamilies || []);
-    const hasScaling = (sigil.modifiers || []).some(item => A.getSigianAdvancedModifier?.(item.id)?.family === "scaling");
+    const modifiers = [];
 
-    (sigil.modifiers || []).forEach(item => {
-      const definition = A.getSigianAdvancedModifier?.(item.id);
-      const family = definition?.family;
-      if (hiddenModifierFamilies.has(family)) return;
-      let textValue = "";
-      let className = family || "modifier";
-      let school = item.params?.school || null;
-
-      if (family === "scaling") textValue = sigianCanonicalScalingLabel(item, card, sigil, value);
-      if (family === "activation") textValue = sigianCanonicalActivationLabel(item, card);
-      if (family === "constraint") {
-        if (item.id === "constraint-friendly-fire") textValue = t("sigian.modifier.friendlyFire");
-        if (item.id === "constraint-friendly-fire-power-threshold") {
-          textValue = t("sigian.modifier.friendlyFireWhen", {
-            condition:`${sigianCanonicalPowerLabel(item.params?.school || card.school)} ${sigianOperatorLabel(item.params?.op || "lt")} ${Number(item.params?.value || 0)}`
-          });
-          school = item.params?.school || card.school;
-        }
-      }
-      if (family === "selector") {
-        if (item.id === "selector-highest-life") textValue = t("sigian.modifier.highestLife");
-        if (item.id === "selector-highest-attack") textValue = t("sigian.modifier.highestAttack");
-      }
-      if (!textValue) return;
-      modifiers.push({
-        className:`${className}${school ? ` school-${school}` : ""}`,
-        text:textValue,
-        school
-      });
-    });
-
-    const fixedValueSigils = new Set([
-      "damage","wave","backlash","heal","restoration","regeneration",
-      "infusion","subtraction","channeling","erosion","tribute"
-    ]);
-    if (card?.__forgePreview && sigil.grade != null && !collectible) {
-      modifiers.unshift({
-        className:"grade",
-        text:Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${escapeHtml(sigil.grade)}`
-      });
-    }
-
-    if (!hasScaling && value != null && fixedValueSigils.has(sigil.sigilId)) {
-      const growth = ["channeling","erosion"].includes(sigil.sigilId);
-      const sign = ["subtraction","erosion","tribute"].includes(sigil.sigilId) ? "−" : value > 0 ? "+" : "";
+    if (collectible && sigil.intensity != null && Number(sigil.intensity) !== 0) {
       modifiers.push({
         className:"scale",
-        text:`${sign}${Math.abs(value)}${growth ? ` ${t("sigian.modifier.perTurn")}` : ""}`
+        text:String(sigil.intensity),
+        school:canonicalOption?.effectSchool || null
+      });
+    } else if (!collectible) {
+      modifiers.push(...sigianCanonicalBaseConfigChips(card, sigil, value));
+      (sigil.modifiers || []).forEach(item => {
+        const definition = A.getSigianAdvancedModifier?.(item.id);
+        const family = definition?.family;
+        let textValue = "";
+        let className = family || "modifier";
+        let school = item.params?.school || null;
+
+        if (family === "scaling") textValue = sigianCanonicalScalingLabel(item, card, sigil, value);
+        if (family === "activation") textValue = sigianCanonicalActivationLabel(item, card);
+        if (family === "constraint") {
+          if (item.id === "constraint-friendly-fire") textValue = t("sigian.modifier.friendlyFire");
+          if (item.id === "constraint-friendly-fire-power-threshold") {
+            textValue = t("sigian.modifier.friendlyFireWhen", {
+              condition:`${sigianCanonicalPowerLabel(item.params?.school || card.school)} ${sigianOperatorLabel(item.params?.op || "lt")} ${Number(item.params?.value || 0)}`
+            });
+            school = item.params?.school || card.school;
+          }
+        }
+        if (family === "selector") {
+          if (item.id === "selector-highest-life") textValue = t("sigian.modifier.highestLife");
+          if (item.id === "selector-highest-attack") textValue = t("sigian.modifier.highestAttack");
+        }
+        if (!textValue) return;
+        modifiers.push({
+          className:`${className}${school ? ` school-${school}` : ""}`,
+          text:textValue,
+          school
+        });
       });
     }
 
     return {
       sigilId:sigil.sigilId,
       slotId:sigil.slotId || null,
+      canonicalId:canonicalOption?.canonicalId || null,
       effect,
-      name:collectible?.displayName || sigianCanonicalSigilName(sigil),
+      name:canonicalOption?.displayName || collectible?.displayName || sigianCanonicalSigilName(sigil),
       iconMarkup:className => sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, className),
       modifiers
     };
@@ -5245,7 +5235,8 @@
         </button>`;
       }
       const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
-      const name = collectible?.displayName || sigianCanonicalSigilName(sigil);
+      const canonicalOption = sigil.collectibleId ? A.getSigianForgeSigilOption?.(sigil.collectibleId, recipe.school) : null;
+      const name = canonicalOption?.displayName || collectible?.displayName || sigianCanonicalSigilName(sigil);
       const contribution = forgeSigilContribution(analysis, sigil.slotId);
       const owned = Number(A.getSigianOwnedCollectibleSigilQuantity?.(sigil.collectibleId, recipe.school) ?? 0);
       const used = recipe.sigils.filter(item => item.collectibleId === sigil.collectibleId).length;
@@ -5347,7 +5338,7 @@
     } else if (section === "art") {
       body = forgeArtPickerMarkup(recipe);
     } else if (section === "school") {
-      body = `<div class="forge-school-grid forge-card-editor-schools">${(A.listSigianSchools?.({ status:"active" }) || []).map(school => `
+      body = `<div class="forge-school-grid forge-card-editor-schools">${(A.listSigianContent?.({ kind:"school", status:"active" }) || []).map(school => `
         <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
           ${schoolIconMarkup(school.id, "school-icon-svg forge-school-icon")}
           <span>${escapeHtml(schoolName(school.id))}</span>
@@ -5424,8 +5415,8 @@
 
   function forgeGlobalConstraintMarkup(recipe) {
     const current = recipe.constraint || null;
-    const definitions = (A.listSigianCanonicalV2?.({ kind:"constraint" }) || [])
-      .filter(item => item.status === "approved" && item.selectable !== false);
+    const definitions = (A.listSigianContent?.({ kind:"constraint", status:"approved" }) || [])
+      .filter(item => item.selectable !== false);
     const options = [
       `<option value="">${escapeHtml(t("sigian.constraint.none"))}</option>`,
       ...definitions.map(definition => {
@@ -5451,7 +5442,7 @@
       ? `<label class="forge-model-field">
           <span>${escapeHtml(t("forge.school"))}</span>
           <select data-forge-constraint-school>
-            ${(A.listSigianSchools?.({ status:"active" }) || []).map(school =>
+            ${(A.listSigianContent?.({ kind:"school", status:"active" }) || []).map(school =>
               `<option value="${escapeHtml(school.id)}" ${current.school === school.id ? "selected" : ""}>${escapeHtml(schoolName(school.id))}</option>`
             ).join("")}
           </select>
@@ -5498,7 +5489,8 @@
     if (!recipe.sigils.length) return `<p class="forge-empty-note">${escapeHtml(t("forge.emptySigils"))}</p>`;
     return recipe.sigils.map(sigil => {
       const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
-      const name = collectible?.displayName || sigianCanonicalSigilName(sigil);
+      const canonicalOption = sigil.collectibleId ? A.getSigianForgeSigilOption?.(sigil.collectibleId, recipe.school) : null;
+      const name = canonicalOption?.displayName || collectible?.displayName || sigianCanonicalSigilName(sigil);
       const detail = collectible
         ? (sigil.intensity != null && Number(sigil.intensity) !== 0 ? `${t("forge.intensity")} ${sigil.intensity}` : forgeCollectibleSummary(collectible))
         : (Number(sigil.grade) === 1 ? t("forge.gradeOne") : `Grado ${sigil.grade}`);
@@ -5611,7 +5603,7 @@
       return `<label class="forge-model-field"><span>${escapeHtml(label)}</span><select ${dataAttrs}>${options}</select></label>`;
     }
     if (schema === "school") {
-      const options = (A.listSigianSchools?.({ status:"active" }) || []).map(school =>
+      const options = (A.listSigianContent?.({ kind:"school", status:"active" }) || []).map(school =>
         `<option value="${escapeHtml(school.id)}" ${String(value) === String(school.id) ? "selected" : ""}>${escapeHtml(schoolName(school.id))}</option>`
       ).join("");
       return `<label class="forge-model-field"><span>${escapeHtml(label)}</span><select ${dataAttrs}>${options}</select></label>`;
@@ -5644,51 +5636,9 @@
 
   function forgeSigilModelerMarkup(recipe, sigil, analysis) {
     if (!sigil) return "";
-    const definition = A.getCanonicalSigil?.(sigil.sigilId);
-    if (!definition) return "";
     const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
-    const hiddenConfigKeys = new Set(collectible?.hiddenConfigKeys || []);
-    const hiddenModifierFamilies = new Set(collectible?.hiddenModifierFamilies || []);
-    const configFields = Object.entries(definition.configSchema || {}).filter(([key]) => !hiddenConfigKeys.has(key)).map(([key, schema]) =>
-      forgeSchemaControlMarkup(
-        sigil,
-        key,
-        schema,
-        sigil.config?.[key],
-        `data-forge-config-key="${escapeHtml(key)}" data-forge-slot="${escapeHtml(sigil.slotId)}"`
-      )
-    ).join("");
-
-    const modifierFamilies = (definition.modifierFamilies || []).filter(family => !hiddenModifierFamilies.has(family)).map(family => {
-      const allowed = (definition.modifierOptions?.[family] || []).filter(id => A.getSigianAdvancedModifier?.(id)?.status === "active");
-      if (!allowed.length) return "";
-      const current = (sigil.modifiers || []).find(item => A.getSigianAdvancedModifier?.(item.id)?.family === family) || null;
-      const options = [
-        `<option value="">${escapeHtml(t("forge.noModifier"))}</option>`,
-        ...allowed.map(id => `<option value="${escapeHtml(id)}" ${current?.id === id ? "selected" : ""}>${escapeHtml(forgeModifierLabel(id))}</option>`)
-      ].join("");
-      const params = current ? Object.entries(A.getSigianAdvancedModifier(current.id)?.paramsSchema || {}).map(([key, schema]) =>
-        forgeSchemaControlMarkup(
-          sigil,
-          key,
-          schema,
-          current.params?.[key],
-          `data-forge-modifier-param="${escapeHtml(key)}" data-forge-modifier-family="${escapeHtml(family)}" data-forge-slot="${escapeHtml(sigil.slotId)}"`
-        )
-      ).join("") : "";
-
-      return `<div class="forge-modifier-family">
-        <label class="forge-model-field">
-          <span>${escapeHtml(forgeFamilyLabel(family))}</span>
-          <select data-forge-modifier-family="${escapeHtml(family)}" data-forge-slot="${escapeHtml(sigil.slotId)}">${options}</select>
-        </label>
-        ${params ? `<div class="forge-model-params">${params}</div>` : ""}
-      </div>`;
-    }).join("");
-
-    const gradeOptions = definition.atomic
-      ? `<option value="1" selected>${escapeHtml(t("forge.gradeOne"))}</option>`
-      : [1,2,3].map(grade => `<option value="${grade}" ${Number(sigil.grade) === grade ? "selected" : ""}>Grado ${grade === 1 ? "I" : grade === 2 ? "II" : "III"}</option>`).join("");
+    const canonicalOption = sigil.collectibleId ? A.getSigianForgeSigilOption?.(sigil.collectibleId, recipe.school) : null;
+    const modelName = canonicalOption?.displayName || collectible?.displayName || sigianCanonicalSigilName(sigil);
     const intensityValues = collectible?.intensityValues || [];
     const currentContribution = forgeSigilContribution(analysis, sigil.slotId);
     const currentFormulaValue = Number(analysis?.math?.arcaneValue);
@@ -5713,14 +5663,6 @@
         </div>`
       : "";
 
-    const modelName = collectible?.displayName || sigianCanonicalSigilName(sigil);
-    const configSection = configFields
-      ? `<div class="forge-model-section"><h4>${escapeHtml(t("forge.baseConfig"))}</h4><div class="forge-model-grid">${configFields}</div></div>`
-      : "";
-    const modifiersSection = modifierFamilies
-      ? `<div class="forge-model-section"><h4>${escapeHtml(t("forge.advancedModifiers"))}</h4><div class="forge-modifier-list">${modifierFamilies}</div></div>`
-      : `<div class="forge-model-section forge-model-section-empty"><h4>${escapeHtml(t("forge.advancedModifiers"))}</h4><span class="forge-model-none">${escapeHtml(t("forge.math.noCompatibleModifiers"))}</span></div>`;
-
     return `<section class="forge-sigil-modeler">
       <div class="forge-modeler-heading">
         <div class="forge-modeler-title">
@@ -5732,8 +5674,7 @@
           <button type="button" class="classic-stone-button danger" data-forge-remove-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.remove"))}</button>
         </div>
       </div>
-      <p class="forge-functional-description">${escapeHtml(A.describeSigianRecipeSigil?.(recipe, sigil) || "")}</p>
-      <p class="forge-modeling-note">${escapeHtml(t("forge.modelingNotice"))}</p>
+      <p class="forge-functional-description">${escapeHtml(A.describeSigianRecipeSigil?.(recipe, sigil) || canonicalOption?.summary || "")}</p>
 
       ${currentContribution ? `<div class="forge-modeler-av">
         <span>${escapeHtml(t("forge.math.sigilContribution"))}</span>
@@ -5742,14 +5683,11 @@
       </div>` : ""}
 
       <div class="forge-model-meta">
-        <label class="forge-model-field">
+        <div class="forge-model-field">
           <span>${escapeHtml(t("forge.grade"))}</span>
-          ${collectible
-            ? (collectible.atomic
-              ? `<strong class="forge-locked-grade">${escapeHtml(t("forge.atomicSigil"))}</strong>`
-              : `<strong class="forge-locked-grade">Grado ${sigil.grade === 1 ? "I" : sigil.grade === 2 ? "II" : "III"}</strong><small>${escapeHtml(t("forge.gradeLocked"))}</small>`)
-            : `<select data-forge-grade data-forge-slot="${escapeHtml(sigil.slotId)}" ${definition.atomic ? "disabled" : ""}>${gradeOptions}</select>`}
-        </label>
+          <strong class="forge-locked-grade">${collectible?.atomic ? escapeHtml(t("forge.atomicSigil")) : `Grado ${sigianRomanGrade(Number(sigil.grade || 1))}`}</strong>
+          <small>${escapeHtml(t("forge.gradeLocked"))}</small>
+        </div>
         <div class="forge-model-field forge-affinity-readonly">
           <span>${escapeHtml(t("forge.affinity"))}</span>
           <strong>${escapeHtml(forgeAffinityLabel(sigil.affinity))}</strong>
@@ -5758,11 +5696,9 @@
       </div>
 
       ${intensityMarkup}
-      ${configSection}
-      ${modifiersSection}
+      <p class="forge-modeling-note">Identità, bersagli e scaling incorporati nel Sigillo canonico. I Modifier runtime interni non sono modificabili come contenuto player-facing.</p>
     </section>`;
   }
-
 
   function forgeInventoryCanonicalComponentsMarkup(formula) {
     const components = formula?.components || [];
@@ -5792,8 +5728,7 @@
     const snapshot = session.snapshot();
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
-    const activeSigils = (A.listSigianCollectibleSigils?.({ status:"active" }) || [])
-      .filter(item => A.isSigianCollectibleInventoryCompatible?.(item.id, recipe.school) !== false);
+    const activeSigils = A.listSigianForgeSigilOptions?.(recipe.school) || [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
     const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;

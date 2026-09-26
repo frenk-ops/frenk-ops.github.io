@@ -70,10 +70,12 @@
     "wave-power-front":"v2-tide-power",
     "retaliation-damaged":"v2-retaliation",
     "heal-hero":"v2-heal-hero",
+    "heal-creature":"v2-heal-creature",
     "heal-power-hero":"v2-heal-power-hero",
     "restoration-front":"v2-recovery",
     "restoration-full-field":"v2-full-recovery",
     "regeneration":"v2-regeneration",
+    "infusion-all":"v2-infusion-all",
     "subtraction-all":"v2-subtraction-all",
     "channeling-all":"v2-channeling-all",
     "erosion-enemy-all":"v2-enemy-erosion-all",
@@ -86,6 +88,7 @@
     "absorption-source-half":"v2-vampirism",
     "absorption-hero-full":"v2-life-drain",
     "destruction-highest-life":"v2-uprooting",
+    "annihilation-all":"v2-annihilation",
     "rebirth":"v2-rebirth",
     "eternal-rebirth":"v2-eternal-rebirth",
     "domination":"v2-domination"
@@ -233,7 +236,10 @@
   }
 
   function expandCanonicalEntries() {
-    const source = A.listSigianCanonicalV2?.() || [];
+    const source = [
+      ...(A.listSigianContent?.({ kind:"sigil" }) || []),
+      ...(A.listSigianContent?.({ kind:"constraint" }) || [])
+    ];
     const out = [];
     source.forEach(entry => {
       const schools = /<Scuola>/.test(entry.name) ? SCHOOL_ORDER : [null];
@@ -437,16 +443,11 @@
   }
 
   function cosmeticItems() {
-    return originalCards().map(card => ({
-      id:`art:${card.id}`,
-      category:"art",
-      name:`${card.name} — ART`,
-      school:card.school,
-      image:`assets/cards/remastered/${card.id}.png`,
-      sourceFormulaId:card.id,
+    const canonical = A.listSigianContent?.({ kind:"cosmetic", status:"active" }) || [];
+    return canonical.map(item => ({
+      ...item,
       quantity:1,
-      owned:true,
-      status:"active"
+      owned:true
     }));
   }
 

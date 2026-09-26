@@ -24,6 +24,13 @@
     2:[2],
     3:[3]
   });
+  const TIGHT_FIVE_BANDS = Object.freeze({
+    1:[1],
+    2:[2],
+    3:[3],
+    4:[4],
+    5:[5]
+  });
   const POWER_SCALE_BY_GRADE = Object.freeze({
     1:"scale-power-half",
     2:"scale-power",
@@ -36,7 +43,7 @@
   }
 
   function roman(grade) {
-    return grade === 1 ? "I" : grade === 2 ? "II" : grade === 3 ? "III" : String(grade);
+    return ({ 1:"I", 2:"II", 3:"III", 4:"IV", 5:"V" })[grade] || String(grade);
   }
 
   function activeSchools() {
@@ -226,7 +233,8 @@
     name:"Cura Creatura",
     baseSigilId:"heal",
     family:"healing",
-    intensityBands:HEAL_BANDS,
+    grades:[1,2,3,4,5],
+    intensityBands:TIGHT_FIVE_BANDS,
     presetConfig:{ when:"onDeploy", target:"allied-creature" },
     hiddenConfigKeys:["when","target"],
     hiddenModifierFamilies:["scaling"]
@@ -300,7 +308,8 @@
     name:"Infusione Totale",
     baseSigilId:"infusion",
     family:"power-gain",
-    intensityBands:SMALL_RESOURCE_BANDS,
+    grades:[1,2,3,4,5],
+    intensityBands:TIGHT_FIVE_BANDS,
     presetConfig:{ when:"onDeploy", schools:"all" },
     hiddenConfigKeys:["when","schools"]
   });
@@ -504,13 +513,14 @@
     baseSigilId:"annihilation",
     family:"control",
     atomic:true,
+    status:"retired",
     presetConfig:{ when:"onDeploy", scope:"enemy-field" },
     hiddenConfigKeys:["when","scope"],
     hiddenModifierFamilies:["constraint"]
   });
   add({
     id:"annihilation-all",
-    name:"Annientamento Totale",
+    name:"Annientamento",
     baseSigilId:"annihilation",
     family:"control",
     atomic:true,

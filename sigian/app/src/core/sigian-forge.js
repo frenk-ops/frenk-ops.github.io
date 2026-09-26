@@ -638,6 +638,25 @@
         return commitRecipe(recipeWith({ sigils: next }));
       },
 
+      replaceCollectibleSigil(slotId, collectibleId) {
+        const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
+        if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+        const owned = typeof A.getSigianOwnedCollectibleSigilQuantity === "function"
+          ? A.getSigianOwnedCollectibleSigilQuantity(collectibleId, draft.recipe.school)
+          : null;
+        const usedCopies = draft.recipe.sigils.filter((item, itemIndex) =>
+          itemIndex !== index && item.collectibleId === collectibleId
+        ).length;
+        if (owned != null && usedCopies >= owned) {
+          throw new Error(`Non possiedi altre copie di ${collectibleId}.`);
+        }
+        const next = clone(draft.recipe.sigils);
+        const replacement = defaultForgeCollectibleSigil(collectibleId, draft.recipe.school, index);
+        replacement.slotId = slotId;
+        next[index] = replacement;
+        return commitRecipe(recipeWith({ sigils: next }));
+      },
+
       updateSigil(slotId, patch = {}) {
         const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
         if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);

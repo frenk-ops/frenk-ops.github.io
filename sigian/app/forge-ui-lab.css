@@ -5475,3 +5475,161 @@
     max-height: 38vh;
   }
 }
+
+
+/* ===== Sigian 0.60 — unified canonical content in UI Lab ===== */
+.forge-lab-constraint {
+  position:absolute;
+  z-index:48;
+  left:50%;
+  top:60.4%;
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  transform:translateX(-50%) translateZ(calc(var(--lab-ui-z) + 10px));
+  border:2px solid rgba(103,64,31,.62);
+  border-radius:50%;
+  color:#4a2818;
+  background:
+    radial-gradient(circle at 34% 27%,rgba(255,240,196,.8),transparent 20%),
+    radial-gradient(circle,#d0a65e,#80502b 72%);
+  box-shadow:
+    0 8px 14px rgba(30,16,8,.3),
+    0 0 0 3px rgba(220,183,116,.28),
+    inset 0 0 10px rgba(58,27,10,.28);
+  cursor:pointer;
+}
+
+.forge-lab-constraint.is-empty {
+  color:rgba(73,43,24,.52);
+  background:rgba(211,183,129,.55);
+  border-style:dashed;
+  box-shadow:0 5px 12px rgba(30,16,8,.18),inset 0 0 8px rgba(58,27,10,.14);
+}
+
+.forge-lab-constraint > span {
+  font:800 1.1rem/1 Georgia,serif;
+}
+
+.forge-lab-constraint > small {
+  position:absolute;
+  top:calc(100% + 3px);
+  left:50%;
+  width:max-content;
+  max-width:130px;
+  transform:translateX(-50%);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#4a2918;
+  text-shadow:0 1px rgba(255,229,177,.4);
+  font:700 .48rem/1.05 Georgia,serif;
+}
+
+.forge-lab-sigil-choice {
+  grid-template-areas:"icon name" "icon meta" "icon stock";
+}
+
+.forge-lab-sigil-choice > em {
+  grid-area:stock;
+  color:#7d5b3d;
+  font-size:.58rem;
+  font-style:normal;
+  font-weight:800;
+}
+
+.forge-lab-sigil-choice.is-disabled {
+  opacity:.48;
+}
+
+.forge-lab-canonical-note {
+  margin:12px 0 0;
+  padding:9px 10px;
+  border:1px solid rgba(91,59,31,.16);
+  border-radius:10px;
+  color:#67492f;
+  background:rgba(255,248,228,.45);
+  font-size:.7rem;
+  line-height:1.4;
+}
+
+.forge-lab-intensity-options {
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+
+.forge-lab-intensity-options button {
+  min-width:42px;
+  min-height:38px;
+  padding:6px 10px;
+  border:1px solid rgba(91,59,31,.28);
+  border-radius:999px;
+  color:#4a301d;
+  background:rgba(255,249,231,.82);
+  cursor:pointer;
+  font:700 .76rem/1 Georgia,serif;
+}
+
+.forge-lab-intensity-options button.is-selected {
+  border-color:#8a5729;
+  background:linear-gradient(180deg,#f4d881,#c9973c);
+  box-shadow:inset 0 0 0 1px rgba(255,240,181,.4);
+}
+
+.forge-lab-constraint-picker {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+  gap:9px;
+  margin-top:14px;
+}
+
+.forge-lab-constraint-choice {
+  min-width:0;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  grid-template-areas:"icon name" "icon meta" "icon stock";
+  gap:3px 9px;
+  align-items:center;
+  padding:10px;
+  border:1px solid rgba(83,55,30,.22);
+  border-radius:14px;
+  color:#3b291b;
+  background:rgba(255,247,226,.58);
+  text-align:left;
+}
+
+.forge-lab-constraint-choice > span {
+  grid-area:icon;
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(94,57,29,.38);
+  border-radius:50%;
+  background:rgba(199,159,100,.2);
+  font:800 1.1rem/1 Georgia,serif;
+}
+
+.forge-lab-constraint-choice > strong { grid-area:name; font:700 .8rem/1.1 Georgia,serif; }
+.forge-lab-constraint-choice > small { grid-area:meta; color:#74583e; font-size:.62rem; line-height:1.25; }
+.forge-lab-constraint-choice > em { grid-area:stock; color:#7d5b3d; font-size:.57rem; font-style:normal; font-weight:800; }
+.forge-lab-constraint-choice.is-disabled { opacity:.48; }
+
+@media (max-width:720px) {
+  .forge-lab-constraint {
+    top:60.8%;
+    width:44px;
+    height:44px;
+  }
+
+  .forge-lab-constraint > small {
+    display:none;
+  }
+
+  .forge-lab-constraint-picker {
+    grid-template-columns:1fr;
+  }
+}

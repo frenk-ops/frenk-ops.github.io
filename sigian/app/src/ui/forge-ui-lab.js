@@ -1,162 +1,6 @@
 (function (A) {
   "use strict";
 
-  const SCHOOL_GLYPHS = Object.freeze({
-    fire: "🔥",
-    water: "💧",
-    air: "◌",
-    earth: "◆",
-    death: "☠"
-  });
-
-  const SIGIL_GLYPHS = Object.freeze({
-    damage: "✦",
-    wave: "≋",
-    backlash: "↯",
-    retaliation: "⚔",
-    heal: "✚",
-    restoration: "❈",
-    regeneration: "♨",
-    infusion: "✧",
-    subtraction: "−",
-    channeling: "⌁",
-    erosion: "⌇",
-    tribute: "◇",
-    protection: "⬡",
-    "arcane-amplification": "✺"
-  });
-
-  const SIGIL_NAMES = Object.freeze({
-    damage: "Danno",
-    wave: "Onda",
-    backlash: "Contraccolpo",
-    retaliation: "Ritorsione",
-    heal: "Cura",
-    restoration: "Recupero",
-    regeneration: "Rigenerazione",
-    infusion: "Infusione",
-    subtraction: "Sottrazione",
-    channeling: "Canalizzazione",
-    erosion: "Erosione",
-    tribute: "Tributo",
-    protection: "Protezione",
-    "arcane-amplification": "Amplificazione Arcana",
-    "combat-fury": "Furia di Combattimento",
-    "total-assault": "Assalto Totale",
-    "arcane-attack": "Attacco Arcano",
-    absorption: "Assorbimento",
-    destruction: "Distruzione",
-    annihilation: "Annientamento",
-    rebirth: "Rinascita",
-    "eternal-rebirth": "Rinascita Eterna",
-    domination: "Dominio"
-  });
-
-  const SIGIL_DESCRIPTIONS = Object.freeze({
-    damage: "Infligge danno al bersaglio configurato quando il Sigillo si attiva.",
-    wave: "Propaga danno a più creature secondo portata e modificatori scelti.",
-    backlash: "Converte una condizione della Formula in danno rivolto al proprio Incantatore.",
-    retaliation: "Reagisce a un attacco o a un danno ricevuto colpendo la fonte dell'evento.",
-    heal: "Ripristina Vita al bersaglio configurato quando il Sigillo si attiva.",
-    restoration: "Distribuisce recupero di Vita su più bersagli alleati.",
-    regeneration: "Rigenera la creatura che porta il Sigillo durante il combattimento.",
-    infusion: "Aumenta uno o più Poteri della scuola scelta.",
-    subtraction: "Riduce uno o più Poteri secondo la configurazione del Sigillo.",
-    channeling: "Genera Potere mentre la creatura resta in campo.",
-    erosion: "Erode progressivamente uno o più Poteri.",
-    tribute: "Consuma Potere come parte dell'effetto della Formula.",
-    protection: "Riduce o attenua il danno subito dal bersaglio protetto.",
-    "arcane-amplification": "Amplifica una componente della Formula secondo le condizioni configurate.",
-    "combat-fury": "Aumenta la pressione offensiva della creatura secondo le condizioni configurate.",
-    "total-assault": "Concentra la Formula su un assalto totale.",
-    "arcane-attack": "Trasforma il Potere della scuola scelta in pressione offensiva.",
-    absorption: "Converte parte dell'effetto subito in recupero di Vita.",
-    destruction: "Distrugge una creatura avversaria secondo i criteri configurati.",
-    annihilation: "Estende la distruzione a più bersagli secondo l'ambito scelto.",
-    rebirth: "Riporta in gioco la creatura quando si verifica la condizione di rinascita.",
-    "eternal-rebirth": "Rende la rinascita parte permanente dell'identità della Formula.",
-    domination: "Prende il controllo del bersaglio previsto dalla configurazione."
-  });
-
-  const MODIFIER_NAMES = Object.freeze({
-    "scale-power-half": "½ Potere",
-    "scale-power": "Potere",
-    "scale-power-double": "2× Potere",
-    "scale-target-attack": "Attacco bersaglio",
-    "scale-full-health": "Vita piena",
-    "scale-creature-count": "Numero creature",
-    "scale-damage-dealt": "Danno inflitto",
-    "activation-power-threshold": "Soglia Potere",
-    "activation-power-comparison": "Confronto Potere",
-    "activation-critical-life": "Vita critica",
-    "activation-on-any-death": "Alla morte",
-    "constraint-friendly-fire": "Fuoco amico",
-    "constraint-friendly-fire-power-threshold": "Fuoco Amico Limite",
-    "selector-highest-life": "Vita più alta",
-    "selector-highest-attack": "Attacco più alto"
-  });
-
-  const IT_LABELS = Object.freeze({
-    damage: "Danno",
-    healing: "Cura",
-    power: "Potere",
-    combat: "Combattimento",
-    control: "Controllo",
-    scaling: "Intensità",
-    activation: "Attivazione",
-    constraint: "Vincolo",
-    selector: "Selettore",
-    when: "Momento",
-    target: "Bersaglio",
-    scope: "Ambito",
-    reaction: "Reazione",
-    schools: "Scuole",
-    school: "Scuola",
-    side: "Lato",
-    mode: "Modalità",
-    targetScope: "Bersagli",
-    stacking: "Cumulabilità",
-    threshold: "Soglia",
-    numerator: "Numeratore",
-    denominator: "Denominatore",
-    sourceTarget: "Origine",
-    healTarget: "Destinazione cura",
-    destination: "Destinazione",
-    min: "Minimo",
-    onDeploy: "All'evocazione",
-    onBeforeAttack: "Prima dell'attacco",
-    onSelfDeath: "Alla propria morte",
-    whileAlive: "Finché è in campo",
-    "enemy-hero": "Incantatore avversario",
-    "enemy-creature": "Creatura avversaria",
-    "self-hero": "Il tuo Incantatore",
-    "allied-creature": "Creatura alleata",
-    source: "Fonte",
-    "event-source": "Fonte dell'evento",
-    field: "Campo",
-    front: "Prima linea",
-    "all-powers": "Tutti i Poteri",
-    self: "Proprio",
-    enemy: "Avversario",
-    halve: "Dimezza",
-    subtract: "Sottrai",
-    hero: "Incantatore",
-    "hero-and-creatures": "Incantatore e creature",
-    "per-copy": "Per copia",
-    presence: "Presenza",
-    multiplier: "Moltiplicatore",
-    flat: "Valore fisso",
-    creature: "Creatura",
-    any: "Qualsiasi",
-    damaged: "Quando subisce danno",
-    attacked: "Quando viene attaccata",
-    "strongest-health": "Vita più alta",
-    "strongest-attack": "Attacco più alto",
-    "enemy-field": "Campo avversario",
-    "all-field": "Tutto il campo",
-    "own-hero": "Il tuo Incantatore"
-  });
-
   const DEPTH_LAYERS = Object.freeze({
     surface: 0,
     impressed: .08,
@@ -476,19 +320,6 @@
     '"': "&quot;"
   })[char]);
 
-  function labelId(value) {
-    const id = String(value || "");
-    if (MODIFIER_NAMES[id]) return MODIFIER_NAMES[id];
-    if (IT_LABELS[id]) return IT_LABELS[id];
-    return id
-      .replace(/^activation-/, "")
-      .replace(/^constraint-/, "")
-      .replace(/^selector-/, "")
-      .replace(/^scale-/, "")
-      .replaceAll("-", " ")
-      .replace(/\b\w/g, match => match.toUpperCase());
-  }
-
   function italianText(key, fallback) {
     const translated = A.i18n?.t?.(key, {}, "it");
     return translated && translated !== key ? translated : fallback;
@@ -504,86 +335,72 @@
     }[id] || String(id || ""));
   }
 
-  function schoolGlyph(id) {
-    return A.getSigianSchool?.(id)?.icon || SCHOOL_GLYPHS[id] || "✦";
-  }
-
   function schoolIconMarkup(id, className = "forge-lab-school-icon") {
-    if (typeof A.schoolIconMarkup === "function") return A.schoolIconMarkup(id, className);
-    return '<span class="' + escapeHtml(className) + ' school-icon-fallback" aria-hidden="true">' + escapeHtml(schoolGlyph(id)) + '</span>';
+    return A.sigianContentSchoolIconMarkup?.(id, className)
+      || A.schoolIconMarkup?.(id, className)
+      || '<span class="' + escapeHtml(className) + '" aria-hidden="true">✦</span>';
   }
 
-  function cardDisplayName(card) {
-    if (!card) return "";
-    const key = "cards." + card.id + ".name";
+  function cardDisplayName(item) {
+    if (!item) return "";
+    const sourceCardId = item.sourceFormulaId || item.id;
+    const key = "cards." + sourceCardId + ".name";
     const translated = A.i18n?.t?.(key, {}, "it");
-    return translated && translated !== key ? translated : (card.name || card.id);
+    if (translated && translated !== key) return translated;
+    return String(item.name || sourceCardId || "").replace(/\s+—\s+ART$/, "");
   }
 
-  function sigilName(id) {
-    return SIGIL_NAMES[id] || labelId(id);
-  }
-
-  function sigilGlyph(id) {
-    return SIGIL_GLYPHS[id] || "◈";
-  }
-
-  function cards() {
-    return A.RAW_CARD_SETS?.["astral-original"] || [];
+  function artItems() {
+    return A.listSigianInventoryArts?.()
+      || A.listSigianContent?.({ kind:"cosmetic", status:"active" })
+      || [];
   }
 
   function activeSchools() {
-    return A.listSigianSchools?.({ status: "active" }) || [];
+    return A.listSigianContent?.({ kind:"school", status:"active" }) || [];
   }
 
-  function activeSigils() {
-    return A.listCanonicalSigils?.({ status: "active" }) || [];
+  function forgeSigilOptions(recipe) {
+    return A.listSigianForgeSigilOptions?.(recipe?.school || "fire") || [];
   }
 
-  function canonicalV2Entries(kind) {
-    return A.listSigianCanonicalV2?.({ kind }) || [];
+  function sigilOption(recipe, sigil) {
+    if (!sigil?.collectibleId) return null;
+    return A.getSigianForgeSigilOption?.(sigil.collectibleId, recipe?.school || "fire") || null;
   }
 
-  function canonicalV2ItemMarkup(item) {
-    const approved = item.status === "approved";
-    const stateClass = approved ? " is-approved" : " is-review";
-    const stateLabel = approved ? "OK" : "DA RIVEDERE";
-    return (
-      '<article class="forge-lab-canon-item' + stateClass + '" role="listitem" ' +
-        (approved ? '' : 'aria-disabled="true"') + '>' +
-        '<div class="forge-lab-canon-item-head">' +
-          '<strong>' + escapeHtml(item.name) + '</strong>' +
-          '<span class="forge-lab-canon-status">' + stateLabel + '</span>' +
-        '</div>' +
-        '<small class="forge-lab-canon-grades">' + escapeHtml(item.grades || "—") + '</small>' +
-        '<p>' + escapeHtml(item.summary || "") + '</p>' +
-      '</article>'
-    );
+  function sigilName(recipe, sigil) {
+    return sigilOption(recipe, sigil)?.displayName
+      || sigilOption(recipe, sigil)?.canonicalName
+      || String(sigil?.collectibleId || sigil?.sigilId || "Sigillo");
   }
 
-  function canonicalV2CatalogMarkup() {
-    const sigils = canonicalV2Entries("sigil");
-    const constraints = canonicalV2Entries("constraint");
-    const approvedSigils = sigils.filter(item => item.status === "approved").length;
-    const approvedConstraints = constraints.filter(item => item.status === "approved").length;
-    return (
-      '<section class="forge-lab-canon-catalog" aria-label="Catalogo canonico v2">' +
-        '<header class="forge-lab-canon-heading">' +
-          '<div><small>CATALOGO CANONICO V2</small><strong>' + approvedSigils + ' Sigilli OK · ' + approvedConstraints + ' Vincoli OK</strong></div>' +
-          '<p>Le voci “Da rivedere” restano visibili ma disabilitate. Il catalogo canonico è separato dal compiler legacy finché la migrazione runtime non è completata.</p>' +
-        '</header>' +
-        '<div class="forge-lab-canon-columns">' +
-          '<section><h4>Sigilli Arcani</h4><div class="forge-lab-canon-list" role="list">' + sigils.map(canonicalV2ItemMarkup).join("") + '</div></section>' +
-          '<section><h4>Vincoli</h4><div class="forge-lab-canon-list" role="list">' + constraints.map(canonicalV2ItemMarkup).join("") + '</div></section>' +
-        '</div>' +
-      '</section>'
-    );
+  function sigilGlyph(recipe, sigil) {
+    const option = sigilOption(recipe, sigil);
+    return A.sigianContentSigilGlyph?.(option?.canonicalId) || "◈";
+  }
+
+  function selectedArtCard(recipe) {
+    const set = artItems();
+    const requested = String(recipe?.presentation?.imageKey || state.artCardId || "");
+    let art = set.find(item => item.id === requested) || null;
+    if (!art) {
+      art = set.find(item => item.school === recipe?.school)
+        || set[0]
+        || null;
+    }
+    state.artCardId = art?.id || "";
+    return art;
+  }
+
+  function artUrl(art) {
+    return String(art?.image || "");
   }
 
   function ensureSession() {
     if (state.session) return state.session;
     const draft = A.loadSigianForgeDraft?.();
-    state.session = A.createSigianForgeSession?.({ draft: draft || undefined }) || null;
+    state.session = A.createSigianForgeSession?.({ draft:draft || undefined }) || null;
     return state.session;
   }
 
@@ -595,23 +412,6 @@
     const result = fn();
     changed();
     return result;
-  }
-
-  function selectedArtCard(recipe) {
-    const set = cards();
-    let card = set.find(item => item.id === state.artCardId) || null;
-    if (!card) {
-      card = set.find(item => item.school === recipe.school && item.type === recipe.type)
-        || set.find(item => item.school === recipe.school)
-        || set[0]
-        || null;
-      state.artCardId = card?.id || "";
-    }
-    return card;
-  }
-
-  function artUrl(card) {
-    return card ? "assets/cards/remastered/" + card.id + ".png" : "";
   }
 
   function geometryStyle() {
@@ -635,16 +435,20 @@
     ]).concat([["--lab-z-control-local", "2px"]]);
   }
 
-  function currentModifierForFamily(sigil, family) {
-    return (sigil.modifiers || []).find(item => A.getSigianAdvancedModifier?.(item.id)?.family === family) || null;
-  }
-
-  function compactModifierMarkup(sigil) {
-    const grade = Number(sigil.grade || 1);
-    const chips = ['<span class="forge-lab-chip grade">Grado ' + grade + '</span>'];
-    (sigil.modifiers || []).slice(0, 2).forEach(modifier => {
-      chips.push('<span class="forge-lab-chip">' + escapeHtml(labelId(modifier.id)) + '</span>');
-    });
+  function sigilIdentityMarkup(recipe, sigil) {
+    const option = sigilOption(recipe, sigil);
+    const chips = [];
+    if (sigil?.grade != null && !option?.atomic) {
+      chips.push('<span class="forge-lab-chip grade">Grado ' + escapeHtml(({1:"I",2:"II",3:"III",4:"IV",5:"V"})[Number(sigil.grade)] || sigil.grade) + '</span>');
+    } else if (option?.atomic) {
+      chips.push('<span class="forge-lab-chip grade">Speciale</span>');
+    }
+    if (sigil?.intensity != null && Number(sigil.intensity) !== 0) {
+      chips.push('<span class="forge-lab-chip">Intensità ' + escapeHtml(sigil.intensity) + '</span>');
+    }
+    if (option?.effectSchool) {
+      chips.push('<span class="forge-lab-chip">' + escapeHtml(schoolLabel(option.effectSchool)) + '</span>');
+    }
     return chips.join("");
   }
 
@@ -656,21 +460,39 @@
     ).join("");
   }
 
-  function sigilHasFixedGrade(sigil) {
-    return Boolean(sigil.collectibleId || A.getCanonicalSigil?.(sigil.sigilId)?.gradeModel?.type === "fixed");
+  function constraintDefinition(recipe) {
+    return recipe?.constraint?.definitionId
+      ? A.getSigianContent?.(recipe.constraint.definitionId, "constraint")
+      : null;
   }
 
-  function sigilQuickMarkup(sigil) {
+  function constraintName(recipe) {
+    const definition = constraintDefinition(recipe);
+    if (!definition) return "Vincolo";
+    return A.materializeSigianContentName?.(definition.name, recipe.constraint?.school || recipe.school)
+      || definition.name
+      || "Vincolo";
+  }
+
+  function constraintCardMarkup(recipe) {
+    const current = recipe.constraint || null;
+    const name = current ? constraintName(recipe) : "Vincolo vuoto";
+    return '<button type="button" class="forge-lab-constraint ' + (current ? "is-filled" : "is-empty") +
+      (current?.school ? " school-" + escapeHtml(current.school) : "") +
+      '" data-lab-constraint-main data-lab-depth-layer="floating" aria-label="' + escapeHtml(name) + '">' +
+      '<span aria-hidden="true">◇</span>' +
+      (current ? '<small>' + escapeHtml(name) + '</small>' : '<small>Vincolo</small>') +
+    '</button>';
+  }
+
+  function sigilQuickMarkup(recipe, sigil) {
     if (state.inlineControl !== "sigil:" + sigil.slotId) return "";
     const slot = escapeHtml(sigil.slotId);
-    const grade = Number(sigil.grade || 1);
-    const fixed = sigilHasFixedGrade(sigil);
+    const option = sigilOption(recipe, sigil);
+    const grade = sigil?.grade == null ? "" : (({1:"I",2:"II",3:"III",4:"IV",5:"V"})[Number(sigil.grade)] || sigil.grade);
     return '<div class="forge-lab-sigil-quick" role="group" aria-label="Controllo rapido Sigillo">' +
-      (fixed ? '<span>Grado fisso</span>' :
-        '<button type="button" data-lab-sigil-grade-step="-1" data-lab-slot="' + slot + '" aria-label="Riduci Grado"' + (grade <= 1 ? ' disabled' : '') + '>−</button>' +
-        '<span aria-live="polite">' + grade + '</span>' +
-        '<button type="button" data-lab-sigil-grade-step="1" data-lab-slot="' + slot + '" aria-label="Aumenta Grado"' + (grade >= 3 ? ' disabled' : '') + '>+</button>') +
-      '<button type="button" data-lab-sigil-advanced="' + slot + '" aria-label="Configurazione avanzata">✦</button>' +
+      '<span>' + escapeHtml(option?.atomic ? "Sigillo speciale" : ("Grado " + grade)) + '</span>' +
+      '<button type="button" data-lab-sigil-advanced="' + slot + '" aria-label="Dettaglio Sigillo">✦</button>' +
       '<button type="button" data-lab-quick-close aria-label="Chiudi controllo rapido">×</button>' +
     '</div>';
   }
@@ -690,6 +512,7 @@
         );
         continue;
       }
+      const option = sigilOption(recipe, sigil);
       const imprint = state.imprintSlotId === sigil.slotId ? " is-imprinting" : "";
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
@@ -699,15 +522,15 @@
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
             '<span class="forge-lab-sigil-emblem" aria-hidden="true">' +
               '<span class="forge-lab-sigil-runes"><i>ᚨ</i><i>ᚱ</i><i>ᚲ</i><i>ᚾ</i><i>ᛟ</i><i>ᛉ</i></span>' +
-              '<span class="forge-lab-sigil-glyph">' + escapeHtml(sigilGlyph(sigil.sigilId)) + '</span>' +
+              '<span class="forge-lab-sigil-glyph">' + escapeHtml(sigilGlyph(recipe, sigil)) + '</span>' +
             '</span>' +
             '<span class="forge-lab-sigil-copy">' +
-              '<strong class="forge-lab-sigil-name">' + sigilNameLettersMarkup(sigilName(sigil.sigilId)) + '</strong>' +
-              '<span class="forge-lab-chip-row">' + compactModifierMarkup(sigil) + '</span>' +
+              '<strong class="forge-lab-sigil-name">' + sigilNameLettersMarkup(sigilName(recipe, sigil)) + '</strong>' +
+              '<span class="forge-lab-chip-row">' + sigilIdentityMarkup(recipe, sigil) + '</span>' +
             '</span>' +
           '</button>' +
           '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo successivo">›</button>' +
-          sigilQuickMarkup(sigil) +
+          sigilQuickMarkup(recipe, sigil) +
         '</div>'
       );
     }
@@ -791,6 +614,7 @@
               '</div>'
             : "") +
           inlineControlMarkup(recipe) +
+          constraintCardMarkup(recipe) +
           '<section class="forge-lab-sigils" aria-label="Sigilli">' + sigilRowsMarkup(recipe) + '</section>' +
         '</article>' +
       '</div>'
@@ -819,13 +643,14 @@
   }
 
   function artPickerMarkup(recipe) {
+    const arts = artItems();
     return modalShell(
-      modalHeading("Illustrazione", "Scegli l’illustrazione completa", "La Forgia mantiene l’immagine intera e la fonde nella pergamena.") +
+      modalHeading("Illustrazione", "Scegli l’illustrazione completa", "Le ART disponibili provengono dall’Inventario canonico.") +
       '<div class="forge-lab-art-grid">' +
-        cards().map(card =>
-          '<button type="button" class="forge-lab-art-choice ' + (card.id === state.artCardId ? "is-selected" : "") + '" data-lab-art-card="' + escapeHtml(card.id) + '">' +
-            '<img src="' + escapeHtml(artUrl(card)) + '" alt="' + escapeHtml(cardDisplayName(card)) + '">' +
-            '<small>' + escapeHtml(cardDisplayName(card)) + '</small>' +
+        arts.map(art =>
+          '<button type="button" class="forge-lab-art-choice ' + (art.id === recipe.presentation?.imageKey ? "is-selected" : "") + '" data-lab-art-card="' + escapeHtml(art.id) + '">' +
+            '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' +
+            '<small>' + escapeHtml(cardDisplayName(art)) + '</small>' +
           '</button>'
         ).join("") +
       '</div>',
@@ -849,97 +674,65 @@
   function sigilPickerMarkup(recipe, slotId = null) {
     const replace = Boolean(slotId);
     const current = replace ? recipe.sigils.find(item => item.slotId === slotId) : null;
+    const options = forgeSigilOptions(recipe);
     return modalShell(
-      modalHeading("Sigilli Arcani", replace ? "Sostituisci Sigillo" : "Imprimi un Sigillo", "Catalogo canonico v2 e compatibilità runtime corrente.") +
-      canonicalV2CatalogMarkup() +
-      '<details class="forge-lab-runtime-catalog">' +
-        '<summary><strong>Editor runtime legacy</strong><span>compatibilità temporanea</span></summary>' +
-        '<p>Questi controlli restano disponibili per non rompere il compiler delle 65 carte durante la migrazione al catalogo v2.</p>' +
-        '<div class="forge-lab-sigil-picker">' +
-          activeSigils().map(definition =>
-            '<button type="button" class="forge-lab-sigil-choice ' + (current?.sigilId === definition.id ? "is-selected" : "") + '" ' +
-              (replace ? 'data-lab-replace-sigil="' : 'data-lab-add-sigil="') + escapeHtml(definition.id) + '"' +
-              (replace ? ' data-lab-slot="' + escapeHtml(slotId) + '"' : "") + '>' +
-              '<span aria-hidden="true">' + escapeHtml(sigilGlyph(definition.id)) + '</span>' +
-              '<strong>' + escapeHtml(sigilName(definition.id)) + '</strong>' +
-              '<small>' + escapeHtml(labelId(definition.family || "arcano")) + '</small>' +
-            '</button>'
-          ).join("") +
-        '</div>' +
-      '</details>',
+      modalHeading(
+        "Sigilli Arcani",
+        replace ? "Sostituisci Sigillo" : "Imprimi un Sigillo",
+        "Un solo catalogo canonico. Grado, portata e scaling fanno parte dell’identità del Sigillo."
+      ) +
+      '<div class="forge-lab-sigil-picker">' +
+        options.map(option => {
+          const selected = current?.collectibleId === option.id;
+          const owned = Number(A.getSigianOwnedCollectibleSigilQuantity?.(option.id, recipe.school) ?? 0);
+          const used = recipe.sigils.filter(item => item.collectibleId === option.id && item.slotId !== slotId).length;
+          const available = Math.max(0, owned - used);
+          const disabled = available < 1 && !selected;
+          return '<button type="button" class="forge-lab-sigil-choice ' + (selected ? "is-selected " : "") + (disabled ? "is-disabled" : "") + '" ' +
+            (replace ? 'data-lab-replace-collectible="' : 'data-lab-add-collectible="') + escapeHtml(option.id) + '"' +
+            (replace ? ' data-lab-slot="' + escapeHtml(slotId) + '"' : "") +
+            (disabled ? ' disabled' : '') + '>' +
+              '<span aria-hidden="true">' + escapeHtml(A.sigianContentSigilGlyph?.(option.canonicalId) || "◈") + '</span>' +
+              '<strong>' + escapeHtml(option.displayName) + '</strong>' +
+              '<small>' + escapeHtml(option.summary || "") + '</small>' +
+              '<em>Inventario ' + escapeHtml(available) + ' / ' + escapeHtml(owned) + '</em>' +
+            '</button>';
+        }).join("") +
+      '</div>',
       "is-wide"
     );
-  }
-
-  function schemaOptions(schema, value, key) {
-    if (Array.isArray(schema)) {
-      return '<select data-lab-config="' + escapeHtml(key) + '">' +
-        schema.map(option => '<option value="' + escapeHtml(option) + '" ' + (String(option) === String(value) ? "selected" : "") + '>' + escapeHtml(labelId(option)) + '</option>').join("") +
-      '</select>';
-    }
-    if (schema === "school") {
-      return '<select data-lab-config="' + escapeHtml(key) + '">' +
-        activeSchools().map(school => '<option value="' + escapeHtml(school.id) + '" ' + (school.id === value ? "selected" : "") + '>' + escapeHtml(schoolLabel(school.id)) + '</option>').join("") +
-      '</select>';
-    }
-    if (schema === "schools") {
-      const selected = value === "all" ? ["all"] : Array.isArray(value) ? value : [];
-      return '<div class="forge-lab-school-multi" data-lab-schools-config="' + escapeHtml(key) + '">' +
-        '<label><input type="checkbox" value="all" ' + (selected.includes("all") ? "checked" : "") + '> Tutte</label>' +
-        activeSchools().map(school => '<label><input type="checkbox" value="' + escapeHtml(school.id) + '" ' + (selected.includes(school.id) ? "checked" : "") + ' ' + (selected.includes("all") ? "disabled" : "") + '> ' + escapeHtml(schoolLabel(school.id)) + '</label>').join("") +
-      '</div>';
-    }
-    return '<input data-lab-config="' + escapeHtml(key) + '" type="number" value="' + escapeHtml(value ?? 0) + '">';
-  }
-
-  function modifierParamControl(modifier, key, schema, value) {
-    const attrs = ' data-lab-modifier-param="' + escapeHtml(key) + '" data-lab-modifier-family="' + escapeHtml(A.getSigianAdvancedModifier?.(modifier.id)?.family || "") + '"';
-    if (Array.isArray(schema)) {
-      return '<select' + attrs + '>' + schema.map(option => '<option value="' + escapeHtml(option) + '" ' + (String(option) === String(value) ? "selected" : "") + '>' + escapeHtml(labelId(option)) + '</option>').join("") + '</select>';
-    }
-    if (schema === "school") {
-      return '<select' + attrs + '>' + activeSchools().map(school => '<option value="' + escapeHtml(school.id) + '" ' + (school.id === value ? "selected" : "") + '>' + escapeHtml(schoolLabel(school.id)) + '</option>').join("") + '</select>';
-    }
-    return '<input' + attrs + ' type="number" value="' + escapeHtml(value ?? 0) + '">';
   }
 
   function sigilEditorMarkup(recipe, slotId) {
     const sigil = recipe.sigils.find(item => item.slotId === slotId);
     if (!sigil) return sigilPickerMarkup(recipe);
-    const definition = A.getCanonicalSigil?.(sigil.sigilId) || {};
-    const configFields = Object.entries(definition.configSchema || {}).map(([key, schema]) =>
-      '<label class="forge-lab-field"><span>' + escapeHtml(labelId(key)) + '</span>' + schemaOptions(schema, sigil.config?.[key], key) + '</label>'
-    ).join("");
-
-    const modifierFields = (definition.modifierFamilies || []).map(family => {
-      const current = currentModifierForFamily(sigil, family);
-      const required = (definition.requiredModifierFamilies || []).includes(family);
-      const options = definition.modifierOptions?.[family] || [];
-      const select =
-        '<select data-lab-modifier-family="' + escapeHtml(family) + '">' +
-          (required ? "" : '<option value="">Nessuno</option>') +
-          options.map(id => '<option value="' + escapeHtml(id) + '" ' + (current?.id === id ? "selected" : "") + '>' + escapeHtml(labelId(id)) + '</option>').join("") +
-        '</select>';
-      let params = "";
-      if (current) {
-        const modifierDefinition = A.getSigianAdvancedModifier?.(current.id);
-        params = Object.entries(modifierDefinition?.paramsSchema || {}).map(([key, schema]) =>
-          '<label class="forge-lab-subfield"><span>' + escapeHtml(labelId(key)) + '</span>' + modifierParamControl(current, key, schema, current.params?.[key]) + '</label>'
-        ).join("");
-      }
-      return '<div class="forge-lab-modifier-editor"><label class="forge-lab-field"><span>' + escapeHtml(labelId(family)) + '</span>' + select + '</label>' + params + '</div>';
-    }).join("");
+    const option = sigilOption(recipe, sigil);
+    const description = A.describeSigianRecipeSigil?.(recipe, sigil) || option?.summary || "";
+    const grade = option?.atomic
+      ? "Speciale"
+      : (({1:"I",2:"II",3:"III",4:"IV",5:"V"})[Number(sigil.grade)] || sigil.grade || "—");
+    const intensityValues = option?.intensityValues || [];
+    const intensity = intensityValues.length > 1
+      ? '<div class="forge-lab-field"><span>Intensità</span><div class="forge-lab-intensity-options">' +
+          intensityValues.map(value =>
+            '<button type="button" data-lab-intensity="' + escapeHtml(value) + '" data-lab-slot="' + escapeHtml(slotId) + '" class="' +
+            (Number(sigil.intensity) === Number(value) ? "is-selected" : "") + '">' + escapeHtml(value) + '</button>'
+          ).join("") +
+        '</div></div>'
+      : "";
 
     return modalShell(
       '<div class="forge-lab-sigil-editor-heading">' +
-        '<span class="forge-lab-editor-glyph" aria-hidden="true">' + escapeHtml(sigilGlyph(sigil.sigilId)) + '</span>' +
-        modalHeading("Modifica Sigillo", sigilName(sigil.sigilId), SIGIL_DESCRIPTIONS[sigil.sigilId] || "Configura il Sigillo e i suoi modificatori.") +
+        '<span class="forge-lab-editor-glyph" aria-hidden="true">' + escapeHtml(sigilGlyph(recipe, sigil)) + '</span>' +
+        modalHeading("Sigillo canonico", sigilName(recipe, sigil), description) +
       '</div>' +
       '<div class="forge-lab-editor-grid">' +
-        '<label class="forge-lab-field"><span>Grado</span><select data-lab-grade><option value="1" ' + (Number(sigil.grade) === 1 ? "selected" : "") + '>I</option><option value="2" ' + (Number(sigil.grade) === 2 ? "selected" : "") + '>II</option><option value="3" ' + (Number(sigil.grade) === 3 ? "selected" : "") + '>III</option></select></label>' +
-        configFields +
+        '<div class="forge-lab-field"><span>Tipo</span><strong>Sigillo</strong></div>' +
+        '<div class="forge-lab-field"><span>Grado</span><strong>' + escapeHtml(grade) + '</strong></div>' +
+        (option?.effectSchool ? '<div class="forge-lab-field"><span>Scuola</span><strong>' + escapeHtml(schoolLabel(option.effectSchool)) + '</strong></div>' : "") +
+        intensity +
       '</div>' +
-      (modifierFields ? '<h4>Modificatori</h4><div class="forge-lab-modifier-list">' + modifierFields + '</div>' : "") +
+      '<p class="forge-lab-canonical-note">Bersaglio, portata e scaling sono incorporati nell’identità canonica. I Modifier runtime non sono contenuto modificabile.</p>' +
       '<div class="forge-lab-editor-actions">' +
         '<button type="button" class="classic-stone-button ghost" data-lab-open-picker="' + escapeHtml(slotId) + '">Cambia Sigillo</button>' +
         '<button type="button" class="classic-stone-button danger" data-lab-remove-sigil="' + escapeHtml(slotId) + '">Spezza / dissolvi</button>' +
@@ -951,18 +744,100 @@
   function sigilDetailMarkup(recipe, slotId) {
     const sigil = recipe.sigils.find(item => item.slotId === slotId);
     if (!sigil) return "";
-    const config = Object.entries(sigil.config || {}).map(([key, value]) =>
-      '<span><small>' + escapeHtml(labelId(key)) + '</small><strong>' + escapeHtml(Array.isArray(value) ? value.map(schoolLabel).join(", ") : value === "all" ? "Tutte" : labelId(value)) + '</strong></span>'
-    ).join("");
-    const modifiers = (sigil.modifiers || []).map(item => '<span class="forge-lab-chip">' + escapeHtml(labelId(item.id)) + '</span>').join("");
+    const option = sigilOption(recipe, sigil);
+    const description = A.describeSigianRecipeSigil?.(recipe, sigil) || option?.summary || "";
+    const grade = option?.atomic
+      ? "Speciale"
+      : (({1:"I",2:"II",3:"III",4:"IV",5:"V"})[Number(sigil.grade)] || sigil.grade || "—");
     return modalShell(
       '<div class="forge-lab-sigil-detail">' +
-        '<span class="forge-lab-detail-glyph" aria-hidden="true">' + escapeHtml(sigilGlyph(sigil.sigilId)) + '</span>' +
-        modalHeading("Dettaglio Sigillo", sigilName(sigil.sigilId), SIGIL_DESCRIPTIONS[sigil.sigilId] || "Effetto canonico della Formula.") +
-        '<div class="forge-lab-detail-meta"><span><small>Grado</small><strong>' + escapeHtml(sigil.grade || 1) + '</strong></span>' + config + '</div>' +
-        '<div class="forge-lab-chip-row">' + (modifiers || '<span class="forge-lab-chip">Nessun modificatore</span>') + '</div>' +
-        '<p class="forge-lab-hold-note">Pressione lunga: dettaglio · tocco breve: modifica</p>' +
+        '<span class="forge-lab-detail-glyph" aria-hidden="true">' + escapeHtml(sigilGlyph(recipe, sigil)) + '</span>' +
+        modalHeading("Dettaglio Sigillo", sigilName(recipe, sigil), description) +
+        '<div class="forge-lab-detail-meta">' +
+          '<span><small>Tipo</small><strong>Sigillo</strong></span>' +
+          '<span><small>Grado</small><strong>' + escapeHtml(grade) + '</strong></span>' +
+          (sigil.intensity != null ? '<span><small>Intensità</small><strong>' + escapeHtml(sigil.intensity) + '</strong></span>' : "") +
+        '</div>' +
+        '<p class="forge-lab-hold-note">Pressione lunga: dettaglio · tocco breve: controlli rapidi</p>' +
       '</div>'
+    );
+  }
+
+  function constraintPickerMarkup(recipe) {
+    const definitions = A.listSigianContent?.({ kind:"constraint", status:"approved" }) || [];
+    return modalShell(
+      modalHeading("Vincolo globale", "Scegli un Vincolo", "La lista è la stessa usata dalla Forgia, dall’Inventario e dal resto di SIGIAN.") +
+      '<div class="forge-lab-constraint-picker">' +
+        definitions.map(definition => {
+          const schoolBound = /<Scuola>/.test(String(definition.name || ""));
+          const gradeLess = /senza Gradi/i.test(String(definition.grades || ""));
+          const probe = {
+            definitionId:definition.id,
+            school:schoolBound ? recipe.school : null,
+            grade:gradeLess ? null : 1
+          };
+          const owned = Number(A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
+          const disabled = owned < 1;
+          const name = A.materializeSigianContentName?.(definition.name, recipe.school) || definition.name;
+          return '<button type="button" class="forge-lab-constraint-choice ' + (disabled ? "is-disabled" : "") +
+            '" data-lab-constraint-id="' + escapeHtml(definition.id) + '"' + (disabled ? ' disabled' : '') + '>' +
+            '<span aria-hidden="true">◇</span><strong>' + escapeHtml(name) + '</strong>' +
+            '<small>' + escapeHtml(definition.summary || "") + '</small><em>Inventario ×' + escapeHtml(owned) + '</em>' +
+          '</button>';
+        }).join("") +
+      '</div>',
+      "is-wide"
+    );
+  }
+
+  function constraintEditorMarkup(recipe) {
+    const current = recipe.constraint;
+    if (!current) return constraintPickerMarkup(recipe);
+    const definition = constraintDefinition(recipe);
+    const description = A.describeSigianConstraint?.(current) || definition?.summary || "";
+    const schoolBound = /<Scuola>/.test(String(definition?.name || ""));
+    const gradeLess = /senza Gradi/i.test(String(definition?.grades || ""));
+    const specs = A.getSigianForgeConstraintParameters?.(current) || [];
+    const gradeDriven = specs.some(spec => spec.drivesGrade);
+
+    const schoolControl = schoolBound
+      ? '<label class="forge-lab-field"><span>Scuola</span><select data-lab-constraint-school>' +
+          activeSchools().map(school => '<option value="' + escapeHtml(school.id) + '" ' +
+            (current.school === school.id ? "selected" : "") + '>' + escapeHtml(schoolLabel(school.id)) + '</option>').join("") +
+        '</select></label>'
+      : "";
+
+    const gradeControl = !gradeLess && !gradeDriven
+      ? '<label class="forge-lab-field"><span>Grado</span><select data-lab-constraint-grade>' +
+          [1,2,3,4,5].map(grade => '<option value="' + grade + '" ' +
+            (Number(current.grade || 1) === grade ? "selected" : "") + '>' +
+            escapeHtml(({1:"I",2:"II",3:"III",4:"IV",5:"V"})[grade]) + '</option>').join("") +
+        '</select></label>'
+      : "";
+
+    const params = specs.map(spec =>
+      '<div class="forge-lab-field"><span>' + escapeHtml(({intensity:"Intensità",threshold:"Soglia",damage:"Danno"})[spec.key] || spec.key) + '</span>' +
+        '<div class="forge-lab-intensity-options">' +
+          spec.values.map(value => '<button type="button" data-lab-constraint-param="' + escapeHtml(spec.key) +
+            '" data-lab-constraint-value="' + escapeHtml(value) + '" class="' +
+            (Number(spec.value) === Number(value) ? "is-selected" : "") + '">' + escapeHtml(value) + '</button>').join("") +
+        '</div></div>'
+    ).join("");
+
+    return modalShell(
+      '<div class="forge-lab-sigil-editor-heading">' +
+        '<span class="forge-lab-editor-glyph" aria-hidden="true">◇</span>' +
+        modalHeading("Vincolo canonico", constraintName(recipe), description) +
+      '</div>' +
+      '<div class="forge-lab-editor-grid">' +
+        '<div class="forge-lab-field"><span>Tipo</span><strong>Vincolo</strong></div>' +
+        schoolControl + gradeControl + params +
+      '</div>' +
+      '<div class="forge-lab-editor-actions">' +
+        '<button type="button" class="classic-stone-button ghost" data-lab-open-constraint-picker>Cambia Vincolo</button>' +
+        '<button type="button" class="classic-stone-button danger" data-lab-remove-constraint>Rimuovi Vincolo</button>' +
+      '</div>',
+      "is-editor"
     );
   }
 
@@ -975,6 +850,8 @@
     if (modal.type === "sigil-picker") return sigilPickerMarkup(recipe, modal.slotId);
     if (modal.type === "sigil-edit") return sigilEditorMarkup(recipe, modal.slotId);
     if (modal.type === "sigil-detail") return sigilDetailMarkup(recipe, modal.slotId);
+    if (modal.type === "constraint-picker") return constraintPickerMarkup(recipe);
+    if (modal.type === "constraint-edit") return constraintEditorMarkup(recipe);
     return "";
   }
 
@@ -1026,11 +903,14 @@
   }
 
   function cycleArt(recipe, delta) {
-    const set = cards();
-    if (!set.length) return;
+    const session = ensureSession();
+    const set = artItems();
+    if (!session || !set.length) return;
     const current = selectedArtCard(recipe);
-    const index = Math.max(0, set.findIndex(card => card.id === current?.id));
-    state.artCardId = set[(index + Number(delta) + set.length) % set.length].id;
+    const index = Math.max(0, set.findIndex(art => art.id === current?.id));
+    const next = set[(index + Number(delta) + set.length) % set.length];
+    mutate(() => session.setArt(next.id));
+    state.artCardId = next.id;
     render();
   }
 
@@ -1058,13 +938,13 @@
 
   function cycleSigil(recipe, slotId, delta) {
     const session = ensureSession();
-    const list = activeSigils();
+    const list = forgeSigilOptions(recipe);
     const current = recipe.sigils.find(item => item.slotId === slotId);
     if (!session || !current || !list.length) return;
-    const index = Math.max(0, list.findIndex(item => item.id === current.sigilId));
+    const index = Math.max(0, list.findIndex(item => item.id === current.collectibleId));
     const next = list[(index + Number(delta) + list.length) % list.length];
-    mutate(() => session.replaceSigil(slotId, next.id));
-    playImprint(slotId, { quick: true });
+    mutate(() => session.replaceCollectibleSigil(slotId, next.id));
+    playImprint(slotId, { quick:true });
   }
 
   function controlValue(recipe, kind) {
@@ -1425,21 +1305,9 @@
   }
 
   function bindSigilQuick(root, session) {
-    root.querySelectorAll("[data-lab-sigil-grade-step]").forEach(button => button.addEventListener("click", event => {
-      event.stopPropagation();
-      const slotId = button.dataset.labSlot;
-      const sigil = session.snapshot().draft.recipe.sigils.find(item => item.slotId === slotId);
-      if (!sigil || sigilHasFixedGrade(sigil)) return;
-      const grade = Number(sigil.grade || 1);
-      const next = Math.max(1, Math.min(3, grade + Number(button.dataset.labSigilGradeStep)));
-      if (next === grade) return;
-      mutate(() => session.setSigilGrade(slotId, next));
-      state.inlineControl = "sigil:" + slotId;
-      render();
-    }));
     root.querySelectorAll("[data-lab-sigil-advanced]").forEach(button => button.addEventListener("click", () => {
       state.inlineControl = null;
-      state.modal = { type: "sigil-edit", slotId: button.dataset.labSigilAdvanced };
+      state.modal = { type:"sigil-edit", slotId:button.dataset.labSigilAdvanced };
       render();
     }));
     root.querySelectorAll("[data-lab-quick-close]").forEach(button => button.addEventListener("click", () => {
@@ -1465,6 +1333,12 @@
       render();
     }));
 
+    root.querySelector("[data-lab-constraint-main]")?.addEventListener("click", () => {
+      state.inlineControl = null;
+      state.modal = { type:recipe.constraint ? "constraint-edit" : "constraint-picker" };
+      render();
+    });
+
     root.querySelectorAll("[data-lab-close]").forEach(button => button.addEventListener("click", () => {
       state.modal = null;
       render();
@@ -1476,6 +1350,7 @@
     });
 
     root.querySelectorAll("[data-lab-art-card]").forEach(button => button.addEventListener("click", () => {
+      mutate(() => session.setArt(button.dataset.labArtCard));
       state.artCardId = button.dataset.labArtCard;
       state.modal = null;
       render();
@@ -1487,8 +1362,8 @@
       render();
     }));
 
-    root.querySelectorAll("[data-lab-add-sigil]").forEach(button => button.addEventListener("click", () => {
-      const result = mutate(() => session.addSigil(button.dataset.labAddSigil));
+    root.querySelectorAll("[data-lab-add-collectible]").forEach(button => button.addEventListener("click", () => {
+      const result = mutate(() => session.addCollectibleSigil(button.dataset.labAddCollectible));
       const slotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
       if (slotId) {
         state.inlineControl = "sigil:" + slotId;
@@ -1496,9 +1371,9 @@
       } else render();
     }));
 
-    root.querySelectorAll("[data-lab-replace-sigil]").forEach(button => button.addEventListener("click", () => {
+    root.querySelectorAll("[data-lab-replace-collectible]").forEach(button => button.addEventListener("click", () => {
       const slotId = button.dataset.labSlot;
-      mutate(() => session.replaceSigil(slotId, button.dataset.labReplaceSigil));
+      mutate(() => session.replaceCollectibleSigil(slotId, button.dataset.labReplaceCollectible));
       state.inlineControl = "sigil:" + slotId;
       playImprint(slotId);
     }));
@@ -1520,58 +1395,48 @@
       }, 470);
     });
 
-    root.querySelector("[data-lab-grade]")?.addEventListener("change", event => {
-      const slotId = state.modal?.slotId;
-      if (!slotId) return;
-      mutate(() => session.setSigilGrade(slotId, Number(event.currentTarget.value)));
-      render();
-    });
-
-    root.querySelectorAll("[data-lab-config]").forEach(control => control.addEventListener("change", () => {
-      const slotId = state.modal?.slotId;
-      if (!slotId) return;
-      mutate(() => session.setSigilConfig(slotId, control.dataset.labConfig, control.value));
+    root.querySelectorAll("[data-lab-intensity]").forEach(button => button.addEventListener("click", () => {
+      const slotId = button.dataset.labSlot;
+      mutate(() => session.setSigilIntensity(slotId, Number(button.dataset.labIntensity)));
+      state.modal = { type:"sigil-edit", slotId };
       render();
     }));
 
-    root.querySelectorAll("[data-lab-schools-config]").forEach(group => {
-      group.querySelectorAll('input[type="checkbox"]').forEach(input => input.addEventListener("change", () => {
-        const slotId = state.modal?.slotId;
-        if (!slotId) return;
-        const checks = [...group.querySelectorAll('input[type="checkbox"]')];
-        const all = checks.find(item => item.value === "all");
-        if (input.value === "all" && input.checked) {
-          mutate(() => session.setSigilConfig(slotId, group.dataset.labSchoolsConfig, "all"));
-          render();
-          return;
-        }
-        if (all) all.checked = false;
-        const selected = checks.filter(item => item.value !== "all" && item.checked).map(item => item.value).slice(0, 3);
-        if (!selected.length) {
-          input.checked = true;
-          return;
-        }
-        mutate(() => session.setSigilConfig(slotId, group.dataset.labSchoolsConfig, selected));
-        render();
-      }));
-    });
-
-    root.querySelectorAll("select[data-lab-modifier-family]").forEach(control => control.addEventListener("change", () => {
-      const slotId = state.modal?.slotId;
-      if (!slotId) return;
-      mutate(() => session.setSigilModifier(slotId, control.dataset.labModifierFamily, control.value || null));
+    root.querySelectorAll("[data-lab-constraint-id]").forEach(button => button.addEventListener("click", () => {
+      mutate(() => session.setConstraint(button.dataset.labConstraintId));
+      state.modal = { type:"constraint-edit" };
       render();
     }));
 
-    root.querySelectorAll("[data-lab-modifier-param]").forEach(control => control.addEventListener("change", () => {
-      const slotId = state.modal?.slotId;
-      if (!slotId) return;
-      mutate(() => session.setSigilModifierParam(
-        slotId,
-        control.dataset.labModifierFamily,
-        control.dataset.labModifierParam,
-        control.value
+    root.querySelector("[data-lab-open-constraint-picker]")?.addEventListener("click", () => {
+      state.modal = { type:"constraint-picker" };
+      render();
+    });
+
+    root.querySelector("[data-lab-remove-constraint]")?.addEventListener("click", () => {
+      mutate(() => session.removeConstraint());
+      state.modal = null;
+      render();
+    });
+
+    root.querySelector("[data-lab-constraint-school]")?.addEventListener("change", event => {
+      mutate(() => session.setConstraintSchool(event.currentTarget.value));
+      state.modal = { type:"constraint-edit" };
+      render();
+    });
+
+    root.querySelector("[data-lab-constraint-grade]")?.addEventListener("change", event => {
+      mutate(() => session.setConstraintGrade(Number(event.currentTarget.value)));
+      state.modal = { type:"constraint-edit" };
+      render();
+    });
+
+    root.querySelectorAll("[data-lab-constraint-param]").forEach(button => button.addEventListener("click", () => {
+      mutate(() => session.setConstraintParameter(
+        button.dataset.labConstraintParam,
+        Number(button.dataset.labConstraintValue)
       ));
+      state.modal = { type:"constraint-edit" };
       render();
     }));
 
