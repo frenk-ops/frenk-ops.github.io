@@ -18130,3 +18130,43 @@ button.sigian-full-constraint-slot {
     height:50px;
   }
 }
+
+
+/* 0.61.5 — Archive counters: make the whole control the physical touch target. */
+.archive-section-tabs,
+.archive-overview {
+  position:relative;
+  z-index:2;
+}
+
+.archive-section-tabs button,
+.archive-overview button {
+  position:relative;
+  z-index:1;
+  pointer-events:auto;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(126,82,39,.14);
+}
+
+.archive-section-tabs button > *,
+.archive-overview button > * {
+  pointer-events:none;
+}
+
+.archive-section-tabs button small,
+.archive-overview button strong {
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+@media (max-width:700px) {
+  .archive-section-tabs button,
+  .archive-overview button {
+    min-height:46px;
+  }
+
+  .archive-section-tabs button small {
+    min-width:26px;
+    min-height:22px;
+  }
+}

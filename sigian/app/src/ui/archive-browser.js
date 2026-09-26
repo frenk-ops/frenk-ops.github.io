@@ -434,6 +434,32 @@
       </article>`;
   }
 
+  function schoolListMarkup(ids) {
+    if (!ids.length) return `<span class="archive-variant-chip is-neutral">${escapeHtml(t("archive.neutral"))}</span>`;
+    return ids.map(id => `<span class="archive-variant-chip">${schoolLabelMarkup(id)}</span>`).join("");
+  }
+
+  function gradeListMarkup(grades) {
+    if (!grades.length) return `<span class="archive-variant-chip is-neutral">${escapeHtml(t("archive.noGrades"))}</span>`;
+    return grades.map(grade => `<span class="archive-variant-chip">${escapeHtml(t("archive.gradeLabel", { grade }))}</span>`).join("");
+  }
+
+  function affinityModeLabel(mode) {
+    const labels = {
+      mono:"Mono",
+      dual:"Dual",
+      triple:"Triple",
+      universal:A.i18n?.getLanguage?.() === "en" ? "Universal" : "Universale"
+    };
+    return labels[mode] || mode;
+  }
+
+  function affinitySchoolsMarkup(affinity) {
+    const schools = affinity?.schools || [];
+    if (!schools.length) return `<span class="archive-affinity-school is-neutral">${escapeHtml(t("archive.neutral"))}</span>`;
+    return schools.map(id => `<span class="archive-affinity-school">${schoolLabelMarkup(id)}</span>`).join("");
+  }
+
   function componentIdentityTileMarkup(group, scope, selected) {
     const copies = scope === "inventory" ? group.inventoryCopies : group.ownedCopies;
     const gradeCount = group.grades.filter(value => value !== "Speciale").length;
