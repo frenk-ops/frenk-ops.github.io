@@ -29,6 +29,133 @@
     return Math.abs(out);
   }
 
+  const INVENTORY_QUANTITY_STORAGE_KEY = "sigian.inventory.quantities.v1";
+
+  function inventoryQuantityOverrides() {
+    try {
+      if (typeof localStorage === "undefined") return {};
+      const raw = localStorage.getItem(INVENTORY_QUANTITY_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function ownedQuantity(kind, id, fallback) {
+    const overrides = inventoryQuantityOverrides();
+    const key = `${kind}:${id}`;
+    const value = Number(overrides[key]);
+    return Number.isFinite(value) && value >= 0 ? Math.trunc(value) : fallback;
+  }
+
+  function constraintInventoryId(constraint) {
+    if (!constraint?.definitionId) return "";
+    const definition = A.getSigianCanonicalV2?.(constraint.definitionId);
+    if (!definition) return "";
+    const schoolBound = /<Scuola>/.test(String(definition.name || ""));
+    const gradeLess = /senza Gradi/i.test(String(definition.grades || ""));
+    const school = schoolBound ? String(constraint.school || "fire") : "neutral";
+    const grade = gradeLess || constraint.grade == null ? "special" : `g${Math.max(1, Math.trunc(Number(constraint.grade || 1)))}`;
+    return [constraint.definitionId, school, grade].join(":");
+  }
+
+  const COLLECTIBLE_CANONICAL_MAP = Object.freeze({
+    "damage-hero":"v2-damage-hero",
+    "damage-creature":"v2-damage-creature",
+    "damage-power-hero":"v2-damage-power-hero",
+    "wave-field":"v2-wave",
+    "wave-front":"v2-tide",
+    "wave-power-field":"v2-wave-power",
+    "wave-power-front":"v2-tide-power",
+    "retaliation-damaged":"v2-retaliation",
+    "heal-hero":"v2-heal-hero",
+    "heal-power-hero":"v2-heal-power-hero",
+    "restoration-front":"v2-recovery",
+    "restoration-full-field":"v2-full-recovery",
+    "regeneration":"v2-regeneration",
+    "subtraction-all":"v2-subtraction-all",
+    "channeling-all":"v2-channeling-all",
+    "erosion-enemy-all":"v2-enemy-erosion-all",
+    "protection-hero-half":"v2-protection-hero",
+    "protection-all-flat":"v2-arcane-armor",
+    "arcane-amplification-flat":"v2-spell-amplification-flat",
+    "arcane-amplification-x15":"v2-spell-amplification-powerful",
+    "combat-fury-x15":"v2-allied-amplification",
+    "total-assault":"v2-total-assault",
+    "absorption-source-half":"v2-vampirism",
+    "absorption-hero-full":"v2-life-drain",
+    "destruction-highest-life":"v2-uprooting",
+    "rebirth":"v2-rebirth",
+    "eternal-rebirth":"v2-eternal-rebirth",
+    "domination":"v2-domination"
+  });
+
+  const COLLECTIBLE_CANONICAL_GRADE_OVERRIDE = Object.freeze({
+    "protection-hero-half":2,
+    "arcane-amplification-x15":2,
+    "combat-fury-x15":2,
+    "absorption-source-half":2,
+    "absorption-hero-full":4
+  });
+
+  function canonicalDefinitionForCollectible(collectible) {
+    if (!collectible) return null;
+    const templateId = String(collectible.templateId || "");
+    if (COLLECTIBLE_CANONICAL_MAP[templateId]) return COLLECTIBLE_CANONICAL_MAP[templateId];
+    if (/^infusion-[^-]+$/.test(templateId)) return "v2-infusion-school";
+    if (/^subtraction-[^-]+$/.test(templateId)) return "v2-subtraction-school";
+    if (/^channeling-[^-]+$/.test(templateId)) return "v2-channeling-school";
+    if (/^erosion-enemy-[^-]+$/.test(templateId)) return "v2-enemy-erosion-school";
+    if (/^arcane-attack-[^-]+$/.test(templateId)) return "v2-arcane-attack-school";
+    return null;
+  }
+
+  function collectibleInventoryIdentity(collectibleId, formulaSchool) {
+    const collectible = A.getSigianCollectibleSigil?.(collectibleId);
+    const definitionId = canonicalDefinitionForCollectible(collectible);
+    const definition = definitionId ? A.getSigianCanonicalV2?.(definitionId) : null;
+    if (!collectible || !definition || definition.status !== "approved") return null;
+
+    const schoolBound = /<Scuola>/.test(String(definition.name || ""));
+    const effectSchool = schoolBound
+      ? String(collectible.schoolReference || formulaSchool || "fire")
+      : "neutral";
+    const gradeLess = /senza Gradi/i.test(String(definition.grades || ""));
+    const specialOneGrade = /speciale\s*·\s*1 Grado/i.test(String(definition.grades || ""));
+    const overrideGrade = COLLECTIBLE_CANONICAL_GRADE_OVERRIDE[collectible.templateId];
+    const grade = gradeLess || specialOneGrade
+      ? "special"
+      : `g${Math.max(1, Math.trunc(Number(overrideGrade || collectible.grade || 1)))}`;
+    return {
+      inventoryId:[definitionId, effectSchool, grade].join(":"),
+      definitionId,
+      effectSchool:schoolBound ? effectSchool : null,
+      grade:grade === "special" ? null : Number(grade.slice(1)),
+      collectible
+    };
+  }
+
+  function collectibleSigilInventoryItems(formulaSchool = "fire") {
+    return (A.listSigianCollectibleSigils?.({ status:"active" }) || [])
+      .map(item => {
+        const identity = collectibleInventoryIdentity(item.id, formulaSchool);
+        if (!identity) return null;
+        const quantity = ownedQuantity("component", identity.inventoryId, 3);
+        return {
+          ...item,
+          inventoryId:identity.inventoryId,
+          canonicalDefinitionId:identity.definitionId,
+          effectSchool:identity.effectSchool,
+          canonicalGrade:identity.grade,
+          kind:"sigil",
+          quantity,
+          ownedQuantity:quantity
+        };
+      })
+      .filter(Boolean);
+  }
+
   function schoolName(id) {
     return SCHOOL_META[id]?.name || String(id || "");
   }
@@ -327,24 +454,36 @@
     const components = expandCanonicalEntries();
     const formulas = formulaItems();
     const cosmetics = cosmeticItems();
+    const forgeSigils = collectibleSigilInventoryItems();
     const inventory = scope === "inventory";
     return {
       scope,
       formulas:formulas.map(item => ({ ...item, inventory })),
-      components:components.map(item => ({
+      components:components.map(item => {
+        const quantity = ownedQuantity(item.kind === "constraint" ? "constraint" : "component", item.id, 3);
+        return {
+          ...item,
+          ownedQuantity:quantity,
+          quantity:inventory ? quantity : null
+        };
+      }),
+      cosmetics:cosmetics.map(item => {
+        const quantity = ownedQuantity("art", item.id, 1);
+        return {
+          ...item,
+          ownedQuantity:quantity,
+          quantity:inventory ? quantity : null
+        };
+      }),
+      forgeSigils:forgeSigils.map(item => ({
         ...item,
-        ownedQuantity:3,
-        quantity:inventory ? 3 : null
-      })),
-      cosmetics:cosmetics.map(item => ({
-        ...item,
-        ownedQuantity:1,
-        quantity:inventory ? 1 : null
+        quantity:inventory ? item.ownedQuantity : null
       })),
       meta:{
         formulaCount:formulas.length,
         componentCount:components.length,
         cosmeticCount:cosmetics.length,
+        forgeSigilCount:forgeSigils.length,
         affinityStatus:"provisional",
         rarityStatus:"pending",
         formulaConversionStatus:"complete"
@@ -367,6 +506,33 @@
     });
   };
   A.buildSigianArchiveData = archiveData;
+  A.listSigianInventoryCollectibleSigils = function listSigianInventoryCollectibleSigils(formulaSchool = "fire") {
+    return collectibleSigilInventoryItems(formulaSchool).map(clone);
+  };
+  A.sigianCollectibleInventoryIdentity = function sigianCollectibleInventoryIdentity(collectibleId, formulaSchool = "fire") {
+    const identity = collectibleInventoryIdentity(collectibleId, formulaSchool);
+    return identity ? clone(identity) : null;
+  };
+  A.isSigianCollectibleInventoryCompatible = function isSigianCollectibleInventoryCompatible(collectibleId, formulaSchool = "fire") {
+    return Boolean(collectibleInventoryIdentity(collectibleId, formulaSchool));
+  };
+  A.getSigianOwnedCollectibleSigilQuantity = function getSigianOwnedCollectibleSigilQuantity(collectibleId, formulaSchool = "fire") {
+    const identity = collectibleInventoryIdentity(collectibleId, formulaSchool);
+    return identity ? ownedQuantity("component", identity.inventoryId, 3) : 0;
+  };
+  A.sigianConstraintInventoryId = constraintInventoryId;
+  A.getSigianOwnedConstraintQuantity = function getSigianOwnedConstraintQuantity(constraint) {
+    const id = constraintInventoryId(constraint);
+    return id ? ownedQuantity("constraint", id, 3) : 0;
+  };
+  A.listSigianInventoryArts = function listSigianInventoryArts() {
+    return cosmeticItems()
+      .map(item => ({ ...item, ownedQuantity:ownedQuantity("art", item.id, 1), quantity:ownedQuantity("art", item.id, 1) }))
+      .filter(item => item.ownedQuantity > 0);
+  };
+  A.getSigianInventoryArt = function getSigianInventoryArt(id) {
+    return A.listSigianInventoryArts().find(item => item.id === String(id || "")) || null;
+  };
   A.getSigianInventoryFormula = function getSigianInventoryFormula(cardId) {
     return formulaItems().find(item => item.id === cardId) || null;
   };

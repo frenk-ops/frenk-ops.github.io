@@ -415,6 +415,30 @@
         }));
       },
 
+      setArt(cosmeticId) {
+        const id = String(cosmeticId || "").trim();
+        if (!id) {
+          return commitRecipe(recipeWith({
+            presentation: {
+              ...draft.recipe.presentation,
+              art:"",
+              imageKey:null
+            }
+          }));
+        }
+        const art = A.getSigianInventoryArt?.(id);
+        if (!art || Number(art.ownedQuantity ?? art.quantity ?? 0) <= 0) {
+          throw new Error(`ART non posseduta: ${id}.`);
+        }
+        return commitRecipe(recipeWith({
+          presentation: {
+            ...draft.recipe.presentation,
+            art:String(art.image || ""),
+            imageKey:id
+          }
+        }));
+      },
+
       setSchool(school) {
         const definition = A.getSigianSchool?.(school);
         if (!definition || definition.status !== "active") throw new Error(`Scuola non attiva: ${school}.`);
@@ -446,18 +470,25 @@
         const normalizedId = String(definitionId || "").trim();
         if (!normalizedId) return this.removeConstraint();
         const constraint = defaultForgeConstraint(normalizedId, draft.recipe.school);
+        if (typeof A.getSigianOwnedConstraintQuantity === "function"
+          && A.getSigianOwnedConstraintQuantity(constraint) < 1) {
+          throw new Error(`Vincolo non posseduto: ${normalizedId}.`);
+        }
         return commitRecipe(recipeWith({ constraint }));
       },
 
       updateConstraint(patch = {}) {
         if (!draft.recipe.constraint) throw new Error("Nessun Vincolo globale impostato.");
-        return commitRecipe(recipeWith({
-          constraint: {
-            ...clone(draft.recipe.constraint),
-            ...clone(patch),
-            definitionId:draft.recipe.constraint.definitionId
-          }
-        }));
+        const constraint = {
+          ...clone(draft.recipe.constraint),
+          ...clone(patch),
+          definitionId:draft.recipe.constraint.definitionId
+        };
+        if (typeof A.getSigianOwnedConstraintQuantity === "function"
+          && A.getSigianOwnedConstraintQuantity(constraint) < 1) {
+          throw new Error(`Questa copia del Vincolo non è presente nell'Inventario.`);
+        }
+        return commitRecipe(recipeWith({ constraint }));
       },
 
       setConstraintGrade(grade) {
@@ -495,6 +526,13 @@
       addCollectibleSigil(collectibleId) {
         if (draft.recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3)) {
           throw new Error(`La Formula può contenere al massimo ${A.SIGIAN_MAX_PRIMARY_SIGILS || 3} Sigilli primari.`);
+        }
+        const owned = typeof A.getSigianOwnedCollectibleSigilQuantity === "function"
+          ? A.getSigianOwnedCollectibleSigilQuantity(collectibleId, draft.recipe.school)
+          : null;
+        const usedCopies = draft.recipe.sigils.filter(item => item.collectibleId === collectibleId).length;
+        if (owned != null && usedCopies >= owned) {
+          throw new Error(`Non possiedi altre copie di ${collectibleId}.`);
         }
         const next = clone(draft.recipe.sigils);
         let candidate = defaultForgeCollectibleSigil(collectibleId, draft.recipe.school, next.length);

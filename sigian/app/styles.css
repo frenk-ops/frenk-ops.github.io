@@ -16729,3 +16729,170 @@ button.sigian-full-constraint-slot {
     min-height:46px;
   }
 }
+
+
+/* ===== Sigian 0.59 — Forge inventory, art and composed descriptions ===== */
+.sigian-full-sigil-area {
+  display:grid !important;
+  grid-template-rows:minmax(0,1fr) auto !important;
+  align-content:stretch !important;
+}
+
+.sigian-sigil-list {
+  align-content:start;
+}
+
+.sigian-full-rules {
+  align-self:end !important;
+  margin-top:auto !important;
+}
+
+/* Spells have no Attack/Life badges, but the global Constraint still occupies
+   the art/parchment seam. Reserve its socket before the first Sigil. */
+.sigian-full-card.type-spell .sigian-full-sigil-area,
+.sigian-full-card.type-spell .sigian-full-spell-sigil-area {
+  padding-top:50px !important;
+}
+
+.forge-preview-stage .sigian-full-card.is-forge-editable .sigian-full-art[data-forge-card-edit] {
+  cursor:pointer;
+  touch-action:manipulation;
+}
+
+.forge-preview-stage .sigian-full-card.is-forge-editable .sigian-full-art[data-forge-card-edit]:hover,
+.forge-preview-stage .sigian-full-card.is-forge-editable .sigian-full-art[data-forge-card-edit]:focus-visible,
+.forge-preview-stage .sigian-full-card.is-forge-editable .sigian-full-art[data-forge-card-edit].is-editing {
+  outline:2px solid rgba(246,203,105,.82);
+  outline-offset:-3px;
+  filter:brightness(1.04);
+}
+
+.forge-modeler-actions {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+  flex-wrap:wrap;
+}
+
+.forge-functional-description {
+  margin:0;
+  padding:9px 10px;
+  border:1px solid rgba(112,76,40,.20);
+  border-radius:9px;
+  background:rgba(255,249,226,.55);
+  color:#4a3323;
+  font-size:.72rem;
+  line-height:1.42;
+}
+
+.forge-card-editor .forge-functional-description {
+  border-color:rgba(224,184,91,.24);
+  background:rgba(255,244,211,.08);
+  color:#f0d9a8;
+}
+
+.forge-functional-description.is-constraint {
+  margin-top:2px;
+}
+
+.forge-sigil-tile-copy em {
+  display:block;
+  margin-top:3px;
+  color:#826348;
+  font-size:.58rem;
+  font-style:normal;
+  font-weight:800;
+}
+
+.forge-sigil-tile.is-unavailable {
+  opacity:.52;
+}
+
+.forge-art-picker {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  max-height:420px;
+  overflow:auto;
+  padding-right:2px;
+}
+
+.forge-art-option {
+  min-width:0;
+  display:grid;
+  grid-template-columns:64px minmax(0,1fr);
+  align-items:center;
+  gap:8px;
+  padding:7px;
+  border:1px solid rgba(224,184,91,.24);
+  border-radius:10px;
+  background:rgba(255,244,211,.07);
+  color:#f0d9a8;
+  cursor:pointer;
+  text-align:left;
+}
+
+.forge-art-option:hover,
+.forge-art-option:focus-visible,
+.forge-art-option.is-selected {
+  border-color:#e1b75d;
+  background:rgba(224,174,78,.15);
+  box-shadow:inset 0 0 0 1px rgba(226,184,86,.16);
+}
+
+.forge-art-option img,
+.forge-art-empty {
+  width:64px;
+  height:76px;
+  border-radius:7px;
+  object-fit:cover;
+  background:#111820;
+}
+
+.forge-art-empty {
+  display:grid;
+  place-items:center;
+  color:#e0b85f;
+  font-size:1.4rem;
+}
+
+.forge-art-option > span:last-child {
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+
+.forge-art-option strong {
+  color:#ffe4a6;
+  font:700 .72rem/1.12 Georgia,serif;
+  overflow-wrap:anywhere;
+}
+
+.forge-art-option small {
+  color:#bda77f;
+  font-size:.58rem;
+}
+
+@media (max-width:820px) {
+  .forge-art-picker {
+    grid-template-columns:1fr;
+    max-height:none;
+    overflow:visible;
+  }
+
+  .forge-art-option {
+    grid-template-columns:58px minmax(0,1fr);
+  }
+
+  .forge-art-option img,
+  .forge-art-empty {
+    width:58px;
+    height:68px;
+  }
+
+  .sigian-full-card.type-spell .sigian-full-sigil-area,
+  .sigian-full-card.type-spell .sigian-full-spell-sigil-area {
+    padding-top:52px !important;
+  }
+}

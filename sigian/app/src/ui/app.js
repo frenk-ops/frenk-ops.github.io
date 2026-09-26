@@ -3711,8 +3711,10 @@
 
   function getCardImageCandidates(card) {
     const id = card?.id || "";
-    if (!id) return [];
+    const ownedArt = card?.imageKey ? A.getSigianInventoryArt?.(card.imageKey)?.image : "";
+    if (!id && !ownedArt) return [];
     return [
+      ownedArt,
       remasteredCardImage(card),
       originalCardImage(card),
       window.ArcaneCardArt?.[id],
@@ -3788,7 +3790,8 @@
       return wrapper;
     }
 
-    const originalSrc = originalCardImage(card);
+    const ownedArtSrc = card?.imageKey ? A.getSigianInventoryArt?.(card.imageKey)?.image : "";
+    const originalSrc = ownedArtSrc || originalCardImage(card);
     const candidates = getCardImageCandidates(card).filter(src => src !== remasteredCardImage(card) && src !== originalSrc);
     let fallbackIndex = 0;
 
@@ -4147,7 +4150,8 @@
   }
 
   function cardDescription(card, side = inspectedCardSide) {
-    const raw = cardText(card) || visibleCardKeyword(card) || t("ui.selectCardForDetails");
+    const composed = A.composeSigianCardDescription?.(card) || "";
+    const raw = composed || cardText(card) || visibleCardKeyword(card) || t("ui.selectCardForDetails");
     const dynamic = integrateCurrentValue(raw, currentCardPreview(card, side));
     const separated = dynamic.startsWith("+")
       ? dynamic.replace(/\s+([+-]\d+\b)/g, ". $1")
@@ -4883,6 +4887,12 @@
     const art = document.createElement("div");
     art.className = "sigian-full-art";
     art.appendChild(buildArtBlock(card, "sigianFull"));
+    if (card?.__forgePreview) {
+      art.dataset.forgeCardEdit = "art";
+      art.setAttribute("role", "button");
+      art.setAttribute("tabindex", "0");
+      art.title = "Scegli ART dall'Inventario";
+    }
     article.appendChild(art);
 
     if (card.type === "creature") {
@@ -5016,7 +5026,7 @@
       cost:displayedCost,
       __forgeCalculatedCost:calculatedCost,
       __forgeRequestedCost:requestedCost,
-      text:"",
+      text:A.composeSigianRecipeDescription?.(recipe) || "",
       keyword:"",
       set:"custom",
       art:recipe.presentation?.art || "",
@@ -5036,13 +5046,17 @@
     return definition.atomic ? t("forge.atomicSigil") : "";
   }
 
-  function forgeSigilTileMarkup(definition, disabled) {
+  function forgeSigilTileMarkup(definition, disabled, recipe = null) {
     if (!definition?.baseSigilId || !definition?.id) return "";
     const name = definition.displayName || sigianCanonicalSigilName({ sigilId:definition.baseSigilId, grade:definition.grade || 1 });
-    return `<button type="button" class="forge-sigil-tile" data-forge-add-collectible="${escapeHtml(definition.id)}" ${disabled ? "disabled" : ""}>
+    const owned = Number(A.getSigianOwnedCollectibleSigilQuantity?.(definition.id, recipe?.school) ?? 0);
+    const used = (recipe?.sigils || []).filter(item => item.collectibleId === definition.id).length;
+    const available = Math.max(0, owned - used);
+    const unavailable = disabled || available < 1;
+    return `<button type="button" class="forge-sigil-tile ${available < 1 ? "is-unavailable" : ""}" data-forge-add-collectible="${escapeHtml(definition.id)}" ${unavailable ? "disabled" : ""}>
       <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(definition.baseSigilId, "sigian-sigil-icon")}</span>
-      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small></span>
-      <span class="forge-sigil-tile-action">${escapeHtml(t("forge.imprint"))}</span>
+      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small><em>Inventario: ${available} / ${owned}</em></span>
+      <span class="forge-sigil-tile-action">${available > 0 ? escapeHtml(t("forge.imprint")) : "Esaurito"}</span>
     </button>`;
   }
 
@@ -5233,10 +5247,12 @@
       const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
       const name = collectible?.displayName || sigianCanonicalSigilName(sigil);
       const contribution = forgeSigilContribution(analysis, sigil.slotId);
+      const owned = Number(A.getSigianOwnedCollectibleSigilQuantity?.(sigil.collectibleId, recipe.school) ?? 0);
+      const used = recipe.sigils.filter(item => item.collectibleId === sigil.collectibleId).length;
       return `<button type="button" class="forge-context-sigil-slot ${forgeSelectedSigilSlotId === sigil.slotId ? "is-selected" : ""}" data-forge-select-sigil="${escapeHtml(sigil.slotId)}">
         <span class="forge-context-sigil-icon">${sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, "sigian-sigil-icon")}</span>
         <strong>${escapeHtml(name)}</strong>
-        <small>${Number(sigil.grade) ? `Grado ${sigianRomanGrade(Number(sigil.grade))}` : ""}${contribution ? ` · ${escapeHtml(forgeSignedMath(contribution.net))} AV` : ""}</small>
+        <small>${Number(sigil.grade) ? `Grado ${sigianRomanGrade(Number(sigil.grade))}` : ""}${contribution ? ` · ${escapeHtml(forgeSignedMath(contribution.net))} AV` : ""} · ${used}/${owned}</small>
       </button>`;
     }).join("");
     return `<div class="forge-context-sigil-slots">${slots}</div>`;
@@ -5258,11 +5274,11 @@
     </div>`;
   }
 
-  function forgeSigilCatalogMarkup(activeSigils, atSigilLimit) {
+  function forgeSigilCatalogMarkup(activeSigils, atSigilLimit, recipe) {
     return `<div class="forge-catalog-section">
-      <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
+      <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))} Le copie disponibili derivano dall'Inventario.</p>
       ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
-      <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
+      <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit, recipe)).join("")}</div>
     </div>`;
   }
 
@@ -5275,7 +5291,7 @@
           ${forgeSigilModelerMarkup(recipe, selected, analysis)}
         </div>`;
       }
-      return forgeSigilCatalogMarkup(activeSigils, atSigilLimit);
+      return forgeSigilCatalogMarkup(activeSigils, atSigilLimit, recipe);
     }
     if (forgeCardEditorSection === "constraint") return forgeGlobalConstraintMarkup(recipe);
     if (forgeCardEditorSection === "cost") return forgeBudgetMarkup(recipe, analysis);
@@ -5283,6 +5299,21 @@
       <strong>Forgia card-first</strong>
       <p>Seleziona Nome, Scuola, Costo, Attacco, Vita, Sigilli o Vincolo direttamente sulla carta. Il tipo Creatura/Magia cambia con un singolo tocco.</p>
       ${forgeQuickBalanceMarkup(recipe, analysis)}
+    </div>`;
+  }
+
+  function forgeArtPickerMarkup(recipe) {
+    const arts = A.listSigianInventoryArts?.() || [];
+    const current = String(recipe.presentation?.imageKey || "");
+    if (!arts.length) return `<p class="forge-limit-note">Nessuna ART disponibile nell'Inventario.</p>`;
+    return `<div class="forge-art-picker">
+      <button type="button" class="forge-art-option ${!current ? "is-selected" : ""}" data-forge-art="">
+        <span class="forge-art-empty">✦</span><strong>Nessuna ART</strong>
+      </button>
+      ${arts.map(art => `<button type="button" class="forge-art-option ${current === art.id ? "is-selected" : ""}" data-forge-art="${escapeHtml(art.id)}">
+        <img src="${escapeHtml(art.image)}" alt="">
+        <span><strong>${escapeHtml(art.name.replace(" — ART",""))}</strong><small>Inventario ×${escapeHtml(art.ownedQuantity)}</small></span>
+      </button>`).join("")}
     </div>`;
   }
 
@@ -5296,6 +5327,7 @@
     const section = forgeCardEditorSection;
     const titleMap = {
       name:t("forge.name"),
+      art:"ART",
       school:t("forge.school"),
       attack:t("forge.attack"),
       health:t("forge.health"),
@@ -5303,7 +5335,7 @@
       sigils:t("forge.sigils"),
       constraint:t("sigian.constraint.global")
     };
-    const complex = section === "sigils" || section === "constraint";
+    const complex = section === "sigils" || section === "constraint" || section === "art";
     const header = `<div class="forge-card-editor-heading">
       <strong>${escapeHtml(titleMap[section] || section)}</strong>
       <button type="button" class="forge-card-editor-close" data-forge-card-editor-close aria-label="Chiudi">×</button>
@@ -5312,6 +5344,8 @@
     let body = "";
     if (section === "name") {
       body = `<label class="forge-model-field forge-card-name-field"><span>${escapeHtml(t("forge.name"))}</span><input data-forge-name-input data-forge-autofocus type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}"></label>`;
+    } else if (section === "art") {
+      body = forgeArtPickerMarkup(recipe);
     } else if (section === "school") {
       body = `<div class="forge-school-grid forge-card-editor-schools">${(A.listSigianSchools?.({ status:"active" }) || []).map(school => `
         <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
@@ -5368,9 +5402,18 @@
       .filter(item => item.status === "approved" && item.selectable !== false);
     const options = [
       `<option value="">${escapeHtml(t("sigian.constraint.none"))}</option>`,
-      ...definitions.map(definition =>
-        `<option value="${escapeHtml(definition.id)}" ${current?.definitionId === definition.id ? "selected" : ""}>${escapeHtml(sigianV2ComponentBaseName(definition.id, definition.name))}</option>`
-      )
+      ...definitions.map(definition => {
+        const schoolBound = /<Scuola>/i.test(String(definition.name || ""));
+        const gradeLess = /senza Gradi/i.test(String(definition.grades || ""));
+        const probe = {
+          definitionId:definition.id,
+          school:schoolBound ? recipe.school : null,
+          grade:gradeLess ? null : 1
+        };
+        const owned = Number(A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
+        const selected = current?.definitionId === definition.id;
+        return `<option value="${escapeHtml(definition.id)}" ${selected ? "selected" : ""} ${owned < 1 && !selected ? "disabled" : ""}>${escapeHtml(sigianV2ComponentBaseName(definition.id, definition.name))} · ×${owned}</option>`;
+      })
     ].join("");
 
     const definition = current ? A.getSigianCanonicalV2?.(current.definitionId) : null;
@@ -5411,10 +5454,11 @@
             <span class="forge-constraint-current-orb ${current.school ? `school-${escapeHtml(current.school)}` : "is-neutral"}" aria-hidden="true">◇</span>
             <span>
               <strong>${escapeHtml(sigianV2ComponentDisplayName({ kind:"constraint", ...current }))}</strong>
-              <small>${escapeHtml(definition?.summary || current.detail || "")}</small>
+              <small>Inventario ×${escapeHtml(A.getSigianOwnedConstraintQuantity?.(current) ?? 0)}</small>
             </span>
             <button type="button" class="classic-stone-button ghost" data-forge-remove-constraint>${escapeHtml(t("forge.remove"))}</button>
           </div>
+          <p class="forge-functional-description is-constraint">${escapeHtml(A.describeSigianConstraint?.(current) || definition?.summary || current.detail || "")}</p>
           <div class="forge-constraint-controls">${schoolControl}${gradeControl}</div>
         ` : ""}
       </section>`;
@@ -5653,8 +5697,12 @@
           <span class="forge-modeler-icon">${sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, "sigian-sigil-icon")}</span>
           <div><small>${escapeHtml(t("forge.math.selectedSigil"))}</small><strong>${escapeHtml(modelName)}</strong></div>
         </div>
-        <button type="button" class="classic-stone-button ghost" data-forge-close-modeler>${escapeHtml(t("forge.backToCatalog"))}</button>
+        <div class="forge-modeler-actions">
+          <button type="button" class="classic-stone-button ghost" data-forge-close-modeler>${escapeHtml(t("forge.backToCatalog"))}</button>
+          <button type="button" class="classic-stone-button danger" data-forge-remove-sigil="${escapeHtml(sigil.slotId)}">${escapeHtml(t("forge.remove"))}</button>
+        </div>
       </div>
+      <p class="forge-functional-description">${escapeHtml(A.describeSigianRecipeSigil?.(recipe, sigil) || "")}</p>
       <p class="forge-modeling-note">${escapeHtml(t("forge.modelingNotice"))}</p>
 
       ${currentContribution ? `<div class="forge-modeler-av">
@@ -5714,7 +5762,8 @@
     const snapshot = session.snapshot();
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
-    const activeSigils = A.listSigianCollectibleSigils?.({ status:"active" }) || [];
+    const activeSigils = (A.listSigianCollectibleSigils?.({ status:"active" }) || [])
+      .filter(item => A.isSigianCollectibleInventoryCompatible?.(item.id, recipe.school) !== false);
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
     const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;
@@ -5910,6 +5959,12 @@
       session.setName(value);
       const cardNameNode = $("#forgePreviewStage .sigian-full-name");
       if (cardNameNode) cardNameNode.textContent = value.trim() || t("forge.newFormula");
+    }));
+
+    root.querySelectorAll("[data-forge-art]").forEach(button => button.addEventListener("click", () => {
+      session.setArt(button.dataset.forgeArt || "");
+      forgeCardEditorSection = null;
+      renderForgePage();
     }));
 
     root.querySelectorAll("[data-forge-school]").forEach(button => button.addEventListener("click", () => {
