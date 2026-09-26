@@ -14495,3 +14495,413 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     flex-direction:column;
   }
 }
+
+
+/* 0.53 — Inventory dashboard and saved Grimoires. */
+.archive-overview {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+.archive-overview button {
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-areas:
+    "label value"
+    "meta value";
+  gap:2px 10px;
+  align-items:center;
+  min-width:0;
+  padding:12px 14px;
+  border:1px solid rgba(111,72,34,.4);
+  border-radius:12px;
+  background:linear-gradient(180deg,rgba(255,248,222,.82),rgba(224,201,151,.72));
+  color:#4b3322;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(66,43,23,.08);
+}
+
+.archive-overview button:hover,
+.archive-overview button:focus-visible {
+  transform:translateY(-1px);
+  border-color:rgba(117,72,29,.72);
+  box-shadow:0 7px 18px rgba(66,43,23,.14);
+}
+
+.archive-overview small {
+  grid-area:label;
+  color:#7a512e;
+  font-size:.68rem;
+  font-weight:900;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+
+.archive-overview strong {
+  grid-area:value;
+  color:#643719;
+  font-size:1.65rem;
+  line-height:1;
+}
+
+.archive-overview span {
+  grid-area:meta;
+  color:#765b44;
+  font-size:.73rem;
+}
+
+.archive-section-tabs button {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+
+.archive-section-tabs button small {
+  display:inline-flex;
+  min-width:23px;
+  min-height:20px;
+  align-items:center;
+  justify-content:center;
+  padding:1px 6px;
+  border-radius:999px;
+  background:rgba(89,55,27,.11);
+  color:inherit;
+  font-size:.64rem;
+}
+
+.archive-section-tabs button.active small {
+  background:rgba(255,255,255,.15);
+}
+
+.archive-formula-tile {
+  transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease;
+}
+
+.archive-formula-tile:hover,
+.archive-formula-tile:focus-visible {
+  transform:translateY(-2px);
+  border-color:rgba(123,75,31,.72);
+  box-shadow:0 8px 18px rgba(66,43,23,.15);
+}
+
+.archive-grimoire-quick-add {
+  display:grid;
+  grid-template-columns:minmax(120px,1fr) minmax(150px,.9fr) auto;
+  gap:9px;
+  align-items:center;
+  padding:10px;
+  border:1px solid rgba(104,67,31,.35);
+  border-radius:10px;
+  background:rgba(255,250,229,.45);
+}
+
+.archive-grimoire-quick-add > div {
+  display:grid;
+  gap:2px;
+}
+
+.archive-grimoire-quick-add small {
+  color:#765a43;
+  line-height:1.3;
+}
+
+.archive-grimoire-quick-add select {
+  min-width:0;
+  width:100%;
+}
+
+.archive-grimoire-filterbar {
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) auto;
+  gap:10px;
+  align-items:end;
+}
+
+.archive-new-grimoire {
+  min-height:40px;
+}
+
+.archive-grimoire-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(255px,1fr));
+  gap:10px;
+}
+
+.archive-grimoire-tile {
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+  width:100%;
+  min-width:0;
+  min-height:108px;
+  padding:12px;
+  border:1px solid rgba(104,72,39,.42);
+  border-radius:12px;
+  background:linear-gradient(180deg,rgba(255,248,222,.86),rgba(222,197,145,.78));
+  color:#3f2d20;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(66,43,23,.09);
+  transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease;
+}
+
+.archive-grimoire-tile:hover,
+.archive-grimoire-tile:focus-visible {
+  transform:translateY(-2px);
+  border-color:rgba(123,75,31,.72);
+  box-shadow:0 8px 18px rgba(66,43,23,.15);
+}
+
+.archive-grimoire-tile.active {
+  outline:2px solid #8e5a28;
+  outline-offset:1px;
+  box-shadow:0 6px 18px rgba(86,49,21,.18);
+}
+
+.archive-grimoire-icon,
+.archive-grimoire-large-icon {
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(100,64,29,.28);
+  border-radius:12px;
+  background:radial-gradient(circle at 50% 35%,rgba(255,245,197,.84),rgba(126,80,39,.18));
+}
+
+.archive-grimoire-icon {
+  width:52px;
+  height:70px;
+  font-size:1.65rem;
+}
+
+.archive-grimoire-large-icon {
+  width:62px;
+  height:78px;
+  font-size:2rem;
+}
+
+.archive-grimoire-copy {
+  display:grid;
+  gap:5px;
+  min-width:0;
+}
+
+.archive-grimoire-copy strong {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#58351f;
+}
+
+.archive-grimoire-copy small {
+  color:#755a43;
+}
+
+.archive-grimoire-schools,
+.archive-grimoire-school-breakdown {
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+}
+
+.archive-grimoire-schools span,
+.archive-grimoire-school-breakdown > span:not(.archive-muted) {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:rgba(85,53,28,.09);
+  color:#5d422f;
+  font-size:.68rem;
+  font-style:normal;
+}
+
+.archive-grimoire-schools em {
+  color:#80664e;
+  font-size:.69rem;
+  font-style:normal;
+}
+
+.archive-grimoire-editor-head {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+}
+
+.archive-grimoire-editor-head label {
+  display:grid;
+  gap:5px;
+}
+
+.archive-grimoire-editor-head label > span {
+  color:#754d2c;
+  font-size:.68rem;
+  font-weight:900;
+  letter-spacing:.065em;
+  text-transform:uppercase;
+}
+
+.archive-grimoire-editor-head input {
+  width:100%;
+  min-width:0;
+  font-size:1.08rem;
+  font-weight:800;
+}
+
+.archive-grimoire-summary {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+}
+
+.archive-grimoire-summary > div {
+  display:grid;
+  gap:2px;
+  padding:8px 9px;
+  border-radius:9px;
+  background:rgba(87,54,27,.08);
+}
+
+.archive-grimoire-summary small {
+  color:#7d5c40;
+  font-size:.62rem;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+
+.archive-grimoire-summary strong {
+  color:#5f371f;
+  font-size:1rem;
+}
+
+.archive-grimoire-contents {
+  display:grid;
+  gap:9px;
+}
+
+.archive-grimoire-formula-grid {
+  display:grid;
+  gap:7px;
+  max-height:420px;
+  overflow:auto;
+  padding-right:2px;
+}
+
+.archive-grimoire-formula {
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) 30px;
+  gap:8px;
+  align-items:center;
+  padding:6px;
+  border:1px solid rgba(104,70,36,.27);
+  border-radius:9px;
+  background:rgba(255,250,231,.42);
+}
+
+.archive-grimoire-formula img {
+  width:46px;
+  height:54px;
+  object-fit:cover;
+  border-radius:6px;
+  background:#261b14;
+}
+
+.archive-grimoire-formula > span {
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+
+.archive-grimoire-formula strong {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#56351f;
+  font-size:.83rem;
+}
+
+.archive-grimoire-formula small {
+  color:#765b45;
+  font-size:.69rem;
+}
+
+.archive-grimoire-formula > button {
+  width:30px;
+  height:30px;
+  border:1px solid rgba(113,62,32,.35);
+  border-radius:50%;
+  background:rgba(118,56,35,.08);
+  color:#82402e;
+  font-size:1.05rem;
+  cursor:pointer;
+}
+
+.archive-grimoire-actions {
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:7px;
+}
+
+.archive-grimoire-empty {
+  display:grid;
+  gap:8px;
+}
+
+.archive-grimoire-empty strong {
+  color:#644027;
+  font-size:1rem;
+}
+
+.archive-layout.is-grimoires {
+  grid-template-columns:minmax(0,.85fr) minmax(360px,1.15fr);
+}
+
+@media (max-width:980px) {
+  .archive-overview {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .archive-layout.is-grimoires {
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width:700px) {
+  .archive-section-tabs {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .archive-overview {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .archive-overview button {
+    padding:10px;
+  }
+
+  .archive-grimoire-filterbar,
+  .archive-grimoire-quick-add {
+    grid-template-columns:1fr;
+  }
+
+  .archive-grimoire-grid {
+    grid-template-columns:1fr;
+  }
+
+  .archive-grimoire-actions {
+    grid-template-columns:1fr 1fr;
+  }
+
+  .archive-grimoire-actions > :first-child {
+    grid-column:1 / -1;
+  }
+
+  .archive-grimoire-summary {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}

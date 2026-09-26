@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.52.0-392c6be";
+const BUILD_REVISION = "0.53.0-306c0c7";
 const SHELL_CACHE = `sigian-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `sigian-runtime-${BUILD_REVISION}`;
 
@@ -34,6 +34,7 @@ const APP_SHELL = [
   "./src/data/sigian-base-recipes.js",
   "./src/data/sigian-base-canonical.js",
   "./src/core/sigian-inventory.js",
+  "./src/core/sigian-grimoires.js",
   "./src/data/astral-ai-card-metadata.js",
   "./src/core/original-rules.js",
   "./src/core/generator.js",
