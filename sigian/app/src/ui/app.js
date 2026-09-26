@@ -4779,6 +4779,7 @@
 
     return {
       sigilId:sigil.sigilId,
+      slotId:sigil.slotId || null,
       effect,
       name:collectible?.displayName || sigianCanonicalSigilName(sigil),
       iconMarkup:className => sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, className),
@@ -4917,7 +4918,9 @@
     sigilArea.className = `sigian-full-sigil-area ${card.type === "spell" ? "sigian-full-spell-sigil-area" : ""}`;
     const sigilMarkup = model.sigils.map((sigil, index) => {
       const modifiers = sigil.modifiers.map(sigianModifierMarkup).join("");
-      return `<div class="sigian-sigil-entry ${index === 0 ? "is-primary" : "is-secondary"}">
+      const forgeSlot = card?.__forgePreview && sigil.slotId ? ` data-forge-sigil-slot="${escapeHtml(sigil.slotId)}" role="button" tabindex="0"` : "";
+      const selected = card?.__forgePreview && sigil.slotId && sigil.slotId === forgeSelectedSigilSlotId ? " is-forge-selected" : "";
+      return `<div class="sigian-sigil-entry ${index === 0 ? "is-primary" : "is-secondary"}${selected}"${forgeSlot}>
         <div class="sigian-sigil-medallion">${sigil.iconMarkup("sigian-sigil-icon")}</div>
         <div class="sigian-sigil-copy">
           <strong class="sigian-sigil-name">${escapeHtml(sigil.name)}</strong>
@@ -5187,16 +5190,117 @@
     </section>`;
   }
 
+  function forgeQuickBalanceMarkup(recipe, analysis) {
+    const math = analysis?.math;
+    const calculated = Math.max(0, Number(analysis?.minimumLevel || 0));
+    const target = forgeTargetCost === "auto" ? null : Math.max(1, Number(forgeTargetCost || 1));
+    return `<section class="forge-quick-balance" aria-label="${escapeHtml(t("forge.math.title"))}">
+      <span><small>${escapeHtml(t("forge.math.calculatedCost"))}</small><strong>${escapeHtml(calculated)}</strong></span>
+      <span><small>${escapeHtml(t("forge.math.arcaneValue"))}</small><strong>${math ? `${escapeHtml(forgeMathNumber(math.arcaneValue))} / ${escapeHtml(forgeMathNumber(math.currentCap))}` : "—"}</strong></span>
+      <span><small>${escapeHtml(t("forge.math.targetCost"))}</small><strong>${target == null ? "Auto" : escapeHtml(target)}</strong></span>
+    </section>`;
+  }
+
+  function forgeStructureSummaryMarkup(recipe, analysis, inventoryReadOnly, inventoryFormula) {
+    const constraint = recipe.constraint;
+    const canonicalSigils = inventoryReadOnly
+      ? (inventoryFormula?.components || []).filter(item => item.kind === "sigil")
+      : recipe.sigils;
+    const canonicalConstraint = inventoryReadOnly
+      ? (inventoryFormula?.components || []).find(item => item.kind === "constraint")
+      : constraint;
+    const rows = [
+      [t("forge.name"), recipe.presentation?.name || t("forge.newFormula")],
+      [t("forge.type"), recipe.type === "spell" ? t("ui.spell") : t("ui.creature")],
+      [t("forge.school"), schoolName(recipe.school)],
+      ...(recipe.type === "creature" ? [
+        [t("forge.attack"), recipe.stats?.attack ?? 0],
+        [t("forge.health"), recipe.stats?.health ?? 1]
+      ] : []),
+      [t("forge.sigils"), `${canonicalSigils.length} / ${A.SIGIAN_MAX_PRIMARY_SIGILS || 3}`],
+      [t("sigian.constraint.global"), canonicalConstraint ? (canonicalConstraint.name || sigianV2ComponentDisplayName({ kind:"constraint", ...canonicalConstraint })) : t("sigian.constraint.none")]
+    ];
+    return `<div class="forge-structure-summary">
+      ${rows.map(([label,value]) => `<div><small>${escapeHtml(label)}</small><strong>${escapeHtml(value)}</strong></div>`).join("")}
+      ${inventoryReadOnly ? "" : `<p class="forge-card-first-hint">Modifica la Formula direttamente toccando o cliccando gli elementi della carta.</p>`}
+    </div>`;
+  }
+
+  function forgeSigilSlotsMarkup(recipe, analysis) {
+    const max = A.SIGIAN_MAX_PRIMARY_SIGILS || 3;
+    const slots = Array.from({ length:max }, (_,index) => {
+      const sigil = recipe.sigils[index] || null;
+      if (!sigil) {
+        return `<button type="button" class="forge-context-sigil-slot is-empty" data-forge-empty-sigil-slot="${index}">
+          <span aria-hidden="true">＋</span><strong>${escapeHtml(t("forge.imprint"))}</strong><small>${index + 1} / ${max}</small>
+        </button>`;
+      }
+      const collectible = sigil.collectibleId ? A.getSigianCollectibleSigil?.(sigil.collectibleId) : null;
+      const name = collectible?.displayName || sigianCanonicalSigilName(sigil);
+      const contribution = forgeSigilContribution(analysis, sigil.slotId);
+      return `<button type="button" class="forge-context-sigil-slot ${forgeSelectedSigilSlotId === sigil.slotId ? "is-selected" : ""}" data-forge-select-sigil="${escapeHtml(sigil.slotId)}">
+        <span class="forge-context-sigil-icon">${sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, "sigian-sigil-icon")}</span>
+        <strong>${escapeHtml(name)}</strong>
+        <small>${Number(sigil.grade) ? `Grado ${sigianRomanGrade(Number(sigil.grade))}` : ""}${contribution ? ` · ${escapeHtml(forgeSignedMath(contribution.net))} AV` : ""}</small>
+      </button>`;
+    }).join("");
+    return `<div class="forge-context-sigil-slots">${slots}</div>`;
+  }
+
+  function forgeConstraintSummaryMarkup(recipe) {
+    const current = recipe.constraint || null;
+    if (!current) {
+      return `<button type="button" class="forge-context-constraint-empty" data-forge-open-constraint-picker>
+        <span class="forge-context-constraint-orb is-neutral" aria-hidden="true">◇</span>
+        <span><strong>＋ ${escapeHtml(t("archive.constraint"))}</strong><small>${escapeHtml(t("sigian.constraint.none"))}</small></span>
+      </button>`;
+    }
+    const name = sigianV2ComponentDisplayName({ kind:"constraint", ...current });
+    return `<div class="forge-context-constraint-current">
+      <span class="forge-context-constraint-orb ${current.school ? `school-${escapeHtml(current.school)}` : "is-neutral"}" aria-hidden="true">◇</span>
+      <span><strong>${escapeHtml(name)}</strong><small>${current.school ? escapeHtml(schoolName(current.school)) : escapeHtml(t("sigian.constraint.global"))}</small></span>
+      <button type="button" class="classic-stone-button ghost" data-forge-remove-constraint>${escapeHtml(t("forge.remove"))}</button>
+    </div>`;
+  }
+
+  function forgeSigilCatalogMarkup(activeSigils, atSigilLimit) {
+    return `<div class="forge-catalog-section">
+      <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
+      ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
+      <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
+    </div>`;
+  }
+
+  function forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit) {
+    if (forgeCardEditorSection === "sigils") {
+      const selected = recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId);
+      if (selected) {
+        return `<div class="forge-context-workspace-stack">
+          <button type="button" class="forge-context-back" data-forge-close-modeler>← ${escapeHtml(t("forge.sigils"))}</button>
+          ${forgeSigilModelerMarkup(recipe, selected, analysis)}
+        </div>`;
+      }
+      return forgeSigilCatalogMarkup(activeSigils, atSigilLimit);
+    }
+    if (forgeCardEditorSection === "constraint") return forgeGlobalConstraintMarkup(recipe);
+    if (forgeCardEditorSection === "cost") return forgeBudgetMarkup(recipe, analysis);
+    return `<div class="forge-context-idle">
+      <strong>Forgia card-first</strong>
+      <p>Seleziona Nome, Scuola, Costo, Attacco, Vita, Sigilli o Vincolo direttamente sulla carta. Il tipo Creatura/Magia cambia con un singolo tocco.</p>
+      ${forgeQuickBalanceMarkup(recipe, analysis)}
+    </div>`;
+  }
+
   function forgeCardEditorMarkup(recipe, analysis, activeSigils, atSigilLimit) {
     if (!forgeCardEditorSection) return "";
     if (recipe.type !== "creature" && (forgeCardEditorSection === "attack" || forgeCardEditorSection === "health")) {
-      forgeCardEditorSection = "type";
+      forgeCardEditorSection = null;
+      return "";
     }
 
     const section = forgeCardEditorSection;
     const titleMap = {
       name:t("forge.name"),
-      type:t("forge.type"),
       school:t("forge.school"),
       attack:t("forge.attack"),
       health:t("forge.health"),
@@ -5204,6 +5308,7 @@
       sigils:t("forge.sigils"),
       constraint:t("sigian.constraint.global")
     };
+    const complex = section === "sigils" || section === "constraint";
     const header = `<div class="forge-card-editor-heading">
       <strong>${escapeHtml(titleMap[section] || section)}</strong>
       <button type="button" class="forge-card-editor-close" data-forge-card-editor-close aria-label="Chiudi">×</button>
@@ -5211,12 +5316,7 @@
 
     let body = "";
     if (section === "name") {
-      body = `<label class="forge-model-field"><span>${escapeHtml(t("forge.name"))}</span><input data-forge-name-input type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}"></label>`;
-    } else if (section === "type") {
-      body = `<div class="forge-segmented forge-card-editor-segmented">
-        <button type="button" data-forge-type="creature" class="${recipe.type === "creature" ? "active" : ""}">${escapeHtml(t("ui.creature"))}</button>
-        <button type="button" data-forge-type="spell" class="${recipe.type === "spell" ? "active" : ""}">${escapeHtml(t("ui.spell"))}</button>
-      </div>`;
+      body = `<label class="forge-model-field forge-card-name-field"><span>${escapeHtml(t("forge.name"))}</span><input data-forge-name-input data-forge-autofocus type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}"></label>`;
     } else if (section === "school") {
       body = `<div class="forge-school-grid forge-card-editor-schools">${(A.listSigianSchools?.({ status:"active" }) || []).map(school => `
         <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
@@ -5229,40 +5329,43 @@
       const value = Number(recipe.stats?.[key] ?? min);
       body = `<div class="forge-card-stat-editor">
         <button type="button" data-forge-stat="${key}" data-delta="-1" aria-label="-1">−</button>
-        <input data-forge-stat-input="${key}" type="number" min="${min}" value="${escapeHtml(value)}" aria-label="${escapeHtml(titleMap[key])}">
+        <input data-forge-stat-input="${key}" data-forge-autofocus type="number" min="${min}" value="${escapeHtml(value)}" aria-label="${escapeHtml(titleMap[key])}">
         <button type="button" data-forge-stat="${key}" data-delta="1" aria-label="+1">+</button>
       </div>`;
     } else if (section === "cost") {
-      const costOptions = [
-        `<option value="auto" ${forgeTargetCost === "auto" ? "selected" : ""}>Automatico · ${escapeHtml(analysis?.minimumLevel ?? 0)}</option>`,
-        ...Array.from({ length:20 }, (_,index) => index + 1).map(level =>
-          `<option value="${level}" ${Number(forgeTargetCost) === level ? "selected" : ""}>${level}</option>`
-        )
-      ].join("");
-      body = `<label class="forge-model-field forge-card-cost-field">
-        <span>Costo Formula</span>
-        <select data-forge-target-cost>${costOptions}</select>
-        <small>Automatico usa il costo calcolato; scegli un valore per lavorare verso un costo specifico.</small>
-      </label>`;
+      const auto = forgeTargetCost === "auto";
+      const target = auto ? Math.max(1, Number(analysis?.minimumLevel || 1)) : Math.max(1, Number(forgeTargetCost || 1));
+      body = `<div class="forge-card-cost-editor">
+        <div class="forge-cost-mode" role="group" aria-label="${escapeHtml(t("forge.math.targetCost"))}">
+          <button type="button" data-forge-cost-mode="auto" class="${auto ? "active" : ""}">Auto</button>
+          <button type="button" data-forge-cost-mode="target" class="${!auto ? "active" : ""}">Target</button>
+        </div>
+        ${auto ? `<div class="forge-cost-auto-value"><small>${escapeHtml(t("forge.math.calculatedCost"))}</small><strong>${escapeHtml(analysis?.minimumLevel ?? 0)}</strong></div>` : `
+          <div class="forge-card-stat-editor forge-target-cost-stepper">
+            <button type="button" data-forge-cost-step="-1" aria-label="-1">−</button>
+            <input data-forge-cost-input data-forge-autofocus type="number" min="1" step="1" value="${escapeHtml(target)}">
+            <button type="button" data-forge-cost-step="1" aria-label="+1">+</button>
+          </div>`}
+        ${forgeQuickBalanceMarkup(recipe, analysis)}
+        <button type="button" class="forge-balance-details-toggle" data-forge-math-mode="${forgeMathMode === "detailed" ? "simple" : "detailed"}">${forgeMathMode === "detailed" ? "Nascondi dettagli" : "Dettagli bilanciamento"}</button>
+        ${forgeMathMode === "detailed" ? forgeMathBreakdownMarkup(analysis) : ""}
+      </div>`;
     } else if (section === "sigils") {
-      const selected = recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId);
       body = `<div class="forge-card-sigil-editor">
-        <div class="forge-current-sigils">
-          <div class="forge-current-sigils-heading"><strong>${escapeHtml(t("forge.sigils"))}</strong><small>${escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small></div>
-          ${forgeCurrentSigilsMarkup(recipe, analysis)}
-        </div>
-        ${selected ? forgeSigilModelerMarkup(recipe, selected, analysis) : ""}
-        <div class="forge-card-sigil-catalog">
-          ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
-          <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
-        </div>
+        <div class="forge-current-sigils-heading"><strong>${escapeHtml(t("forge.sigils"))}</strong><small>${escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small></div>
+        ${forgeSigilSlotsMarkup(recipe, analysis)}
       </div>`;
     } else if (section === "constraint") {
-      body = forgeGlobalConstraintMarkup(recipe);
+      body = forgeConstraintSummaryMarkup(recipe);
     }
 
-    return `<section class="forge-card-editor" data-forge-card-editor="${escapeHtml(section)}">${header}<div class="forge-card-editor-body">${body}</div></section>`;
+    const mobileWorkspace = complex
+      ? `<div class="forge-context-mobile-workspace">${forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit)}</div>`
+      : "";
+
+    return `<section class="forge-card-editor ${complex ? "is-complex" : "is-compact"}" data-forge-card-editor="${escapeHtml(section)}">${header}<div class="forge-card-editor-body">${body}${mobileWorkspace}</div></section>`;
   }
+
 
   function forgeGlobalConstraintMarkup(recipe) {
     const current = recipe.constraint || null;
@@ -5616,65 +5719,37 @@
     const snapshot = session.snapshot();
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
-    const activeSchools = A.listSigianSchools?.({ status:"active" }) || [];
     const activeSigils = A.listSigianCollectibleSigils?.({ status:"active" })
       || A.listCanonicalSigils?.({ status:"active" })
       || [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
     const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;
-    const schoolButtons = activeSchools.map(school => `
-      <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
-        ${schoolIconMarkup(school.id, "school-icon-svg forge-school-icon")}
-        <span>${escapeHtml(schoolName(school.id))}</span>
-      </button>
-    `).join("");
+
+    if (forgeSelectedSigilSlotId && !recipe.sigils.some(item => item.slotId === forgeSelectedSigilSlotId)) {
+      forgeSelectedSigilSlotId = null;
+    }
+
+    const rightTitle = inventoryReadOnly
+      ? t("forge.structure")
+      : forgeCardEditorSection === "sigils"
+        ? (forgeSelectedSigilSlotId ? "Modifica Sigillo" : t("forge.sigils"))
+        : forgeCardEditorSection === "constraint"
+          ? t("sigian.constraint.global")
+          : forgeCardEditorSection === "cost"
+            ? t("forge.math.title")
+            : "Supporto Forgia";
 
     root.innerHTML = `
       ${inventoryReadOnly ? `<div class="forge-inventory-readonly-note"><div><strong>Formula canonica caricata dall’Inventario</strong><span>${escapeHtml(localizedCardNameById(forgeInventoryPreviewCardId, inventoryFormula?.name || recipe.presentation?.name || "Formula"))} · conversione canonica in sola lettura.</span></div><button type="button" class="classic-stone-button ghost" data-forge-exit-inventory-preview>Torna alla Forgia libera</button></div>` : ""}
-      <div class="forge-workspace ${inventoryReadOnly ? "is-readonly" : ""}">
-        <aside class="forge-panel forge-structure-panel ornate-subpanel">
+      <div class="forge-workspace forge-card-first-workspace ${inventoryReadOnly ? "is-readonly" : ""} ${forgeCardEditorSection ? "has-context-editor" : ""}">
+        <aside class="forge-panel forge-structure-panel forge-structure-summary-panel ornate-subpanel">
           <div class="forge-panel-heading">
             <span class="forge-panel-step">I</span>
             <h3>${escapeHtml(t("forge.structure"))}</h3>
           </div>
-          <label class="forge-field">
-            <span>${escapeHtml(t("forge.name"))}</span>
-            <input id="forgeNameInput" data-forge-name-input type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}">
-          </label>
-          <div class="forge-field">
-            <span>${escapeHtml(t("forge.type"))}</span>
-            <div class="forge-segmented">
-              <button type="button" data-forge-type="creature" class="${recipe.type === "creature" ? "active" : ""}">${escapeHtml(t("ui.creature"))}</button>
-              <button type="button" data-forge-type="spell" class="${recipe.type === "spell" ? "active" : ""}">${escapeHtml(t("ui.spell"))}</button>
-            </div>
-          </div>
-          <div class="forge-field">
-            <span>${escapeHtml(t("forge.school"))}</span>
-            <div class="forge-school-grid">${schoolButtons}</div>
-          </div>
-          ${recipe.type === "creature" ? `
-            <div class="forge-stat-grid">
-              <label class="forge-stat-control">
-                <span>${escapeHtml(t("forge.attack"))}</span>
-                <div><button type="button" data-forge-stat="attack" data-delta="-1">−</button><input id="forgeAttackInput" data-forge-stat-input="attack" type="number" min="0" value="${escapeHtml(recipe.stats.attack)}"><button type="button" data-forge-stat="attack" data-delta="1">+</button></div>
-              </label>
-              <label class="forge-stat-control">
-                <span>${escapeHtml(t("forge.health"))}</span>
-                <div><button type="button" data-forge-stat="health" data-delta="-1">−</button><input id="forgeHealthInput" data-forge-stat-input="health" type="number" min="1" value="${escapeHtml(recipe.stats.health)}"><button type="button" data-forge-stat="health" data-delta="1">+</button></div>
-              </label>
-            </div>
-          ` : ""}
-          <div class="forge-current-sigils">
-            <div class="forge-current-sigils-heading">
-              <strong>${inventoryReadOnly ? "Sigilli & Vincolo canonici" : escapeHtml(t("forge.sigils"))}</strong>
-              <small>${inventoryReadOnly
-                ? `${inventoryFormula?.components?.filter(item => item.kind === "sigil").length || 0} Sigilli · ${inventoryFormula?.components?.filter(item => item.kind === "constraint").length || 0} Vincolo`
-                : escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small>
-            </div>
-            ${inventoryReadOnly ? forgeInventoryCanonicalComponentsMarkup(inventoryFormula) : forgeCurrentSigilsMarkup(recipe, analysis)}
-          </div>
-          ${inventoryReadOnly ? "" : forgeGlobalConstraintMarkup(recipe)}
+          ${forgeStructureSummaryMarkup(recipe, analysis, inventoryReadOnly, inventoryFormula)}
+          ${inventoryReadOnly ? forgeInventoryCanonicalComponentsMarkup(inventoryFormula) : ""}
         </aside>
 
         <section class="forge-center-stage">
@@ -5684,60 +5759,98 @@
             <small id="forgeAutosaveStatus">${escapeHtml(t("forge.autosaved"))}</small>
           </div>
           <div id="forgePreviewStage" class="forge-preview-stage"></div>
-          ${forgeBudgetMarkup(recipe, analysis)}
+          <div id="forgeContextEditorHost" class="forge-context-editor-host">
+            ${!inventoryReadOnly ? forgeCardEditorMarkup(recipe, analysis, activeSigils, atSigilLimit) : ""}
+          </div>
+          ${forgeQuickBalanceMarkup(recipe, analysis)}
         </section>
 
-        <aside class="forge-panel forge-sigil-browser ornate-subpanel">
+        <aside class="forge-panel forge-context-workspace ${inventoryReadOnly ? "is-inventory" : ""} ornate-subpanel">
           <div class="forge-panel-heading">
             <span class="forge-panel-step">III</span>
-            <h3>${escapeHtml(t("forge.sigils"))}</h3>
+            <h3>${escapeHtml(rightTitle)}</h3>
           </div>
           ${inventoryReadOnly ? `
             <div class="forge-catalog-section">
-              <p class="forge-catalog-note"><strong>Conversione canonica completata.</strong> Questa Formula originale usa i componenti mostrati nella colonna Struttura. La modifica resta disabilitata perché stai ispezionando l'istanza posseduta, non un nuovo draft.</p>
-              <p class="forge-catalog-note">Affinità e Rarità dei Sigilli/Vincoli verranno definite nel passaggio successivo.</p>
+              <p class="forge-catalog-note"><strong>Conversione canonica completata.</strong> Questa Formula originale è in sola lettura.</p>
+              <p class="forge-catalog-note">Sigilli e Vincoli canonici sono riepilogati nella colonna Struttura.</p>
             </div>
-          ` : `
-            ${forgeSigilModelerMarkup(recipe, recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId), analysis)}
-            <div class="forge-catalog-section ${forgeSelectedSigilSlotId ? "is-secondary" : ""}">
-              <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
-              ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
-              <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
-            </div>
-          `}
+          ` : forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit)}
         </aside>
-      </div>`;
+      </div>
+      ${!inventoryReadOnly && forgeCardEditorSection ? `<button type="button" class="forge-mobile-sheet-backdrop" data-forge-card-editor-close aria-label="Chiudi editor"></button>` : ""}`;
 
     const previewStage = $("#forgePreviewStage");
     const preview = buildSigianFullCard(forgePreviewCard(recipe, analysis), null);
     if (previewStage && preview) {
       previewStage.replaceChildren(preview);
-      if (!inventoryReadOnly && forgeCardEditorSection) {
-        previewStage.insertAdjacentHTML("beforeend", forgeCardEditorMarkup(recipe, analysis, activeSigils, atSigilLimit));
+      if (forgeCardEditorSection) {
         previewStage.querySelector(`[data-forge-card-edit="${forgeCardEditorSection}"]`)?.classList.add("is-editing");
       }
     }
+
     if (!inventoryReadOnly) {
-      previewStage?.querySelectorAll("[data-forge-card-edit]").forEach(zone => {
-        const openEditor = event => {
+      previewStage?.querySelectorAll("[data-forge-sigil-slot]").forEach(entry => {
+        const selectSigilFromCard = event => {
           event.stopPropagation();
-          forgeCardEditorSection = zone.dataset.forgeCardEdit;
+          forgeCardEditorSection = "sigils";
+          forgeSelectedSigilSlotId = entry.dataset.forgeSigilSlot || null;
           renderForgePage();
         };
-        zone.addEventListener("click", openEditor);
+        entry.addEventListener("click", selectSigilFromCard);
+        entry.addEventListener("keydown", event => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          selectSigilFromCard(event);
+        });
+      });
+
+      previewStage?.querySelectorAll("[data-forge-card-edit]").forEach(zone => {
+        const activate = event => {
+          event.stopPropagation();
+          const section = zone.dataset.forgeCardEdit;
+          if (section === "type") {
+            session.setType(recipe.type === "creature" ? "spell" : "creature");
+            forgeCardEditorSection = null;
+            renderForgePage();
+            return;
+          }
+          if (forgeCardEditorSection === section) {
+            forgeCardEditorSection = null;
+            renderForgePage();
+            return;
+          }
+          forgeCardEditorSection = section;
+          if (section !== "sigils") forgeSelectedSigilSlotId = null;
+          renderForgePage();
+        };
+        zone.addEventListener("click", event => {
+          if (event.target.closest("[data-forge-sigil-slot]")) return;
+          activate(event);
+        });
         if (zone.tagName !== "BUTTON") {
           zone.addEventListener("keydown", event => {
             if (event.key !== "Enter" && event.key !== " ") return;
+            if (event.target.closest("[data-forge-sigil-slot]")) return;
             event.preventDefault();
-            openEditor(event);
+            activate(event);
           });
         }
       });
-      root.querySelector("[data-forge-card-editor-close]")?.addEventListener("click", event => {
+
+      root.querySelectorAll("[data-forge-card-editor-close]").forEach(control => control.addEventListener("click", event => {
         event.stopPropagation();
         forgeCardEditorSection = null;
         renderForgePage();
-      });
+      }));
+
+      root.onkeydown = event => {
+        if (event.key !== "Escape" || !forgeCardEditorSection) return;
+        forgeCardEditorSection = null;
+        renderForgePage();
+      };
+    } else {
+      root.onkeydown = null;
     }
 
     const newButton = $("#forgeNewBtn");
@@ -5746,6 +5859,7 @@
     const tryButton = $("#forgeTryBtn");
     const sealButton = $("#forgeSealBtn");
     const labButton = $("#forgeUiLabBtn");
+
     if (undoButton) undoButton.disabled = inventoryReadOnly || !snapshot.canUndo;
     if (redoButton) redoButton.disabled = inventoryReadOnly || !snapshot.canRedo;
     if (tryButton) {
@@ -5760,22 +5874,23 @@
       labButton.disabled = inventoryReadOnly;
       labButton.onclick = inventoryReadOnly ? null : () => switchView("uiLab");
     }
+    if (newButton) newButton.disabled = inventoryReadOnly;
 
-    if (newButton) {
-      newButton.disabled = inventoryReadOnly;
-    }
     if (newButton && !inventoryReadOnly) newButton.onclick = () => {
       forgeSelectedSigilSlotId = null;
       forgeCardEditorSection = null;
+      forgeTargetCost = "auto";
       session.reset({ type:"creature", stats:{ attack:1, health:5 }, presentation:{ name:t("forge.newFormula") } });
       renderForgePage();
     };
+
     if (inventoryReadOnly) {
       root.querySelectorAll(".forge-workspace input, .forge-workspace select, .forge-workspace textarea, .forge-workspace button").forEach(control => {
         control.disabled = true;
         control.setAttribute("aria-disabled", "true");
       });
     }
+
     root.querySelector("[data-forge-exit-inventory-preview]")?.addEventListener("click", () => {
       forgeInventoryPreviewCardId = null;
       forgeSelectedSigilSlotId = null;
@@ -5790,30 +5905,26 @@
 
     if (undoButton) undoButton.onclick = () => {
       session.undo();
-      const current = session.snapshot().draft.recipe;
-      if (forgeSelectedSigilSlotId && !current.sigils.some(item => item.slotId === forgeSelectedSigilSlotId)) forgeSelectedSigilSlotId = null;
       renderForgePage();
     };
-    if (redoButton) redoButton.onclick = () => { session.redo(); renderForgePage(); };
+    if (redoButton) redoButton.onclick = () => {
+      session.redo();
+      renderForgePage();
+    };
 
     root.querySelectorAll("[data-forge-name-input]").forEach(input => input.addEventListener("input", event => {
       const value = event.currentTarget.value;
       session.setName(value);
-      root.querySelectorAll("[data-forge-name-input]").forEach(peer => {
-        if (peer !== event.currentTarget) peer.value = value;
-      });
       const cardNameNode = $("#forgePreviewStage .sigian-full-name");
       if (cardNameNode) cardNameNode.textContent = value.trim() || t("forge.newFormula");
     }));
 
-    root.querySelectorAll("[data-forge-type]").forEach(button => button.addEventListener("click", () => {
-      session.setType(button.dataset.forgeType);
-      renderForgePage();
-    }));
     root.querySelectorAll("[data-forge-school]").forEach(button => button.addEventListener("click", () => {
       session.setSchool(button.dataset.forgeSchool);
+      forgeCardEditorSection = null;
       renderForgePage();
     }));
+
     root.querySelectorAll("[data-forge-stat]").forEach(button => button.addEventListener("click", () => {
       const current = session.snapshot().draft.recipe;
       const key = button.dataset.forgeStat;
@@ -5822,16 +5933,44 @@
       session.setCreatureStats({ [key]:nextValue });
       renderForgePage();
     }));
+
     root.querySelectorAll("[data-forge-stat-input]").forEach(input => input.addEventListener("change", event => {
       const key = event.currentTarget.dataset.forgeStatInput;
       const min = key === "attack" ? 0 : 1;
       session.setCreatureStats({ [key]:Math.max(min, Number(event.currentTarget.value || min)) });
       renderForgePage();
     }));
+
+    root.querySelectorAll("[data-forge-cost-mode]").forEach(button => button.addEventListener("click", () => {
+      if (button.dataset.forgeCostMode === "auto") {
+        forgeTargetCost = "auto";
+      } else if (forgeTargetCost === "auto") {
+        forgeTargetCost = String(Math.max(1, Number(session.snapshot().analysis?.minimumLevel || 1)));
+      }
+      renderForgePage();
+    }));
+
+    root.querySelectorAll("[data-forge-cost-step]").forEach(button => button.addEventListener("click", () => {
+      const current = forgeTargetCost === "auto" ? Math.max(1, Number(analysis?.minimumLevel || 1)) : Math.max(1, Number(forgeTargetCost || 1));
+      forgeTargetCost = String(Math.max(1, current + Number(button.dataset.forgeCostStep || 0)));
+      renderForgePage();
+    }));
+
+    root.querySelectorAll("[data-forge-cost-input]").forEach(input => input.addEventListener("change", event => {
+      forgeTargetCost = String(Math.max(1, Number(event.currentTarget.value || 1)));
+      renderForgePage();
+    }));
+
+    root.querySelectorAll("[data-forge-target-cost]").forEach(control => control.addEventListener("change", event => {
+      forgeTargetCost = event.currentTarget.value === "auto" ? "auto" : String(Math.max(1, Number(event.currentTarget.value || 1)));
+      renderForgePage();
+    }));
+
     root.querySelectorAll("[data-forge-constraint-select]").forEach(control => control.addEventListener("change", event => {
       const definitionId = String(event.currentTarget.value || "");
       if (definitionId) session.setConstraint(definitionId);
       else session.removeConstraint();
+      forgeCardEditorSection = "constraint";
       renderForgePage();
     }));
     root.querySelectorAll("[data-forge-constraint-grade]").forEach(control => control.addEventListener("change", event => {
@@ -5842,25 +5981,41 @@
       session.setConstraintSchool(event.currentTarget.value);
       renderForgePage();
     }));
-    root.querySelectorAll("[data-forge-remove-constraint]").forEach(button => button.addEventListener("click", () => {
+    root.querySelectorAll("[data-forge-remove-constraint]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
       session.removeConstraint();
+      forgeCardEditorSection = "constraint";
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-open-constraint-picker]").forEach(button => button.addEventListener("click", () => {
+      forgeCardEditorSection = "constraint";
+      renderForgePage();
+    }));
+
+    root.querySelectorAll("[data-forge-empty-sigil-slot]").forEach(button => button.addEventListener("click", () => {
+      forgeCardEditorSection = "sigils";
+      forgeSelectedSigilSlotId = null;
       renderForgePage();
     }));
 
     root.querySelectorAll("[data-forge-add-collectible]").forEach(button => button.addEventListener("click", () => {
       if (button.disabled) return;
       const result = session.addCollectibleSigil(button.dataset.forgeAddCollectible);
+      forgeCardEditorSection = "sigils";
       forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
       renderForgePage();
     }));
     root.querySelectorAll("[data-forge-add-sigil]").forEach(button => button.addEventListener("click", () => {
       if (button.disabled) return;
       const result = session.addSigil(button.dataset.forgeAddSigil);
+      forgeCardEditorSection = "sigils";
       forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
       renderForgePage();
     }));
+
     root.querySelectorAll("[data-forge-select-sigil]").forEach(row => {
       const select = () => {
+        forgeCardEditorSection = "sigils";
         forgeSelectedSigilSlotId = row.dataset.forgeSelectSigil;
         renderForgePage();
       };
@@ -5875,27 +6030,28 @@
         select();
       });
     });
-    root.querySelector("[data-forge-close-modeler]")?.addEventListener("click", () => {
+
+    root.querySelectorAll("[data-forge-close-modeler]").forEach(button => button.addEventListener("click", () => {
+      forgeCardEditorSection = "sigils";
       forgeSelectedSigilSlotId = null;
       renderForgePage();
-    });
+    }));
+
     root.querySelectorAll("[data-forge-remove-sigil]").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
       const slotId = button.dataset.forgeRemoveSigil;
       session.removeSigil(slotId);
       if (forgeSelectedSigilSlotId === slotId) forgeSelectedSigilSlotId = null;
+      forgeCardEditorSection = "sigils";
       renderForgePage();
     }));
+
     root.querySelectorAll("[data-forge-grade]").forEach(control => control.addEventListener("change", () => {
       session.setSigilGrade(control.dataset.forgeSlot, Number(control.value));
       renderForgePage();
     }));
     root.querySelectorAll("[data-forge-intensity]").forEach(button => button.addEventListener("click", () => {
       session.setSigilIntensity(button.dataset.forgeSlot, Number(button.dataset.forgeIntensity));
-      renderForgePage();
-    }));
-    root.querySelectorAll("[data-forge-target-cost]").forEach(control => control.addEventListener("change", event => {
-      forgeTargetCost = event.currentTarget.value === "auto" ? "auto" : String(Math.max(1, Number(event.currentTarget.value || 1)));
       renderForgePage();
     }));
     root.querySelectorAll("[data-forge-math-mode]").forEach(button => button.addEventListener("click", () => {
@@ -5951,6 +6107,10 @@
       );
       renderForgePage();
     }));
+
+    window.requestAnimationFrame(() => {
+      root.querySelector("[data-forge-autofocus]")?.focus?.({ preventScroll:true });
+    });
   }
 
 
