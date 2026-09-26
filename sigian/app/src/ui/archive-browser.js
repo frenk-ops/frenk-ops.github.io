@@ -361,6 +361,17 @@
       </article>`;
   }
 
+
+  function formulaPaginationMarkup(page, pageCount) {
+    if (pageCount <= 1) return "";
+    return `
+      <nav class="archive-pagination" aria-label="${escapeHtml(t("archive.formulaPages"))}">
+        <button type="button" data-formula-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>‹</button>
+        <span>${t("archive.page", { page:`<b>${page}</b>`, pages:pageCount })}</span>
+        <button type="button" data-formula-page="${page + 1}" ${page >= pageCount ? "disabled" : ""}>›</button>
+      </nav>`;
+  }
+
   function formulaComponentMarkup(component) {
     const constraint = component.kind === "constraint";
     return `
