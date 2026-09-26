@@ -565,6 +565,24 @@
       });
     }
 
+    function reclaimAndBindTransaction(transaction, kind, targetSlotId, instance, inventoryId) {
+      if (typeof A.reclaimSigianForgeTransactionComponent !== "function") {
+        throw new Error("Recupero componente Forgia non disponibile.");
+      }
+      const allocation = instance?.allocation;
+      if (!instance?.componentInstanceId || allocation?.state !== "assigned") {
+        throw new Error("La copia scelta non è assegnata a una Formula.");
+      }
+      return A.reclaimSigianForgeTransactionComponent(transaction, {
+        kind,
+        targetSlotId,
+        componentInstanceId:instance.componentInstanceId,
+        inventoryId,
+        sourceFormulaInstanceId:allocation.formulaInstanceId,
+        sourceSlotId:allocation.slotId
+      });
+    }
+
     function rebindRecipeComponentsForSchool(nextSchool) {
       const recipe = clone(draft.recipe);
       recipe.school = nextSchool;
@@ -745,6 +763,29 @@
         return commitRecipe(recipeWith({ constraint }));
       },
 
+      setReclaimedConstraint(definitionId, componentInstanceId) {
+        const normalizedId = String(definitionId || "").trim();
+        if (!normalizedId) throw new Error("Vincolo da recuperare non valido.");
+        const constraint = defaultForgeConstraint(normalizedId, draft.recipe.school);
+        const candidates = A.listSigianAssignedConstraintComponentInstances?.(
+          constraint,
+          draft.recipe.school,
+          { transaction:draft.transaction }
+        ) || [];
+        const instance = candidates.find(item => item.componentInstanceId === String(componentInstanceId || ""));
+        if (!instance) throw new Error("La copia assegnata del Vincolo non è più disponibile per il recupero.");
+        constraint.affinity = clone(instance.affinity);
+        const inventoryId = A.sigianConstraintInventoryId?.(constraint) || null;
+        const transaction = reclaimAndBindTransaction(
+          transactionWithoutBinding("constraint", "constraint"),
+          "constraint",
+          "constraint",
+          instance,
+          inventoryId
+        );
+        return commitRecipeAndTransaction(recipeWith({ constraint }), transaction);
+      },
+
       updateConstraint(patch = {}) {
         if (!draft.recipe.constraint) throw new Error("Nessun Vincolo globale impostato.");
         const current = clone(draft.recipe.constraint);
@@ -866,6 +907,39 @@
         }
         next.push(candidate);
         return commitRecipe(recipeWith({ sigils:next }));
+      },
+
+      addReclaimedCollectibleSigil(collectibleId, componentInstanceId) {
+        if (draft.recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3)) {
+          throw new Error(`La Formula può contenere al massimo ${A.SIGIAN_MAX_PRIMARY_SIGILS || 3} Sigilli primari.`);
+        }
+        const candidates = A.listSigianAssignedCollectibleComponentInstances?.(
+          collectibleId,
+          draft.recipe.school,
+          { transaction:draft.transaction }
+        ) || [];
+        const instance = candidates.find(item => item.componentInstanceId === String(componentInstanceId || ""));
+        if (!instance) throw new Error("La copia assegnata del Sigillo non è più disponibile per il recupero.");
+
+        const next = clone(draft.recipe.sigils);
+        let candidate = defaultForgeCollectibleSigil(collectibleId, draft.recipe.school, next.length);
+        let counter = 1;
+        const used = new Set(next.map(item => item.slotId));
+        while (used.has(candidate.slotId)) {
+          candidate.slotId = `forge-${next.length + 1}-${collectibleId}-${counter++}`;
+        }
+        candidate.affinity = clone(instance.affinity);
+        next.push(candidate);
+
+        const inventoryId = A.sigianCollectibleInventoryIdentity?.(collectibleId, draft.recipe.school)?.inventoryId || null;
+        const transaction = reclaimAndBindTransaction(
+          draft.transaction,
+          "sigil",
+          candidate.slotId,
+          instance,
+          inventoryId
+        );
+        return commitRecipeAndTransaction(recipeWith({ sigils:next }), transaction);
       },
 
       removeSigil(slotId) {

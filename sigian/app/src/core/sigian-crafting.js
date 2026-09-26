@@ -259,11 +259,58 @@
     const expectedKind = kind === "constraint" ? "constraint" : "sigil";
     const expectedSlot = String(slotId || "");
     const current = A.createSigianForgeTransactionPlan(plan || {});
-    current.operations = current.operations.filter(item => !(
-      item.type === "assign"
-      && item.payload?.kind === expectedKind
-      && String(item.payload?.slotId || "") === expectedSlot
-    ));
+    current.operations = current.operations.filter(item => {
+      if (item.payload?.kind !== expectedKind) return true;
+      if (item.type === "assign" && String(item.payload?.slotId || "") === expectedSlot) return false;
+      if (item.type === "reclaim" && String(item.payload?.targetSlotId || "") === expectedSlot) return false;
+      return true;
+    });
     return current;
+  };
+
+  A.reclaimSigianForgeTransactionComponent = function reclaimSigianForgeTransactionComponent(plan, input = {}) {
+    if (!input.componentInstanceId || !input.sourceFormulaInstanceId || !input.sourceSlotId || !input.targetSlotId) {
+      throw new Error("Recupero componente Forgia incompleto.");
+    }
+    const kind = input.kind === "constraint" ? "constraint" : "sigil";
+    let current = A.unbindSigianForgeTransactionComponent(plan, kind, input.targetSlotId);
+    current.operations.push(transactionOperation({
+      id:`reclaim:${kind}:${String(input.targetSlotId)}`,
+      type:"reclaim",
+      payload:{
+        kind,
+        componentInstanceId:String(input.componentInstanceId),
+        inventoryId:input.inventoryId == null ? null : String(input.inventoryId),
+        sourceFormulaInstanceId:String(input.sourceFormulaInstanceId),
+        sourceSlotId:String(input.sourceSlotId),
+        targetSlotId:String(input.targetSlotId)
+      }
+    }, current.operations.length));
+    current = A.bindSigianForgeTransactionComponent(current, {
+      kind,
+      slotId:String(input.targetSlotId),
+      componentInstanceId:String(input.componentInstanceId),
+      inventoryId:input.inventoryId == null ? null : String(input.inventoryId)
+    });
+    return current;
+  };
+
+  A.listSigianForgeReclaimConsequences = function listSigianForgeReclaimConsequences(plan) {
+    const formulas = new Map();
+    (plan?.operations || []).forEach(operation => {
+      if (operation.type !== "reclaim") return;
+      const payload = operation.payload || {};
+      const formulaInstanceId = String(payload.sourceFormulaInstanceId || "");
+      if (!formulaInstanceId) return;
+      if (!formulas.has(formulaInstanceId)) {
+        formulas.set(formulaInstanceId, {
+          formulaInstanceId,
+          statusAfterCommit:"needs-reseal",
+          componentInstanceIds:[]
+        });
+      }
+      formulas.get(formulaInstanceId).componentInstanceIds.push(String(payload.componentInstanceId || ""));
+    });
+    return [...formulas.values()].map(clone);
   };
 })(window.Arcane = window.Arcane || {});

@@ -549,6 +549,7 @@
           compatibleQuantity:availability ? availability.total : ownedQuantity,
           freeQuantity:availability ? availability.free : ownedQuantity,
           inUseQuantity:availability ? availability.inUse : 0,
+          reclaimableQuantity:availability ? availability.reclaimable : 0,
           projectedFreeQuantity:availability ? availability.projectedFree : ownedQuantity
         };
       })
@@ -588,5 +589,9 @@
   };
   A.getSigianInventoryFormula = function getSigianInventoryFormula(cardId) {
     return formulaItems().find(item => item.id === cardId) || null;
+  };
+  A.getSigianInventoryFormulaByInstanceId = function getSigianInventoryFormulaByInstanceId(formulaInstanceId) {
+    const id = String(formulaInstanceId || "");
+    return formulaItems().find(item => item.formulaInstanceId === id) || null;
   };
 })(window.Arcane = window.Arcane || {});

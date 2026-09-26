@@ -259,13 +259,16 @@
     const assigned = all.filter(instance => instance.allocation?.state === "assigned");
     const usedByDraft = draftUsedIds(transaction);
     const projectedFree = free.filter(instance => !usedByDraft.has(instance.componentInstanceId));
+    const reclaimable = assigned.filter(instance => !usedByDraft.has(instance.componentInstanceId));
     return {
       inventoryId:String(inventoryId || ""),
       total:all.length,
       free:free.length,
       inUse:assigned.length,
       projectedFree:projectedFree.length,
+      reclaimable:reclaimable.length,
       assigned:assigned.map(clone),
+      reclaimableAssigned:reclaimable.map(clone),
       draftUsed:[...usedByDraft].filter(id => all.some(instance => instance.componentInstanceId === id))
     };
   }
@@ -285,6 +288,19 @@
       compatibleSchool:options.compatibleSchool,
       excludeInstanceIds:[...excluded]
     })[0] || null;
+  }
+
+  function assignedInstances(inventoryId, options = {}) {
+    const excluded = new Set([
+      ...(options.excludeInstanceIds || []).map(String),
+      ...draftUsedIds(options.transaction)
+    ]);
+    return listInstances({
+      inventoryId,
+      allocation:"assigned",
+      compatibleSchool:options.compatibleSchool,
+      excludeInstanceIds:[...excluded]
+    });
   }
 
   function collectibleInventoryId(collectibleId, formulaSchool) {
@@ -358,6 +374,17 @@
       : null;
   };
 
+  A.listSigianAssignedCollectibleComponentInstances = function listSigianAssignedCollectibleComponentInstances(collectibleId, formulaSchool = "fire", options = {}) {
+    const inventoryId = collectibleInventoryId(collectibleId, formulaSchool);
+    return inventoryId
+      ? assignedInstances(inventoryId, {
+          compatibleSchool:formulaSchool,
+          transaction:options.transaction,
+          excludeInstanceIds:options.excludeInstanceIds
+        }).map(clone)
+      : [];
+  };
+
   A.getSigianConstraintComponentAvailability = function getSigianConstraintComponentAvailability(constraint, formulaSchool = "fire", transaction = null) {
     const inventoryId = constraintInventoryId(constraint);
     return inventoryId
@@ -374,6 +401,17 @@
           excludeInstanceIds:options.excludeInstanceIds
         })
       : null;
+  };
+
+  A.listSigianAssignedConstraintComponentInstances = function listSigianAssignedConstraintComponentInstances(constraint, formulaSchool = "fire", options = {}) {
+    const inventoryId = constraintInventoryId(constraint);
+    return inventoryId
+      ? assignedInstances(inventoryId, {
+          compatibleSchool:formulaSchool,
+          transaction:options.transaction,
+          excludeInstanceIds:options.excludeInstanceIds
+        }).map(clone)
+      : [];
   };
 
   A.assignSigianComponentInstance = function assignSigianComponentInstance(instanceId, assignment, expectedRevision = null) {

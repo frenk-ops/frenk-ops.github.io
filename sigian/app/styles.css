@@ -12889,6 +12889,123 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   box-shadow:0 5px 12px rgba(67,42,20,.15);
 }
 .forge-sigil-tile:disabled { opacity:.45;cursor:not-allowed; }
+.forge-sigil-tile.is-reclaimable:not(:disabled) {
+  border-color:rgba(139,89,36,.6);
+  background:linear-gradient(180deg,rgba(255,242,202,.82),rgba(220,188,126,.66));
+}
+.forge-sigil-tile.is-reclaimable .forge-sigil-tile-action {
+  color:#7a4218;
+}
+
+.forge-reclaim-backdrop {
+  position:fixed;
+  inset:0;
+  z-index:240;
+  display:grid;
+  place-items:center;
+  padding:max(16px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));
+  background:rgba(9,7,8,.78);
+  backdrop-filter:blur(6px);
+}
+.forge-reclaim-dialog {
+  width:min(900px,100%);
+  max-height:min(900px,calc(100vh - 32px));
+  overflow:auto;
+  display:grid;
+  gap:12px;
+  padding:16px;
+  border:1px solid rgba(222,184,108,.52);
+  border-radius:16px;
+  background:linear-gradient(180deg,#f1dfb7,#d8bb82);
+  color:#402b1c;
+  box-shadow:0 24px 70px rgba(0,0,0,.5);
+}
+.forge-reclaim-dialog > header {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.forge-reclaim-dialog > header small {
+  color:#825828;
+  font-size:.64rem;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.forge-reclaim-dialog > header h3 {
+  margin:2px 0 0;
+  color:#472d18;
+  font:700 1.2rem/1.1 Georgia,serif;
+}
+.forge-reclaim-dialog > header > button {
+  width:42px;
+  height:42px;
+  border:1px solid rgba(89,55,27,.4);
+  border-radius:50%;
+  background:#50351f;
+  color:#fff1c9;
+  font-size:1.35rem;
+  cursor:pointer;
+}
+.forge-reclaim-dialog > p { margin:0;line-height:1.45; }
+.forge-reclaim-candidates { display:grid;gap:8px; }
+.forge-reclaim-candidate {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px;
+  border:1px solid rgba(95,61,31,.27);
+  border-radius:10px;
+  background:rgba(255,248,222,.6);
+}
+.forge-reclaim-candidate.is-previewing { outline:2px solid rgba(126,76,29,.55); }
+.forge-reclaim-candidate > div { min-width:0;display:grid;gap:2px; }
+.forge-reclaim-candidate small { color:#7b5c40;font-size:.66rem;font-weight:800; }
+.forge-reclaim-formula-link {
+  width:max-content;
+  max-width:100%;
+  padding:0;
+  border:0;
+  background:none;
+  color:#6a3e19;
+  font:700 .88rem/1.2 Georgia,serif;
+  text-align:left;
+  text-decoration:underline;
+  text-underline-offset:3px;
+  cursor:pointer;
+}
+.forge-reclaim-preview {
+  display:grid;
+  grid-template-columns:minmax(220px,.72fr) minmax(300px,1fr);
+  gap:12px;
+  align-items:start;
+}
+.forge-reclaim-warning {
+  display:grid;
+  gap:5px;
+  padding:11px;
+  border:1px solid rgba(158,75,39,.38);
+  border-radius:10px;
+  background:rgba(240,200,159,.58);
+}
+.forge-reclaim-warning strong { color:#70391e; }
+.forge-reclaim-warning span { font-size:.76rem;line-height:1.4; }
+.forge-reclaim-full-host {
+  display:grid;
+  place-items:center;
+  min-width:0;
+}
+.forge-reclaim-full-host .sigian-full-card { width:min(100%,360px); }
+.forge-reclaim-hint,
+.forge-reclaim-empty { color:#72553b;font-size:.76rem; }
+@media (max-width:700px) {
+  .forge-reclaim-dialog { padding:12px; }
+  .forge-reclaim-candidate { align-items:stretch;flex-direction:column; }
+  .forge-reclaim-candidate .classic-stone-button { width:100%; }
+  .forge-reclaim-preview { grid-template-columns:1fr; }
+  .forge-reclaim-full-host .sigian-full-card { width:min(100%,340px); }
+}
 .forge-sigil-tile-icon {
   grid-area:icon;
   width:42px;
