@@ -4505,6 +4505,12 @@
   function sigianV2ComponentUiModel(component) {
     if (!component) return null;
     const iconId = sigianV2IconId(component.definitionId, component.kind);
+    const definition = A.getSigianContent?.(component.definitionId, component.kind)
+      || A.getSigianCanonicalV2?.(component.definitionId)
+      || null;
+    const detail = component.kind === "constraint"
+      ? (A.describeSigianConstraint?.(component) || component.detail || definition?.summary || "")
+      : (component.detail || definition?.summary || "");
     return {
       kind:component.kind,
       definitionId:component.definitionId,
@@ -4512,7 +4518,7 @@
       name:sigianV2ComponentDisplayName(component),
       school:component.school || null,
       grade:component.grade ?? null,
-      detail:String(component.detail || ""),
+      detail:String(detail || ""),
       iconMarkup:className => sigianCanonicalSigilIconMarkup(iconId, className),
       modifiers:[]
     };
@@ -4775,7 +4781,14 @@
       slotId:sigil.slotId || null,
       canonicalId:canonicalOption?.canonicalId || null,
       effect,
+      grade:sigil.grade ?? null,
+      school:canonicalOption?.effectSchool || null,
       name:canonicalOption?.displayName || collectible?.displayName || sigianCanonicalSigilName(sigil),
+      detail:String(
+        A.describeSigianRecipeSigil?.(sigianRecipeForUi(card), sigil)
+        || canonicalOption?.summary
+        || ""
+      ),
       iconMarkup:className => sigianCanonicalSigilIconMarkup(collectible?.baseSigilId || sigil.sigilId, className),
       modifiers
     };
@@ -4805,9 +4818,116 @@
     return `<span class="sigian-modifier-chip ${escapeHtml(item.className)}">${schoolIcon}<span>${escapeHtml(item.text)}</span></span>`;
   }
 
-  function buildSigianFullConstraintSlot(card, model) {
+  function sigianFullElementDetail(card, model, kind, index = null, side = null) {
+    const printedCost = Number(card?.cost ?? card?.level ?? 0);
+    const effectiveCost = engine && side ? Number(engine.effectiveCost(side, card)) : printedCost;
+    const printedAttack = printedCardAttack(card);
+    const currentAttack = card?.type === "creature"
+      ? (side && engine ? displayedUnitAttack(side, card) : printedAttack)
+      : null;
+    const printedHealth = Math.max(0, Number(card?.health ?? card?.hp ?? 0));
+    const currentHealth = card?.type === "creature"
+      ? Math.max(0, Number(card?.currentHealth ?? card?.health ?? card?.hp ?? 0))
+      : null;
+    const typeLabel = card?.type === "spell" ? t("ui.spell") : t("ui.creature");
+    const schoolLabel = schoolName(card?.school);
+    const meta = [];
+
+    if (kind === "formula") {
+      meta.push(typeLabel, schoolLabel, `${t("ui.cost")} ${effectiveCost}`);
+      return {
+        kind,
+        title:cardName(card),
+        body:cardDescription(card, side || inspectedCardSide),
+        meta
+      };
+    }
+    if (kind === "cost") {
+      const body = effectiveCost !== printedCost
+        ? t("sigian.inspect.baseCurrent", { label:t("ui.cost"), base:printedCost, current:effectiveCost })
+        : t("sigian.inspect.value", { label:t("ui.cost"), value:printedCost });
+      return { kind, title:t("ui.cost"), body, meta:[] };
+    }
+    if (kind === "type") {
+      return { kind, title:typeLabel, body:t("sigian.inspect.typeBody", { type:typeLabel }), meta:[] };
+    }
+    if (kind === "school") {
+      return { kind, title:schoolLabel, body:t("sigian.inspect.schoolBody", { school:schoolLabel }), meta:[] };
+    }
+    if (kind === "art") {
+      const art = (card?.imageKey ? A.getSigianInventoryArt?.(card.imageKey) : null)
+        || A.getSigianContent?.(`art:${card?.id || ""}`, "cosmetic")
+        || null;
+      return {
+        kind,
+        title:art?.name ? String(art.name).replace(/\s+—\s+ART$/, "") : cardName(card),
+        body:t("sigian.inspect.artBody"),
+        meta:art?.school ? [schoolName(art.school)] : []
+      };
+    }
+    if (kind === "attack") {
+      const body = currentAttack !== printedAttack
+        ? t("sigian.inspect.baseCurrent", { label:t("ui.attack"), base:printedAttack, current:currentAttack })
+        : t("sigian.inspect.value", { label:t("ui.attack"), value:printedAttack });
+      return { kind, title:t("ui.attack"), body, meta:[] };
+    }
+    if (kind === "health") {
+      const body = currentHealth !== printedHealth
+        ? t("sigian.inspect.maxCurrent", { label:t("ui.life"), max:printedHealth, current:currentHealth })
+        : t("sigian.inspect.value", { label:t("ui.life"), value:printedHealth });
+      return { kind, title:t("ui.life"), body, meta:[] };
+    }
+    if (kind === "sigil") {
+      const sigil = model?.sigils?.[Number(index)] || null;
+      if (!sigil) return null;
+      if (sigil.grade != null) meta.push(`Grado ${sigianRomanGrade(Number(sigil.grade))}`);
+      if (sigil.school) meta.push(schoolName(sigil.school));
+      return {
+        kind,
+        title:sigil.name,
+        body:sigil.detail || sigil.name,
+        meta
+      };
+    }
+    if (kind === "constraint") {
+      const constraint = model?.constraint || null;
+      if (!constraint) {
+        return { kind, title:t("sigian.constraint.global"), body:t("sigian.inspect.noConstraint"), meta:[] };
+      }
+      if (constraint.grade != null) meta.push(`Grado ${sigianRomanGrade(Number(constraint.grade))}`);
+      if (constraint.school) meta.push(schoolName(constraint.school));
+      return {
+        kind,
+        title:constraint.name,
+        body:constraint.detail || constraint.name,
+        meta
+      };
+    }
+    if (kind === "rules") {
+      return {
+        kind,
+        title:t("sigian.inspect.rulesTitle"),
+        body:cardDescription(card, side || inspectedCardSide),
+        meta:[]
+      };
+    }
+    return null;
+  }
+
+  function markSigianFullInspectable(node, kind, title, index = null) {
+    if (!node) return;
+    node.dataset.sigianInspect = kind;
+    if (index != null) node.dataset.sigianInspectIndex = String(index);
+    node.setAttribute("role", "button");
+    node.setAttribute("tabindex", "0");
+    if (title) node.title = title;
+  }
+
+  function buildSigianFullConstraintSlot(card, model, options = {}) {
     const constraint = model?.constraint || null;
-    const slot = document.createElement(constraint || card?.__forgePreview ? "button" : "span");
+    const editable = options.editable === true;
+    const inspectable = options.inspectable === true && !editable;
+    const slot = document.createElement((editable || inspectable) ? "button" : "span");
     if (slot.tagName === "BUTTON") slot.type = "button";
     slot.className = `sigian-full-constraint-slot ${constraint ? "is-filled" : "is-empty"} ${constraint?.school ? `school-${constraint.school}` : "is-neutral"}`;
     slot.dataset.sigianConstraintSlot = constraint?.definitionId || "";
@@ -4819,36 +4939,26 @@
       <span class="sigian-full-constraint-ring" aria-hidden="true">
         <span class="sigian-full-constraint-orb">${constraint ? '<span class="sigian-full-constraint-glyph">◇</span>' : ""}</span>
       </span>`;
-    if (card?.__forgePreview) {
+    if (editable) {
       slot.dataset.forgeCardEdit = "constraint";
-    } else if (constraint) {
-      slot.addEventListener("click", event => {
-        event.stopPropagation();
-        window.dispatchEvent(new CustomEvent("sigian:constraint-inspect", {
-          detail:{
-            cardId:card?.id || "",
-            constraint:{
-              definitionId:constraint.definitionId,
-              name:constraint.name,
-              school:constraint.school || null,
-              grade:constraint.grade ?? null,
-              detail:constraint.detail || ""
-            }
-          }
-        }));
-      });
+    } else if (inspectable) {
+      markSigianFullInspectable(slot, "constraint", constraint?.name || "Vincolo");
     }
     return slot;
   }
 
-  function buildSigianFullCard(card, side = null) {
+  function buildSigianFullCard(card, side = null, options = {}) {
     const model = sigianCardUiModel(card);
     if (!model) return null;
+    const editable = options.editable === true || Boolean(card?.__forgePreview);
+    const inspectable = options.inspectable !== false && !editable;
     const cost = engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0);
     const article = document.createElement("article");
     article.className = `sigian-full-card school-${card.school} type-${card.type} sigian-sigil-count-${model.sigils.length}`;
-    if (card?.__forgePreview) article.classList.add("is-forge-editable");
+    if (editable) article.classList.add("is-forge-editable");
+    if (inspectable) article.classList.add("is-inspectable");
     article.dataset.cardId = card.id;
+    article.dataset.sigianFullSurface = options.surface || "generic";
 
     const top = document.createElement("header");
     top.className = "sigian-full-top";
@@ -4859,7 +4969,7 @@
       <span class="sigian-full-school" aria-label="${escapeHtml(schoolName(card.school))}">${schoolIconMarkup(card.school, "school-icon-svg sigian-full-school-icon")}</span>`;
     article.appendChild(top);
 
-    if (card?.__forgePreview) {
+    if (editable) {
       [
         [top.querySelector(".sigian-full-cost"), "cost", t("ui.cost")],
         [top.querySelector(".sigian-full-type"), "type", t("forge.type")],
@@ -4872,16 +4982,23 @@
         node.setAttribute("tabindex", "0");
         node.title = label;
       });
+    } else if (inspectable) {
+      markSigianFullInspectable(top.querySelector(".sigian-full-cost"), "cost", t("ui.cost"));
+      markSigianFullInspectable(top.querySelector(".sigian-full-type"), "type", card.type === "spell" ? t("ui.spell") : t("ui.creature"));
+      markSigianFullInspectable(top.querySelector(".sigian-full-name"), "formula", cardName(card));
+      markSigianFullInspectable(top.querySelector(".sigian-full-school"), "school", schoolName(card.school));
     }
 
     const art = document.createElement("div");
     art.className = "sigian-full-art";
     art.appendChild(buildArtBlock(card, "sigianFull"));
-    if (card?.__forgePreview) {
+    if (editable) {
       art.dataset.forgeCardEdit = "art";
       art.setAttribute("role", "button");
       art.setAttribute("tabindex", "0");
       art.title = "Scegli ART dall'Inventario";
+    } else if (inspectable) {
+      markSigianFullInspectable(art, "art", "ART");
     }
     article.appendChild(art);
 
@@ -4890,14 +5007,14 @@
       const health = Math.max(0, Number(card.currentHealth ?? card.health ?? card.hp ?? 0));
       const stats = document.createElement("div");
       stats.className = "sigian-full-stats";
-      const statTag = card?.__forgePreview ? "button" : "span";
-      const buttonType = card?.__forgePreview ? ' type="button"' : "";
+      const statTag = (editable || inspectable) ? "button" : "span";
+      const buttonType = (editable || inspectable) ? ' type="button"' : "";
       stats.innerHTML = `
         <${statTag}${buttonType} class="sigian-full-stat sigian-full-attack" aria-label="${escapeHtml(t("ui.attack"))} ${escapeHtml(attack)}"><span aria-hidden="true">⚔</span><b>${escapeHtml(attack)}</b></${statTag}>
         <${statTag}${buttonType} class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></${statTag}>`;
-      if (card?.__forgePreview) {
-        const attackNode = stats.querySelector(".sigian-full-attack");
-        const healthNode = stats.querySelector(".sigian-full-health");
+      const attackNode = stats.querySelector(".sigian-full-attack");
+      const healthNode = stats.querySelector(".sigian-full-health");
+      if (editable) {
         if (attackNode) {
           attackNode.dataset.forgeCardEdit = "attack";
           attackNode.title = t("forge.attack");
@@ -4906,19 +5023,23 @@
           healthNode.dataset.forgeCardEdit = "health";
           healthNode.title = t("forge.health");
         }
+      } else if (inspectable) {
+        markSigianFullInspectable(attackNode, "attack", t("ui.attack"));
+        markSigianFullInspectable(healthNode, "health", t("ui.life"));
       }
       article.appendChild(stats);
     }
 
-    article.appendChild(buildSigianFullConstraintSlot(card, model));
+    article.appendChild(buildSigianFullConstraintSlot(card, model, { editable, inspectable }));
 
     const sigilArea = document.createElement("section");
     sigilArea.className = `sigian-full-sigil-area ${card.type === "spell" ? "sigian-full-spell-sigil-area" : ""}`;
     const sigilMarkup = model.sigils.map((sigil, index) => {
       const modifiers = sigil.modifiers.map(sigianModifierMarkup).join("");
-      const forgeSlot = card?.__forgePreview && sigil.slotId ? ` data-forge-sigil-slot="${escapeHtml(sigil.slotId)}" role="button" tabindex="0"` : "";
-      const selected = card?.__forgePreview && sigil.slotId && sigil.slotId === forgeSelectedSigilSlotId ? " is-forge-selected" : "";
-      return `<div class="sigian-sigil-entry ${index === 0 ? "is-primary" : "is-secondary"}${selected}"${forgeSlot}>
+      const forgeSlot = editable && sigil.slotId ? ` data-forge-sigil-slot="${escapeHtml(sigil.slotId)}" role="button" tabindex="0"` : "";
+      const inspectSlot = inspectable ? ` data-sigian-inspect="sigil" data-sigian-inspect-index="${index}" role="button" tabindex="0" title="${escapeHtml(sigil.name)}"` : "";
+      const selected = editable && sigil.slotId && sigil.slotId === forgeSelectedSigilSlotId ? " is-forge-selected" : "";
+      return `<div class="sigian-sigil-entry ${index === 0 ? "is-primary" : "is-secondary"}${selected}"${forgeSlot}${inspectSlot}>
         <div class="sigian-sigil-medallion">${sigil.iconMarkup("sigian-sigil-icon")}</div>
         <div class="sigian-sigil-copy">
           <strong class="sigian-sigil-name">${escapeHtml(sigil.name)}</strong>
@@ -4929,15 +5050,127 @@
     sigilArea.innerHTML = `
       <div class="sigian-sigil-list">${sigilMarkup}</div>
       <p class="sigian-full-rules">${cardDescriptionHtml(card, side || inspectedCardSide)}</p>`;
-    if (card?.__forgePreview) {
+    if (editable) {
       sigilArea.dataset.forgeCardEdit = "sigils";
       sigilArea.setAttribute("role", "button");
       sigilArea.setAttribute("tabindex", "0");
       sigilArea.title = t("forge.sigils");
+    } else if (inspectable) {
+      markSigianFullInspectable(sigilArea.querySelector(".sigian-full-rules"), "rules", t("sigian.inspect.rulesTitle"));
     }
     article.appendChild(sigilArea);
+
+    if (inspectable) {
+      const activateInspection = (event, target) => {
+        if (!target || !article.contains(target)) return;
+        event.stopPropagation();
+        const detail = sigianFullElementDetail(
+          card,
+          model,
+          target.dataset.sigianInspect,
+          target.dataset.sigianInspectIndex,
+          side
+        );
+        if (!detail) return;
+        window.dispatchEvent(new CustomEvent("sigian:card-element-inspect", {
+          detail:{ ...detail, cardId:card.id, surface:options.surface || "generic" }
+        }));
+      };
+      article.addEventListener("click", event => {
+        const target = event.target.closest?.("[data-sigian-inspect]");
+        if (!target) return;
+        activateInspection(event, target);
+      });
+      article.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const target = event.target.closest?.("[data-sigian-inspect]");
+        if (!target || target.tagName === "BUTTON") return;
+        event.preventDefault();
+        activateInspection(event, target);
+      });
+    }
     return article;
   }
+
+  A.SigianCardRenderer = Object.freeze({
+    buildFull(card, options = {}) {
+      if (!card) return null;
+      const editable = options.editable === true;
+      const viewCard = { ...card, __forgePreview:editable };
+      return buildSigianFullCard(viewCard, options.side || null, {
+        editable,
+        inspectable:options.inspectable !== false,
+        surface:options.surface || "generic"
+      });
+    }
+  });
+
+  function ensureSigianElementInspector() {
+    let root = document.querySelector("#sigianElementInspector");
+    if (root) return root;
+    root = document.createElement("div");
+    root.id = "sigianElementInspector";
+    root.className = "sigian-element-inspector";
+    root.setAttribute("aria-hidden", "true");
+    root.innerHTML = `
+      <section class="sigian-element-inspector-panel" role="dialog" aria-modal="true" aria-labelledby="sigianElementInspectorTitle">
+        <button type="button" class="sigian-element-inspector-close" data-sigian-element-close aria-label="Chiudi">×</button>
+        <small class="sigian-element-inspector-kind"></small>
+        <h3 id="sigianElementInspectorTitle"></h3>
+        <p class="sigian-element-inspector-body"></p>
+        <div class="sigian-element-inspector-meta"></div>
+      </section>`;
+    document.body.appendChild(root);
+    root.addEventListener("click", event => {
+      if (event.target === root || event.target.closest?.("[data-sigian-element-close]")) {
+        root.classList.remove("open");
+        root.setAttribute("aria-hidden", "true");
+      }
+    });
+    return root;
+  }
+
+  function showSigianElementInspector(detail) {
+    if (!detail) return;
+    const root = ensureSigianElementInspector();
+    const kind = root.querySelector(".sigian-element-inspector-kind");
+    const title = root.querySelector("#sigianElementInspectorTitle");
+    const body = root.querySelector(".sigian-element-inspector-body");
+    const meta = root.querySelector(".sigian-element-inspector-meta");
+    if (kind) {
+      const key = `sigian.inspect.kind.${detail.kind}`;
+      const translated = t(key);
+      kind.textContent = translated !== key ? translated : String(detail.kind || "").toUpperCase();
+    }
+    if (title) title.textContent = detail.title || "";
+    if (body) body.textContent = detail.body || "";
+    if (meta) {
+      meta.replaceChildren();
+      (detail.meta || []).filter(Boolean).forEach(value => {
+        const chip = document.createElement("span");
+        chip.textContent = value;
+        meta.appendChild(chip);
+      });
+    }
+    root.classList.add("open");
+    root.setAttribute("aria-hidden", "false");
+    root.querySelector("[data-sigian-element-close]")?.focus?.({ preventScroll:true });
+  }
+
+  window.addEventListener("sigian:card-element-inspect", event => {
+    showSigianElementInspector(event.detail);
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    const root = document.querySelector("#sigianElementInspector.open");
+    if (!root) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    root.classList.remove("open");
+    root.setAttribute("aria-hidden", "true");
+  });
+
 
   function decorateSigianHandCard(cardNode, card) {
     if (!cardNode) return;
@@ -5788,7 +6021,11 @@
       ${!inventoryReadOnly && forgeCardEditorSection ? `<button type="button" class="forge-mobile-sheet-backdrop" data-forge-card-editor-close aria-label="Chiudi editor"></button>` : ""}`;
 
     const previewStage = $("#forgePreviewStage");
-    const preview = buildSigianFullCard(forgePreviewCard(recipe, analysis), null);
+    const preview = A.SigianCardRenderer?.buildFull?.(forgePreviewCard(recipe, analysis), {
+      editable:!inventoryReadOnly,
+      inspectable:inventoryReadOnly,
+      surface:inventoryReadOnly ? "inventory-forge" : "forge"
+    });
     if (previewStage && preview) {
       previewStage.replaceChildren(preview);
       if (forgeCardEditorSection) {
@@ -6226,27 +6463,33 @@
   }
 
   function buildCollectionTile(card, compact = false) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `collection-tile school-${card.school} type-${card.type} ${compact ? "compact" : ""} ${collectionSelectedCardId === card.id ? "active" : ""}`;
-    const art = document.createElement("div");
-    art.className = "collection-tile-art";
-    art.appendChild(buildArtBlock(card, compact ? "collectionCompact" : "collection"));
-    const body = document.createElement("div");
-    body.className = "collection-tile-body";
-    body.innerHTML = `<strong>${escapeHtml(cardName(card))}</strong><small>${escapeHtml(t("ui.cost"))} ${card.level}</small>`;
-    const costBadge = document.createElement("span");
-    costBadge.className = "collection-tile-cost";
-    costBadge.textContent = card.level;
-    costBadge.setAttribute("aria-label", `${t("ui.cost")} ${card.level}`);
-    button.appendChild(art);
-    button.appendChild(costBadge);
-    button.appendChild(body);
-    button.addEventListener("click", () => {
+    const tile = document.createElement("article");
+    tile.className = `collection-tile collection-full-tile ${compact ? "compact" : ""} ${collectionSelectedCardId === card.id ? "active" : ""}`;
+    tile.dataset.collectionCardId = card.id;
+    tile.tabIndex = 0;
+    tile.setAttribute("aria-label", cardName(card));
+    const fullCard = A.SigianCardRenderer?.buildFull?.(card, {
+      editable:false,
+      inspectable:true,
+      surface:"collection"
+    });
+    if (fullCard) {
+      fullCard.classList.add("collection-full-card-view");
+      tile.appendChild(fullCard);
+    }
+    const select = event => {
+      if (event?.target?.closest?.("[data-sigian-inspect]")) return;
       collectionSelectedCardId = card.id;
       renderCollectionPanels();
+    };
+    tile.addEventListener("click", select);
+    tile.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (event.target.closest?.("[data-sigian-inspect]")) return;
+      event.preventDefault();
+      select(event);
     });
-    return button;
+    return tile;
   }
 
   function renderCollectionPanels() {
@@ -6268,89 +6511,6 @@
     }
     renderInspectPanel();
     if (!A.SigianArchiveBrowser) renderCollectionPage();
-  }
-
-  function buildCollectionHandPreview(card) {
-    const template = $("#smallCardTemplate");
-    if (!template?.content?.firstElementChild) return document.createElement("div");
-    const clone = template.content.firstElementChild.cloneNode(true);
-    clone.classList.add(`school-${card.school}`, `type-${card.type}`);
-    clone.dataset.cardId = card.id;
-    clone.dataset.playable = "true";
-    clone.tabIndex = -1;
-    clone.querySelector(".cost").textContent = Number(card.cost ?? card.level ?? 0);
-    clone.querySelector(".school").innerHTML = `${schoolIconMarkup(card.school, "school-icon-svg card-school-svg")} ${escapeHtml(schoolName(card.school))}`;
-    const artNode = clone.querySelector(".art");
-    artNode.innerHTML = "";
-    artNode.appendChild(buildArtBlock(card, "collectionHandPreview"));
-    clone.querySelector(".name").textContent = cardName(card);
-    clone.querySelector(".text").textContent = cardText(card);
-    clone.querySelector(".keyword").textContent = visibleCardKeyword(card);
-    clone.querySelector(".stats").textContent = card.type === "spell"
-      ? `Lv ${card.level}`
-      : `Lv ${card.level} · ⚔ ${card.attack} · ♥ ${card.health}`;
-    decorateSigianHandCard(clone, card);
-
-    const host = document.createElement("div");
-    host.className = "sigian-preview-hand-host";
-    host.appendChild(clone);
-    return host;
-  }
-
-  function buildCollectionCombatPreview(card) {
-    if (card.type === "spell") {
-      const host = document.createElement("div");
-      host.className = "sigian-preview-combat-host sigian-preview-cast-host";
-      const cast = document.createElement("div");
-      cast.className = `cast-card cast-splash school-${card.school} spell-cast sigian-preview-cast`;
-      const art = document.createElement("div");
-      art.className = "cast-card-art cast-splash-art";
-      art.appendChild(buildArtBlock(card, "collectionCombatPreview"));
-      const chrome = document.createElement("div");
-      chrome.className = "cast-splash-chrome";
-      const schoolBadge = document.createElement("span");
-      schoolBadge.className = "cast-splash-school";
-      schoolBadge.innerHTML = schoolIconMarkup(card.school, "school-icon-svg cast-splash-school-icon");
-      const copy = document.createElement("div");
-      copy.className = "cast-splash-copy";
-      const label = document.createElement("strong");
-      label.className = "cast-splash-name";
-      label.textContent = cardName(card);
-      const kind = document.createElement("small");
-      kind.className = "cast-splash-kind";
-      kind.textContent = t("ui.spell");
-      copy.appendChild(label);
-      copy.appendChild(kind);
-      chrome.appendChild(schoolBadge);
-      chrome.appendChild(copy);
-      cast.appendChild(art);
-      cast.appendChild(chrome);
-      decorateSigianSpellCast(cast, card);
-      cast.classList.add("active");
-      host.appendChild(cast);
-      return host;
-    }
-
-    const host = document.createElement("div");
-    host.className = "sigian-preview-combat-host classic-board-column";
-    const cell = document.createElement("button");
-    cell.type = "button";
-    cell.tabIndex = -1;
-    cell.className = `unit school-${card.school}`;
-    const art = document.createElement("div");
-    art.className = "unit-art";
-    art.appendChild(buildArtBlock(card, "collectionCombatPreview"));
-    const name = document.createElement("small");
-    name.textContent = cardName(card);
-    art.appendChild(name);
-    const stats = document.createElement("div");
-    stats.className = "unit-stats";
-    stats.innerHTML = `<strong class="unit-attack"><span aria-hidden="true">⚔</span>${escapeHtml(card.attack)}</strong><strong class="unit-health"><span aria-hidden="true">♥</span>${escapeHtml(card.health)}</strong>`;
-    cell.appendChild(art);
-    cell.appendChild(stats);
-    syncSigianCombatPresentation(cell, card);
-    host.appendChild(cell);
-    return host;
   }
 
   function renderCollectionCardPreview(card) {
@@ -6465,9 +6625,27 @@
     const inspect = $("#mobileCardInspect");
     const sigianRoot = $("#mobileCardInspectContent");
     if (!inspect || !sigianRoot || !card) return;
-    const fullCard = buildSigianFullCard(card, side);
+    const fullCard = A.SigianCardRenderer?.buildFull?.(card, {
+      editable:false,
+      inspectable:true,
+      side,
+      surface:"game"
+    });
     if (!fullCard) throw new Error(`Formula Sigian UI mancante per ${card.id || "carta-senza-id"}.`);
     sigianRoot.replaceChildren(fullCard);
+    let close = inspect.querySelector(".mobile-card-inspect-close");
+    if (!close) {
+      close = document.createElement("button");
+      close.type = "button";
+      close.className = "mobile-card-inspect-close";
+      close.setAttribute("aria-label", "Chiudi");
+      close.textContent = "×";
+      close.addEventListener("click", event => {
+        event.stopPropagation();
+        hideMobileCardInspect();
+      });
+      inspect.appendChild(close);
+    }
     inspect.classList.remove("hidden");
     inspect.setAttribute("aria-hidden", "false");
   }
@@ -6491,10 +6669,10 @@
     } catch (error) {}
   }
 
-  function clearMobileHoldPreview() {
+  function finishMobileHoldPreview(keepOpen = false) {
     const gesture = mobileHoldGesture;
     if (!gesture) {
-      hideMobileCardInspect();
+      if (!keepOpen) hideMobileCardInspect();
       return;
     }
     clearTimeout(gesture.holdTimer);
@@ -6502,8 +6680,12 @@
     document.removeEventListener("pointerup", gesture.end, true);
     document.removeEventListener("pointercancel", gesture.cancel, true);
     releaseMobilePointerCapture(gesture);
-    hideMobileCardInspect();
     mobileHoldGesture = null;
+    if (!keepOpen) hideMobileCardInspect();
+  }
+
+  function clearMobileHoldPreview() {
+    finishMobileHoldPreview(false);
   }
 
   function startMobileHoldPreview(event, card, side = "player") {
@@ -6539,7 +6721,7 @@
     };
     gesture.end = endEvent => {
       if (endEvent.pointerId !== gesture.pointerId) return;
-      clearMobileHoldPreview();
+      finishMobileHoldPreview(Boolean(gesture.previewing));
     };
     mobileHoldGesture = gesture;
     document.addEventListener("pointermove", gesture.move, { passive: false, capture: true });
@@ -7523,7 +7705,12 @@
   }
 
   function renderPreviewInto(target, card, side) {
-    const sigianCard = buildSigianFullCard(card, side);
+    const sigianCard = A.SigianCardRenderer?.buildFull?.(card, {
+      editable:false,
+      inspectable:true,
+      side,
+      surface:"game"
+    });
     if (!sigianCard) throw new Error(`Formula Sigian UI mancante per ${card?.id || "carta-senza-id"}.`);
     target.replaceChildren(sigianCard);
   }

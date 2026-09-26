@@ -349,32 +349,16 @@
 
   function formulaTileMarkup(item, scope, selected) {
     const localized = localizedFormula(item);
-    const sigils = item.components.filter(component => component.kind === "sigil").length;
-    const constraints = item.components.filter(component => component.kind === "constraint").length;
-    const composition = [
-      sigils ? t(sigils === 1 ? "archive.sigilCount" : "archive.sigilsCount", { count:sigils }) : "",
-      constraints ? t("archive.constraintCount", { count:constraints }) : ""
-    ].filter(Boolean).join(" · ");
     return `
-      <button type="button" class="archive-formula-tile ${selected ? "active" : ""}" data-archive-item="${escapeHtml(item.id)}">
-        <span class="archive-formula-art"><img src="${escapeHtml(item.image)}" alt="" loading="lazy"></span>
-        <span class="archive-formula-copy">
-          <strong>${escapeHtml(localized.name)}</strong>
-          <small>${schoolLabelMarkup(item.school)} <span class="archive-formula-meta-separator">·</span> ${escapeHtml(t(item.type === "spell" ? "archive.spell" : "archive.creature"))} <span class="archive-formula-meta-separator">·</span> ${escapeHtml(t("archive.cost"))} ${item.level}</small>
-          <em>${escapeHtml(composition)}</em>
-        </span>
-        ${scope === "collection" ? `<span class="archive-owned">${escapeHtml(t("archive.owned"))}</span>` : ""}
-      </button>`;
-  }
-
-  function formulaPaginationMarkup(page, pageCount) {
-    if (pageCount <= 1) return "";
-    return `
-      <nav class="archive-pagination" aria-label="${escapeHtml(t("archive.formulaPages"))}">
-        <button type="button" data-formula-page="${page - 1}" ${page <= 1 ? "disabled" : ""}>‹</button>
-        <span>${t("archive.page", { page:`<b>${page}</b>`, pages:pageCount })}</span>
-        <button type="button" data-formula-page="${page + 1}" ${page >= pageCount ? "disabled" : ""}>›</button>
-      </nav>`;
+      <article class="archive-formula-tile archive-formula-full-tile ${selected ? "active" : ""}" data-archive-item="${escapeHtml(item.id)}" tabindex="0" aria-label="${escapeHtml(localized.name)}">
+        <div class="archive-full-card-host" data-archive-full-card="${escapeHtml(item.id)}"></div>
+        <footer class="archive-full-card-footer">
+          <span>${escapeHtml(t(scope === "collection" ? "archive.originalFormula" : "archive.ownedFormula"))}</span>
+          ${scope === "inventory"
+            ? `<strong class="archive-quantity">×${escapeHtml(item.quantity || 1)}</strong>`
+            : `<span class="archive-owned">${escapeHtml(t("archive.owned"))}</span>`}
+        </footer>
+      </article>`;
   }
 
   function formulaComponentMarkup(component) {
@@ -389,8 +373,6 @@
 
   function formulaDetailMarkup(item, scope, selectedComponentId, grimoires = [], state = {}) {
     if (!item) return `<div class="archive-empty">${escapeHtml(t("archive.noFormula"))}</div>`;
-    const localized = localizedFormula(item);
-    const selected = item.components.find(component => component.id === selectedComponentId) || null;
     const targetId = grimoires.some(grimoire => grimoire.id === state.targetGrimoireId)
       ? state.targetGrimoireId
       : grimoires[0]?.id || null;
@@ -398,30 +380,9 @@
     const alreadyPresent = Boolean(target?.formulaIds?.includes(item.id));
 
     return `
-      <article class="archive-detail-card archive-formula-detail">
-        <div class="archive-detail-art"><img src="${escapeHtml(item.image)}" alt="${escapeHtml(localized.name)}"></div>
-        <div class="archive-detail-heading">
-          <div>
-            <small>${escapeHtml(t(scope === "collection" ? "archive.originalFormula" : "archive.ownedFormula"))}</small>
-            <h3>${escapeHtml(localized.name)}</h3>
-            <p class="archive-formula-detail-meta">${schoolLabelMarkup(item.school)} <span>·</span> ${escapeHtml(t(item.type === "spell" ? "archive.spell" : "archive.creature"))} <span>·</span> ${escapeHtml(t("archive.cost"))} ${item.level}</p>
-          </div>
-          ${scope === "inventory" ? `<span class="archive-owned archive-owned-detail">${escapeHtml(t("archive.owned"))}</span>` : ""}
-        </div>
-        <p class="archive-formula-text">${escapeHtml(localized.text)}</p>
-        ${item.type === "creature" ? `<div class="archive-stat-row"><span>⚔ <b>${item.attack}</b> ${escapeHtml(t("archive.attack"))}</span><span>♥ <b>${item.health}</b> ${escapeHtml(t("archive.health"))}</span></div>` : ""}
-        <section class="archive-components-block">
-          <div class="archive-block-heading"><strong>${escapeHtml(t("archive.composition"))}</strong><small>${escapeHtml(t("archive.compositionHint"))}</small></div>
-          <div class="archive-embedded-grid">
-            ${item.components.length ? item.components.map(formulaComponentMarkup).join("") : `<span class="archive-muted">${escapeHtml(t("archive.noComponents"))}</span>`}
-          </div>
-          ${selected ? `
-            <div class="archive-component-inspector">
-              <small>${escapeHtml(t(selected.kind === "constraint" ? "archive.constraint" : "archive.sigil")).toUpperCase()}</small>
-              <strong>${escapeHtml(selected.name)}</strong>
-              <p>${escapeHtml(selected.detail)}</p>
-            </div>` : ""}
-        </section>
+      <article class="archive-detail-card archive-formula-detail archive-formula-full-detail">
+        <div class="archive-full-detail-host" data-archive-full-card="${escapeHtml(item.id)}"></div>
+        <p class="archive-full-interaction-note">${escapeHtml(t("archive.fullInteractionHint"))}</p>
         ${scope === "inventory" ? `
           <section class="archive-grimoire-quick-add">
             <div>
@@ -444,27 +405,6 @@
             <button type="button" class="classic-stone-button danger" disabled title="${escapeHtml(t("archive.craftingInactive"))}">🔥 <span>${escapeHtml(t("archive.destroy"))}</span></button>
           </div>` : ""}
       </article>`;
-  }
-
-  function schoolListMarkup(ids) {
-    if (!ids.length) return `<span class="archive-variant-chip is-neutral">${escapeHtml(t("archive.neutral"))}</span>`;
-    return ids.map(id => `<span class="archive-variant-chip">${schoolLabelMarkup(id)}</span>`).join("");
-  }
-
-  function gradeListMarkup(grades) {
-    if (!grades.length) return `<span class="archive-variant-chip is-neutral">${escapeHtml(t("archive.noGrades"))}</span>`;
-    return grades.map(grade => `<span class="archive-variant-chip">${escapeHtml(t("archive.gradeLabel", { grade }))}</span>`).join("");
-  }
-
-  function affinityModeLabel(mode) {
-    const labels = { mono:"Mono", dual:"Dual", triple:"Triple", universal:A.i18n?.getLanguage?.() === "en" ? "Universal" : "Universale" };
-    return labels[mode] || mode;
-  }
-
-  function affinitySchoolsMarkup(affinity) {
-    const schools = affinity?.schools || [];
-    if (!schools.length) return `<span class="archive-affinity-school is-neutral">${escapeHtml(t("archive.neutral"))}</span>`;
-    return schools.map(id => `<span class="archive-affinity-school">${schoolLabelMarkup(id)}</span>`).join("");
   }
 
   function componentIdentityTileMarkup(group, scope, selected) {
@@ -637,9 +577,8 @@
             ${formulaItems.length ? formulaItems.map(formula => {
               const localized = localizedFormula(formula);
               return `
-                <article class="archive-grimoire-formula">
-                  <img src="${escapeHtml(formula.image)}" alt="" loading="lazy">
-                  <span><strong>${escapeHtml(localized.name)}</strong><small>${schoolLabelMarkup(formula.school)} · ${escapeHtml(t("archive.cost"))} ${formula.level}</small></span>
+                <article class="archive-grimoire-formula archive-grimoire-full-formula">
+                  <div class="archive-grimoire-full-host" data-archive-full-card="${escapeHtml(formula.id)}"></div>
                   <button type="button" data-grimoire-remove-formula="${escapeHtml(formula.id)}" data-grimoire-id="${escapeHtml(grimoire.id)}" aria-label="${escapeHtml(t("archive.remove", { name:localized.name }))}">×</button>
                 </article>`;
             }).join("") : `<div class="archive-empty">${escapeHtml(t("archive.emptyGrimoire"))}</div>`}
@@ -814,12 +753,26 @@
       render(root, scope);
     }));
 
-    root.querySelectorAll("[data-archive-item]").forEach(button => button.addEventListener("click", () => {
-      state.selectedId = button.dataset.archiveItem;
-      state.selectedComponentId = null;
-      state.detailOpen = true;
-      render(root, scope);
-    }));
+    root.querySelectorAll("[data-archive-item]").forEach(item => {
+      item.addEventListener("click", event => {
+        if (event.target.closest?.("[data-sigian-inspect]")) return;
+        state.selectedId = item.dataset.archiveItem;
+        state.selectedComponentId = null;
+        state.detailOpen = true;
+        render(root, scope);
+      });
+      if (item.classList.contains("archive-formula-full-tile")) {
+        item.addEventListener("keydown", event => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          if (event.target.closest?.("[data-sigian-inspect]")) return;
+          event.preventDefault();
+          state.selectedId = item.dataset.archiveItem;
+          state.selectedComponentId = null;
+          state.detailOpen = true;
+          render(root, scope);
+        });
+      }
+    });
 
     root.querySelectorAll("[data-archive-component-group]").forEach(button => button.addEventListener("click", () => {
       state.selectedId = button.dataset.archiveComponentGroup;
@@ -930,6 +883,26 @@
     });
   }
 
+  function mountFormulaFullCards(root, data) {
+    if (!root || !data) return;
+    const byId = new Map((data.formulas || []).map(item => [item.id, item]));
+    root.querySelectorAll("[data-archive-full-card]").forEach(host => {
+      const item = byId.get(host.dataset.archiveFullCard);
+      if (!item) return;
+      const card = A.SigianCardRenderer?.buildFull?.(item, {
+        editable:false,
+        inspectable:true,
+        surface:data.scope || "archive"
+      });
+      if (!card) {
+        host.innerHTML = `<div class="archive-empty">${escapeHtml(t("archive.catalogUnavailable"))}</div>`;
+        return;
+      }
+      card.classList.add("archive-full-card-view");
+      host.replaceChildren(card);
+    });
+  }
+
   function render(root, scope = "collection") {
     if (!root) return;
     roots.set(scope, root);
@@ -976,6 +949,7 @@
         </div>
       </div>`;
 
+    mountFormulaFullCards(root, data);
     bind(root, scope, data, state);
   }
 
