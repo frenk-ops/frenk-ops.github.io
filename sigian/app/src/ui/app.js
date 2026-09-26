@@ -517,6 +517,7 @@
   let forgeSession = null;
   let forgeInventoryPreviewCardId = null;
   let forgeSelectedSigilSlotId = null;
+  let forgeCardEditorSection = null;
   let forgeTargetCost = "auto";
   let forgeMathMode = "simple";
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
@@ -4823,7 +4824,9 @@
       <span class="sigian-full-constraint-ring" aria-hidden="true">
         <span class="sigian-full-constraint-orb">${constraint ? '<span class="sigian-full-constraint-glyph">◇</span>' : ""}</span>
       </span>`;
-    if (constraint) {
+    if (card?.__forgePreview) {
+      slot.dataset.forgeCardEdit = "constraint";
+    } else if (constraint) {
       slot.addEventListener("click", event => {
         event.stopPropagation();
         window.dispatchEvent(new CustomEvent("sigian:constraint-inspect", {
@@ -4846,9 +4849,10 @@
   function buildSigianFullCard(card, side = null) {
     const model = sigianCardUiModel(card);
     if (!model) return null;
-    const cost = card?.__forgePreview ? "—" : (engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0));
+    const cost = engine && side ? engine.effectiveCost(side, card) : Number(card.cost ?? card.level ?? 0);
     const article = document.createElement("article");
     article.className = `sigian-full-card school-${card.school} type-${card.type} sigian-sigil-count-${model.sigils.length}`;
+    if (card?.__forgePreview) article.classList.add("is-forge-editable");
     article.dataset.cardId = card.id;
 
     const top = document.createElement("header");
@@ -4859,6 +4863,21 @@
       <strong class="sigian-full-name">${escapeHtml(cardName(card))}</strong>
       <span class="sigian-full-school" aria-label="${escapeHtml(schoolName(card.school))}">${schoolIconMarkup(card.school, "school-icon-svg sigian-full-school-icon")}</span>`;
     article.appendChild(top);
+
+    if (card?.__forgePreview) {
+      [
+        [top.querySelector(".sigian-full-cost"), "cost", t("ui.cost")],
+        [top.querySelector(".sigian-full-type"), "type", t("forge.type")],
+        [top.querySelector(".sigian-full-name"), "name", t("forge.name")],
+        [top.querySelector(".sigian-full-school"), "school", t("forge.school")]
+      ].forEach(([node, section, label]) => {
+        if (!node) return;
+        node.dataset.forgeCardEdit = section;
+        node.setAttribute("role", "button");
+        node.setAttribute("tabindex", "0");
+        node.title = label;
+      });
+    }
 
     const art = document.createElement("div");
     art.className = "sigian-full-art";
@@ -4873,6 +4892,22 @@
       stats.innerHTML = `
         <span class="sigian-full-stat sigian-full-attack" aria-label="${escapeHtml(t("ui.attack"))} ${escapeHtml(attack)}"><span aria-hidden="true">⚔</span><b>${escapeHtml(attack)}</b></span>
         <span class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></span>`;
+      if (card?.__forgePreview) {
+        const attackNode = stats.querySelector(".sigian-full-attack");
+        const healthNode = stats.querySelector(".sigian-full-health");
+        if (attackNode) {
+          attackNode.dataset.forgeCardEdit = "attack";
+          attackNode.setAttribute("role", "button");
+          attackNode.setAttribute("tabindex", "0");
+          attackNode.title = t("forge.attack");
+        }
+        if (healthNode) {
+          healthNode.dataset.forgeCardEdit = "health";
+          healthNode.setAttribute("role", "button");
+          healthNode.setAttribute("tabindex", "0");
+          healthNode.title = t("forge.health");
+        }
+      }
       article.appendChild(stats);
     }
 
@@ -4893,6 +4928,12 @@
     sigilArea.innerHTML = `
       <div class="sigian-sigil-list">${sigilMarkup}</div>
       <p class="sigian-full-rules">${cardDescriptionHtml(card, side || inspectedCardSide)}</p>`;
+    if (card?.__forgePreview) {
+      sigilArea.dataset.forgeCardEdit = "sigils";
+      sigilArea.setAttribute("role", "button");
+      sigilArea.setAttribute("tabindex", "0");
+      sigilArea.title = t("forge.sigils");
+    }
     article.appendChild(sigilArea);
     return article;
   }
@@ -4960,6 +5001,8 @@
   function forgePreviewCard(recipe, analysis = null) {
     const stats = recipe.stats || {};
     const calculatedCost = Math.max(0, Number(analysis?.minimumLevel || 0));
+    const requestedCost = forgeTargetCost === "auto" ? null : Math.max(1, Number(forgeTargetCost || 1));
+    const displayedCost = requestedCost ?? calculatedCost;
     return {
       id:recipe.id,
       name:recipe.presentation?.name || t("forge.title"),
@@ -4968,8 +5011,10 @@
       attack:recipe.type === "creature" ? Number(stats.attack || 0) : 0,
       health:recipe.type === "creature" ? Number(stats.health || 1) : 0,
       hp:recipe.type === "creature" ? Number(stats.health || 1) : 0,
-      level:calculatedCost,
-      cost:calculatedCost,
+      level:displayedCost,
+      cost:displayedCost,
+      __forgeCalculatedCost:calculatedCost,
+      __forgeRequestedCost:requestedCost,
       text:"",
       keyword:"",
       set:"custom",
@@ -5109,7 +5154,7 @@
         </div>
         <label class="forge-math-target">
           <span>${escapeHtml(t("forge.math.targetCost"))}</span>
-          <select id="forgeTargetCostSelect">${targetOptions}</select>
+          <select id="forgeTargetCostSelect" data-forge-target-cost>${targetOptions}</select>
         </label>
       </div>
 
@@ -5140,6 +5185,83 @@
       ${forgeMathMode === "detailed" ? forgeMathBreakdownMarkup(analysis) : ""}
       ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<p class="forge-math-warning">${escapeHtml(t("forge.spellNeedsSigil"))}</p>` : ""}
     </section>`;
+  }
+
+  function forgeCardEditorMarkup(recipe, analysis, activeSigils, atSigilLimit) {
+    if (!forgeCardEditorSection) return "";
+    if (recipe.type !== "creature" && (forgeCardEditorSection === "attack" || forgeCardEditorSection === "health")) {
+      forgeCardEditorSection = "type";
+    }
+
+    const section = forgeCardEditorSection;
+    const titleMap = {
+      name:t("forge.name"),
+      type:t("forge.type"),
+      school:t("forge.school"),
+      attack:t("forge.attack"),
+      health:t("forge.health"),
+      cost:t("ui.cost"),
+      sigils:t("forge.sigils"),
+      constraint:t("sigian.constraint.global")
+    };
+    const header = `<div class="forge-card-editor-heading">
+      <strong>${escapeHtml(titleMap[section] || section)}</strong>
+      <button type="button" class="forge-card-editor-close" data-forge-card-editor-close aria-label="Chiudi">×</button>
+    </div>`;
+
+    let body = "";
+    if (section === "name") {
+      body = `<label class="forge-model-field"><span>${escapeHtml(t("forge.name"))}</span><input data-forge-name-input type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}"></label>`;
+    } else if (section === "type") {
+      body = `<div class="forge-segmented forge-card-editor-segmented">
+        <button type="button" data-forge-type="creature" class="${recipe.type === "creature" ? "active" : ""}">${escapeHtml(t("ui.creature"))}</button>
+        <button type="button" data-forge-type="spell" class="${recipe.type === "spell" ? "active" : ""}">${escapeHtml(t("ui.spell"))}</button>
+      </div>`;
+    } else if (section === "school") {
+      body = `<div class="forge-school-grid forge-card-editor-schools">${(A.listSigianSchools?.({ status:"active" }) || []).map(school => `
+        <button type="button" class="forge-school-button ${recipe.school === school.id ? "active" : ""}" data-forge-school="${escapeHtml(school.id)}" aria-pressed="${recipe.school === school.id}">
+          ${schoolIconMarkup(school.id, "school-icon-svg forge-school-icon")}
+          <span>${escapeHtml(schoolName(school.id))}</span>
+        </button>`).join("")}</div>`;
+    } else if (section === "attack" || section === "health") {
+      const key = section;
+      const min = key === "attack" ? 0 : 1;
+      const value = Number(recipe.stats?.[key] ?? min);
+      body = `<div class="forge-card-stat-editor">
+        <button type="button" data-forge-stat="${key}" data-delta="-1" aria-label="-1">−</button>
+        <input data-forge-stat-input="${key}" type="number" min="${min}" value="${escapeHtml(value)}" aria-label="${escapeHtml(titleMap[key])}">
+        <button type="button" data-forge-stat="${key}" data-delta="1" aria-label="+1">+</button>
+      </div>`;
+    } else if (section === "cost") {
+      const costOptions = [
+        `<option value="auto" ${forgeTargetCost === "auto" ? "selected" : ""}>Automatico · ${escapeHtml(analysis?.minimumLevel ?? 0)}</option>`,
+        ...Array.from({ length:20 }, (_,index) => index + 1).map(level =>
+          `<option value="${level}" ${Number(forgeTargetCost) === level ? "selected" : ""}>${level}</option>`
+        )
+      ].join("");
+      body = `<label class="forge-model-field forge-card-cost-field">
+        <span>Costo Formula</span>
+        <select data-forge-target-cost>${costOptions}</select>
+        <small>Automatico usa il costo calcolato; scegli un valore per lavorare verso un costo specifico.</small>
+      </label>`;
+    } else if (section === "sigils") {
+      const selected = recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId);
+      body = `<div class="forge-card-sigil-editor">
+        <div class="forge-current-sigils">
+          <div class="forge-current-sigils-heading"><strong>${escapeHtml(t("forge.sigils"))}</strong><small>${escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small></div>
+          ${forgeCurrentSigilsMarkup(recipe, analysis)}
+        </div>
+        ${selected ? forgeSigilModelerMarkup(recipe, selected, analysis) : ""}
+        <div class="forge-card-sigil-catalog">
+          ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
+          <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
+        </div>
+      </div>`;
+    } else if (section === "constraint") {
+      body = forgeGlobalConstraintMarkup(recipe);
+    }
+
+    return `<section class="forge-card-editor" data-forge-card-editor="${escapeHtml(section)}">${header}<div class="forge-card-editor-body">${body}</div></section>`;
   }
 
   function forgeGlobalConstraintMarkup(recipe) {
@@ -5518,7 +5640,7 @@
           </div>
           <label class="forge-field">
             <span>${escapeHtml(t("forge.name"))}</span>
-            <input id="forgeNameInput" type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}">
+            <input id="forgeNameInput" data-forge-name-input type="text" maxlength="48" value="${escapeHtml(recipe.presentation?.name || "")}">
           </label>
           <div class="forge-field">
             <span>${escapeHtml(t("forge.type"))}</span>
@@ -5535,11 +5657,11 @@
             <div class="forge-stat-grid">
               <label class="forge-stat-control">
                 <span>${escapeHtml(t("forge.attack"))}</span>
-                <div><button type="button" data-forge-stat="attack" data-delta="-1">−</button><input id="forgeAttackInput" type="number" min="0" value="${escapeHtml(recipe.stats.attack)}"><button type="button" data-forge-stat="attack" data-delta="1">+</button></div>
+                <div><button type="button" data-forge-stat="attack" data-delta="-1">−</button><input id="forgeAttackInput" data-forge-stat-input="attack" type="number" min="0" value="${escapeHtml(recipe.stats.attack)}"><button type="button" data-forge-stat="attack" data-delta="1">+</button></div>
               </label>
               <label class="forge-stat-control">
                 <span>${escapeHtml(t("forge.health"))}</span>
-                <div><button type="button" data-forge-stat="health" data-delta="-1">−</button><input id="forgeHealthInput" type="number" min="1" value="${escapeHtml(recipe.stats.health)}"><button type="button" data-forge-stat="health" data-delta="1">+</button></div>
+                <div><button type="button" data-forge-stat="health" data-delta="-1">−</button><input id="forgeHealthInput" data-forge-stat-input="health" type="number" min="1" value="${escapeHtml(recipe.stats.health)}"><button type="button" data-forge-stat="health" data-delta="1">+</button></div>
               </label>
             </div>
           ` : ""}
@@ -5588,13 +5710,33 @@
 
     const previewStage = $("#forgePreviewStage");
     const preview = buildSigianFullCard(forgePreviewCard(recipe, analysis), null);
-    if (previewStage && preview) previewStage.replaceChildren(preview);
+    if (previewStage && preview) {
+      previewStage.replaceChildren(preview);
+      if (!inventoryReadOnly && forgeCardEditorSection) {
+        previewStage.insertAdjacentHTML("beforeend", forgeCardEditorMarkup(recipe, analysis, activeSigils, atSigilLimit));
+        previewStage.querySelector(`[data-forge-card-edit="${forgeCardEditorSection}"]`)?.classList.add("is-editing");
+      }
+    }
     if (!inventoryReadOnly) {
-      previewStage?.querySelector("[data-sigian-constraint-slot]")?.addEventListener("click", event => {
+      previewStage?.querySelectorAll("[data-forge-card-edit]").forEach(zone => {
+        const openEditor = event => {
+          event.stopPropagation();
+          forgeCardEditorSection = zone.dataset.forgeCardEdit;
+          renderForgePage();
+        };
+        zone.addEventListener("click", openEditor);
+        if (zone.tagName !== "BUTTON") {
+          zone.addEventListener("keydown", event => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            openEditor(event);
+          });
+        }
+      });
+      root.querySelector("[data-forge-card-editor-close]")?.addEventListener("click", event => {
         event.stopPropagation();
-        const selector = root.querySelector("[data-forge-constraint-select]");
-        selector?.focus();
-        root.querySelector(".forge-global-constraint")?.scrollIntoView?.({ block:"nearest", behavior:"smooth" });
+        forgeCardEditorSection = null;
+        renderForgePage();
       });
     }
 
@@ -5624,6 +5766,7 @@
     }
     if (newButton && !inventoryReadOnly) newButton.onclick = () => {
       forgeSelectedSigilSlotId = null;
+      forgeCardEditorSection = null;
       session.reset({ type:"creature", stats:{ attack:1, health:5 }, presentation:{ name:t("forge.newFormula") } });
       renderForgePage();
     };
@@ -5636,6 +5779,7 @@
     root.querySelector("[data-forge-exit-inventory-preview]")?.addEventListener("click", () => {
       forgeInventoryPreviewCardId = null;
       forgeSelectedSigilSlotId = null;
+      forgeCardEditorSection = null;
       forgeSession = A.createSigianForgeSession?.({
         type:"creature",
         stats:{ attack:1, health:5 },
@@ -5652,11 +5796,15 @@
     };
     if (redoButton) redoButton.onclick = () => { session.redo(); renderForgePage(); };
 
-    $("#forgeNameInput")?.addEventListener("input", event => {
-      session.setName(event.currentTarget.value);
+    root.querySelectorAll("[data-forge-name-input]").forEach(input => input.addEventListener("input", event => {
+      const value = event.currentTarget.value;
+      session.setName(value);
+      root.querySelectorAll("[data-forge-name-input]").forEach(peer => {
+        if (peer !== event.currentTarget) peer.value = value;
+      });
       const cardNameNode = $("#forgePreviewStage .sigian-full-name");
-      if (cardNameNode) cardNameNode.textContent = event.currentTarget.value.trim() || t("forge.newFormula");
-    });
+      if (cardNameNode) cardNameNode.textContent = value.trim() || t("forge.newFormula");
+    }));
 
     root.querySelectorAll("[data-forge-type]").forEach(button => button.addEventListener("click", () => {
       session.setType(button.dataset.forgeType);
@@ -5674,32 +5822,30 @@
       session.setCreatureStats({ [key]:nextValue });
       renderForgePage();
     }));
-    $("#forgeAttackInput")?.addEventListener("change", event => {
-      session.setCreatureStats({ attack:Number(event.currentTarget.value) });
+    root.querySelectorAll("[data-forge-stat-input]").forEach(input => input.addEventListener("change", event => {
+      const key = event.currentTarget.dataset.forgeStatInput;
+      const min = key === "attack" ? 0 : 1;
+      session.setCreatureStats({ [key]:Math.max(min, Number(event.currentTarget.value || min)) });
       renderForgePage();
-    });
-    $("#forgeHealthInput")?.addEventListener("change", event => {
-      session.setCreatureStats({ health:Number(event.currentTarget.value) });
-      renderForgePage();
-    });
-    root.querySelector("[data-forge-constraint-select]")?.addEventListener("change", event => {
+    }));
+    root.querySelectorAll("[data-forge-constraint-select]").forEach(control => control.addEventListener("change", event => {
       const definitionId = String(event.currentTarget.value || "");
       if (definitionId) session.setConstraint(definitionId);
       else session.removeConstraint();
       renderForgePage();
-    });
-    root.querySelector("[data-forge-constraint-grade]")?.addEventListener("change", event => {
+    }));
+    root.querySelectorAll("[data-forge-constraint-grade]").forEach(control => control.addEventListener("change", event => {
       session.setConstraintGrade(Number(event.currentTarget.value || 1));
       renderForgePage();
-    });
-    root.querySelector("[data-forge-constraint-school]")?.addEventListener("change", event => {
+    }));
+    root.querySelectorAll("[data-forge-constraint-school]").forEach(control => control.addEventListener("change", event => {
       session.setConstraintSchool(event.currentTarget.value);
       renderForgePage();
-    });
-    root.querySelector("[data-forge-remove-constraint]")?.addEventListener("click", () => {
+    }));
+    root.querySelectorAll("[data-forge-remove-constraint]").forEach(button => button.addEventListener("click", () => {
       session.removeConstraint();
       renderForgePage();
-    });
+    }));
 
     root.querySelectorAll("[data-forge-add-collectible]").forEach(button => button.addEventListener("click", () => {
       if (button.disabled) return;
@@ -5748,10 +5894,10 @@
       session.setSigilIntensity(button.dataset.forgeSlot, Number(button.dataset.forgeIntensity));
       renderForgePage();
     }));
-    $("#forgeTargetCostSelect")?.addEventListener("change", event => {
+    root.querySelectorAll("[data-forge-target-cost]").forEach(control => control.addEventListener("change", event => {
       forgeTargetCost = event.currentTarget.value === "auto" ? "auto" : String(Math.max(1, Number(event.currentTarget.value || 1)));
       renderForgePage();
-    });
+    }));
     root.querySelectorAll("[data-forge-math-mode]").forEach(button => button.addEventListener("click", () => {
       forgeMathMode = button.dataset.forgeMathMode === "detailed" ? "detailed" : "simple";
       renderForgePage();
