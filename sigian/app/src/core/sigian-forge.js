@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const FORGE_DRAFT_SCHEMA_VERSION = 2;
+  const FORGE_DRAFT_SCHEMA_VERSION = 3;
   const FORGE_DRAFT_STORAGE_KEY = "sigian.forge.draft.v1";
   const MAX_HISTORY = 50;
 
@@ -329,12 +329,20 @@
 
   function normalizeDraft(input = {}) {
     const recipe = normalizeRecipe(input.recipe || input);
+    const transaction = typeof A.createSigianForgeTransactionPlan === "function"
+      ? A.createSigianForgeTransactionPlan(input.transaction || {})
+      : {
+          mode:"simulation",
+          baselineRevision:input.transaction?.baselineRevision == null ? null : String(input.transaction.baselineRevision),
+          operations:Array.isArray(input.transaction?.operations) ? clone(input.transaction.operations) : []
+        };
     return {
       schemaVersion: FORGE_DRAFT_SCHEMA_VERSION,
       id: normalizeId(input.id, recipe.id),
       status: "draft",
       revision: Math.max(0, Math.trunc(Number(input.revision || 0))),
       recipe,
+      transaction,
       createdAt: String(input.createdAt || new Date().toISOString()),
       updatedAt: String(input.updatedAt || new Date().toISOString())
     };
@@ -342,9 +350,9 @@
 
   function draftAnalysis(draft) {
     const validation = A.validateFormulaRecipe(draft.recipe);
-    const reasons = [];
-    if (!validation.valid) reasons.push("recipe-invalid");
-    if (draft.recipe.type === "spell" && draft.recipe.sigils.length === 0) reasons.push("spell-requires-sigil");
+    const structuralReasons = [];
+    if (!validation.valid) structuralReasons.push("recipe-invalid");
+    if (draft.recipe.type === "spell" && draft.recipe.sigils.length === 0) structuralReasons.push("spell-requires-sigil");
 
     let math = null;
     let mathError = null;
@@ -356,11 +364,28 @@
       }
     }
 
-    if (math) reasons.push("hybrid-diagnostic-not-production");
-    else reasons.push("balance-calibration-pending");
+    const sealReasons = [...structuralReasons];
+    if (math) sealReasons.push("hybrid-diagnostic-not-production");
+    else sealReasons.push("balance-calibration-pending");
+
+    const tryReasons = [...structuralReasons];
+    let tryError = null;
+    if (draft.recipe.constraint) {
+      tryReasons.push("global-constraint-test-runtime-pending");
+    } else if (typeof A.compileFormulaRecipe !== "function" || typeof A.materializeLegacyCardFromFormula !== "function") {
+      tryReasons.push("test-runtime-unavailable");
+    } else if (!tryReasons.length) {
+      try {
+        const level = Math.max(1, Math.trunc(Number(math?.minimumLevel || 1)));
+        A.compileFormulaRecipe(draft.recipe, { level, set:"forge-test-validation" });
+      } catch (error) {
+        tryReasons.push("test-compile-unsupported");
+        tryError = String(error?.message || error || "Formula non compilabile nel banco di prova.");
+      }
+    }
 
     return {
-      valid: validation.valid && !reasons.includes("spell-requires-sigil"),
+      valid: validation.valid && !structuralReasons.includes("spell-requires-sigil"),
       validation,
       sigilCount: draft.recipe.sigils.length,
       maxSigils: A.SIGIAN_MAX_PRIMARY_SIGILS || 3,
@@ -369,8 +394,11 @@
       evaluatorStatus: math?.status || "pending-calibration",
       math,
       mathError,
+      canTry: tryReasons.length === 0,
+      tryBlockers:[...new Set(tryReasons)],
+      tryError,
       canSeal: false,
-      sealBlockers: [...new Set(reasons)]
+      sealBlockers: [...new Set(sealReasons)]
     };
   }
 
@@ -428,6 +456,22 @@
       };
     }
 
+    function commitDraftPatch(patch, options = {}) {
+      if (!options.skipHistory) {
+        history.push(clone(draft));
+        if (history.length > MAX_HISTORY) history.shift();
+        future.length = 0;
+      }
+      draft = normalizeDraft({
+        ...clone(draft),
+        ...clone(patch),
+        revision:draft.revision + 1,
+        updatedAt:new Date().toISOString()
+      });
+      persist();
+      return notify();
+    }
+
     const api = Object.freeze({
       snapshot() {
         return {
@@ -447,6 +491,21 @@
       save() {
         persist();
         return this.snapshot();
+      },
+
+      stageTransactionOperation(operation) {
+        if (typeof A.appendSigianForgeTransactionOperation !== "function") {
+          throw new Error("Piano transazionale Forgia non disponibile.");
+        }
+        const transaction = A.appendSigianForgeTransactionOperation(draft.transaction, operation);
+        return commitDraftPatch({ transaction });
+      },
+
+      clearTransactionOperations() {
+        const transaction = typeof A.createSigianForgeTransactionPlan === "function"
+          ? A.createSigianForgeTransactionPlan({ baselineRevision:draft.transaction?.baselineRevision })
+          : { mode:"simulation", baselineRevision:draft.transaction?.baselineRevision ?? null, operations:[] };
+        return commitDraftPatch({ transaction });
       },
 
       reset(options = {}) {
@@ -835,6 +894,35 @@
   A.normalizeSigianForgeDraft = normalizeDraft;
   A.analyzeSigianForgeDraft = draftAnalysis;
   A.createSigianForgeSession = createSession;
+  A.createSigianForgeTestBundle = function createSigianForgeTestBundle(input, options = {}) {
+    const draft = normalizeDraft(input?.recipe ? input : { recipe:input });
+    const analysis = draftAnalysis(draft);
+    if (!analysis.valid) {
+      throw new Error(`Prova Formula non disponibile: ${analysis.tryBlockers.join(", ") || "draft non valido"}.`);
+    }
+    if (!analysis.canTry) {
+      throw new Error(analysis.tryError || `Prova Formula non disponibile: ${analysis.tryBlockers.join(", ")}.`);
+    }
+    const level = Math.max(1, Math.trunc(Number(options.level ?? analysis.minimumLevel ?? 1)));
+    const formula = A.compileFormulaRecipe(draft.recipe, {
+      level,
+      set:"forge-test"
+    });
+    const card = A.materializeLegacyCardFromFormula(formula);
+    card.formulaRecipe = clone(draft.recipe);
+    card.__forgeTest = true;
+    card.set = "forge-test";
+    return {
+      mode:"simulation",
+      draftId:draft.id,
+      revision:draft.revision,
+      level,
+      recipe:clone(draft.recipe),
+      transaction:clone(draft.transaction),
+      formula,
+      card
+    };
+  };
 
   A.loadSigianForgeDraft = function loadSigianForgeDraft(storage) {
     const target = resolveStorage(storage);

@@ -64,7 +64,9 @@
 
   function formulaFor(engine, source) {
     const id = typeof source === "string" ? source : source?.id;
-    return id ? formulaCatalogForEngine(engine)?.byId?.[id] || null : null;
+    if (!id) return null;
+    const override = engine?.__sigianFormulaOverrides?.[id];
+    return override || formulaCatalogForEngine(engine)?.byId?.[id] || null;
   }
 
   function sigilsFor(engine, source, options = {}) {
@@ -476,6 +478,34 @@
 
   A.getSigianFormulaFor = function getSigianFormulaFor(engine, source) {
     return formulaFor(engine, source);
+  };
+
+  A.setSigianFormulaOverride = function setSigianFormulaOverride(engine, formula) {
+    if (!engine) throw new Error("Override Formula: engine mancante.");
+    const validation = A.validateFormula?.(formula);
+    if (!validation?.valid) {
+      throw new Error(`Override Formula non valida: ${validation?.errors?.join("; ") || "errore sconosciuto"}.`);
+    }
+    if (formula.source?.mode !== A.SIGIAN_MIGRATION_MODES.NATIVE) {
+      throw new Error("Override Formula: serve una Formula nativa.");
+    }
+    let overrides = engine.__sigianFormulaOverrides;
+    if (!overrides) {
+      overrides = Object.create(null);
+      Object.defineProperty(engine, "__sigianFormulaOverrides", {
+        configurable:true,
+        enumerable:false,
+        writable:true,
+        value:overrides
+      });
+    }
+    overrides[formula.id] = typeof A.deepClone === "function" ? A.deepClone(formula) : JSON.parse(JSON.stringify(formula));
+    return overrides[formula.id];
+  };
+
+  A.clearSigianFormulaOverrides = function clearSigianFormulaOverrides(engine) {
+    if (!engine?.__sigianFormulaOverrides) return;
+    Object.keys(engine.__sigianFormulaOverrides).forEach(id => delete engine.__sigianFormulaOverrides[id]);
   };
 
   A.resolveSigianCardEffect = function resolveSigianCardEffect(engine, side, source, trigger, events) {

@@ -520,6 +520,7 @@
   let forgeCardEditorSection = null;
   let forgeTargetCost = "auto";
   let forgeMathMode = "simple";
+  let forgeTestDuel = false;
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
@@ -545,6 +546,7 @@
   }
 
   function persistLocalDuelState() {
+    if (forgeTestDuel) return;
     if (!engine || remoteDuelActive || engine.state?.gameOver) {
       if (engine?.state?.gameOver) clearPersistedLocalDuel();
       return;
@@ -593,6 +595,7 @@
     }
     if (!saved || saved.version !== 1 || !saved.snapshot) return false;
     try {
+      forgeTestDuel = false;
       engine = A.GameEngine.fromSnapshot(saved.snapshot, sessionSets["astral-original"]);
       engine.aiDifficulty = saved.aiDifficulty || "advanced";
       duelCommandSession = new A.CommandSession(engine, {
@@ -2822,6 +2825,7 @@
   }
 
   function startDuel(playerTalent, fromTournament, selectedSpecialization, requestedMode, seedOverride = null, enemySpecializationOverride = null) {
+    forgeTestDuel = false;
     const setId = "astral-original";
     const spellbookDistribution = fromTournament
       ? normalizeSpellbookMode(tournament?.spellbookDistribution)
@@ -2923,8 +2927,98 @@
     showTurnBanner(t("turn.yours"), "player", 900);
   }
 
+  function startForgeTestDuel(seedOverride = null) {
+    const session = ensureForgeSession();
+    const snapshot = session?.snapshot?.();
+    if (!snapshot?.analysis?.canTry) {
+      throw new Error(snapshot?.analysis?.tryError || t("forge.tryUnavailable"));
+    }
+
+    const requestedLevel = forgeTargetCost === "auto"
+      ? Number(snapshot.analysis.minimumLevel || 1)
+      : Number(forgeTargetCost || 1);
+    const level = Math.max(1, Math.trunc(requestedLevel));
+    const bundle = A.createSigianForgeTestBundle?.(snapshot.draft, { level });
+    if (!bundle?.card || !bundle?.formula) throw new Error(t("forge.tryUnavailable"));
+
+    const seed = seedOverride || createDuelSeed();
+    const standardCards = sessionSets["astral-original"] || [];
+    const enemyHand = standardCards
+      .filter(card => Number(card.level || card.cost || 0) <= 3)
+      .slice(0, 4)
+      .map(card => A.deepClone(card));
+    if (!enemyHand.length && standardCards[0]) enemyHand.push(A.deepClone(standardCards[0]));
+
+    const enemyTalent = enemyHand[0]?.school || "water";
+    forgeTestDuel = true;
+    tournamentMatch = false;
+    matchRecorded = false;
+    remoteDuelActive = false;
+    matchStartedAt = Date.now();
+    currentTurnDamage = 0;
+    presentationLog = [];
+    activeSchool = bundle.recipe.school;
+
+    engine = new A.GameEngine({
+      cards:standardCards,
+      seed,
+      playerTalent:bundle.recipe.school,
+      enemyTalent,
+      playerPassives:[],
+      enemyPassives:[],
+      rules:{ ...A.ASTRAL_ORIGINAL_RULESET },
+      aiDifficulty:"advanced",
+      astralMode:"duel",
+      spellbookDistribution:"free",
+      playerAstralAbilities:[],
+      enemyAstralAbilities:[],
+      hands:{
+        player:[A.deepClone(bundle.card)],
+        enemy:enemyHand
+      }
+    });
+    A.setSigianFormulaOverride?.(engine, bundle.formula);
+    engine.aiDifficulty = "advanced";
+
+    const playablePower = Math.min(Number(engine.rules.maxPower || 99), Math.max(
+      Number(engine.state.player.power?.[bundle.recipe.school] || 0),
+      level
+    ));
+    engine.state.player.power[bundle.recipe.school] = playablePower;
+
+    duelCommandSession = new A.CommandSession(engine, { matchId:`forge-test:${seed}` });
+    currentDuelLaunch = {
+      forgeTest:true,
+      seed,
+      level,
+      draftId:bundle.draftId,
+      revision:bundle.revision
+    };
+    currentPlayerName = selectedPlayerName();
+    currentOpponentName = t("forge.tryOpponent");
+    enemySchool = engine.state.enemy.talent;
+    inspectedCardId = bundle.card.id;
+    inspectedCardSide = "player";
+    inspectedCardInstanceId = null;
+
+    $("#setupPanel")?.classList.add("hidden");
+    $("#battlePanel")?.classList.remove("hidden");
+    $("#seedBadge").textContent = `${t("forge.try")} · C${level} · seed: ${seed}`;
+    $("#duelSessionActions")?.classList.add("hidden");
+    $("#duelMenuBtn")?.setAttribute("aria-expanded", "false");
+    busy = false;
+    clearFxLayer();
+    switchView("game");
+    setMessage(t("forge.tryDuelMessage"));
+    renderGame();
+    warmVisibleDuelArt();
+    resumeBackgroundMusic();
+    showTurnBanner(t("turn.yours"), "player", 900);
+  }
+
   function restartDuel() {
-    clearPersistedLocalDuel();
+    if (!forgeTestDuel) clearPersistedLocalDuel();
+    forgeTestDuel = false;
     engine = null;
     duelCommandSession = null;
     remoteDuelActive = false;
@@ -2941,6 +3035,7 @@
   }
 
   function pauseSubtitle() {
+    if (forgeTestDuel) return t("forge.tryDuelMessage");
     if (remoteDuelActive) return t("pause.multiplayerSubtitle", { opponent: currentOpponentName || t("ui.opponent") });
     return tournamentMatch
       ? t("pause.tournamentSubtitle", { opponent: currentOpponentName || t("ui.opponent") })
@@ -2953,6 +3048,7 @@
 
   async function abandonCurrentDuel() {
     const online = remoteDuelActive;
+    const returnToForge = forgeTestDuel;
     if (online) {
       stopRemoteTimers();
       await remoteRoomClient?.forfeit().catch(() => {});
@@ -2960,8 +3056,9 @@
       clearRemoteSession();
     }
     restartDuel();
-    switchView(online ? "multiplayer" : "game");
+    switchView(returnToForge ? "forge" : (online ? "multiplayer" : "game"));
     if (online) renderRemoteLobby(null);
+    if (returnToForge) renderForgePage();
   }
 
   function abandonTournamentEncounter() {
@@ -2983,11 +3080,19 @@
     onRestart: () => {
       if (!currentDuelLaunch || busy) return;
       const launch = currentDuelLaunch;
+      if (launch.forgeTest) {
+        startForgeTestDuel(launch.seed);
+        return;
+      }
       startDuel(launch.playerTalent, launch.fromTournament, launch.selectedSpecialization, launch.requestedMode, launch.seed, launch.enemySpecializationChoice);
     },
     onNewDuel: () => {
       if (!currentDuelLaunch || busy || remoteDuelActive || tournamentMatch) return;
       const launch = currentDuelLaunch;
+      if (launch.forgeTest) {
+        startForgeTestDuel(createDuelSeed());
+        return;
+      }
       startDuel(
         launch.playerTalent,
         false,
@@ -6107,8 +6212,20 @@
     if (undoButton) undoButton.disabled = inventoryReadOnly || !snapshot.canUndo;
     if (redoButton) redoButton.disabled = inventoryReadOnly || !snapshot.canRedo;
     if (tryButton) {
-      tryButton.disabled = true;
-      tryButton.title = t("forge.math.provisional");
+      tryButton.disabled = inventoryReadOnly || !analysis.canTry;
+      tryButton.title = analysis.canTry
+        ? t("forge.tryHint")
+        : (analysis.tryBlockers?.includes("global-constraint-test-runtime-pending")
+          ? t("forge.tryConstraintPending")
+          : (analysis.tryError || t("forge.tryUnavailable")));
+      tryButton.onclick = tryButton.disabled ? null : () => {
+        try {
+          startForgeTestDuel();
+        } catch (error) {
+          const status = $("#forgeAutosaveStatus");
+          if (status) status.textContent = String(error?.message || error || t("forge.tryUnavailable"));
+        }
+      };
     }
     if (sealButton) {
       sealButton.disabled = true;
@@ -7677,21 +7794,23 @@
   }
 
   async function finalizeMatch() {
-    clearPersistedLocalDuel();
+    if (!forgeTestDuel) clearPersistedLocalDuel();
     const winner = engine.state.winner;
     if (winner === "player") playOriginalSound("winner", 0.5);
     if (winner === "enemy") playOriginalSound("looser", 0.5);
     const resultText = winner === "player" ? t("result.victory") : winner === "enemy" ? t("result.defeat") : t("result.draw");
     showTurnBanner(resultText, winner === "player" ? "player" : winner === "enemy" ? "enemy" : "neutral", 1800);
     setMessage(winner === "player" ? t("result.victoryMessage") : winner === "enemy" ? t("result.defeatMessage") : t("result.drawMessage"));
-    A.recordProfileMatch?.(profile, {
-      matchId: duelCommandSession?.matchId || `local:${engine.state.seed}`,
-      mode: "singlePlayer",
-      result: winner === "player" ? "win" : winner === "enemy" ? "loss" : "draw",
-      durationMs: matchStartedAt ? Date.now() - matchStartedAt : null
-    });
-    profile = A.loadProfile();
-    renderPlayerProfile();
+    if (!forgeTestDuel) {
+      A.recordProfileMatch?.(profile, {
+        matchId: duelCommandSession?.matchId || `local:${engine.state.seed}`,
+        mode: "singlePlayer",
+        result: winner === "player" ? "win" : winner === "enemy" ? "loss" : "draw",
+        durationMs: matchStartedAt ? Date.now() - matchStartedAt : null
+      });
+      profile = A.loadProfile();
+      renderPlayerProfile();
+    }
     if (tournamentMatch && !matchRecorded) {
       matchRecorded = true;
       const won = winner === "player";
