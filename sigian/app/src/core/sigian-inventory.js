@@ -53,7 +53,7 @@
 
   function familyFor(entry) {
     const id = String(entry?.id || "");
-    if (/constraint-backlash/.test(id)) return "Contraccolpo";
+    if (/constraint-(backlash|scarcity|weakness|overpower)/.test(id)) return "Vincoli reattivi";
     if (/constraint-friendly-fire/.test(id)) return "Fuoco Amico";
     if (/constraint-(erosion|threshold|limit|tribute)/.test(id)) return "Vincoli di Potere";
     if (/damage|abbattimento/.test(id)) return "Danno";
@@ -214,7 +214,7 @@
     };
   }
 
-  function formulaComponents(cardId) {
+  function legacyFormulaComponents(cardId) {
     const spec = A.SIGIAN_BASE_RECIPE_SPECS?.[cardId];
     if (!spec) return [];
     const components = [];
@@ -270,6 +270,20 @@
     return sigil?.sigilId === "eternal-rebirth";
   }
 
+
+  function formulaComponents(cardId) {
+    const canonical = A.getSigianBaseCanonicalComponents?.(cardId) || [];
+    if (canonical.length) {
+      return canonical.map((component, index) => ({
+        ...component,
+        id:`canonical:${cardId}:${index + 1}`,
+        status:"approved",
+        detail:component.detail || "Componente canonico della Formula originale."
+      }));
+    }
+    return legacyFormulaComponents(cardId);
+  }
+
   function originalCards() {
     return clone(A.RAW_CARD_SETS?.["astral-original"] || []);
   }
@@ -290,7 +304,7 @@
       original:true,
       quantity:1,
       owned:true,
-      conversionStatus:"pending",
+      conversionStatus:"complete",
       components:formulaComponents(card.id)
     }));
   }
@@ -333,7 +347,7 @@
         cosmeticCount:cosmetics.length,
         affinityStatus:"provisional",
         rarityStatus:"pending",
-        formulaConversionStatus:"pending"
+        formulaConversionStatus:"complete"
       }
     };
   }

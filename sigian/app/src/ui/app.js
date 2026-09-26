@@ -5270,6 +5270,22 @@
     </section>`;
   }
 
+
+  function forgeInventoryCanonicalComponentsMarkup(formula) {
+    const components = formula?.components || [];
+    if (!components.length) return '<p class="forge-empty-note">Nessun componente canonico disponibile.</p>';
+    return components.map((component, index) => `
+      <div class="forge-current-sigil is-canonical" data-canonical-component="${escapeHtml(component.id || String(index + 1))}">
+        <span class="forge-current-sigil-icon">${component.kind === "constraint" ? "◇" : "✦"}</span>
+        <span class="forge-current-sigil-copy">
+          <strong>${escapeHtml(component.name)}</strong>
+          <small>${component.kind === "constraint" ? "Vincolo" : "Sigillo"} · Canonico</small>
+          ${component.detail ? `<em>${escapeHtml(component.detail)}</em>` : ""}
+        </span>
+      </div>
+    `).join("");
+  }
+
   function renderForgePage() {
     const root = $("#forgeContent");
     const session = ensureForgeSession();
@@ -5293,7 +5309,7 @@
     `).join("");
 
     root.innerHTML = `
-      ${inventoryReadOnly ? `<div class="forge-inventory-readonly-note"><div><strong>Formula caricata dall’Inventario</strong><span>${escapeHtml(inventoryFormula?.name || recipe.presentation?.name || "Formula")} · modifica bloccata finché la conversione canonica non è completata.</span></div><button type="button" class="classic-stone-button ghost" data-forge-exit-inventory-preview>Torna alla Forgia libera</button></div>` : ""}
+      ${inventoryReadOnly ? `<div class="forge-inventory-readonly-note"><div><strong>Formula canonica caricata dall’Inventario</strong><span>${escapeHtml(inventoryFormula?.name || recipe.presentation?.name || "Formula")} · conversione delle 65 Formule completata. La Formula originale resta in sola lettura.</span></div><button type="button" class="classic-stone-button ghost" data-forge-exit-inventory-preview>Torna alla Forgia libera</button></div>` : ""}
       <div class="forge-workspace ${inventoryReadOnly ? "is-readonly" : ""}">
         <aside class="forge-panel forge-structure-panel ornate-subpanel">
           <div class="forge-panel-heading">
@@ -5329,10 +5345,12 @@
           ` : ""}
           <div class="forge-current-sigils">
             <div class="forge-current-sigils-heading">
-              <strong>${escapeHtml(t("forge.sigils"))}</strong>
-              <small>${escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small>
+              <strong>${inventoryReadOnly ? "Sigilli & Vincolo canonici" : escapeHtml(t("forge.sigils"))}</strong>
+              <small>${inventoryReadOnly
+                ? `${inventoryFormula?.components?.filter(item => item.kind === "sigil").length || 0} Sigilli · ${inventoryFormula?.components?.filter(item => item.kind === "constraint").length || 0} Vincolo`
+                : escapeHtml(t("forge.sigilCount", { count:recipe.sigils.length }))}</small>
             </div>
-            ${forgeCurrentSigilsMarkup(recipe, analysis)}
+            ${inventoryReadOnly ? forgeInventoryCanonicalComponentsMarkup(inventoryFormula) : forgeCurrentSigilsMarkup(recipe, analysis)}
           </div>
         </aside>
 
@@ -5351,12 +5369,19 @@
             <span class="forge-panel-step">III</span>
             <h3>${escapeHtml(t("forge.sigils"))}</h3>
           </div>
-          ${forgeSigilModelerMarkup(recipe, recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId), analysis)}
-          <div class="forge-catalog-section ${forgeSelectedSigilSlotId ? "is-secondary" : ""}">
-            <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
-            ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
-            <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
-          </div>
+          ${inventoryReadOnly ? `
+            <div class="forge-catalog-section">
+              <p class="forge-catalog-note"><strong>Conversione canonica completata.</strong> Questa Formula originale usa i componenti mostrati nella colonna Struttura. La modifica resta disabilitata perché stai ispezionando l'istanza posseduta, non un nuovo draft.</p>
+              <p class="forge-catalog-note">Affinità e Rarità dei Sigilli/Vincoli verranno definite nel passaggio successivo.</p>
+            </div>
+          ` : `
+            ${forgeSigilModelerMarkup(recipe, recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId), analysis)}
+            <div class="forge-catalog-section ${forgeSelectedSigilSlotId ? "is-secondary" : ""}">
+              <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))}</p>
+              ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
+              <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit)).join("")}</div>
+            </div>
+          `}
         </aside>
       </div>`;
 

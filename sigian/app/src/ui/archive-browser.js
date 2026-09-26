@@ -221,7 +221,7 @@
         <span class="archive-formula-copy">
           <strong>${escapeHtml(item.name)}</strong>
           <small>${school.icon} ${escapeHtml(school.name)} · ${item.type === "spell" ? "Magia" : "Creatura"} · ${item.level}</small>
-          <em>Conversione canonica in revisione</em>
+          <em>Conversione canonica completata</em>
         </span>
         ${scope === "collection" ? '<span class="archive-owned">Posseduta</span>' : ""}
       </button>`;
@@ -276,16 +276,16 @@
         <div class="archive-detail-art"><img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}"></div>
         <div class="archive-detail-heading">
           <div>
-            <small>FORMULA ORIGINALE</small>
+            <small>FORMULA CANONICA · ORIGINALE</small>
             <h3>${escapeHtml(item.name)}</h3>
             <p>${school.icon} ${escapeHtml(school.name)} · ${item.type === "spell" ? "Magia" : "Creatura"} · Costo ${item.level}</p>
           </div>
-          <span class="archive-conversion-badge">Conversione canonica in revisione</span>
+          <span class="archive-conversion-badge">Canonica</span>
         </div>
         <p class="archive-formula-text">${escapeHtml(item.text)}</p>
         ${item.type === "creature" ? `<div class="archive-stat-row"><span>⚔ <b>${item.attack}</b> Attacco</span><span>♥ <b>${item.health}</b> Vita</span></div>` : ""}
         <section class="archive-components-block">
-          <div class="archive-block-heading"><strong>Sigilli e Vincoli incorporati</strong><small>Mappatura provvisoria finché la conversione delle 65 Formule non è chiusa</small></div>
+          <div class="archive-block-heading"><strong>Sigilli e Vincoli canonici</strong><small>Conversione canonica delle 65 Formule completata</small></div>
           <div class="archive-embedded-grid">
             ${item.components.length ? item.components.map(formulaComponentMarkup).join("") : '<span class="archive-muted">Nessun componente runtime censito.</span>'}
           </div>
