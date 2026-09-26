@@ -78,6 +78,78 @@
     };
   }
 
+  function constraintGradeDefaults(definitionId, grade) {
+    const g = Math.max(1, Math.min(5, Math.trunc(Number(grade || 1))));
+    const fixedBandStart = ({ 1:1, 2:4, 3:7, 4:11, 5:16 })[g];
+    const limitBandStart = ({ 1:16, 2:11, 3:7, 4:4, 5:1 })[g];
+    if (definitionId === "v2-constraint-erosion-school"
+      || definitionId === "v2-constraint-tribute-school"
+      || definitionId === "v2-constraint-tribute-all") {
+      return { grade:g, intensity:g };
+    }
+    if (definitionId === "v2-constraint-threshold-school"
+      || definitionId === "v2-constraint-friendly-fire-limit") {
+      return { grade:g, threshold:fixedBandStart };
+    }
+    if (definitionId === "v2-constraint-limit-school") {
+      return { grade:g, threshold:limitBandStart };
+    }
+    if (definitionId === "v2-constraint-backlash"
+      || definitionId === "v2-constraint-weakness-school"
+      || definitionId === "v2-constraint-overpower-school") {
+      return { grade:g, damage:fixedBandStart };
+    }
+    if (definitionId === "v2-constraint-scarcity-school") {
+      return { grade:g, threshold:fixedBandStart, damage:fixedBandStart };
+    }
+    return { grade:g };
+  }
+
+  function defaultForgeConstraint(definitionId, school) {
+    const definition = A.getSigianCanonicalV2?.(definitionId);
+    if (!definition || definition.kind !== "constraint" || definition.status !== "approved") {
+      throw new Error(`Vincolo non disponibile: ${definitionId}.`);
+    }
+
+    const schoolBound = /<Scuola>/i.test(String(definition.name || ""));
+    const gradeLess = /senza Gradi/i.test(String(definition.grades || ""));
+    const constraint = {
+      definitionId,
+      grade: gradeLess ? null : 1,
+      school: schoolBound ? school : null,
+      intensity: null,
+      threshold: null,
+      damage: null,
+      percent: null,
+      multiplier: null,
+      affinity: null,
+      detail: String(definition.summary || "")
+    };
+
+    if (definitionId === "v2-constraint-erosion-school"
+      || definitionId === "v2-constraint-tribute-school"
+      || definitionId === "v2-constraint-tribute-all") {
+      constraint.intensity = 1;
+    }
+    if (definitionId === "v2-constraint-threshold-school"
+      || definitionId === "v2-constraint-friendly-fire-limit") {
+      constraint.threshold = 1;
+    }
+    if (definitionId === "v2-constraint-limit-school") {
+      constraint.threshold = 16;
+    }
+    if (definitionId === "v2-constraint-backlash"
+      || definitionId === "v2-constraint-weakness-school"
+      || definitionId === "v2-constraint-overpower-school") {
+      constraint.damage = 1;
+    }
+    if (definitionId === "v2-constraint-scarcity-school") {
+      constraint.threshold = 1;
+      constraint.damage = 1;
+    }
+    return constraint;
+  }
+
   function defaultForgeCollectibleSigil(collectibleId, school, slotIndex = 0) {
     const collectible = A.getSigianCollectibleSigil?.(collectibleId);
     if (!collectible) throw new Error(`Sigillo collezionabile non registrato: ${collectibleId}.`);
@@ -201,7 +273,8 @@
         type: options.type,
         stats: options.stats,
         presentation: options.presentation,
-        sigils: []
+        sigils: [],
+        constraint: null
       }
     });
 
@@ -274,7 +347,8 @@
             type: options.type || "creature",
             stats: options.stats || { attack: 1, health: 5 },
             presentation: options.presentation || { name: "Nuova Formula" },
-            sigils: []
+            sigils: [],
+            constraint: null
           }
         });
         persist();
@@ -315,6 +389,41 @@
             health: Math.max(1, Math.trunc(Number(stats.health ?? draft.recipe.stats.health)))
           }
         }));
+      },
+
+      setConstraint(definitionId) {
+        const normalizedId = String(definitionId || "").trim();
+        if (!normalizedId) return this.removeConstraint();
+        const constraint = defaultForgeConstraint(normalizedId, draft.recipe.school);
+        return commitRecipe(recipeWith({ constraint }));
+      },
+
+      updateConstraint(patch = {}) {
+        if (!draft.recipe.constraint) throw new Error("Nessun Vincolo globale impostato.");
+        return commitRecipe(recipeWith({
+          constraint: {
+            ...clone(draft.recipe.constraint),
+            ...clone(patch),
+            definitionId:draft.recipe.constraint.definitionId
+          }
+        }));
+      },
+
+      setConstraintGrade(grade) {
+        if (!draft.recipe.constraint) throw new Error("Nessun Vincolo globale impostato.");
+        return this.updateConstraint(constraintGradeDefaults(draft.recipe.constraint.definitionId, grade));
+      },
+
+      setConstraintSchool(school) {
+        if (!draft.recipe.constraint) throw new Error("Nessun Vincolo globale impostato.");
+        const definition = A.getSigianSchool?.(school);
+        if (!definition || definition.status !== "active") throw new Error(`Scuola non attiva: ${school}.`);
+        return this.updateConstraint({ school:definition.id });
+      },
+
+      removeConstraint() {
+        if (!draft.recipe.constraint) return this.snapshot();
+        return commitRecipe(recipeWith({ constraint:null }));
       },
 
       addSigil(sigilId) {

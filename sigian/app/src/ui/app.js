@@ -4445,6 +4445,100 @@
     return `<svg class="${escapeHtml(className)}" viewBox="0 0 64 64" aria-hidden="true">${common}${path}</svg>`;
   }
 
+  function sigianRomanGrade(value) {
+    return ({ 1:"I", 2:"II", 3:"III", 4:"IV", 5:"V" })[Number(value)] || "";
+  }
+
+  function sigianV2ComponentBaseName(definitionId, fallback = "") {
+    const key = `sigian.v2.${definitionId}`;
+    const label = t(key);
+    return label === key ? String(fallback || definitionId || "") : label;
+  }
+
+  function sigianV2ComponentDisplayName(component) {
+    if (!component) return "";
+    const parts = [sigianV2ComponentBaseName(component.definitionId, component.name)];
+    if (component.school) parts.push(schoolName(component.school));
+    if (component.grade != null) {
+      const roman = sigianRomanGrade(component.grade);
+      if (roman) parts.push(roman);
+    }
+    return parts.filter(Boolean).join(" ");
+  }
+
+  function sigianV2IconId(definitionId, kind = "sigil") {
+    const id = String(definitionId || "");
+    if (kind === "constraint") {
+      if (/erosion/.test(id)) return "erosion";
+      if (/tribute/.test(id)) return "tribute";
+      if (/friendly-fire/.test(id)) return "retaliation";
+      return "backlash";
+    }
+    if (/wave|tide/.test(id)) return "wave";
+    if (/damage|abbattimento|justice/.test(id)) return "damage";
+    if (/heal/.test(id)) return "heal";
+    if (/recovery|vital-resonance/.test(id)) return "restoration";
+    if (/regeneration/.test(id)) return "regeneration";
+    if (/infusion/.test(id)) return "infusion";
+    if (/subtraction/.test(id)) return "subtraction";
+    if (/channeling|necromantic-resonance/.test(id)) return "channeling";
+    if (/enemy-erosion/.test(id)) return "erosion";
+    if (/protection|arcane-armor/.test(id)) return "protection";
+    if (/spell-amplification/.test(id)) return "arcane-amplification";
+    if (/allied-amplification/.test(id)) return "combat-fury";
+    if (/total-assault/.test(id)) return "total-assault";
+    if (/arcane-attack/.test(id)) return "arcane-attack";
+    if (/life-drain|vampirism/.test(id)) return "absorption";
+    if (/soul-harvest/.test(id)) return "annihilation";
+    if (/uprooting/.test(id)) return "destruction";
+    if (/eternal-rebirth/.test(id)) return "eternal-rebirth";
+    if (/rebirth/.test(id)) return "rebirth";
+    if (/domination/.test(id)) return "domination";
+    return "damage";
+  }
+
+  function sigianV2ComponentUiModel(component) {
+    if (!component) return null;
+    const iconId = sigianV2IconId(component.definitionId, component.kind);
+    return {
+      kind:component.kind,
+      definitionId:component.definitionId,
+      sigilId:iconId,
+      name:sigianV2ComponentDisplayName(component),
+      school:component.school || null,
+      grade:component.grade ?? null,
+      detail:String(component.detail || ""),
+      iconMarkup:className => sigianCanonicalSigilIconMarkup(iconId, className),
+      modifiers:[]
+    };
+  }
+
+  function sigianBaseCanonicalUiModel(card) {
+    const components = A.getSigianBaseCanonicalComponents?.(card?.id) || [];
+    if (!components.length) return null;
+    const sigils = components
+      .filter(component => component.kind === "sigil")
+      .map(sigianV2ComponentUiModel)
+      .filter(Boolean);
+    const constraint = sigianV2ComponentUiModel(
+      components.find(component => component.kind === "constraint") || null
+    );
+    return {
+      source:"base-canonical-v2",
+      recipe:null,
+      formula:null,
+      sigils,
+      constraint,
+      primary:sigils[0] || constraint || null
+    };
+  }
+
+  function sigianRecipeConstraintUiModel(recipe) {
+    const constraint = recipe?.constraint;
+    if (!constraint?.definitionId) return null;
+    return sigianV2ComponentUiModel({ kind:"constraint", ...constraint });
+  }
+
   function sigianCanonicalSigilName(sigil) {
     const key = ({
       damage:"damage", wave:"wave", backlash:"backlash", retaliation:"retaliation",
@@ -4692,21 +4786,61 @@
   }
 
   function sigianCardUiModel(card) {
+    const canonicalBase = sigianBaseCanonicalUiModel(card);
+    if (canonicalBase) return canonicalBase;
+
     const recipe = sigianRecipeForUi(card);
     if (!recipe) return null;
-    if (!recipe.sigils?.length && !card?.__forgePreview) return null;
     const sigils = (recipe.sigils || []).map(sigil => sigianCanonicalSigilUiModel(card, sigil));
+    const constraint = sigianRecipeConstraintUiModel(recipe);
+    if (!sigils.length && !constraint && !card?.__forgePreview) return null;
     return {
+      source:"formula-recipe",
       recipe,
       formula:recipe,
       sigils,
-      primary:sigils[0]
+      constraint,
+      primary:sigils[0] || constraint || null
     };
   }
 
   function sigianModifierMarkup(item) {
     const schoolIcon = item.school ? schoolIconMarkup(item.school, "school-icon-svg sigian-modifier-school-icon") : `<span class="sigian-modifier-glyph" aria-hidden="true">${escapeHtml(item.glyph || "◆")}</span>`;
     return `<span class="sigian-modifier-chip ${escapeHtml(item.className)}">${schoolIcon}<span>${escapeHtml(item.text)}</span></span>`;
+  }
+
+  function buildSigianFullConstraintSlot(card, model) {
+    const constraint = model?.constraint || null;
+    const slot = document.createElement(constraint || card?.__forgePreview ? "button" : "span");
+    if (slot.tagName === "BUTTON") slot.type = "button";
+    slot.className = `sigian-full-constraint-slot ${constraint ? "is-filled" : "is-empty"} ${constraint?.school ? `school-${constraint.school}` : "is-neutral"}`;
+    slot.dataset.sigianConstraintSlot = constraint?.definitionId || "";
+    slot.setAttribute("aria-label", constraint
+      ? t("sigian.constraint.inspect", { name:constraint.name })
+      : t("sigian.constraint.emptySlot"));
+    slot.title = constraint?.name || t("sigian.constraint.emptySlot");
+    slot.innerHTML = `
+      <span class="sigian-full-constraint-ring" aria-hidden="true">
+        <span class="sigian-full-constraint-orb">${constraint ? '<span class="sigian-full-constraint-glyph">◇</span>' : ""}</span>
+      </span>`;
+    if (constraint) {
+      slot.addEventListener("click", event => {
+        event.stopPropagation();
+        window.dispatchEvent(new CustomEvent("sigian:constraint-inspect", {
+          detail:{
+            cardId:card?.id || "",
+            constraint:{
+              definitionId:constraint.definitionId,
+              name:constraint.name,
+              school:constraint.school || null,
+              grade:constraint.grade ?? null,
+              detail:constraint.detail || ""
+            }
+          }
+        }));
+      });
+    }
+    return slot;
   }
 
   function buildSigianFullCard(card, side = null) {
@@ -4741,6 +4875,8 @@
         <span class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></span>`;
       article.appendChild(stats);
     }
+
+    article.appendChild(buildSigianFullConstraintSlot(card, model));
 
     const sigilArea = document.createElement("section");
     sigilArea.className = `sigian-full-sigil-area ${card.type === "spell" ? "sigian-full-spell-sigil-area" : ""}`;
@@ -5004,6 +5140,64 @@
       ${forgeMathMode === "detailed" ? forgeMathBreakdownMarkup(analysis) : ""}
       ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<p class="forge-math-warning">${escapeHtml(t("forge.spellNeedsSigil"))}</p>` : ""}
     </section>`;
+  }
+
+  function forgeGlobalConstraintMarkup(recipe) {
+    const current = recipe.constraint || null;
+    const definitions = (A.listSigianCanonicalV2?.({ kind:"constraint" }) || [])
+      .filter(item => item.status === "approved" && item.selectable !== false);
+    const options = [
+      `<option value="">${escapeHtml(t("sigian.constraint.none"))}</option>`,
+      ...definitions.map(definition =>
+        `<option value="${escapeHtml(definition.id)}" ${current?.definitionId === definition.id ? "selected" : ""}>${escapeHtml(sigianV2ComponentBaseName(definition.id, definition.name))}</option>`
+      )
+    ].join("");
+
+    const definition = current ? A.getSigianCanonicalV2?.(current.definitionId) : null;
+    const schoolBound = Boolean(definition && /<Scuola>/i.test(String(definition.name || "")));
+    const gradeLess = Boolean(definition && /senza Gradi/i.test(String(definition.grades || "")));
+    const schoolControl = current && schoolBound
+      ? `<label class="forge-model-field">
+          <span>${escapeHtml(t("forge.school"))}</span>
+          <select data-forge-constraint-school>
+            ${(A.listSigianSchools?.({ status:"active" }) || []).map(school =>
+              `<option value="${escapeHtml(school.id)}" ${current.school === school.id ? "selected" : ""}>${escapeHtml(schoolName(school.id))}</option>`
+            ).join("")}
+          </select>
+        </label>`
+      : "";
+    const gradeControl = current && !gradeLess
+      ? `<label class="forge-model-field">
+          <span>${escapeHtml(t("archive.grade"))}</span>
+          <select data-forge-constraint-grade>
+            ${[1,2,3,4,5].map(grade => `<option value="${grade}" ${Number(current.grade || 1) === grade ? "selected" : ""}>${sigianRomanGrade(grade)}</option>`).join("")}
+          </select>
+        </label>`
+      : "";
+
+    return `
+      <section class="forge-global-constraint">
+        <div class="forge-current-sigils-heading">
+          <strong>${escapeHtml(t("sigian.constraint.global"))}</strong>
+          <small>${current ? "1 / 1" : "0 / 1"}</small>
+        </div>
+        <p class="forge-constraint-hint">${escapeHtml(t("forge.constraintHint"))}</p>
+        <label class="forge-model-field forge-constraint-select">
+          <span>${escapeHtml(t("archive.constraint"))}</span>
+          <select data-forge-constraint-select>${options}</select>
+        </label>
+        ${current ? `
+          <div class="forge-constraint-current">
+            <span class="forge-constraint-current-orb ${current.school ? `school-${escapeHtml(current.school)}` : "is-neutral"}" aria-hidden="true">◇</span>
+            <span>
+              <strong>${escapeHtml(sigianV2ComponentDisplayName({ kind:"constraint", ...current }))}</strong>
+              <small>${escapeHtml(definition?.summary || current.detail || "")}</small>
+            </span>
+            <button type="button" class="classic-stone-button ghost" data-forge-remove-constraint>${escapeHtml(t("forge.remove"))}</button>
+          </div>
+          <div class="forge-constraint-controls">${schoolControl}${gradeControl}</div>
+        ` : ""}
+      </section>`;
   }
 
   function forgeCurrentSigilsMarkup(recipe, analysis) {
@@ -5274,17 +5468,22 @@
 
   function forgeInventoryCanonicalComponentsMarkup(formula) {
     const components = formula?.components || [];
-    if (!components.length) return '<p class="forge-empty-note">Nessun componente canonico disponibile.</p>';
-    return components.map((component, index) => `
-      <div class="forge-current-sigil is-canonical" data-canonical-component="${escapeHtml(component.id || String(index + 1))}">
-        <span class="forge-current-sigil-icon">${component.kind === "constraint" ? "◇" : "✦"}</span>
-        <span class="forge-current-sigil-copy">
-          <strong>${escapeHtml(component.name)}</strong>
-          <small>${component.kind === "constraint" ? "Vincolo" : "Sigillo"} · Canonico</small>
-          ${component.detail ? `<em>${escapeHtml(component.detail)}</em>` : ""}
-        </span>
-      </div>
-    `).join("");
+    if (!components.length) return `<p class="forge-empty-note">${escapeHtml(t("archive.noComponents"))}</p>`;
+    return components.map((component, index) => {
+      const name = sigianV2ComponentDisplayName(component);
+      const kind = t(component.kind === "constraint" ? "archive.constraint" : "archive.sigil");
+      const detail = A.i18n?.getLanguage?.() === "it" ? String(component.detail || "") : "";
+      return `
+        <div class="forge-current-sigil is-canonical" data-canonical-component="${escapeHtml(component.id || String(index + 1))}">
+          <span class="forge-current-sigil-icon">${component.kind === "constraint" ? "◇" : "✦"}</span>
+          <span class="forge-current-sigil-copy">
+            <strong>${escapeHtml(name)}</strong>
+            <small>${escapeHtml(kind)} · Canon</small>
+            ${detail ? `<em>${escapeHtml(detail)}</em>` : ""}
+          </span>
+        </div>
+      `;
+    }).join("");
   }
 
   function renderForgePage() {
@@ -5310,7 +5509,7 @@
     `).join("");
 
     root.innerHTML = `
-      ${inventoryReadOnly ? `<div class="forge-inventory-readonly-note"><div><strong>Formula canonica caricata dall’Inventario</strong><span>${escapeHtml(inventoryFormula?.name || recipe.presentation?.name || "Formula")} · conversione delle 65 Formule completata. La Formula originale resta in sola lettura.</span></div><button type="button" class="classic-stone-button ghost" data-forge-exit-inventory-preview>Torna alla Forgia libera</button></div>` : ""}
+      ${inventoryReadOnly ? `<div class="forge-inventory-readonly-note"><div><strong>Formula canonica caricata dall’Inventario</strong><span>${escapeHtml(localizedCardNameById(forgeInventoryPreviewCardId, inventoryFormula?.name || recipe.presentation?.name || "Formula"))} · conversione canonica in sola lettura.</span></div><button type="button" class="classic-stone-button ghost" data-forge-exit-inventory-preview>Torna alla Forgia libera</button></div>` : ""}
       <div class="forge-workspace ${inventoryReadOnly ? "is-readonly" : ""}">
         <aside class="forge-panel forge-structure-panel ornate-subpanel">
           <div class="forge-panel-heading">
@@ -5353,6 +5552,7 @@
             </div>
             ${inventoryReadOnly ? forgeInventoryCanonicalComponentsMarkup(inventoryFormula) : forgeCurrentSigilsMarkup(recipe, analysis)}
           </div>
+          ${inventoryReadOnly ? "" : forgeGlobalConstraintMarkup(recipe)}
         </aside>
 
         <section class="forge-center-stage">
@@ -5389,6 +5589,14 @@
     const previewStage = $("#forgePreviewStage");
     const preview = buildSigianFullCard(forgePreviewCard(recipe, analysis), null);
     if (previewStage && preview) previewStage.replaceChildren(preview);
+    if (!inventoryReadOnly) {
+      previewStage?.querySelector("[data-sigian-constraint-slot]")?.addEventListener("click", event => {
+        event.stopPropagation();
+        const selector = root.querySelector("[data-forge-constraint-select]");
+        selector?.focus();
+        root.querySelector(".forge-global-constraint")?.scrollIntoView?.({ block:"nearest", behavior:"smooth" });
+      });
+    }
 
     const newButton = $("#forgeNewBtn");
     const undoButton = $("#forgeUndoBtn");
@@ -5474,6 +5682,25 @@
       session.setCreatureStats({ health:Number(event.currentTarget.value) });
       renderForgePage();
     });
+    root.querySelector("[data-forge-constraint-select]")?.addEventListener("change", event => {
+      const definitionId = String(event.currentTarget.value || "");
+      if (definitionId) session.setConstraint(definitionId);
+      else session.removeConstraint();
+      renderForgePage();
+    });
+    root.querySelector("[data-forge-constraint-grade]")?.addEventListener("change", event => {
+      session.setConstraintGrade(Number(event.currentTarget.value || 1));
+      renderForgePage();
+    });
+    root.querySelector("[data-forge-constraint-school]")?.addEventListener("change", event => {
+      session.setConstraintSchool(event.currentTarget.value);
+      renderForgePage();
+    });
+    root.querySelector("[data-forge-remove-constraint]")?.addEventListener("click", () => {
+      session.removeConstraint();
+      renderForgePage();
+    });
+
     root.querySelectorAll("[data-forge-add-collectible]").forEach(button => button.addEventListener("click", () => {
       if (button.disabled) return;
       const result = session.addCollectibleSigil(button.dataset.forgeAddCollectible);

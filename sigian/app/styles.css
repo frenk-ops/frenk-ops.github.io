@@ -15624,3 +15624,206 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     scrollbar-width:thin;
   }
 }
+
+
+/* 0.56 — official Full card global Constraint socket. UI Lab intentionally excluded. */
+.sigian-full-constraint-slot {
+  --constraint-orb:#8a6d3c;
+  position:absolute;
+  z-index:7;
+  left:50%;
+  top:279px;
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  margin:0;
+  padding:0;
+  transform:translateX(-50%);
+  border:0;
+  background:transparent;
+  color:#f8e6b2;
+  pointer-events:auto;
+}
+
+button.sigian-full-constraint-slot {
+  cursor:pointer;
+}
+
+.sigian-full-constraint-ring {
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border:2px solid #b49353;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 42%,rgba(255,243,197,.18),transparent 36%),
+    linear-gradient(180deg,#34281c,#15120f);
+  box-shadow:
+    0 0 0 2px rgba(41,29,18,.72),
+    0 3px 8px rgba(0,0,0,.42),
+    inset 0 0 0 2px rgba(229,194,116,.10);
+}
+
+.sigian-full-constraint-orb {
+  width:27px;
+  height:27px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  transition:transform .15s ease,box-shadow .15s ease,opacity .15s ease;
+}
+
+.sigian-full-constraint-slot.is-empty .sigian-full-constraint-orb {
+  width:24px;
+  height:24px;
+  border:1px dashed rgba(220,190,126,.44);
+  background:rgba(9,10,12,.48);
+  opacity:.62;
+  box-shadow:inset 0 0 8px rgba(0,0,0,.72);
+}
+
+.sigian-full-constraint-slot.is-filled .sigian-full-constraint-orb {
+  border:2px solid rgba(255,239,188,.74);
+  background:
+    radial-gradient(circle at 35% 27%,rgba(255,255,255,.58),transparent 18%),
+    radial-gradient(circle at 50% 52%,color-mix(in srgb,var(--constraint-orb) 86%,#fff 14%),var(--constraint-orb) 72%);
+  box-shadow:
+    0 0 10px color-mix(in srgb,var(--constraint-orb) 58%,transparent),
+    inset -4px -5px 7px rgba(0,0,0,.28),
+    inset 3px 3px 5px rgba(255,255,255,.18);
+}
+
+.sigian-full-constraint-slot.is-filled:hover .sigian-full-constraint-orb,
+.sigian-full-constraint-slot.is-filled:focus-visible .sigian-full-constraint-orb,
+.forge-preview-stage .sigian-full-constraint-slot:hover .sigian-full-constraint-orb,
+.forge-preview-stage .sigian-full-constraint-slot:focus-visible .sigian-full-constraint-orb {
+  transform:translateY(-1px) scale(1.06);
+}
+
+.sigian-full-constraint-slot:focus-visible {
+  outline:2px solid #f1c765;
+  outline-offset:3px;
+  border-radius:50%;
+}
+
+.sigian-full-constraint-glyph {
+  color:#fff4d1;
+  font:900 .9rem/1 Georgia,serif;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);
+}
+
+.sigian-full-constraint-slot.school-fire { --constraint-orb:#d65a31; }
+.sigian-full-constraint-slot.school-water { --constraint-orb:#359dc8; }
+.sigian-full-constraint-slot.school-air { --constraint-orb:#9ecfe7; }
+.sigian-full-constraint-slot.school-nature { --constraint-orb:#63aa55; }
+.sigian-full-constraint-slot.school-death { --constraint-orb:#9561ad; }
+.sigian-full-constraint-slot.is-neutral { --constraint-orb:#8a6d3c; }
+
+.sigian-full-card.type-spell .sigian-full-constraint-slot {
+  top:279px;
+}
+
+@media (max-width:820px) {
+  .sigian-full-constraint-slot,
+  .sigian-full-card.type-spell .sigian-full-constraint-slot {
+    top:263px;
+  }
+}
+
+
+/* 0.56 — normal Forge global Constraint editor. */
+.forge-global-constraint {
+  display:grid;
+  gap:8px;
+  margin-top:10px;
+  padding:10px;
+  border:1px solid rgba(105,71,36,.30);
+  border-radius:10px;
+  background:rgba(255,249,226,.46);
+}
+
+.forge-constraint-hint {
+  margin:0;
+  color:#785d46;
+  font-size:.68rem;
+  line-height:1.35;
+}
+
+.forge-constraint-select {
+  margin:0;
+}
+
+.forge-constraint-current {
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) auto;
+  gap:9px;
+  align-items:center;
+  padding:8px;
+  border:1px solid rgba(105,71,36,.24);
+  border-radius:9px;
+  background:rgba(255,252,238,.68);
+}
+
+.forge-constraint-current > span:nth-child(2) {
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+
+.forge-constraint-current strong {
+  color:#49301e;
+  font-size:.78rem;
+}
+
+.forge-constraint-current small {
+  color:#795e48;
+  font-size:.62rem;
+  line-height:1.3;
+}
+
+.forge-constraint-current-orb {
+  --constraint-orb:#8a6d3c;
+  width:36px;
+  height:36px;
+  display:grid;
+  place-items:center;
+  border:2px solid rgba(255,239,188,.72);
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 35% 27%,rgba(255,255,255,.58),transparent 18%),
+    radial-gradient(circle at 50% 52%,color-mix(in srgb,var(--constraint-orb) 86%,#fff 14%),var(--constraint-orb) 72%);
+  color:#fff4d1;
+  font:900 .9rem/1 Georgia,serif;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);
+  box-shadow:0 2px 8px rgba(0,0,0,.24),inset -4px -5px 7px rgba(0,0,0,.24);
+}
+
+.forge-constraint-current-orb.school-fire { --constraint-orb:#d65a31; }
+.forge-constraint-current-orb.school-water { --constraint-orb:#359dc8; }
+.forge-constraint-current-orb.school-air { --constraint-orb:#9ecfe7; }
+.forge-constraint-current-orb.school-nature { --constraint-orb:#63aa55; }
+.forge-constraint-current-orb.school-death { --constraint-orb:#9561ad; }
+.forge-constraint-current-orb.is-neutral { --constraint-orb:#8a6d3c; }
+
+.forge-constraint-controls {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+
+@media (max-width:820px) {
+  .forge-constraint-current {
+    grid-template-columns:38px minmax(0,1fr);
+  }
+
+  .forge-constraint-current .classic-stone-button {
+    grid-column:2;
+    justify-self:start;
+  }
+
+  .forge-constraint-controls {
+    grid-template-columns:1fr;
+  }
+}

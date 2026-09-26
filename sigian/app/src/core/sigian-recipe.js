@@ -25,6 +25,26 @@
     return next;
   }
 
+  function normalizeConstraintItem(item, formulaSchool) {
+    if (!item || typeof item !== "object") return null;
+    const definitionId = id(item.definitionId || item.id);
+    if (!definitionId) return null;
+    return {
+      definitionId,
+      grade: item.grade == null ? null : Number(item.grade),
+      school: item.school == null ? null : id(item.school, formulaSchool),
+      intensity: item.intensity == null ? null : Number(item.intensity),
+      threshold: item.threshold == null ? null : Number(item.threshold),
+      damage: item.damage == null ? null : Number(item.damage),
+      percent: item.percent == null ? null : Number(item.percent),
+      multiplier: item.multiplier == null ? null : Number(item.multiplier),
+      affinity: item.affinity == null
+        ? null
+        : (A.normalizeSigianAffinity?.(item.affinity, formulaSchool) || asRecord(item.affinity)),
+      detail: String(item.detail || "")
+    };
+  }
+
   function normalizeSigilItem(item, index, formulaSchool) {
     let sigilId = id(item.sigilId || item.id);
     let grade = item.grade == null ? null : item.grade;
@@ -72,6 +92,7 @@
 
   A.SIGIAN_RECIPE_SCHEMA_VERSION = RECIPE_SCHEMA_VERSION;
   A.SIGIAN_MAX_PRIMARY_SIGILS = MAX_PRIMARY_SIGILS;
+  A.SIGIAN_MAX_GLOBAL_CONSTRAINTS = 1;
 
   A.createFormulaRecipe = function createFormulaRecipe(options = {}) {
     const source = options || {};
@@ -96,6 +117,7 @@
         imageKey: source.presentation?.imageKey == null ? null : String(source.presentation.imageKey)
       },
       sigils: (source.sigils || []).map((item, index) => normalizeSigilItem(item, index, id(source.school))),
+      constraint: normalizeConstraintItem(source.constraint, id(source.school)),
       metadata: asRecord(source.metadata)
     };
   };
@@ -163,6 +185,47 @@
     }
     if (recipe.sigils.length > MAX_PRIMARY_SIGILS && !options.allowSignatureOverflow) {
       errors.push(`FormulaRecipe ${recipe.id || "?"}: massimo ${MAX_PRIMARY_SIGILS} Sigilli primari.`);
+    }
+
+    if (recipe.constraint) {
+      const label = `FormulaRecipe ${recipe.id || "?"}, Vincolo globale`;
+      const definition = A.getSigianCanonicalV2?.(recipe.constraint.definitionId);
+      if (!definition) {
+        errors.push(`${label}: Vincolo non registrato ${recipe.constraint.definitionId || "(vuoto)"}.`);
+      } else {
+        if (definition.kind !== "constraint") errors.push(`${label}: ${recipe.constraint.definitionId} non è un Vincolo.`);
+        if (definition.status !== "approved" && !options.allowInactiveConstraints) {
+          errors.push(`${label}: Vincolo ${recipe.constraint.definitionId} non approvato (${definition.status}).`);
+        }
+      }
+
+      if (recipe.constraint.grade != null) {
+        const numeric = Number(recipe.constraint.grade);
+        if (!Number.isInteger(numeric) || numeric < 1 || numeric > 5) {
+          errors.push(`${label}: Grado non valido ${recipe.constraint.grade}.`);
+        }
+      }
+
+      if (recipe.constraint.school) {
+        const constraintSchool = A.getSigianSchool?.(recipe.constraint.school);
+        if (!constraintSchool || constraintSchool.status !== "active") {
+          errors.push(`${label}: Scuola non valida ${recipe.constraint.school}.`);
+        }
+      }
+
+      ["intensity","threshold","damage","percent","multiplier"].forEach(key => {
+        const value = recipe.constraint[key];
+        if (value != null && !Number.isFinite(Number(value))) {
+          errors.push(`${label}: ${key} deve essere numerico.`);
+        }
+      });
+
+      if (recipe.constraint.affinity != null) {
+        const affinityValidation = A.validateSigianAffinity?.(recipe.constraint.affinity);
+        if (affinityValidation && !affinityValidation.valid) {
+          affinityValidation.errors.forEach(error => errors.push(`${label}: ${error}`));
+        }
+      }
     }
 
     const slotIds = new Set();
