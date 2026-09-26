@@ -15236,3 +15236,391 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     aspect-ratio:16 / 10;
   }
 }
+
+
+/* 0.55 — Archive polish: official School iconography, faithful art and readable details. */
+.archive-school-label {
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+  vertical-align:middle;
+}
+
+.archive-school-icon {
+  width:18px;
+  height:18px;
+  flex:0 0 18px;
+  color:currentColor;
+  overflow:visible;
+}
+
+.archive-school-strip .archive-school-icon {
+  width:19px;
+  height:19px;
+}
+
+.archive-school-strip button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+}
+
+.archive-formula-copy small,
+.archive-formula-detail-meta,
+.archive-grimoire-formula small {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:4px;
+}
+
+.archive-formula-meta-separator,
+.archive-formula-detail-meta > span:not(.archive-school-label) {
+  opacity:.55;
+}
+
+.archive-layout {
+  grid-template-columns:minmax(0,1.34fr) minmax(360px,.8fr);
+  gap:18px;
+}
+
+.archive-formula-grid {
+  grid-template-columns:repeat(auto-fill,minmax(235px,1fr));
+}
+
+.archive-formula-tile {
+  grid-template-columns:112px minmax(0,1fr);
+  min-height:94px;
+  gap:11px;
+  padding:9px;
+}
+
+.archive-formula-art {
+  width:112px;
+  height:72px;
+  align-self:center;
+  border:1px solid rgba(79,50,27,.25);
+  border-radius:9px;
+  background:#281d17;
+  box-shadow:0 3px 8px rgba(35,22,14,.16);
+}
+
+.archive-formula-art img {
+  object-fit:cover;
+  object-position:center;
+}
+
+.archive-formula-copy {
+  gap:4px;
+}
+
+.archive-formula-copy strong {
+  color:#4e2d1a;
+  font-size:.93rem;
+  line-height:1.15;
+}
+
+.archive-formula-copy small {
+  color:#664a34;
+  font-size:.72rem;
+  line-height:1.25;
+}
+
+.archive-formula-copy em {
+  color:#7a542d;
+  font-size:.65rem;
+}
+
+.archive-formula-tile.active {
+  outline:2px solid #8e5a28;
+  outline-offset:1px;
+  background:linear-gradient(180deg,rgba(255,249,224,.97),rgba(226,198,141,.9));
+  box-shadow:inset 4px 0 0 #8e5a28,0 8px 20px rgba(86,49,21,.19);
+}
+
+.archive-formula-detail {
+  gap:11px;
+}
+
+.archive-detail-art {
+  position:relative;
+  display:grid;
+  place-items:center;
+  box-sizing:border-box;
+  width:100%;
+  min-height:220px;
+  max-height:350px;
+  aspect-ratio:16 / 9;
+  padding:6px;
+  overflow:hidden;
+  border:1px solid rgba(91,58,31,.42);
+  border-radius:11px;
+  background:
+    radial-gradient(circle at 50% 45%,rgba(126,82,44,.28),transparent 58%),
+    #211813;
+  box-shadow:inset 0 0 24px rgba(0,0,0,.24);
+}
+
+.archive-detail-art img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+  border-radius:7px;
+}
+
+.archive-detail-heading {
+  gap:10px;
+}
+
+.archive-detail-heading h3 {
+  font-size:1.42rem;
+  line-height:1.05;
+}
+
+.archive-formula-detail-meta {
+  color:#62462f;
+  font-size:.78rem;
+  line-height:1.3;
+}
+
+.archive-formula-text {
+  padding:11px 12px;
+  border:1px solid rgba(111,74,37,.18);
+  background:rgba(255,255,255,.32);
+  color:#493526;
+  font-size:.86rem;
+  line-height:1.48;
+}
+
+.archive-stat-row span {
+  border:1px solid rgba(94,60,30,.16);
+  background:rgba(85,53,28,.09);
+  color:#513722;
+}
+
+.archive-components-block {
+  padding:10px;
+  border:1px solid rgba(104,67,31,.25);
+  border-radius:10px;
+  background:rgba(255,250,229,.33);
+}
+
+.archive-embedded-component {
+  min-height:62px;
+  grid-template-columns:34px minmax(0,1fr);
+  padding:8px 9px;
+  background:rgba(255,252,238,.68);
+}
+
+.archive-embedded-component.is-sigil {
+  border-left:4px solid #7f5d9d;
+}
+
+.archive-embedded-component.is-constraint {
+  border-left:4px solid #9b5f36;
+}
+
+.archive-embedded-symbol {
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  grid-row:1 / span 2;
+  border-radius:50%;
+  background:rgba(82,52,27,.10);
+  font-size:1rem;
+}
+
+.archive-embedded-component strong {
+  color:#49301e;
+  line-height:1.15;
+}
+
+.archive-embedded-component small {
+  color:#74563e;
+  font-weight:700;
+}
+
+.archive-component-inspector {
+  border:1px solid rgba(111,71,33,.20);
+  border-left:4px solid #88552a;
+  background:rgba(255,248,222,.58);
+}
+
+.archive-grimoire-quick-add {
+  grid-template-columns:minmax(0,1fr) minmax(180px,220px);
+  grid-template-areas:
+    "copy select"
+    "copy action";
+  align-items:stretch;
+  padding:11px;
+  background:rgba(255,250,229,.58);
+}
+
+.archive-grimoire-quick-add > div {
+  grid-area:copy;
+  align-content:center;
+}
+
+.archive-grimoire-quick-add select {
+  grid-area:select;
+}
+
+.archive-grimoire-quick-add > button {
+  grid-area:action;
+}
+
+.archive-grimoire-add-action,
+.archive-grimoire-create-action {
+  min-width:0 !important;
+  min-height:42px !important;
+  white-space:normal;
+  line-height:1.12;
+}
+
+.archive-formula-actions {
+  gap:9px;
+}
+
+.archive-formula-actions .classic-stone-button {
+  min-height:48px;
+}
+
+.archive-affinity-school-examples {
+  display:grid;
+  gap:4px;
+  margin-top:3px;
+}
+
+.archive-affinity-school-examples > span {
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+}
+
+.archive-affinity-school {
+  display:inline-flex;
+  align-items:center;
+  min-height:27px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:rgba(91,57,29,.08);
+  color:#5a3d28;
+  font-size:.68rem;
+}
+
+.archive-variant-chip .archive-school-icon,
+.archive-affinity-school .archive-school-icon,
+.archive-grimoire-schools .archive-school-icon,
+.archive-grimoire-school-breakdown .archive-school-icon,
+.archive-grimoire-formula .archive-school-icon {
+  width:15px;
+  height:15px;
+  flex-basis:15px;
+}
+
+/* Contrast guardrail: dark Archive surfaces must never inherit dark text. */
+.archive-browser .classic-stone-button,
+.archive-browser .classic-stone-button *,
+.archive-browser .archive-section-tabs button.active,
+.archive-browser .archive-section-tabs button.active *,
+.archive-browser .archive-scope-switch button.active,
+.archive-browser .archive-scope-switch button.active *,
+.archive-browser .archive-category-strip button.active,
+.archive-browser .archive-category-strip button.active *,
+.archive-browser .archive-quantity,
+.archive-browser .archive-pagination button {
+  color:#fff6d9 !important;
+  fill:none;
+}
+
+.archive-browser .classic-stone-button,
+.archive-browser .archive-category-strip button.active,
+.archive-browser .archive-section-tabs button.active,
+.archive-browser .archive-scope-switch button.active {
+  text-shadow:0 1px 2px rgba(0,0,0,.92) !important;
+}
+
+.archive-browser .classic-stone-button:disabled,
+.archive-browser .classic-stone-button:disabled * {
+  color:#f1e5cf !important;
+  opacity:.76;
+}
+
+.archive-browser .archive-category-strip button:not(.active),
+.archive-browser .archive-section-tabs button:not(.active),
+.archive-browser .archive-scope-switch button:not(.active) {
+  text-shadow:none;
+}
+
+@media (max-width:1180px) and (min-width:981px) {
+  .archive-layout {
+    grid-template-columns:minmax(0,1.18fr) minmax(340px,.82fr);
+  }
+
+  .archive-formula-grid {
+    grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+  }
+}
+
+@media (max-width:980px) {
+  .archive-detail-art {
+    min-height:210px;
+    max-height:none;
+  }
+
+  .archive-grimoire-quick-add {
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "copy"
+      "select"
+      "action";
+  }
+}
+
+@media (max-width:700px) {
+  .archive-formula-tile {
+    grid-template-columns:104px minmax(0,1fr);
+  }
+
+  .archive-formula-art {
+    width:104px;
+    height:66px;
+  }
+
+  .archive-detail-art {
+    aspect-ratio:16 / 10;
+    min-height:190px;
+  }
+
+  .archive-school-strip button {
+    min-height:38px;
+  }
+}
+
+
+/* Archive School colors match the official in-game power symbols. */
+.archive-school-label .school-icon-fire { color:#ff7a3c; }
+.archive-school-label .school-icon-water { color:#55c5ff; }
+.archive-school-label .school-icon-air { color:#d9edff; }
+.archive-school-label .school-icon-nature { color:#75df72; }
+.archive-school-label .school-icon-death { color:#d39be8; }
+
+.archive-formula-art img {
+  object-fit:contain;
+  object-position:center;
+}
+
+
+@media (min-width:981px) {
+  .archive-detail-panel {
+    max-height:calc(100vh - 108px);
+    overflow:auto;
+    padding-right:4px;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+  }
+}
