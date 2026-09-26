@@ -361,7 +361,7 @@
   }
 
   function forgeSigilOptions(recipe) {
-    return A.listSigianForgeSigilOptions?.(recipe?.school || "fire") || [];
+    return A.listSigianOwnedForgeSigilOptions?.(recipe?.school || "fire") || [];
   }
 
   function sigilOption(recipe, sigil) {
@@ -679,7 +679,7 @@
       modalHeading(
         "Sigilli Arcani",
         replace ? "Sostituisci Sigillo" : "Imprimi un Sigillo",
-        "Un solo catalogo canonico. Grado, portata e scaling fanno parte dell’identità del Sigillo."
+        "Mostra solo i Sigilli posseduti. Grado, portata e scaling fanno parte dell’identità del Sigillo."
       ) +
       '<div class="forge-lab-sigil-picker">' +
         options.map(option => {

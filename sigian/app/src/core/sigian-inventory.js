@@ -510,6 +510,17 @@
   A.listSigianInventoryCollectibleSigils = function listSigianInventoryCollectibleSigils(formulaSchool = "fire") {
     return collectibleSigilInventoryItems(formulaSchool).map(clone);
   };
+  A.listSigianOwnedForgeSigilOptions = function listSigianOwnedForgeSigilOptions(formulaSchool = "fire") {
+    const school = String(formulaSchool || "fire");
+    const options = A.listSigianForgeSigilOptions?.(school) || [];
+    return options
+      .map(option => ({
+        ...option,
+        ownedQuantity:A.getSigianOwnedCollectibleSigilQuantity?.(option.id, school) ?? 0
+      }))
+      .filter(option => Number(option.ownedQuantity) > 0)
+      .map(clone);
+  };
   A.sigianCollectibleInventoryIdentity = function sigianCollectibleInventoryIdentity(collectibleId, formulaSchool = "fire") {
     const identity = collectibleInventoryIdentity(collectibleId, formulaSchool);
     return identity ? clone(identity) : null;

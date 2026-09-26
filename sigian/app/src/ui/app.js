@@ -5500,7 +5500,7 @@
 
   function forgeSigilCatalogMarkup(activeSigils, atSigilLimit, recipe) {
     return `<div class="forge-catalog-section">
-      <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))} Le copie disponibili derivano dall'Inventario.</p>
+      <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))} Sono mostrati solo i Sigilli posseduti; le copie disponibili derivano dall'Inventario.</p>
       ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
       <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit, recipe)).join("")}</div>
     </div>`;
@@ -5961,7 +5961,7 @@
     const snapshot = session.snapshot();
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
-    const activeSigils = A.listSigianForgeSigilOptions?.(recipe.school) || [];
+    const activeSigils = A.listSigianOwnedForgeSigilOptions?.(recipe.school) || [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
     const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;
