@@ -793,17 +793,15 @@
         state.detailOpen = true;
         render(root, scope);
       });
-      if (item.classList.contains("archive-formula-full-tile")) {
-        item.addEventListener("keydown", event => {
-          if (event.key !== "Enter" && event.key !== " ") return;
-          if (event.target.closest?.("[data-sigian-inspect]")) return;
-          event.preventDefault();
-          state.selectedId = item.dataset.archiveItem;
-          state.selectedComponentId = null;
-          state.detailOpen = true;
-          render(root, scope);
-        });
-      }
+      item.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target.closest?.("[data-sigian-inspect]")) return;
+        event.preventDefault();
+        state.selectedId = item.dataset.archiveItem;
+        state.selectedComponentId = null;
+        state.detailOpen = true;
+        render(root, scope);
+      });
     });
 
     root.querySelectorAll("[data-archive-component-group]").forEach(button => button.addEventListener("click", () => {
@@ -819,6 +817,17 @@
     }));
 
     root.querySelector("[data-archive-detail-close]")?.addEventListener("click", () => closeDetail(state, root, scope));
+
+    const detailPanel = root.querySelector(".archive-detail-panel");
+    detailPanel?.addEventListener("click", event => {
+      if (event.target !== detailPanel) return;
+      closeDetail(state, root, scope);
+    });
+    detailPanel?.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeDetail(state, root, scope);
+    });
 
     root.querySelector("[data-archive-forge]")?.addEventListener("click", event => {
       window.dispatchEvent(new CustomEvent("sigian:inventory-forge-request", {
@@ -974,15 +983,20 @@
 
         <div class="archive-layout ${state.section === "grimoires" ? "is-grimoires" : ""}">
           <main class="archive-list-panel">${content.list}</main>
-          <aside class="archive-detail-panel" aria-label="${escapeHtml(t("archive.selectionDetail"))}">
-            <button type="button" class="archive-detail-close" data-archive-detail-close aria-label="${escapeHtml(t("archive.closeDetails"))}">×</button>
-            ${content.detail}
+          <aside class="archive-detail-panel" aria-label="${escapeHtml(t("archive.selectionDetail"))}" tabindex="-1">
+            <div class="archive-detail-sheet">
+              <button type="button" class="archive-detail-close" data-archive-detail-close aria-label="${escapeHtml(t("archive.closeDetails"))}">×</button>
+              ${content.detail}
+            </div>
           </aside>
         </div>
       </div>`;
 
     mountFormulaFullCards(root, data);
     bind(root, scope, data, state);
+    if (state.detailOpen && window.matchMedia?.("(max-width:980px)")?.matches) {
+      window.requestAnimationFrame?.(() => root.querySelector("[data-archive-detail-close]")?.focus?.({ preventScroll:true }));
+    }
   }
 
   A.SigianArchiveBrowser = Object.freeze({

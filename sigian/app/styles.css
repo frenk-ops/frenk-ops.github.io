@@ -17507,3 +17507,245 @@ button.sigian-full-constraint-slot {
     height:50px;
   }
 }
+
+
+/* 0.61.3 — Archive mobile UX polish: compact nav, School grid and detail sheet. */
+.archive-detail-sheet {
+  min-width:0;
+  max-width:100%;
+}
+
+.archive-formula-index-row:focus-visible,
+.archive-component-identity:focus-visible,
+.archive-cosmetic-tile:focus-visible,
+.archive-grimoire-tile:focus-visible {
+  outline:3px solid #a76a2f;
+  outline-offset:2px;
+}
+
+@media (max-width:980px) {
+  body:has(.archive-browser.detail-open) {
+    overflow:hidden;
+  }
+
+  .archive-detail-panel {
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:120;
+    align-items:flex-end;
+    justify-content:center;
+    padding:0;
+    overflow:hidden;
+    background:rgba(7,8,12,.72);
+    backdrop-filter:blur(7px);
+  }
+
+  .archive-browser.detail-open .archive-detail-panel {
+    display:flex;
+  }
+
+  .archive-detail-sheet {
+    position:relative;
+    width:min(700px,100%);
+    max-height:min(94dvh,900px);
+    margin:0 auto;
+    padding:10px 10px calc(14px + env(safe-area-inset-bottom));
+    overflow:auto;
+    overscroll-behavior:contain;
+    border:1px solid rgba(130,91,46,.58);
+    border-bottom:0;
+    border-radius:22px 22px 0 0;
+    background:
+      radial-gradient(circle at 50% 0,rgba(255,247,215,.72),transparent 34%),
+      linear-gradient(180deg,#eadcb4,#d9bf83);
+    box-shadow:0 -18px 46px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.5);
+  }
+
+  .archive-detail-sheet::before {
+    content:"";
+    display:block;
+    width:46px;
+    height:4px;
+    margin:0 auto 6px;
+    border-radius:999px;
+    background:rgba(89,58,30,.35);
+  }
+
+  .archive-detail-sheet > .archive-detail-card,
+  .archive-detail-sheet > .archive-empty {
+    width:100%;
+    max-width:100%;
+    margin:0;
+    box-sizing:border-box;
+  }
+
+  .archive-detail-close {
+    position:sticky;
+    top:0;
+    z-index:8;
+    display:grid;
+    place-items:center;
+    width:42px;
+    height:42px;
+    margin:0 0 4px auto;
+    border:1px solid rgba(104,66,31,.48);
+    border-radius:50%;
+    background:#432b1c;
+    color:#fff3cf;
+    font-size:1.35rem;
+    font-weight:900;
+    box-shadow:0 4px 12px rgba(0,0,0,.22);
+    cursor:pointer;
+  }
+
+  .archive-full-detail-host,
+  .archive-formula-full-detail,
+  .archive-formula-full-detail .sigian-full-card {
+    max-width:100%;
+    min-width:0;
+  }
+}
+
+@media (max-width:700px) {
+  .archive-heading .classic-menu-kicker {
+    display:none;
+  }
+
+  .archive-heading h2,
+  .archive-heading p {
+    text-align:left !important;
+  }
+
+  .archive-heading h2 {
+    margin:0;
+    font-size:clamp(1.55rem,7vw,1.9rem);
+  }
+
+  .archive-heading p {
+    margin-top:4px;
+    font-size:.78rem;
+    line-height:1.32;
+  }
+
+  .archive-scope-switch {
+    gap:4px;
+    padding:4px;
+  }
+
+  .archive-scope-switch button {
+    min-height:42px;
+    font-size:.8rem;
+  }
+
+  .archive-section-tabs {
+    gap:5px;
+    padding:5px;
+  }
+
+  .archive-section-tabs button {
+    min-height:44px;
+    white-space:normal;
+    line-height:1.12;
+  }
+
+  .archive-section-tabs button:last-child:nth-child(odd) {
+    grid-column:1 / -1;
+  }
+
+  .archive-overview button:last-child:nth-child(odd) {
+    grid-column:1 / -1;
+  }
+
+  .archive-filters {
+    padding:9px;
+  }
+
+  .archive-filter-row {
+    gap:7px;
+  }
+
+  .archive-filter > span {
+    font-size:.67rem;
+  }
+
+  .archive-filter input,
+  .archive-filter select {
+    min-height:44px;
+  }
+
+  .archive-more-filters {
+    margin-top:7px;
+    padding-top:7px;
+  }
+
+  .archive-more-filters summary {
+    display:flex;
+    min-height:42px;
+    align-items:center;
+  }
+
+  .archive-count {
+    margin-top:7px;
+    font-size:.7rem;
+  }
+
+  .archive-category-strip.archive-school-strip {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:5px;
+    width:100%;
+    padding:5px;
+    overflow:visible;
+  }
+
+  .archive-school-strip button {
+    width:100%;
+    max-width:none;
+    min-width:0;
+    min-height:44px;
+    padding:6px 4px;
+    white-space:normal;
+    line-height:1.05;
+  }
+
+  .archive-school-strip .archive-school-label {
+    justify-content:center;
+    width:100%;
+    gap:4px;
+  }
+
+  .archive-school-strip .archive-school-icon {
+    width:18px;
+    height:18px;
+    flex-basis:18px;
+  }
+
+  .archive-formula-tile.archive-formula-index-row {
+    min-height:84px;
+    border-radius:11px;
+  }
+
+  .archive-formula-index-row:active {
+    transform:scale(.99);
+  }
+
+  .archive-detail-sheet {
+    width:100%;
+    max-height:92dvh;
+    padding-inline:8px;
+  }
+
+  .archive-detail-sheet > .archive-detail-card {
+    padding:10px;
+  }
+
+  .archive-formula-full-detail {
+    gap:9px;
+  }
+
+  .archive-full-interaction-note {
+    padding:7px 8px;
+    font-size:.65rem;
+  }
+}
