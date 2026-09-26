@@ -2326,6 +2326,7 @@
 
   function switchView(name) {
     name = RESTORABLE_VIEWS.has(name) ? name : "game";
+    if (name !== "uiLab") A.ForgeUiLab?.suspendMotion?.();
     document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
     $(`#${name}View`)?.classList.add("active");
     navigation?.setActive(name);

@@ -168,6 +168,10 @@
 
   const FULL_IMPRINT_MS = 1450;
   const QUICK_IMPRINT_MS = 780;
+  const MOTION_IDLE_MS = 420;
+  const MOTION_LIMIT_X = 4;
+  const MOTION_LIMIT_Y = 4.5;
+  const MOTION_DEAD_ZONE = .14;
 
   const state = {
     session: null,
@@ -181,9 +185,288 @@
     tiltZ: -2,
     depth: 72,
     atmosphere: true,
+    motionEnabled: false,
+    motionSensorStatus: "idle",
     inlineControl: null,
     nameEditing: false
   };
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
+
+  function pointerMotionVector(rect, clientX, clientY) {
+    const normalize = (value, size) => clamp((value / Math.max(1, size) - .5) * 2, -1, 1);
+    const beyondDeadZone = value => {
+      const magnitude = Math.abs(value);
+      if (magnitude <= MOTION_DEAD_ZONE) return 0;
+      return Math.sign(value) * (magnitude - MOTION_DEAD_ZONE) / (1 - MOTION_DEAD_ZONE);
+    };
+    const x = beyondDeadZone(normalize(clientX - rect.left, rect.width));
+    const y = beyondDeadZone(normalize(clientY - rect.top, rect.height));
+    return {
+      x: clamp(-y * MOTION_LIMIT_X, -MOTION_LIMIT_X, MOTION_LIMIT_X),
+      y: clamp(x * MOTION_LIMIT_Y, -MOTION_LIMIT_Y, MOTION_LIMIT_Y)
+    };
+  }
+
+  function orientationImpulse(previous, beta, gamma) {
+    if (!Number.isFinite(beta) || !Number.isFinite(gamma)) return { sample: previous, x: 0, y: 0, significant: false };
+    const sample = { beta, gamma };
+    if (!previous) return { sample, x: 0, y: 0, significant: false };
+    const deltaBeta = beta - previous.beta;
+    const deltaGamma = gamma - previous.gamma;
+    const significant = Math.max(Math.abs(deltaBeta), Math.abs(deltaGamma)) >= .16;
+    return {
+      sample,
+      x: significant ? clamp(-deltaBeta * .72, -MOTION_LIMIT_X, MOTION_LIMIT_X) : 0,
+      y: significant ? clamp(deltaGamma * .72, -MOTION_LIMIT_Y, MOTION_LIMIT_Y) : 0,
+      significant
+    };
+  }
+
+  function createMotionController() {
+    const runtime = {
+      root: null,
+      stage: null,
+      card: null,
+      frame: 0,
+      lastFrame: 0,
+      lastInput: 0,
+      targetX: 0,
+      targetY: 0,
+      currentX: 0,
+      currentY: 0,
+      velocityX: 0,
+      velocityY: 0,
+      orientationSample: null,
+      permission: "unknown",
+      direct: false,
+      environmentBound: false,
+      reducedQuery: null
+    };
+
+    const prefersReducedMotion = () => Boolean(runtime.reducedQuery?.matches || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+    const viewIsActive = () => Boolean(runtime.root?.closest?.(".view")?.classList.contains("active") ?? true);
+
+    const apply = () => {
+      const card = runtime.card;
+      if (!card) return;
+      card.style.setProperty("--lab-pointer-x", runtime.currentX.toFixed(3) + "deg");
+      card.style.setProperty("--lab-pointer-y", runtime.currentY.toFixed(3) + "deg");
+      const moving = Math.max(Math.abs(runtime.currentX), Math.abs(runtime.currentY)) > .08;
+      card.classList.toggle("is-motion-active", moving || runtime.direct);
+    };
+
+    const settle = () => {
+      runtime.targetX = 0;
+      runtime.targetY = 0;
+      runtime.orientationSample = null;
+      wake();
+    };
+
+    const tick = now => {
+      runtime.frame = 0;
+      if (!runtime.card?.isConnected || !state.motionEnabled || prefersReducedMotion() || document.hidden || !viewIsActive()) {
+        runtime.targetX = 0;
+        runtime.targetY = 0;
+      } else if (!runtime.direct && now - runtime.lastInput >= MOTION_IDLE_MS) {
+        runtime.targetX = 0;
+        runtime.targetY = 0;
+      }
+
+      const elapsed = runtime.lastFrame ? clamp((now - runtime.lastFrame) / 16.67, .5, 2) : 1;
+      runtime.lastFrame = now;
+      const damping = Math.pow(.72, elapsed);
+      runtime.velocityX = (runtime.velocityX + (runtime.targetX - runtime.currentX) * .12 * elapsed) * damping;
+      runtime.velocityY = (runtime.velocityY + (runtime.targetY - runtime.currentY) * .12 * elapsed) * damping;
+      runtime.currentX += runtime.velocityX * elapsed;
+      runtime.currentY += runtime.velocityY * elapsed;
+      if (Math.abs(runtime.currentX) >= MOTION_LIMIT_X) runtime.velocityX = 0;
+      if (Math.abs(runtime.currentY) >= MOTION_LIMIT_Y) runtime.velocityY = 0;
+      runtime.currentX = clamp(runtime.currentX, -MOTION_LIMIT_X, MOTION_LIMIT_X);
+      runtime.currentY = clamp(runtime.currentY, -MOTION_LIMIT_Y, MOTION_LIMIT_Y);
+
+      if (Math.abs(runtime.targetX) < .001 && Math.abs(runtime.currentX) < .006 && Math.abs(runtime.velocityX) < .006) {
+        runtime.currentX = 0;
+        runtime.velocityX = 0;
+      }
+      if (Math.abs(runtime.targetY) < .001 && Math.abs(runtime.currentY) < .006 && Math.abs(runtime.velocityY) < .006) {
+        runtime.currentY = 0;
+        runtime.velocityY = 0;
+      }
+      apply();
+
+      const unsettled = runtime.currentX || runtime.currentY || runtime.velocityX || runtime.velocityY || runtime.targetX || runtime.targetY;
+      if (state.motionEnabled && (unsettled || runtime.direct)) runtime.frame = window.requestAnimationFrame(tick);
+    };
+
+    function wake() {
+      if (!runtime.frame) runtime.frame = window.requestAnimationFrame(tick);
+    }
+
+    const input = (x, y) => {
+      if (!state.motionEnabled || prefersReducedMotion() || runtime.direct || document.hidden || !viewIsActive()) return;
+      runtime.targetX = clamp(x, -MOTION_LIMIT_X, MOTION_LIMIT_X);
+      runtime.targetY = clamp(y, -MOTION_LIMIT_Y, MOTION_LIMIT_Y);
+      runtime.lastInput = performance.now();
+      wake();
+    };
+
+    const onOrientation = event => {
+      const impulse = orientationImpulse(runtime.orientationSample, Number(event.beta), Number(event.gamma));
+      runtime.orientationSample = impulse.sample;
+      if (!impulse.significant) return;
+      input(impulse.x, impulse.y);
+    };
+
+    const onVisibility = () => {
+      runtime.orientationSample = null;
+      if (document.hidden) {
+        window.removeEventListener("deviceorientation", onOrientation);
+        settle();
+      } else {
+        if (runtime.permission === "granted" && runtime.environmentBound) {
+          window.removeEventListener("deviceorientation", onOrientation);
+          window.addEventListener("deviceorientation", onOrientation, { passive: true });
+        }
+        runtime.currentX = 0;
+        runtime.currentY = 0;
+        runtime.velocityX = 0;
+        runtime.velocityY = 0;
+        apply();
+      }
+    };
+
+    const onReducedMotionChange = () => {
+      runtime.orientationSample = null;
+      settle();
+      syncClasses();
+    };
+
+    const bindEnvironment = () => {
+      if (runtime.environmentBound) return;
+      runtime.environmentBound = true;
+      runtime.reducedQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") || null;
+      runtime.reducedQuery?.addEventListener?.("change", onReducedMotionChange);
+      document.addEventListener("visibilitychange", onVisibility);
+      if (runtime.permission === "granted") window.addEventListener("deviceorientation", onOrientation, { passive: true });
+    };
+
+    const unbindEnvironment = () => {
+      if (!runtime.environmentBound) return;
+      runtime.environmentBound = false;
+      runtime.reducedQuery?.removeEventListener?.("change", onReducedMotionChange);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("deviceorientation", onOrientation);
+      runtime.reducedQuery = null;
+      runtime.orientationSample = null;
+    };
+
+    function syncClasses() {
+      const card = runtime.card;
+      if (!card) return;
+      card.classList.toggle("motion-enabled", state.motionEnabled && !prefersReducedMotion());
+      card.classList.toggle("motion-reduced", state.motionEnabled && prefersReducedMotion());
+      card.dataset.labMotionSensor = state.motionSensorStatus;
+    }
+
+    async function requestSensorPermission() {
+      if (prefersReducedMotion()) return "reduced";
+      const OrientationEvent = window.DeviceOrientationEvent;
+      if (typeof OrientationEvent === "undefined") return "unsupported";
+      if (typeof OrientationEvent.requestPermission === "function") {
+        try {
+          const result = await OrientationEvent.requestPermission();
+          return result === "granted" ? "granted" : "denied";
+        } catch (_) {
+          return "denied";
+        }
+      }
+      return "granted";
+    }
+
+    return {
+      attach(root, stage, card) {
+        runtime.root = root;
+        runtime.stage = stage;
+        runtime.card = card;
+        apply();
+        syncClasses();
+        if (state.motionEnabled) bindEnvironment();
+      },
+      pointer(event) {
+        if (!runtime.stage || event.pointerType === "touch") return;
+        const vector = pointerMotionVector(runtime.stage.getBoundingClientRect(), event.clientX, event.clientY);
+        input(vector.x, vector.y);
+      },
+      pointerLeave() {
+        runtime.lastInput = performance.now();
+        wake();
+      },
+      setDirect(active) {
+        runtime.direct = Boolean(active);
+        if (runtime.direct) {
+          runtime.targetX = 0;
+          runtime.targetY = 0;
+          runtime.currentX = 0;
+          runtime.currentY = 0;
+          runtime.velocityX = 0;
+          runtime.velocityY = 0;
+        } else runtime.lastInput = performance.now();
+        apply();
+        wake();
+      },
+      async setEnabled(enabled) {
+        state.motionEnabled = Boolean(enabled);
+        if (!state.motionEnabled) {
+          state.motionSensorStatus = "idle";
+          unbindEnvironment();
+          if (runtime.frame) window.cancelAnimationFrame(runtime.frame);
+          runtime.frame = 0;
+          runtime.lastFrame = 0;
+          runtime.targetX = 0;
+          runtime.targetY = 0;
+          runtime.currentX = 0;
+          runtime.currentY = 0;
+          runtime.velocityX = 0;
+          runtime.velocityY = 0;
+          apply();
+          syncClasses();
+          return state.motionSensorStatus;
+        }
+        bindEnvironment();
+        runtime.permission = await requestSensorPermission();
+        if (!state.motionEnabled) {
+          unbindEnvironment();
+          state.motionSensorStatus = "idle";
+          syncClasses();
+          return state.motionSensorStatus;
+        }
+        state.motionSensorStatus = runtime.permission;
+        if (runtime.permission === "granted" && runtime.environmentBound) {
+          window.removeEventListener("deviceorientation", onOrientation);
+          window.addEventListener("deviceorientation", onOrientation, { passive: true });
+        }
+        syncClasses();
+        return state.motionSensorStatus;
+      },
+      suspend() {
+        unbindEnvironment();
+        if (runtime.frame) window.cancelAnimationFrame(runtime.frame);
+        runtime.frame = 0;
+        runtime.lastFrame = 0;
+        runtime.targetX = 0;
+        runtime.targetY = 0;
+        runtime.currentX = 0;
+        runtime.currentY = 0;
+        runtime.velocityX = 0;
+        runtime.velocityY = 0;
+        runtime.direct = false;
+        apply();
+      }
+    };
+  }
+
+  const motionController = createMotionController();
 
   const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, char => ({
     "&": "&amp;",
@@ -695,6 +978,16 @@
     return "";
   }
 
+  function motionStatusText() {
+    if (!state.motionEnabled) return "Disattivato · il trascinamento manuale resta disponibile.";
+    return {
+      granted: "Attivo · sensori relativi, mouse e touch disponibili.",
+      denied: "Sensori non autorizzati · fallback mouse e touch attivo.",
+      unsupported: "Sensori non disponibili · fallback mouse e touch attivo.",
+      reduced: "Ridotto dalle preferenze di sistema · editing invariato."
+    }[state.motionSensorStatus] || "Attivo · rilevamento delle capacità in corso.";
+  }
+
   function tuningMarkup() {
     const expanded = window.matchMedia?.("(min-width: 981px)")?.matches ? " open" : "";
     return (
@@ -709,7 +1002,9 @@
             '<label>Separazione elementi <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="100" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
           '</div>' +
           '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Nubi, brace e aura rituale</label>' +
-          "<p>Su computer il puntatore aggiunge una lieve profondità. Su schermo tattile la carta resta stabile finché non la afferri.</p>" +
+          '<label class="forge-lab-motion-toggle"><input type="checkbox" data-lab-motion ' + (state.motionEnabled ? "checked" : "") + '> Movimento carta</label>' +
+          '<p class="forge-lab-motion-status" data-lab-motion-status aria-live="polite">' + escapeHtml(motionStatusText()) + '</p>' +
+          "<p>Il movimento è temporaneo: al rilascio la Formula torna progressivamente al proprio assetto neutro.</p>" +
         '</div>' +
       '</details>'
     );
@@ -1056,6 +1351,7 @@
       timer = 0;
       if (active) {
         active = false;
+        motionController.setDirect(false);
         card.classList.remove("is-grabbed");
         card.classList.add("is-returning");
         card.style.setProperty("--lab-grab-x", "0deg");
@@ -1073,6 +1369,7 @@
       pointerId = event.pointerId;
       timer = window.setTimeout(() => {
         active = true;
+        motionController.setDirect(true);
         card.classList.remove("is-returning");
         card.classList.add("is-grabbed");
         try { card.setPointerCapture(pointerId); } catch {}
@@ -1083,8 +1380,8 @@
       if (!active || event.pointerId !== pointerId) return;
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
-      const rotateY = Math.max(-10, Math.min(10, dx / 7));
-      const rotateX = Math.max(-6, Math.min(6, -dy / 9));
+      const rotateY = clamp(dx / 12, -MOTION_LIMIT_Y, MOTION_LIMIT_Y);
+      const rotateX = clamp(-dy / 14, -MOTION_LIMIT_X, MOTION_LIMIT_X);
       card.style.setProperty("--lab-grab-x", rotateX.toFixed(2) + "deg");
       card.style.setProperty("--lab-grab-y", rotateY.toFixed(2) + "deg");
       event.preventDefault();
@@ -1292,20 +1589,21 @@
       root.querySelector(".forge-lab-stage")?.classList.toggle("no-atmosphere", !state.atmosphere);
     });
 
+    root.querySelector("[data-lab-motion]")?.addEventListener("change", async event => {
+      const toggle = event.currentTarget;
+      toggle.disabled = true;
+      const status = await motionController.setEnabled(Boolean(toggle.checked));
+      toggle.disabled = false;
+      toggle.checked = state.motionEnabled;
+      const output = root.querySelector("[data-lab-motion-status]");
+      if (output) output.textContent = motionStatusText(status);
+    });
+
     const stage = root.querySelector(".forge-lab-card-stage");
     const card = root.querySelector(".forge-lab-card");
-    stage?.addEventListener("pointermove", event => {
-      if (!card || event.pointerType === "touch" || card.classList.contains("is-grabbed")) return;
-      const rect = stage.getBoundingClientRect();
-      const x = ((event.clientX - rect.left) / Math.max(1, rect.width) - .5) * 2;
-      const y = ((event.clientY - rect.top) / Math.max(1, rect.height) - .5) * 2;
-      card.style.setProperty("--lab-pointer-x", (-y * .7).toFixed(2) + "deg");
-      card.style.setProperty("--lab-pointer-y", (x * 1.05).toFixed(2) + "deg");
-    });
-    stage?.addEventListener("pointerleave", () => {
-      card?.style.setProperty("--lab-pointer-x", "0deg");
-      card?.style.setProperty("--lab-pointer-y", "0deg");
-    });
+    motionController.attach(root, stage, card);
+    stage?.addEventListener("pointermove", event => motionController.pointer(event));
+    stage?.addEventListener("pointerleave", () => motionController.pointerLeave());
 
     bindDirectControls(root, recipe, session);
     bindArtControl(root, recipe);
@@ -1352,6 +1650,7 @@
   A.ForgeUiLab = Object.freeze({
     render,
     refreshFromPersistedDraft,
+    suspendMotion: () => motionController.suspend(),
     resetSession() {
       state.session = null;
     }

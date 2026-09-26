@@ -5256,6 +5256,61 @@
     scale(1.06);
 }
 
+/* Milestone 4: transient card motion; semantic Z supplies the layer parallax. */
+.forge-lab-motion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  color: rgba(244, 230, 197, .9);
+}
+
+.forge-lab-motion-toggle input:disabled {
+  opacity: .55;
+}
+
+.forge-lab-motion-status {
+  margin: -9px 0 0;
+  color: rgba(235, 222, 194, .66);
+  font-size: .72rem;
+  line-height: 1.4;
+}
+
+.forge-lab-card.motion-enabled:not(.is-grabbed):not(.is-returning) {
+  transition: filter 180ms ease;
+}
+
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-nameplate,
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-cost,
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-type,
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-school-anchor,
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-stats {
+  animation: forgeLabResidualDrift 6.8s ease-in-out infinite;
+}
+
+.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-cost { animation-delay: -1.7s; animation-duration: 7.4s; }
+.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-type { animation-delay: -4.1s; animation-duration: 8.1s; }
+.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-school-anchor { animation-delay: -2.8s; animation-duration: 7.7s; }
+.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-stats { animation-delay: -5.2s; animation-duration: 8.4s; }
+
+@keyframes forgeLabResidualDrift {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  38% { translate: .8px -1px; rotate: .1deg; }
+  72% { translate: -1px .6px; rotate: -.08deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-lab-card.motion-enabled .forge-lab-nameplate,
+  .forge-lab-card.motion-enabled .forge-lab-cost,
+  .forge-lab-card.motion-enabled .forge-lab-type,
+  .forge-lab-card.motion-enabled .forge-lab-school-anchor,
+  .forge-lab-card.motion-enabled .forge-lab-stats {
+    animation: none !important;
+    translate: 0 0;
+    rotate: 0deg;
+  }
+}
+
 @media (max-width: 640px) {
   .forge-lab-card-shell {
     grid-template-columns: minmax(0, 300px);
