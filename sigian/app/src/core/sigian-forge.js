@@ -354,6 +354,30 @@
     if (!validation.valid) structuralReasons.push("recipe-invalid");
     if (draft.recipe.type === "spell" && draft.recipe.sigils.length === 0) structuralReasons.push("spell-requires-sigil");
 
+    if (typeof A.getSigianComponentInstance === "function" && typeof A.getSigianForgeTransactionBinding === "function") {
+      const school = draft.recipe.school;
+      const affinityAllowsSchool = affinity => {
+        const normalized = A.normalizeSigianCraftAffinity?.(affinity) || affinity;
+        return normalized?.mode === "universal" || (normalized?.schools || []).includes(school);
+      };
+      draft.recipe.sigils.filter(item => item.collectibleId).forEach(sigil => {
+        const binding = A.getSigianForgeTransactionBinding(draft.transaction, "sigil", sigil.slotId);
+        const instance = binding?.componentInstanceId ? A.getSigianComponentInstance(binding.componentInstanceId) : null;
+        const expectedId = A.sigianCollectibleInventoryIdentity?.(sigil.collectibleId, school)?.inventoryId || null;
+        if (!binding || !instance || instance.inventoryId !== expectedId || !affinityAllowsSchool(instance.affinity)) {
+          structuralReasons.push("component-copy-unavailable");
+        }
+      });
+      if (draft.recipe.constraint) {
+        const binding = A.getSigianForgeTransactionBinding(draft.transaction, "constraint", "constraint");
+        const instance = binding?.componentInstanceId ? A.getSigianComponentInstance(binding.componentInstanceId) : null;
+        const expectedId = A.sigianConstraintInventoryId?.(draft.recipe.constraint) || null;
+        if (!binding || !instance || instance.inventoryId !== expectedId || !affinityAllowsSchool(instance.affinity)) {
+          structuralReasons.push("component-copy-unavailable");
+        }
+      }
+    }
+
     let math = null;
     let mathError = null;
     if (typeof A.analyzeSigianForgeRecipe === "function") {
@@ -418,6 +442,49 @@
         constraint: null
       }
     });
+    if (draft.transaction?.baselineRevision == null && typeof A.getSigianComponentInventorySnapshot === "function") {
+      draft.transaction.baselineRevision = String(A.getSigianComponentInventorySnapshot().revision);
+    }
+
+    if (typeof A.findSigianFreeCollectibleComponentInstance === "function"
+      && typeof A.bindSigianForgeTransactionComponent === "function") {
+      let transaction = clone(draft.transaction);
+      const recipe = clone(draft.recipe);
+      let migrated = false;
+
+      recipe.sigils.filter(item => item.collectibleId).forEach(sigil => {
+        if (A.getSigianForgeTransactionBinding?.(transaction, "sigil", sigil.slotId)) return;
+        const instance = A.findSigianFreeCollectibleComponentInstance(sigil.collectibleId, recipe.school, { transaction });
+        if (!instance) return;
+        sigil.affinity = clone(instance.affinity);
+        const inventoryId = A.sigianCollectibleInventoryIdentity?.(sigil.collectibleId, recipe.school)?.inventoryId || null;
+        transaction = A.bindSigianForgeTransactionComponent(transaction, {
+          kind:"sigil",
+          slotId:sigil.slotId,
+          componentInstanceId:instance.componentInstanceId,
+          inventoryId
+        });
+        migrated = true;
+      });
+
+      if (recipe.constraint && !A.getSigianForgeTransactionBinding?.(transaction, "constraint", "constraint")) {
+        const instance = A.findSigianFreeConstraintComponentInstance?.(recipe.constraint, recipe.school, { transaction });
+        if (instance) {
+          recipe.constraint.affinity = clone(instance.affinity);
+          transaction = A.bindSigianForgeTransactionComponent(transaction, {
+            kind:"constraint",
+            slotId:"constraint",
+            componentInstanceId:instance.componentInstanceId,
+            inventoryId:A.sigianConstraintInventoryId?.(recipe.constraint) || null
+          });
+          migrated = true;
+        }
+      }
+
+      if (migrated) {
+        draft = normalizeDraft({ ...draft, recipe, transaction });
+      }
+    }
 
     function notify() {
       const snapshot = api.snapshot();
@@ -456,6 +523,25 @@
       };
     }
 
+    function draftBinding(kind, slotId) {
+      return A.getSigianForgeTransactionBinding?.(draft.transaction, kind, slotId) || null;
+    }
+
+    function transactionWithoutBinding(kind, slotId) {
+      return A.unbindSigianForgeTransactionComponent?.(draft.transaction, kind, slotId)
+        || clone(draft.transaction);
+    }
+
+    function bindTransaction(transaction, kind, slotId, instance, inventoryId) {
+      if (!instance?.componentInstanceId || typeof A.bindSigianForgeTransactionComponent !== "function") return transaction;
+      return A.bindSigianForgeTransactionComponent(transaction, {
+        kind,
+        slotId,
+        componentInstanceId:instance.componentInstanceId,
+        inventoryId
+      });
+    }
+
     function commitDraftPatch(patch, options = {}) {
       if (!options.skipHistory) {
         history.push(clone(draft));
@@ -470,6 +556,54 @@
       });
       persist();
       return notify();
+    }
+
+    function commitRecipeAndTransaction(nextRecipe, nextTransaction) {
+      return commitDraftPatch({
+        recipe:normalizeRecipe(nextRecipe),
+        transaction:nextTransaction
+      });
+    }
+
+    function rebindRecipeComponentsForSchool(nextSchool) {
+      const recipe = clone(draft.recipe);
+      recipe.school = nextSchool;
+      if (typeof A.findSigianFreeCollectibleComponentInstance !== "function") {
+        return { recipe, transaction:clone(draft.transaction) };
+      }
+
+      let transaction = clone(draft.transaction);
+      recipe.sigils.forEach(sigil => {
+        if (sigil.collectibleId) {
+          transaction = A.unbindSigianForgeTransactionComponent?.(transaction, "sigil", sigil.slotId) || transaction;
+        }
+      });
+      if (recipe.constraint) {
+        transaction = A.unbindSigianForgeTransactionComponent?.(transaction, "constraint", "constraint") || transaction;
+      }
+
+      recipe.sigils.forEach(sigil => {
+        if (!sigil.collectibleId) return;
+        const instance = A.findSigianFreeCollectibleComponentInstance(sigil.collectibleId, nextSchool, { transaction });
+        if (!instance) {
+          throw new Error(`Nessuna copia libera di ${sigil.collectibleId} compatibile con la Scuola ${nextSchool}.`);
+        }
+        sigil.affinity = clone(instance.affinity);
+        const inventoryId = A.sigianCollectibleInventoryIdentity?.(sigil.collectibleId, nextSchool)?.inventoryId || null;
+        transaction = bindTransaction(transaction, "sigil", sigil.slotId, instance, inventoryId);
+      });
+
+      if (recipe.constraint) {
+        const instance = A.findSigianFreeConstraintComponentInstance?.(recipe.constraint, nextSchool, { transaction });
+        if (!instance) {
+          throw new Error("Nessuna copia libera del Vincolo compatibile con la nuova Scuola.");
+        }
+        recipe.constraint.affinity = clone(instance.affinity);
+        const inventoryId = A.sigianConstraintInventoryId?.(recipe.constraint) || null;
+        transaction = bindTransaction(transaction, "constraint", "constraint", instance, inventoryId);
+      }
+
+      return { recipe, transaction };
     }
 
     const api = Object.freeze({
@@ -563,7 +697,9 @@
       setSchool(school) {
         const definition = A.getSigianSchool?.(school);
         if (!definition || definition.status !== "active") throw new Error(`Scuola non attiva: ${school}.`);
-        return commitRecipe(recipeWith({ school: definition.id }));
+        if (definition.id === draft.recipe.school) return this.snapshot();
+        const rebound = rebindRecipeComponentsForSchool(definition.id);
+        return commitRecipeAndTransaction(rebound.recipe, rebound.transaction);
       },
 
       setType(type) {
@@ -591,6 +727,17 @@
         const normalizedId = String(definitionId || "").trim();
         if (!normalizedId) return this.removeConstraint();
         const constraint = defaultForgeConstraint(normalizedId, draft.recipe.school);
+        if (typeof A.findSigianFreeConstraintComponentInstance === "function") {
+          const transaction = transactionWithoutBinding("constraint", "constraint");
+          const instance = A.findSigianFreeConstraintComponentInstance(constraint, draft.recipe.school, { transaction });
+          if (!instance) throw new Error(`Nessuna copia libera del Vincolo ${normalizedId}.`);
+          constraint.affinity = clone(instance.affinity);
+          const inventoryId = A.sigianConstraintInventoryId?.(constraint) || null;
+          return commitRecipeAndTransaction(
+            recipeWith({ constraint }),
+            bindTransaction(transaction, "constraint", "constraint", instance, inventoryId)
+          );
+        }
         if (typeof A.getSigianOwnedConstraintQuantity === "function"
           && A.getSigianOwnedConstraintQuantity(constraint) < 1) {
           throw new Error(`Vincolo non posseduto: ${normalizedId}.`);
@@ -600,11 +747,32 @@
 
       updateConstraint(patch = {}) {
         if (!draft.recipe.constraint) throw new Error("Nessun Vincolo globale impostato.");
+        const current = clone(draft.recipe.constraint);
         const constraint = {
-          ...clone(draft.recipe.constraint),
+          ...current,
           ...clone(patch),
-          definitionId:draft.recipe.constraint.definitionId
+          definitionId:current.definitionId
         };
+        if (typeof A.findSigianFreeConstraintComponentInstance === "function") {
+          const currentId = A.sigianConstraintInventoryId?.(current) || null;
+          const nextId = A.sigianConstraintInventoryId?.(constraint) || null;
+          const existing = draftBinding("constraint", "constraint");
+          if (currentId && currentId === nextId && existing?.componentInstanceId) {
+            const instance = A.getSigianComponentInstance?.(existing.componentInstanceId);
+            if (instance) {
+              constraint.affinity = clone(instance.affinity);
+              return commitRecipe(recipeWith({ constraint }));
+            }
+          }
+          const transaction = transactionWithoutBinding("constraint", "constraint");
+          const instance = A.findSigianFreeConstraintComponentInstance(constraint, draft.recipe.school, { transaction });
+          if (!instance) throw new Error("Nessuna copia libera di questa variante del Vincolo.");
+          constraint.affinity = clone(instance.affinity);
+          return commitRecipeAndTransaction(
+            recipeWith({ constraint }),
+            bindTransaction(transaction, "constraint", "constraint", instance, nextId)
+          );
+        }
         if (typeof A.getSigianOwnedConstraintQuantity === "function"
           && A.getSigianOwnedConstraintQuantity(constraint) < 1) {
           throw new Error(`Questa copia del Vincolo non è presente nell'Inventario.`);
@@ -641,6 +809,12 @@
 
       removeConstraint() {
         if (!draft.recipe.constraint) return this.snapshot();
+        if (typeof A.unbindSigianForgeTransactionComponent === "function") {
+          return commitRecipeAndTransaction(
+            recipeWith({ constraint:null }),
+            transactionWithoutBinding("constraint", "constraint")
+          );
+        }
         return commitRecipe(recipeWith({ constraint:null }));
       },
 
@@ -663,19 +837,32 @@
         if (draft.recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3)) {
           throw new Error(`La Formula può contenere al massimo ${A.SIGIAN_MAX_PRIMARY_SIGILS || 3} Sigilli primari.`);
         }
-        const owned = typeof A.getSigianOwnedCollectibleSigilQuantity === "function"
-          ? A.getSigianOwnedCollectibleSigilQuantity(collectibleId, draft.recipe.school)
-          : null;
-        const usedCopies = draft.recipe.sigils.filter(item => item.collectibleId === collectibleId).length;
-        if (owned != null && usedCopies >= owned) {
-          throw new Error(`Non possiedi altre copie di ${collectibleId}.`);
-        }
         const next = clone(draft.recipe.sigils);
         let candidate = defaultForgeCollectibleSigil(collectibleId, draft.recipe.school, next.length);
         let counter = 1;
         const used = new Set(next.map(item => item.slotId));
         while (used.has(candidate.slotId)) {
           candidate.slotId = `forge-${next.length + 1}-${collectibleId}-${counter++}`;
+        }
+
+        if (typeof A.findSigianFreeCollectibleComponentInstance === "function") {
+          const instance = A.findSigianFreeCollectibleComponentInstance(collectibleId, draft.recipe.school, {
+            transaction:draft.transaction
+          });
+          if (!instance) throw new Error(`Nessuna copia libera di ${collectibleId}.`);
+          candidate.affinity = clone(instance.affinity);
+          next.push(candidate);
+          const inventoryId = A.sigianCollectibleInventoryIdentity?.(collectibleId, draft.recipe.school)?.inventoryId || null;
+          const transaction = bindTransaction(draft.transaction, "sigil", candidate.slotId, instance, inventoryId);
+          return commitRecipeAndTransaction(recipeWith({ sigils:next }), transaction);
+        }
+
+        const owned = typeof A.getSigianOwnedCollectibleSigilQuantity === "function"
+          ? A.getSigianOwnedCollectibleSigilQuantity(collectibleId, draft.recipe.school)
+          : null;
+        const usedCopies = draft.recipe.sigils.filter(item => item.collectibleId === collectibleId).length;
+        if (owned != null && usedCopies >= owned) {
+          throw new Error(`Non possiedi altre copie di ${collectibleId}.`);
         }
         next.push(candidate);
         return commitRecipe(recipeWith({ sigils:next }));
@@ -684,6 +871,12 @@
       removeSigil(slotId) {
         const next = draft.recipe.sigils.filter(item => item.slotId !== slotId);
         if (next.length === draft.recipe.sigils.length) return this.snapshot();
+        if (typeof A.unbindSigianForgeTransactionComponent === "function") {
+          return commitRecipeAndTransaction(
+            recipeWith({ sigils:next }),
+            transactionWithoutBinding("sigil", slotId)
+          );
+        }
         return commitRecipe(recipeWith({ sigils: next }));
       },
 
@@ -700,6 +893,27 @@
       replaceCollectibleSigil(slotId, collectibleId) {
         const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
         if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+        const current = draft.recipe.sigils[index];
+
+        if (typeof A.findSigianFreeCollectibleComponentInstance === "function") {
+          const existing = draftBinding("sigil", slotId);
+          if (current.collectibleId === collectibleId && existing?.componentInstanceId) return this.snapshot();
+
+          const transaction = transactionWithoutBinding("sigil", slotId);
+          const instance = A.findSigianFreeCollectibleComponentInstance(collectibleId, draft.recipe.school, { transaction });
+          if (!instance) throw new Error(`Nessuna copia libera di ${collectibleId}.`);
+          const next = clone(draft.recipe.sigils);
+          const replacement = defaultForgeCollectibleSigil(collectibleId, draft.recipe.school, index);
+          replacement.slotId = slotId;
+          replacement.affinity = clone(instance.affinity);
+          next[index] = replacement;
+          const inventoryId = A.sigianCollectibleInventoryIdentity?.(collectibleId, draft.recipe.school)?.inventoryId || null;
+          return commitRecipeAndTransaction(
+            recipeWith({ sigils:next }),
+            bindTransaction(transaction, "sigil", slotId, instance, inventoryId)
+          );
+        }
+
         const owned = typeof A.getSigianOwnedCollectibleSigilQuantity === "function"
           ? A.getSigianOwnedCollectibleSigilQuantity(collectibleId, draft.recipe.school)
           : null;
@@ -755,6 +969,10 @@
       },
 
       setSigilAffinity(slotId, affinity) {
+        const current = draft.recipe.sigils.find(item => item.slotId === slotId);
+        if (current?.collectibleId && draftBinding("sigil", slotId)) {
+          throw new Error("L'Affinità è determinata dalla copia posseduta e non può essere modificata direttamente.");
+        }
         const normalized = A.normalizeSigianAffinity?.(affinity, draft.recipe.school);
         if (!normalized) throw new Error("Affinità Sigillo non valida.");
         const validation = A.validateSigianAffinity?.(normalized);

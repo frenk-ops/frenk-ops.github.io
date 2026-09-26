@@ -148,7 +148,12 @@
         const affinityModes = [...new Set(group.variants.map(item => item.affinity?.mode).filter(Boolean))];
         const ownedCopies = group.variants.reduce((sum, item) => sum + Number(item.ownedQuantity || item.quantity || 0), 0);
         const inventoryCopies = group.variants.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-        return { ...group, grades, effectSchools, affinityModes, ownedCopies, inventoryCopies };
+        const freeCopies = group.variants.reduce((sum, item) => sum + Number(item.freeQuantity ?? item.quantity ?? item.ownedQuantity ?? 0), 0);
+        const inUseCopies = group.variants.reduce((sum, item) => sum + Number(item.inUseQuantity || 0), 0);
+        const assignedFormulaInstanceIds = [...new Set(group.variants.flatMap(item =>
+          item.assignedFormulaInstanceIds || []
+        ))];
+        return { ...group, grades, effectSchools, affinityModes, ownedCopies, inventoryCopies, freeCopies, inUseCopies, assignedFormulaInstanceIds };
       })
       .sort((left, right) => left.family.localeCompare(right.family) || left.name.localeCompare(right.name));
   }
@@ -500,7 +505,24 @@
       </div>`;
   }
 
-  function componentGroupDetailMarkup(group, scope) {
+  function componentAssignmentsMarkup(group, formulas) {
+    const ids = group?.assignedFormulaInstanceIds || [];
+    if (!ids.length) return "";
+    return `<section class="archive-component-assignments">
+      <div class="archive-block-heading">
+        <strong>${escapeHtml(t("archive.assignedTo"))}</strong>
+        <small>${escapeHtml(t("archive.assignmentHint"))}</small>
+      </div>
+      <div class="archive-component-assignment-list">
+        ${ids.map(formulaInstanceId => {
+          const formula = formulas.find(item => item.formulaInstanceId === formulaInstanceId);
+          const label = formula ? localizedFormula(formula).name : formulaInstanceId;
+          return `<button type="button" data-component-assigned-formula="${escapeHtml(formulaInstanceId)}">${escapeHtml(label)}</button>`;
+        }).join("")}
+      </div>
+    </section>`;
+  }
+  function componentGroupDetailMarkup(group, scope, formulas = []) {
     if (!group) return `<div class="archive-empty">${escapeHtml(t("archive.selectForDetails"))}</div>`;
     const copies = scope === "inventory" ? group.inventoryCopies : group.ownedCopies;
     return `
@@ -512,7 +534,11 @@
           </div>
           ${scope === "inventory" ? `<span class="archive-quantity archive-detail-quantity">×${copies}</span>` : ""}
         </div>
-        <p>${escapeHtml(group.summary)}</p>
+        ${scope === "inventory" ? `<div class="archive-component-allocation-summary">
+          <span><strong>${escapeHtml(group.freeCopies)}</strong> ${escapeHtml(t("archive.freeCopies"))}</span>
+          <span><strong>${escapeHtml(group.inUseCopies)}</strong> ${escapeHtml(t("archive.inUseCopies"))}</span>
+        </div>` : ""}
+        ${scope === "inventory" ? componentAssignmentsMarkup(group, formulas) : ""}\n        <p>${escapeHtml(group.summary)}</p>
         <section class="archive-variant-section">
           <div class="archive-block-heading">
             <strong>${escapeHtml(t("archive.schools"))}</strong>
@@ -708,7 +734,7 @@
             ${filtered.map(group => componentIdentityTileMarkup(group, data.scope, group.id === state.selectedId)).join("") || `<div class="archive-empty">${escapeHtml(t("archive.noItems"))}</div>`}
           </div>
         `,
-        detail:componentGroupDetailMarkup(selected, data.scope)
+        detail:componentGroupDetailMarkup(selected, data.scope, data.formulas)
       };
     }
 
@@ -843,6 +869,18 @@
 
     root.querySelectorAll("[data-formula-component]").forEach(button => button.addEventListener("click", () => {
       state.selectedComponentId = button.dataset.formulaComponent;
+      state.detailOpen = true;
+      render(root, scope);
+    }));
+
+    root.querySelectorAll("[data-component-assigned-formula]").forEach(button => button.addEventListener("click", () => {
+      const formulaInstanceId = button.dataset.componentAssignedFormula;
+      const formula = data.formulas.find(item => item.formulaInstanceId === formulaInstanceId);
+      if (!formula) return;
+      state.section = "formulas";
+      state.selectedId = formula.id;
+      state.selectedComponentId = null;
+      state.formula.page = 1;
       state.detailOpen = true;
       render(root, scope);
     }));

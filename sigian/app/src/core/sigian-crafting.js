@@ -218,4 +218,52 @@
     current.operations.push(next);
     return current;
   };
+
+  A.getSigianForgeTransactionBinding = function getSigianForgeTransactionBinding(plan, kind, slotId) {
+    const expectedKind = kind === "constraint" ? "constraint" : "sigil";
+    const expectedSlot = String(slotId || "");
+    const operation = (plan?.operations || []).find(item =>
+      item.type === "assign"
+      && item.payload?.kind === expectedKind
+      && String(item.payload?.slotId || "") === expectedSlot
+    );
+    return operation ? clone(operation.payload) : null;
+  };
+
+  A.bindSigianForgeTransactionComponent = function bindSigianForgeTransactionComponent(plan, binding) {
+    if (!binding?.componentInstanceId || !binding?.slotId) {
+      throw new Error("Binding componente Forgia incompleto.");
+    }
+    const kind = binding.kind === "constraint" ? "constraint" : "sigil";
+    const slotId = String(binding.slotId);
+    const current = A.createSigianForgeTransactionPlan(plan || {});
+    current.operations = current.operations.filter(item => !(
+      item.type === "assign"
+      && item.payload?.kind === kind
+      && String(item.payload?.slotId || "") === slotId
+    ));
+    current.operations.push(transactionOperation({
+      id:`bind:${kind}:${slotId}`,
+      type:"assign",
+      payload:{
+        kind,
+        slotId,
+        componentInstanceId:String(binding.componentInstanceId),
+        inventoryId:binding.inventoryId == null ? null : String(binding.inventoryId)
+      }
+    }, current.operations.length));
+    return current;
+  };
+
+  A.unbindSigianForgeTransactionComponent = function unbindSigianForgeTransactionComponent(plan, kind, slotId) {
+    const expectedKind = kind === "constraint" ? "constraint" : "sigil";
+    const expectedSlot = String(slotId || "");
+    const current = A.createSigianForgeTransactionPlan(plan || {});
+    current.operations = current.operations.filter(item => !(
+      item.type === "assign"
+      && item.payload?.kind === expectedKind
+      && String(item.payload?.slotId || "") === expectedSlot
+    ));
+    return current;
+  };
 })(window.Arcane = window.Arcane || {});

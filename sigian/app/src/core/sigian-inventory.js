@@ -49,15 +49,22 @@
     return Number.isFinite(value) && value >= 0 ? Math.trunc(value) : fallback;
   }
 
-  function constraintInventoryId(constraint) {
-    if (!constraint?.definitionId) return "";
-    const definition = A.getSigianCanonicalV2?.(constraint.definitionId);
+  function canonicalComponentInventoryId(component) {
+    if (!component?.definitionId) return "";
+    const definition = A.getSigianCanonicalV2?.(component.definitionId);
     if (!definition) return "";
     const schoolBound = /<Scuola>/.test(String(definition.name || ""));
     const gradeLess = /senza Gradi/i.test(String(definition.grades || ""));
-    const school = schoolBound ? String(constraint.school || "fire") : "neutral";
-    const grade = gradeLess || constraint.grade == null ? "special" : `g${Math.max(1, Math.trunc(Number(constraint.grade || 1)))}`;
-    return [constraint.definitionId, school, grade].join(":");
+    const specialOneGrade = /speciale\s*·\s*1 Grado/i.test(String(definition.grades || ""));
+    const school = schoolBound ? String(component.school || component.effectSchool || "fire") : "neutral";
+    const grade = gradeLess || specialOneGrade || component.grade == null
+      ? "special"
+      : `g${Math.max(1, Math.trunc(Number(component.grade || 1)))}`;
+    return [component.definitionId, school, grade].join(":");
+  }
+
+  function constraintInventoryId(constraint) {
+    return canonicalComponentInventoryId({ ...constraint, kind:"constraint" });
   }
 
   const COLLECTIBLE_CANONICAL_MAP = Object.freeze({
@@ -456,15 +463,23 @@
     const formulas = formulaItems();
     const cosmetics = cosmeticItems();
     const forgeSigils = collectibleSigilInventoryItems();
+    const componentAvailability = A.getSigianComponentAvailabilityMap?.() || null;
     const inventory = scope === "inventory";
     return {
       scope,
       formulas:formulas.map(item => ({ ...item, inventory })),
       components:components.map(item => {
-        const quantity = ownedQuantity(item.kind === "constraint" ? "constraint" : "component", item.id, 3);
+        const seededQuantity = ownedQuantity(item.kind === "constraint" ? "constraint" : "component", item.id, 3);
+        const availability = componentAvailability?.[item.id] || null;
+        const quantity = availability ? availability.total : seededQuantity;
         return {
           ...item,
           ownedQuantity:quantity,
+          freeQuantity:availability ? availability.free : quantity,
+          inUseQuantity:availability ? availability.inUse : 0,
+          assignedFormulaInstanceIds:availability
+            ? [...new Set((availability.assigned || []).map(instance => instance.allocation?.formulaInstanceId).filter(Boolean))]
+            : [],
           quantity:inventory ? quantity : null
         };
       }),
@@ -494,6 +509,11 @@
 
   A.SIGIAN_AFFINITY_MODES = AFFINITY_MODES;
   A.SIGIAN_AFFINITY_SCHOOL_ORDER = SCHOOL_ORDER;
+  A.SIGIAN_INVENTORY_QUANTITY_STORAGE_KEY = INVENTORY_QUANTITY_STORAGE_KEY;
+  A.getSigianSeedComponentQuantity = function getSigianSeedComponentQuantity(kind, inventoryId, fallback = 3) {
+    const storageKind = kind === "constraint" ? "constraint" : "component";
+    return ownedQuantity(storageKind, inventoryId, fallback);
+  };
   A.sigianSchoolMeta = function sigianSchoolMeta(id) {
     return clone(SCHOOL_META[id] || { name:String(id || ""), icon:"✦", color:"#b6945a" });
   };
@@ -510,14 +530,28 @@
   A.listSigianInventoryCollectibleSigils = function listSigianInventoryCollectibleSigils(formulaSchool = "fire") {
     return collectibleSigilInventoryItems(formulaSchool).map(clone);
   };
-  A.listSigianOwnedForgeSigilOptions = function listSigianOwnedForgeSigilOptions(formulaSchool = "fire") {
+  A.listSigianOwnedForgeSigilOptions = function listSigianOwnedForgeSigilOptions(formulaSchool = "fire", transaction = null) {
     const school = String(formulaSchool || "fire");
     const options = A.listSigianForgeSigilOptions?.(school) || [];
+    const totalMap = A.getSigianComponentAvailabilityMap?.() || null;
+    const compatibleMap = A.getSigianComponentAvailabilityMap?.({ compatibleSchool:school, transaction }) || null;
     return options
-      .map(option => ({
-        ...option,
-        ownedQuantity:A.getSigianOwnedCollectibleSigilQuantity?.(option.id, school) ?? 0
-      }))
+      .map(option => {
+        const inventoryId = collectibleInventoryIdentity(option.id, school)?.inventoryId || null;
+        const total = inventoryId ? totalMap?.[inventoryId] : null;
+        const availability = inventoryId ? compatibleMap?.[inventoryId] : null;
+        const ownedQuantity = total
+          ? total.total
+          : (A.getSigianOwnedCollectibleSigilQuantity?.(option.id, school) ?? 0);
+        return {
+          ...option,
+          ownedQuantity,
+          compatibleQuantity:availability ? availability.total : ownedQuantity,
+          freeQuantity:availability ? availability.free : ownedQuantity,
+          inUseQuantity:availability ? availability.inUse : 0,
+          projectedFreeQuantity:availability ? availability.projectedFree : ownedQuantity
+        };
+      })
       .filter(option => Number(option.ownedQuantity) > 0)
       .map(clone);
   };
@@ -530,12 +564,19 @@
   };
   A.getSigianOwnedCollectibleSigilQuantity = function getSigianOwnedCollectibleSigilQuantity(collectibleId, formulaSchool = "fire") {
     const identity = collectibleInventoryIdentity(collectibleId, formulaSchool);
-    return identity ? ownedQuantity("component", identity.inventoryId, 3) : 0;
+    if (!identity) return 0;
+    const availability = A.getSigianComponentAvailabilityByInventoryId?.(identity.inventoryId);
+    return availability ? availability.total : ownedQuantity("component", identity.inventoryId, 3);
+  };
+  A.sigianCanonicalComponentInventoryId = function sigianCanonicalComponentInventoryId(component) {
+    return canonicalComponentInventoryId(component);
   };
   A.sigianConstraintInventoryId = constraintInventoryId;
   A.getSigianOwnedConstraintQuantity = function getSigianOwnedConstraintQuantity(constraint) {
     const id = constraintInventoryId(constraint);
-    return id ? ownedQuantity("constraint", id, 3) : 0;
+    if (!id) return 0;
+    const availability = A.getSigianComponentAvailabilityByInventoryId?.(id);
+    return availability ? availability.total : ownedQuantity("constraint", id, 3);
   };
   A.listSigianInventoryArts = function listSigianInventoryArts() {
     return cosmeticItems()

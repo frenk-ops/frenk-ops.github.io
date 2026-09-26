@@ -5377,14 +5377,15 @@
   function forgeSigilTileMarkup(definition, disabled, recipe = null) {
     if (!definition?.baseSigilId || !definition?.id) return "";
     const name = definition.displayName || sigianCanonicalSigilName({ sigilId:definition.baseSigilId, grade:definition.grade || 1 });
-    const owned = Number(A.getSigianOwnedCollectibleSigilQuantity?.(definition.id, recipe?.school) ?? 0);
-    const used = (recipe?.sigils || []).filter(item => item.collectibleId === definition.id).length;
-    const available = Math.max(0, owned - used);
+    const owned = Number(definition.ownedQuantity ?? A.getSigianOwnedCollectibleSigilQuantity?.(definition.id, recipe?.school) ?? 0);
+    const free = Number(definition.freeQuantity ?? owned);
+    const inUse = Number(definition.inUseQuantity ?? Math.max(0, owned - free));
+    const available = Number(definition.projectedFreeQuantity ?? free);
     const unavailable = disabled || available < 1;
     return `<button type="button" class="forge-sigil-tile ${available < 1 ? "is-unavailable" : ""}" data-forge-add-collectible="${escapeHtml(definition.id)}" ${unavailable ? "disabled" : ""}>
       <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(definition.baseSigilId, "sigian-sigil-icon")}</span>
-      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small><em>Inventario: ${available} / ${owned}</em></span>
-      <span class="forge-sigil-tile-action">${available > 0 ? escapeHtml(t("forge.imprint")) : "Esaurito"}</span>
+      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small><em>${escapeHtml(t("forge.inventoryAvailability", { available, free, inUse, owned }))}</em></span>
+      <span class="forge-sigil-tile-action">${available > 0 ? escapeHtml(t("forge.imprint")) : escapeHtml(t("forge.inventoryUnavailable"))}</span>
     </button>`;
   }
 
@@ -5605,7 +5606,7 @@
 
   function forgeSigilCatalogMarkup(activeSigils, atSigilLimit, recipe) {
     return `<div class="forge-catalog-section">
-      <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))} Sono mostrati solo i Sigilli posseduti; le copie disponibili derivano dall'Inventario.</p>
+      <p class="forge-catalog-note">${escapeHtml(t("forge.catalogNotice"))} ${escapeHtml(t("forge.inventoryProjectionNote"))}</p>
       ${atSigilLimit ? `<p class="forge-limit-note">${escapeHtml(t("forge.maxSigils"))}</p>` : ""}
       <div class="forge-sigil-grid">${activeSigils.map(definition => forgeSigilTileMarkup(definition, atSigilLimit, recipe)).join("")}</div>
     </div>`;
@@ -5753,6 +5754,7 @@
 
   function forgeGlobalConstraintMarkup(recipe) {
     const current = recipe.constraint || null;
+    const transaction = ensureForgeSession()?.snapshot?.()?.draft?.transaction || null;
     const definitions = (A.listSigianContent?.({ kind:"constraint", status:"approved" }) || [])
       .filter(item => item.selectable !== false);
     const options = [
@@ -5765,9 +5767,11 @@
           school:schoolBound ? recipe.school : null,
           grade:gradeLess ? null : 1
         };
-        const owned = Number(A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
+        const availability = A.getSigianConstraintComponentAvailability?.(probe, recipe.school, transaction) || null;
+        const owned = Number(availability?.total ?? A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
+        const free = Number(availability?.projectedFree ?? owned);
         const selected = current?.definitionId === definition.id;
-        return `<option value="${escapeHtml(definition.id)}" ${selected ? "selected" : ""} ${owned < 1 && !selected ? "disabled" : ""}>${escapeHtml(sigianV2ComponentBaseName(definition.id, definition.name))} · ×${owned}</option>`;
+        return `<option value="${escapeHtml(definition.id)}" ${selected ? "selected" : ""} ${free < 1 && !selected ? "disabled" : ""}>${escapeHtml(sigianV2ComponentBaseName(definition.id, definition.name))} · ${free} liberi / ${owned}</option>`;
       })
     ].join("");
 
@@ -5812,7 +5816,16 @@
             <span class="forge-constraint-current-orb ${current.school ? `school-${escapeHtml(current.school)}` : "is-neutral"}" aria-hidden="true">◇</span>
             <span>
               <strong>${escapeHtml(sigianV2ComponentDisplayName({ kind:"constraint", ...current }))}</strong>
-              <small>Inventario ×${escapeHtml(A.getSigianOwnedConstraintQuantity?.(current) ?? 0)}</small>
+              <small>${(() => {
+                const availability = A.getSigianConstraintComponentAvailability?.(current, recipe.school, transaction);
+                if (!availability) return `Inventario ×${escapeHtml(A.getSigianOwnedConstraintQuantity?.(current) ?? 0)}`;
+                return escapeHtml(t("forge.inventoryAvailability", {
+                  available:availability.projectedFree,
+                  free:availability.free,
+                  inUse:availability.inUse,
+                  owned:availability.total
+                }));
+              })()}</small>
             </span>
             <button type="button" class="classic-stone-button ghost" data-forge-remove-constraint>${escapeHtml(t("forge.remove"))}</button>
           </div>
@@ -6066,7 +6079,7 @@
     const snapshot = session.snapshot();
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
-    const activeSigils = A.listSigianOwnedForgeSigilOptions?.(recipe.school) || [];
+    const activeSigils = A.listSigianOwnedForgeSigilOptions?.(recipe.school, snapshot.draft.transaction) || [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
     const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;

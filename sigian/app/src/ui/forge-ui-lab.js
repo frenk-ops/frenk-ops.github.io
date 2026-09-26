@@ -361,7 +361,8 @@
   }
 
   function forgeSigilOptions(recipe) {
-    return A.listSigianOwnedForgeSigilOptions?.(recipe?.school || "fire") || [];
+    const transaction = ensureSession()?.snapshot?.()?.draft?.transaction || null;
+    return A.listSigianOwnedForgeSigilOptions?.(recipe?.school || "fire", transaction) || [];
   }
 
   function sigilOption(recipe, sigil) {
@@ -684,9 +685,10 @@
       '<div class="forge-lab-sigil-picker">' +
         options.map(option => {
           const selected = current?.collectibleId === option.id;
-          const owned = Number(A.getSigianOwnedCollectibleSigilQuantity?.(option.id, recipe.school) ?? 0);
-          const used = recipe.sigils.filter(item => item.collectibleId === option.id && item.slotId !== slotId).length;
-          const available = Math.max(0, owned - used);
+          const owned = Number(option.ownedQuantity || 0);
+          const free = Number(option.freeQuantity || 0);
+          const inUse = Number(option.inUseQuantity || 0);
+          const available = Number(option.projectedFreeQuantity || 0);
           const disabled = available < 1 && !selected;
           return '<button type="button" class="forge-lab-sigil-choice ' + (selected ? "is-selected " : "") + (disabled ? "is-disabled" : "") + '" ' +
             (replace ? 'data-lab-replace-collectible="' : 'data-lab-add-collectible="') + escapeHtml(option.id) + '"' +
@@ -695,7 +697,7 @@
               '<span aria-hidden="true">' + escapeHtml(A.sigianContentSigilGlyph?.(option.canonicalId) || "◈") + '</span>' +
               '<strong>' + escapeHtml(option.displayName) + '</strong>' +
               '<small>' + escapeHtml(option.summary || "") + '</small>' +
-              '<em>Inventario ' + escapeHtml(available) + ' / ' + escapeHtml(owned) + '</em>' +
+              '<em>Draft ' + escapeHtml(available) + ' · liberi ' + escapeHtml(free) + ' · in uso ' + escapeHtml(inUse) + ' · posseduti ' + escapeHtml(owned) + '</em>' +
             '</button>';
         }).join("") +
       '</div>',
@@ -776,13 +778,17 @@
             school:schoolBound ? recipe.school : null,
             grade:gradeLess ? null : 1
           };
-          const owned = Number(A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
-          const disabled = owned < 1;
+          const transaction = ensureSession()?.snapshot?.()?.draft?.transaction || null;
+          const availability = A.getSigianConstraintComponentAvailability?.(probe, recipe.school, transaction) || null;
+          const owned = Number(availability?.total ?? A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
+          const free = Number(availability?.projectedFree ?? owned);
+          const inUse = Number(availability?.inUse ?? 0);
+          const disabled = free < 1;
           const name = A.materializeSigianContentName?.(definition.name, recipe.school) || definition.name;
           return '<button type="button" class="forge-lab-constraint-choice ' + (disabled ? "is-disabled" : "") +
             '" data-lab-constraint-id="' + escapeHtml(definition.id) + '"' + (disabled ? ' disabled' : '') + '>' +
             '<span aria-hidden="true">◇</span><strong>' + escapeHtml(name) + '</strong>' +
-            '<small>' + escapeHtml(definition.summary || "") + '</small><em>Inventario ×' + escapeHtml(owned) + '</em>' +
+            '<small>' + escapeHtml(definition.summary || "") + '</small><em>Draft ' + escapeHtml(free) + ' · in uso ' + escapeHtml(inUse) + ' · posseduti ' + escapeHtml(owned) + '</em>' +
           '</button>';
         }).join("") +
       '</div>',

@@ -14226,6 +14226,28 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   line-height:1.43;
 }
 
+.archive-component-allocation-summary {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.archive-component-allocation-summary span {
+  display:inline-flex;
+  align-items:baseline;
+  gap:4px;
+  padding:6px 9px;
+  border-radius:999px;
+  background:rgba(85,53,28,.10);
+  color:#68472d;
+  font-size:.76rem;
+}
+
+.archive-component-allocation-summary strong {
+  color:#4f2f1b;
+  font-size:.92rem;
+}
+
 .archive-conversion-badge,
 .archive-status-badge {
   flex:0 0 auto;
@@ -15141,6 +15163,68 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   min-width:42px;
   min-height:30px;
   font-size:.78rem;
+}
+
+.archive-component-allocation-summary {
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:-2px;
+}
+.archive-component-allocation-summary span {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  min-height:30px;
+  padding:5px 9px;
+  border:1px solid rgba(103,68,34,.26);
+  border-radius:999px;
+  background:rgba(255,250,229,.54);
+  color:#684a31;
+  font-size:.72rem;
+  font-weight:800;
+}
+.archive-component-allocation-summary strong {
+  color:#4c301e;
+  font-size:.82rem;
+}
+
+.archive-component-assignments {
+  display:grid;
+  gap:7px;
+  padding:9px;
+  border:1px solid rgba(103,68,34,.24);
+  border-radius:10px;
+  background:rgba(255,250,229,.38);
+}
+.archive-component-assignment-list {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.archive-component-assignment-list button {
+  min-height:34px;
+  padding:6px 10px;
+  border:1px solid rgba(111,75,39,.34);
+  border-radius:999px;
+  background:rgba(248,234,195,.82);
+  color:#4c301e;
+  font-size:.7rem;
+  font-weight:800;
+  cursor:pointer;
+}
+.archive-component-assignment-list button:hover,
+.archive-component-assignment-list button:focus-visible {
+  border-color:#8e5a28;
+  box-shadow:0 2px 8px rgba(86,49,21,.14);
+}
+
+.forge-sigil-tile-copy em {
+  margin-top:3px;
+  color:#6f523a;
+  font-size:.59rem;
+  font-style:normal;
+  line-height:1.25;
 }
 
 @media (max-width:1100px) {
