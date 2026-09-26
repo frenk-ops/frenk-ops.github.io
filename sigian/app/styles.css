@@ -17216,3 +17216,294 @@ button.sigian-full-constraint-slot {
     width:min(100%,360px);
   }
 }
+
+
+/* 0.61.2 — Archive compact Formula index and strict mobile containment. */
+.archive-page-shell,
+#cardsContent,
+#inventoryContent,
+.archive-browser,
+.archive-heading,
+.archive-heading > div,
+.archive-scope-switch,
+.archive-section-tabs,
+.archive-filters,
+.archive-layout,
+.archive-list-panel,
+.archive-detail-panel,
+.archive-category-strip,
+.archive-formula-grid,
+.archive-component-identity-grid,
+.archive-cosmetic-grid,
+.archive-grimoire-grid,
+.archive-grimoire-formula-grid {
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+.archive-page-shell,
+.archive-browser {
+  overflow-x:clip;
+}
+
+.archive-heading p {
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+
+.archive-filter,
+.archive-filter input,
+.archive-filter select,
+.archive-grimoire-filterbar,
+.archive-grimoire-filterbar input,
+.archive-grimoire-quick-add,
+.archive-grimoire-quick-add select {
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+.archive-formula-grid {
+  grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+}
+
+.archive-formula-tile.archive-formula-index-row {
+  display:grid;
+  grid-template-columns:112px minmax(0,1fr) auto;
+  gap:11px;
+  align-items:center;
+  min-height:94px;
+  width:100%;
+  min-width:0;
+  padding:9px;
+  overflow:hidden;
+}
+
+.archive-formula-index-row .archive-formula-art {
+  width:112px;
+  height:72px;
+}
+
+.archive-formula-index-row .archive-formula-copy {
+  min-width:0;
+}
+
+.archive-formula-index-row .archive-formula-copy strong {
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.archive-formula-index-meta {
+  min-width:0;
+}
+
+.archive-formula-index-quantity {
+  align-self:center;
+  justify-self:end;
+}
+
+.archive-grimoire-formula.archive-grimoire-index-formula {
+  grid-template-columns:58px minmax(0,1fr) 30px;
+  min-width:0;
+}
+
+.archive-grimoire-index-formula .archive-formula-art {
+  width:58px;
+  height:54px;
+  margin:0;
+}
+
+.archive-grimoire-index-formula .archive-formula-art img {
+  width:100%;
+  height:100%;
+}
+
+.archive-grimoire-index-formula .archive-formula-copy {
+  min-width:0;
+}
+
+.archive-category-strip {
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-inline:contain;
+}
+
+@media (max-width:700px) {
+  .archive-menu-stage {
+    width:calc(100% - 12px) !important;
+    max-width:100% !important;
+    margin-inline:auto !important;
+    box-sizing:border-box !important;
+  }
+
+  .archive-page-shell {
+    width:100% !important;
+    max-width:100% !important;
+    padding:12px 8px calc(88px + env(safe-area-inset-bottom)) !important;
+    box-sizing:border-box !important;
+    overflow-x:hidden !important;
+  }
+
+  #cardsContent,
+  #inventoryContent,
+  .archive-browser {
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    overflow-x:hidden;
+  }
+
+  .archive-heading {
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+    width:100%;
+  }
+
+  .archive-heading > div {
+    width:100%;
+    min-width:0;
+  }
+
+  .archive-heading h2 {
+    max-width:100%;
+    margin-inline:0;
+    font-size:clamp(1.6rem,8vw,2rem);
+    line-height:1.05;
+    overflow-wrap:anywhere;
+  }
+
+  .archive-heading p {
+    width:100%;
+    max-width:100%;
+    font-size:.84rem;
+    line-height:1.35;
+  }
+
+  .archive-scope-switch {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+    max-width:100%;
+  }
+
+  .archive-scope-switch button,
+  .archive-section-tabs button {
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    padding-inline:6px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  .archive-section-tabs {
+    position:static;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    width:100%;
+    max-width:100%;
+  }
+
+  .archive-section-tabs button {
+    font-size:.74rem;
+  }
+
+  .archive-filters {
+    width:100%;
+    max-width:100%;
+    padding:10px;
+  }
+
+  .archive-filter-row-primary,
+  .archive-filter-row {
+    grid-template-columns:minmax(0,1fr);
+    width:100%;
+  }
+
+  .archive-filter,
+  .archive-filter input,
+  .archive-filter select {
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+
+  .archive-category-strip {
+    width:100%;
+    max-width:100%;
+    margin-inline:0;
+    padding:5px;
+    box-sizing:border-box;
+  }
+
+  .archive-category-strip button {
+    max-width:78vw;
+  }
+
+  .archive-layout,
+  .archive-list-panel,
+  .archive-formula-grid,
+  .archive-component-identity-grid,
+  .archive-cosmetic-grid,
+  .archive-grimoire-grid {
+    width:100%;
+    max-width:100%;
+    min-width:0;
+  }
+
+  .archive-formula-grid {
+    grid-template-columns:minmax(0,1fr);
+  }
+
+  .archive-formula-tile.archive-formula-index-row {
+    grid-template-columns:88px minmax(0,1fr) auto;
+    gap:8px;
+    min-height:82px;
+    padding:7px;
+  }
+
+  .archive-formula-index-row .archive-formula-art {
+    width:88px;
+    height:62px;
+  }
+
+  .archive-formula-index-row .archive-formula-copy {
+    gap:3px;
+  }
+
+  .archive-formula-index-row .archive-formula-copy strong {
+    font-size:.88rem;
+  }
+
+  .archive-formula-index-meta {
+    display:flex;
+    flex-wrap:wrap;
+    gap:3px;
+    font-size:.65rem;
+  }
+
+  .archive-formula-index-row .archive-formula-copy em {
+    font-size:.63rem;
+  }
+
+  .archive-formula-index-quantity {
+    min-width:28px;
+    padding:3px 6px;
+  }
+
+  .archive-grimoire-formula.archive-grimoire-index-formula {
+    grid-template-columns:50px minmax(0,1fr) 30px;
+  }
+
+  .archive-grimoire-index-formula .archive-formula-art {
+    width:50px;
+    height:50px;
+  }
+}

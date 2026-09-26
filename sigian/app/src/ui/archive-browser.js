@@ -349,15 +349,26 @@
 
   function formulaTileMarkup(item, scope, selected) {
     const localized = localizedFormula(item);
+    const typeLabel = t(item.type === "spell" ? "archive.spell" : "archive.creature");
     return `
-      <article class="archive-formula-tile archive-formula-full-tile ${selected ? "active" : ""}" data-archive-item="${escapeHtml(item.id)}" tabindex="0" aria-label="${escapeHtml(localized.name)}">
-        <div class="archive-full-card-host" data-archive-full-card="${escapeHtml(item.id)}"></div>
-        <footer class="archive-full-card-footer">
-          <span>${escapeHtml(t(scope === "collection" ? "archive.originalFormula" : "archive.ownedFormula"))}</span>
-          ${scope === "inventory"
-            ? `<strong class="archive-quantity">×${escapeHtml(item.quantity || 1)}</strong>`
-            : `<span class="archive-owned">${escapeHtml(t("archive.owned"))}</span>`}
-        </footer>
+      <article class="archive-formula-tile archive-formula-index-row ${selected ? "active" : ""}" data-archive-item="${escapeHtml(item.id)}" tabindex="0" aria-label="${escapeHtml(localized.name)}">
+        <span class="archive-formula-art" aria-hidden="true">
+          <img src="${escapeHtml(item.image)}" alt="" loading="lazy">
+        </span>
+        <span class="archive-formula-copy">
+          <strong>${escapeHtml(localized.name)}</strong>
+          <small class="archive-formula-index-meta">
+            ${schoolLabelMarkup(item.school)}
+            <span class="archive-formula-meta-separator">·</span>
+            <span>${escapeHtml(typeLabel)}</span>
+            <span class="archive-formula-meta-separator">·</span>
+            <span>${escapeHtml(t("archive.cost"))} ${escapeHtml(item.level)}</span>
+          </small>
+          <em>${escapeHtml(t(scope === "collection" ? "archive.originalFormula" : "archive.ownedFormula"))}</em>
+        </span>
+        ${scope === "inventory"
+          ? `<strong class="archive-quantity archive-formula-index-quantity">×${escapeHtml(item.quantity || 1)}</strong>`
+          : ""}
       </article>`;
   }
 
@@ -588,8 +599,18 @@
             ${formulaItems.length ? formulaItems.map(formula => {
               const localized = localizedFormula(formula);
               return `
-                <article class="archive-grimoire-formula archive-grimoire-full-formula">
-                  <div class="archive-grimoire-full-host" data-archive-full-card="${escapeHtml(formula.id)}"></div>
+                <article class="archive-grimoire-formula archive-grimoire-index-formula">
+                  <span class="archive-formula-art" aria-hidden="true">
+                    <img src="${escapeHtml(formula.image)}" alt="" loading="lazy">
+                  </span>
+                  <span class="archive-formula-copy">
+                    <strong>${escapeHtml(localized.name)}</strong>
+                    <small>
+                      ${schoolLabelMarkup(formula.school)}
+                      <span class="archive-formula-meta-separator">·</span>
+                      <span>${escapeHtml(t("archive.cost"))} ${escapeHtml(formula.level)}</span>
+                    </small>
+                  </span>
                   <button type="button" data-grimoire-remove-formula="${escapeHtml(formula.id)}" data-grimoire-id="${escapeHtml(grimoire.id)}" aria-label="${escapeHtml(t("archive.remove", { name:localized.name }))}">×</button>
                 </article>`;
             }).join("") : `<div class="archive-empty">${escapeHtml(t("archive.emptyGrimoire"))}</div>`}
