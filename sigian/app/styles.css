@@ -16896,3 +16896,38 @@ button.sigian-full-constraint-slot {
     padding-top:52px !important;
   }
 }
+
+
+/* ===== Sigian 0.59.1 — editable canonical Constraint parameters ===== */
+.forge-constraint-parameters {
+  display:grid;
+  gap:8px;
+  margin-top:8px;
+}
+
+.forge-constraint-parameter {
+  padding:9px;
+  border:1px solid rgba(119,82,38,.22);
+  border-radius:10px;
+  background:rgba(255,249,226,.46);
+}
+
+.forge-constraint-value-options button {
+  min-width:48px;
+}
+
+.forge-constraint-value-options button small {
+  display:block;
+}
+
+@media (max-width:820px) {
+  .forge-constraint-value-options {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(56px,1fr));
+  }
+
+  .forge-constraint-value-options button {
+    width:100%;
+    min-width:0;
+  }
+}

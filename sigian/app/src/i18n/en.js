@@ -120,7 +120,7 @@
     "forge.balancePending": "Arcane Value and minimum Level are still being calibrated: the Formula can be modeled and saved, but not sealed yet.",
     "forge.seal": "Seal Formula", "forge.try": "Test Formula", "forge.emptySigils": "No Sigils imprinted.",
     "forge.spellNeedsSigil": "A Spell requires at least one Sigil.", "forge.maxSigils": "You reached the 3-Sigil limit.",
-    "forge.gradeOne": "Grade I", "forge.grade": "Grade", "forge.intensity": "Intensity", "forge.gradeLocked": "Grade is part of the chosen Sigil", "forge.atomicSigil": "Atomic Sigil", "forge.scalingBuiltIn": "Built-in scaling", "forge.affinity": "Affinity", "forge.affinityOwnedCopy": "Defined by the owned copy", "forge.affinityLegacy": "Unassigned (legacy)", "forge.model": "Model", "forge.modelSigil": "Model Sigil", "forge.baseConfig": "Base configuration",
+    "forge.gradeOne": "Grade I", "forge.grade": "Grade", "forge.intensity": "Intensity", "forge.constraintParameter.intensity": "Intensity", "forge.constraintParameter.threshold": "Threshold", "forge.constraintParameter.damage": "Damage", "forge.gradeLocked": "Grade is part of the chosen Sigil", "forge.atomicSigil": "Atomic Sigil", "forge.scalingBuiltIn": "Built-in scaling", "forge.affinity": "Affinity", "forge.affinityOwnedCopy": "Defined by the owned copy", "forge.affinityLegacy": "Unassigned (legacy)", "forge.model": "Model", "forge.modelSigil": "Model Sigil", "forge.baseConfig": "Base configuration",
     "forge.advancedModifiers": "Advanced Modifiers", "forge.noModifier": "None", "forge.backToCatalog": "Close modeling",
     "forge.modelingNotice": "The Sigil is already defined: choose only its allowed intensity and compatible Modifiers.",
     "forge.artPlaceholder": "Artwork in preparation",

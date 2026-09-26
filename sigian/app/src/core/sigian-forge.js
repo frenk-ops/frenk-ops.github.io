@@ -105,6 +105,68 @@
     return { grade:g };
   }
 
+  function constraintBandValues(definitionId, grade) {
+    const g = Math.max(1, Math.min(5, Math.trunc(Number(grade || 1))));
+    const fixed = {
+      1:[1,2,3],
+      2:[4,5,6],
+      3:[7,8,9,10],
+      4:[11,12,13,14,15],
+      5:[16,17,18,19,20]
+    };
+    const limit = {
+      1:[16,17,18,19,20],
+      2:[11,12,13,14,15],
+      3:[7,8,9,10],
+      4:[4,5,6],
+      5:[1,2,3]
+    };
+    if (definitionId === "v2-constraint-limit-school") return limit[g];
+    return fixed[g];
+  }
+
+  function constraintParameterSpecs(constraint) {
+    if (!constraint?.definitionId) return [];
+    const id = constraint.definitionId;
+    const grade = Math.max(1, Math.min(5, Math.trunc(Number(constraint.grade || 1))));
+    if (id === "v2-constraint-erosion-school"
+      || id === "v2-constraint-tribute-school"
+      || id === "v2-constraint-tribute-all") {
+      return [{
+        key:"intensity",
+        values:[1,2,3,4,5],
+        value:Number(constraint.intensity || grade),
+        drivesGrade:true
+      }];
+    }
+    if (id === "v2-constraint-threshold-school"
+      || id === "v2-constraint-limit-school"
+      || id === "v2-constraint-friendly-fire-limit") {
+      return [{
+        key:"threshold",
+        values:constraintBandValues(id, grade),
+        value:Number(constraint.threshold)
+      }];
+    }
+    if (id === "v2-constraint-backlash"
+      || id === "v2-constraint-weakness-school"
+      || id === "v2-constraint-overpower-school") {
+      return [{
+        key:"damage",
+        values:constraintBandValues(id, grade),
+        value:Number(constraint.damage)
+      }];
+    }
+    if (id === "v2-constraint-scarcity-school") {
+      const values = constraintBandValues(id, grade);
+      return [
+        { key:"threshold", values, value:Number(constraint.threshold) },
+        { key:"damage", values, value:Number(constraint.damage) }
+      ];
+    }
+    return [];
+  }
+
   function defaultForgeConstraint(definitionId, school) {
     const definition = A.getSigianCanonicalV2?.(definitionId);
     if (!definition || definition.kind !== "constraint" || definition.status !== "approved") {
@@ -503,6 +565,21 @@
         return this.updateConstraint({ school:definition.id });
       },
 
+      setConstraintParameter(key, value) {
+        if (!draft.recipe.constraint) throw new Error("Nessun Vincolo globale impostato.");
+        const normalizedKey = String(key || "");
+        const spec = constraintParameterSpecs(draft.recipe.constraint).find(item => item.key === normalizedKey);
+        if (!spec) throw new Error(`Parametro Vincolo non supportato: ${normalizedKey}.`);
+        const numeric = Math.trunc(Number(value));
+        if (!Number.isFinite(numeric) || !spec.values.includes(numeric)) {
+          throw new Error(`Valore ${value} non ammesso per ${normalizedKey}.`);
+        }
+        if (spec.drivesGrade) {
+          return this.setConstraintGrade(numeric);
+        }
+        return this.updateConstraint({ [normalizedKey]:numeric });
+      },
+
       removeConstraint() {
         if (!draft.recipe.constraint) return this.snapshot();
         return commitRecipe(recipeWith({ constraint:null }));
@@ -729,6 +806,12 @@
   A.createSigianForgeDefaultSigil = defaultForgeSigil;
   A.createSigianForgeCollectibleSigil = defaultForgeCollectibleSigil;
   A.createSigianForgeDefaultModifierParams = defaultModifierParams;
+  A.getSigianForgeConstraintParameters = function getSigianForgeConstraintParameters(constraint) {
+    return constraintParameterSpecs(constraint).map(item => ({
+      ...item,
+      values:[...item.values]
+    }));
+  };
   A.migrateSigianForgeLegacySigils = migrateLegacyForgeSigils;
   A.normalizeSigianForgeDraft = normalizeDraft;
   A.analyzeSigianForgeDraft = draftAnalysis;

@@ -5396,6 +5396,32 @@
   }
 
 
+  function forgeConstraintParameterLabel(key) {
+    const translationKey = `forge.constraintParameter.${key}`;
+    const translated = t(translationKey);
+    if (translated !== translationKey) return translated;
+    return ({ intensity:"Intensità", threshold:"Soglia", damage:"Danno" })[key] || key;
+  }
+
+  function forgeConstraintParameterControlsMarkup(current) {
+    const specs = A.getSigianForgeConstraintParameters?.(current) || [];
+    if (!specs.length) return "";
+    return `<div class="forge-constraint-parameters">${specs.map(spec => `
+      <div class="forge-model-field forge-constraint-parameter">
+        <span>${escapeHtml(forgeConstraintParameterLabel(spec.key))}</span>
+        <div class="forge-intensity-options forge-constraint-value-options">
+          ${spec.values.map(value => {
+            const active = Number(spec.value) === Number(value);
+            const gradeHint = spec.drivesGrade ? `<small>${escapeHtml(t("forge.grade"))} ${sigianRomanGrade(Number(value))}</small>` : "";
+            return `<button type="button" class="${active ? "active" : ""}" data-forge-constraint-param="${escapeHtml(spec.key)}" data-forge-constraint-value="${escapeHtml(value)}" aria-pressed="${active}">
+              <b>${escapeHtml(value)}</b>${gradeHint}
+            </button>`;
+          }).join("")}
+        </div>
+      </div>
+    `).join("")}</div>`;
+  }
+
   function forgeGlobalConstraintMarkup(recipe) {
     const current = recipe.constraint || null;
     const definitions = (A.listSigianCanonicalV2?.({ kind:"constraint" }) || [])
@@ -5419,6 +5445,8 @@
     const definition = current ? A.getSigianCanonicalV2?.(current.definitionId) : null;
     const schoolBound = Boolean(definition && /<Scuola>/i.test(String(definition.name || "")));
     const gradeLess = Boolean(definition && /senza Gradi/i.test(String(definition.grades || "")));
+    const parameterSpecs = current ? (A.getSigianForgeConstraintParameters?.(current) || []) : [];
+    const gradeDrivenByParameter = parameterSpecs.some(spec => spec.drivesGrade);
     const schoolControl = current && schoolBound
       ? `<label class="forge-model-field">
           <span>${escapeHtml(t("forge.school"))}</span>
@@ -5429,7 +5457,7 @@
           </select>
         </label>`
       : "";
-    const gradeControl = current && !gradeLess
+    const gradeControl = current && !gradeLess && !gradeDrivenByParameter
       ? `<label class="forge-model-field">
           <span>${escapeHtml(t("archive.grade"))}</span>
           <select data-forge-constraint-grade>
@@ -5437,6 +5465,7 @@
           </select>
         </label>`
       : "";
+    const parameterControls = current ? forgeConstraintParameterControlsMarkup(current) : "";
 
     return `
       <section class="forge-global-constraint">
@@ -5460,6 +5489,7 @@
           </div>
           <p class="forge-functional-description is-constraint">${escapeHtml(A.describeSigianConstraint?.(current) || definition?.summary || current.detail || "")}</p>
           <div class="forge-constraint-controls">${schoolControl}${gradeControl}</div>
+          ${parameterControls}
         ` : ""}
       </section>`;
   }
@@ -6027,6 +6057,13 @@
     }));
     root.querySelectorAll("[data-forge-constraint-school]").forEach(control => control.addEventListener("change", event => {
       session.setConstraintSchool(event.currentTarget.value);
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-constraint-param]").forEach(button => button.addEventListener("click", () => {
+      session.setConstraintParameter(
+        button.dataset.forgeConstraintParam,
+        Number(button.dataset.forgeConstraintValue)
+      );
       renderForgePage();
     }));
     root.querySelectorAll("[data-forge-remove-constraint]").forEach(button => button.addEventListener("click", event => {
