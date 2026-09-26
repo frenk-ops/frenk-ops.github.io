@@ -16699,3 +16699,33 @@ button.sigian-full-constraint-slot {
     padding:7px 9px;
   }
 }
+
+
+/* ===== Sigian 0.58.1 — Forge stat tap targets ===== */
+.forge-preview-stage .sigian-full-card.is-forge-editable .sigian-full-stats {
+  z-index:12;
+  pointer-events:none;
+}
+
+.forge-preview-stage .sigian-full-card.is-forge-editable button.sigian-full-stat {
+  position:relative;
+  z-index:13;
+  appearance:none;
+  -webkit-appearance:none;
+  margin:0;
+  pointer-events:auto;
+  touch-action:manipulation;
+  cursor:pointer;
+  font:700 1rem/1 Georgia,serif;
+}
+
+.forge-preview-stage .sigian-full-card.is-forge-editable button.sigian-full-stat:active {
+  transform:translateY(0) scale(.98);
+}
+
+@media (max-width:820px) {
+  .forge-preview-stage .sigian-full-card.is-forge-editable button.sigian-full-stat {
+    min-width:78px;
+    min-height:46px;
+  }
+}

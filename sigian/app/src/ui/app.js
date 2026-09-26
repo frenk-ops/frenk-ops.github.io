@@ -4890,22 +4890,20 @@
       const health = Math.max(0, Number(card.currentHealth ?? card.health ?? card.hp ?? 0));
       const stats = document.createElement("div");
       stats.className = "sigian-full-stats";
+      const statTag = card?.__forgePreview ? "button" : "span";
+      const buttonType = card?.__forgePreview ? ' type="button"' : "";
       stats.innerHTML = `
-        <span class="sigian-full-stat sigian-full-attack" aria-label="${escapeHtml(t("ui.attack"))} ${escapeHtml(attack)}"><span aria-hidden="true">⚔</span><b>${escapeHtml(attack)}</b></span>
-        <span class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></span>`;
+        <${statTag}${buttonType} class="sigian-full-stat sigian-full-attack" aria-label="${escapeHtml(t("ui.attack"))} ${escapeHtml(attack)}"><span aria-hidden="true">⚔</span><b>${escapeHtml(attack)}</b></${statTag}>
+        <${statTag}${buttonType} class="sigian-full-stat sigian-full-health" aria-label="${escapeHtml(t("ui.life"))} ${escapeHtml(health)}"><span aria-hidden="true">♥</span><b>${escapeHtml(health)}</b></${statTag}>`;
       if (card?.__forgePreview) {
         const attackNode = stats.querySelector(".sigian-full-attack");
         const healthNode = stats.querySelector(".sigian-full-health");
         if (attackNode) {
           attackNode.dataset.forgeCardEdit = "attack";
-          attackNode.setAttribute("role", "button");
-          attackNode.setAttribute("tabindex", "0");
           attackNode.title = t("forge.attack");
         }
         if (healthNode) {
           healthNode.dataset.forgeCardEdit = "health";
-          healthNode.setAttribute("role", "button");
-          healthNode.setAttribute("tabindex", "0");
           healthNode.title = t("forge.health");
         }
       }
@@ -5039,13 +5037,10 @@
   }
 
   function forgeSigilTileMarkup(definition, disabled) {
-    const baseSigilId = definition.baseSigilId || definition.id;
-    const name = definition.displayName || sigianCanonicalSigilName({ sigilId:baseSigilId, grade:definition.grade || 1 });
-    const dataAttribute = definition.baseSigilId
-      ? `data-forge-add-collectible="${escapeHtml(definition.id)}"`
-      : `data-forge-add-sigil="${escapeHtml(definition.id)}"`;
-    return `<button type="button" class="forge-sigil-tile" ${dataAttribute} ${disabled ? "disabled" : ""}>
-      <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(baseSigilId, "sigian-sigil-icon")}</span>
+    if (!definition?.baseSigilId || !definition?.id) return "";
+    const name = definition.displayName || sigianCanonicalSigilName({ sigilId:definition.baseSigilId, grade:definition.grade || 1 });
+    return `<button type="button" class="forge-sigil-tile" data-forge-add-collectible="${escapeHtml(definition.id)}" ${disabled ? "disabled" : ""}>
+      <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(definition.baseSigilId, "sigian-sigil-icon")}</span>
       <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small></span>
       <span class="forge-sigil-tile-action">${escapeHtml(t("forge.imprint"))}</span>
     </button>`;
@@ -5719,9 +5714,7 @@
     const snapshot = session.snapshot();
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
-    const activeSigils = A.listSigianCollectibleSigils?.({ status:"active" })
-      || A.listCanonicalSigils?.({ status:"active" })
-      || [];
+    const activeSigils = A.listSigianCollectibleSigils?.({ status:"active" }) || [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
     const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;
@@ -6005,14 +5998,6 @@
       forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
       renderForgePage();
     }));
-    root.querySelectorAll("[data-forge-add-sigil]").forEach(button => button.addEventListener("click", () => {
-      if (button.disabled) return;
-      const result = session.addSigil(button.dataset.forgeAddSigil);
-      forgeCardEditorSection = "sigils";
-      forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
-      renderForgePage();
-    }));
-
     root.querySelectorAll("[data-forge-select-sigil]").forEach(row => {
       const select = () => {
         forgeCardEditorSection = "sigils";

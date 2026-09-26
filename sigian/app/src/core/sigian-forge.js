@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const FORGE_DRAFT_SCHEMA_VERSION = 1;
+  const FORGE_DRAFT_SCHEMA_VERSION = 2;
   const FORGE_DRAFT_STORAGE_KEY = "sigian.forge.draft.v1";
   const MAX_HISTORY = 50;
 
@@ -188,6 +188,56 @@
     return params;
   }
 
+  function sameForgeValue(left, right) {
+    if (Array.isArray(left) || Array.isArray(right)) {
+      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+      return left.every((value, index) => sameForgeValue(value, right[index]));
+    }
+    if (left && right && typeof left === "object" && typeof right === "object") {
+      const leftKeys = Object.keys(left).sort();
+      const rightKeys = Object.keys(right).sort();
+      if (leftKeys.length !== rightKeys.length || leftKeys.some((key, index) => key !== rightKeys[index])) return false;
+      return leftKeys.every(key => sameForgeValue(left[key], right[key]));
+    }
+    return String(left ?? "") === String(right ?? "");
+  }
+
+  function inferCollectibleForLegacySigil(sigil) {
+    if (!sigil?.sigilId || sigil.collectibleId) return null;
+    const grade = Math.max(1, Math.trunc(Number(sigil.grade || 1)));
+    const modifierIds = new Set((sigil.modifiers || []).map(item => item?.id).filter(Boolean));
+    const candidates = (A.listSigianCollectibleSigils?.({ status:"active" }) || [])
+      .filter(entry => entry.baseSigilId === sigil.sigilId && Number(entry.grade || 1) === grade)
+      .filter(entry => Object.entries(entry.presetConfig || {}).every(([key, value]) => sameForgeValue(sigil.config?.[key], value)))
+      .filter(entry => (entry.fixedModifiers || []).every(modifier => modifierIds.has(modifier.id)))
+      .map(entry => ({
+        entry,
+        score:Object.keys(entry.presetConfig || {}).length * 10 + (entry.fixedModifiers || []).length * 6
+      }))
+      .sort((left, right) => right.score - left.score || left.entry.id.localeCompare(right.entry.id));
+    return candidates[0]?.entry || null;
+  }
+
+  function migrateLegacyForgeSigils(sigils, school) {
+    return (Array.isArray(sigils) ? sigils : []).map((sigil, index) => {
+      if (!sigil || sigil.collectibleId) return clone(sigil);
+      const collectible = inferCollectibleForLegacySigil(sigil);
+      if (!collectible) return clone(sigil);
+      return {
+        ...clone(sigil),
+        slotId:String(sigil.slotId || `forge-${index + 1}-${collectible.id}`),
+        collectibleId:collectible.id,
+        sigilId:collectible.baseSigilId,
+        grade:collectible.grade,
+        intensity:sigil.intensity == null ? collectible.defaultIntensity : sigil.intensity,
+        affinity:sigil.affinity || (
+          A.normalizeSigianAffinity?.({ mode:"mono", schools:[school] }, school)
+          || { mode:"mono", schools:[school] }
+        )
+      };
+    });
+  }
+
   function normalizeRecipe(input = {}) {
     const id = normalizeId(input.id, createDraftId());
     const school = normalizeId(input.school, A.listSigianSchools?.({ status: "active" })?.[0]?.id || "fire");
@@ -197,6 +247,7 @@
       id,
       school,
       type,
+      sigils:migrateLegacyForgeSigils(input.sigils, school),
       stats: type === "creature"
         ? {
             attack: Math.max(0, Math.trunc(Number(input.stats?.attack ?? 1))),
@@ -640,6 +691,7 @@
   A.createSigianForgeDefaultSigil = defaultForgeSigil;
   A.createSigianForgeCollectibleSigil = defaultForgeCollectibleSigil;
   A.createSigianForgeDefaultModifierParams = defaultModifierParams;
+  A.migrateSigianForgeLegacySigils = migrateLegacyForgeSigils;
   A.normalizeSigianForgeDraft = normalizeDraft;
   A.analyzeSigianForgeDraft = draftAnalysis;
   A.createSigianForgeSession = createSession;
