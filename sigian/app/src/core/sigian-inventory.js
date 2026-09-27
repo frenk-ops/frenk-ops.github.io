@@ -428,33 +428,106 @@
     return clone(A.RAW_CARD_SETS?.["astral-original"] || []);
   }
 
-  function formulaItems() {
+  function assignedFormulaComponents(formulaInstanceId) {
+    return (A.listSigianFormulaComponentAssignments?.(formulaInstanceId) || []).map((instance, index) => {
+      const definition = A.getSigianCanonicalV2?.(instance.definitionId);
+      return {
+        id:`instance:${instance.componentInstanceId}`,
+        componentInstanceId:instance.componentInstanceId,
+        kind:instance.kind,
+        definitionId:instance.definitionId,
+        name:definition?.name || instance.definitionId,
+        status:definition?.status || "approved",
+        grade:instance.grade,
+        school:instance.effectSchool,
+        affinity:clone(instance.affinity),
+        detail:"Copia fisica assegnata alla Formula sigillata."
+      };
+    });
+  }
+
+  function originalFormulaItems() {
     return originalCards().map(card => {
       const formulaInstanceId = `owned:${card.id}`;
       const formulaInstance = A.getSigianFormulaInstance?.(formulaInstanceId) || null;
       const lifecycleState = formulaInstance?.lifecycleState || "SEALED";
+      const persisted = A.getSigianFormulaComposition?.(formulaInstanceId, { allowCanonicalFallback:false }) || null;
+      const recipe = persisted?.composition || null;
+      const evaluation = persisted?.evaluation || null;
       return {
-      id:card.id,
-      formulaInstanceId,
-      recipeId:formulaInstance?.recipeId || card.id,
-      lifecycleState,
-      playable:lifecycleState === "SEALED",
-      name:card.name,
-      school:card.school,
-      type:card.type,
-      level:Number(card.level || card.cost || 0),
-      attack:Number(card.attack || 0),
-      health:Number(card.health ?? card.hp ?? 0),
-      text:card.text || "",
-      keyword:card.keyword || "",
-      image:`assets/cards/remastered/${card.id}.png`,
-      original:true,
-      quantity:1,
-      owned:true,
-      conversionStatus:"complete",
-      components:formulaComponents(card.id)
-    };
+        id:card.id,
+        formulaInstanceId,
+        recipeId:formulaInstance?.recipeId || card.id,
+        lifecycleState,
+        playable:lifecycleState === "SEALED",
+        name:recipe?.presentation?.name || card.name,
+        school:recipe?.school || card.school,
+        type:recipe?.type || card.type,
+        level:Number(evaluation?.minimumLevel ?? card.level ?? card.cost ?? 0),
+        cost:Number(evaluation?.minimumLevel ?? card.cost ?? card.level ?? 0),
+        attack:Number(recipe?.stats?.attack ?? card.attack ?? 0),
+        health:Number(recipe?.stats?.health ?? card.health ?? card.hp ?? 0),
+        hp:Number(recipe?.stats?.health ?? card.health ?? card.hp ?? 0),
+        text:recipe ? (A.composeSigianRecipeDescription?.(recipe) || card.text || "") : (card.text || ""),
+        keyword:recipe?.presentation?.keyword || card.keyword || "",
+        art:recipe?.presentation?.art || card.art || "",
+        imageKey:recipe?.presentation?.imageKey ?? card.imageKey ?? null,
+        image:`assets/cards/remastered/${card.id}.png`,
+        formulaRecipe:recipe,
+        evaluation:clone(evaluation),
+        original:true,
+        quantity:1,
+        owned:true,
+        conversionStatus:"complete",
+        components:persisted ? assignedFormulaComponents(formulaInstanceId) : formulaComponents(card.id)
+      };
     });
+  }
+
+  function constructedFormulaItems() {
+    const originals = new Set(originalCards().map(card => `owned:${card.id}`));
+    return (A.listSigianFormulaInstances?.() || [])
+      .filter(instance => !originals.has(instance.formulaInstanceId))
+      .map(instance => {
+        const persisted = A.getSigianFormulaComposition?.(instance.formulaInstanceId, { allowCanonicalFallback:false });
+        if (!persisted?.composition) return null;
+        const recipe = persisted.composition;
+        const evaluation = persisted.evaluation || null;
+        return {
+          id:instance.formulaInstanceId,
+          formulaInstanceId:instance.formulaInstanceId,
+          recipeId:instance.recipeId,
+          lifecycleState:instance.lifecycleState,
+          playable:instance.lifecycleState === "SEALED",
+          name:recipe.presentation?.name || instance.formulaInstanceId,
+          school:recipe.school,
+          type:recipe.type,
+          level:Number(evaluation?.minimumLevel || 0),
+          cost:Number(evaluation?.minimumLevel || 0),
+          attack:Number(recipe.type === "creature" ? recipe.stats?.attack || 0 : 0),
+          health:Number(recipe.type === "creature" ? recipe.stats?.health || 0 : 0),
+          hp:Number(recipe.type === "creature" ? recipe.stats?.health || 0 : 0),
+          text:A.composeSigianRecipeDescription?.(recipe) || "",
+          keyword:recipe.presentation?.keyword || "",
+          art:recipe.presentation?.art || "",
+          imageKey:recipe.presentation?.imageKey ?? null,
+          image:recipe.presentation?.art || "",
+          formulaRecipe:clone(recipe),
+          evaluation:clone(evaluation),
+          original:false,
+          quantity:1,
+          owned:true,
+          conversionStatus:"constructed",
+          components:assignedFormulaComponents(instance.formulaInstanceId)
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function formulaItems(options = {}) {
+    const originals = originalFormulaItems();
+    if (options.includeConstructed === false) return originals;
+    return [...originals, ...constructedFormulaItems()];
   }
 
   function cosmeticItems() {
@@ -468,7 +541,7 @@
 
   function archiveData(scope = "collection") {
     const components = expandCanonicalEntries();
-    const formulas = formulaItems();
+    const formulas = formulaItems({ includeConstructed:scope === "inventory" });
     const recipes = A.listSigianRecipebookEntries?.() || [];
     const cosmetics = cosmeticItems();
     const forgeSigils = collectibleSigilInventoryItems();

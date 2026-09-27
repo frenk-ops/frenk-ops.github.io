@@ -40,25 +40,43 @@
     return Math.max(0.25, medianStep || finite(capCandidate?.continuationSlope, 1) || 1);
   }
 
-  function noSigils(sample) {
+  function atomicComponents(sample) {
+    return Array.isArray(sample?.atomicComponents) ? sample.atomicComponents : [];
+  }
+
+  function pureBody(sample) {
     return {
       ...sample,
       sigils: [],
       sigilCount: 0,
       timingMix: [],
       hasArea: false,
-      hasIntrinsicMalus: false
+      hasIntrinsicMalus: false,
+      atomicComponents:[],
+      atomicSigilCount:0,
+      atomicConstraintCount:0
     };
   }
 
+  function noSigils(sample) {
+    return pureBody(sample);
+  }
+
   function onlySigil(sample, sigil) {
+    const matchedAtomic = atomicComponents(sample).filter(component =>
+      component.kind !== "constraint"
+      && component.slotId
+      && String(component.slotId) === String(sigil?.slotId || "")
+    );
     return {
-      ...sample,
+      ...pureBody(sample),
       sigils: [sigil],
       sigilCount: 1,
       timingMix: [sigil.timing || "other"],
       hasArea: Boolean(sigil.area),
-      hasIntrinsicMalus: Boolean(sigil.intrinsicMalus)
+      hasIntrinsicMalus: Boolean(sigil.intrinsicMalus),
+      atomicComponents:matchedAtomic.map(clone),
+      atomicSigilCount:matchedAtomic.length
     };
   }
 
@@ -283,6 +301,47 @@
     return { total, cap:hardCap, details };
   }
 
+  function constraintCredit(sample, positiveSubtotal, unit, baselineModel, bodyValue) {
+    const constraints = atomicComponents(sample).filter(component => component.kind === "constraint");
+    if (!constraints.length) return { total:0, cap:0, learned:0, heuristic:0, details:[] };
+
+    const constraintSample = {
+      ...pureBody(sample),
+      atomicComponents:constraints.map(clone),
+      atomicConstraintCount:constraints.length
+    };
+    const learnedPrediction = finite(baselineModel.predict(constraintSample), bodyValue);
+    const learned = Math.max(0, bodyValue - learnedPrediction);
+
+    const details = constraints.map(component => {
+      const id = String(component.definitionId || "");
+      const magnitudeValue = Math.max(1, Math.abs(finite(component.magnitude, 1)));
+      let factor = 0.14 + 0.03 * Math.min(12, magnitudeValue);
+      if (/friendly-fire/.test(id)) factor = 0.34 + 0.01 * Math.min(20, magnitudeValue);
+      else if (/constraint-(backlash|scarcity|weakness)/.test(id)) factor = 0.18 + 0.04 * Math.min(10, magnitudeValue);
+      else if (/constraint-(erosion|tribute)/.test(id)) factor = 0.20 + 0.045 * Math.min(10, magnitudeValue);
+      else if (/constraint-(threshold|limit|overpower)/.test(id)) factor = 0.16 + 0.018 * Math.min(20, magnitudeValue);
+      return {
+        definitionId:id,
+        magnitude:magnitudeValue,
+        heuristicCredit:unit * factor
+      };
+    });
+
+    const heuristic = details.reduce((sum, item) => sum + item.heuristicCredit, 0);
+    const cap = Math.max(unit * 1.25, positiveSubtotal * 0.30);
+    // Production credit follows the explicit mechanical severity ladder.
+    // The fitted delta remains diagnostic evidence only: letting a sparse
+    // regression override the ladder can make a stronger drawback worth
+    // less credit than a weaker copy of the same Constraint family.
+    const total = Math.min(cap, heuristic);
+    const heuristicTotal = Math.max(EPSILON, heuristic);
+    details.forEach(item => {
+      item.credit = total * (item.heuristicCredit / heuristicTotal);
+    });
+    return { total, cap, learned, heuristic, details };
+  }
+
   function schoolAdjustment(sample, unit) {
     // Affinity controls ownership/access, not free combat power. 0.37 keeps the
     // school-identity layer explicit but neutral until a canonical identity
@@ -352,7 +411,19 @@
       const beforeMalus = body + sigilSubtotal + scopeSubtotal + refundSubtotal
         + interactionSubtotal + stacking.total + school.value;
       const malus = malusCredit(sample, beforeMalus, unit);
-      const total = Math.max(0, beforeMalus - malus.total);
+      const constraints = constraintCredit(sample, beforeMalus, unit, baselineModel, body);
+      const combinedCreditCap = Math.max(unit * 1.75, beforeMalus * 0.40);
+      const rawCombinedCredit = malus.total + constraints.total;
+      const combinedScale = rawCombinedCredit > combinedCreditCap && rawCombinedCredit > EPSILON
+        ? combinedCreditCap / rawCombinedCredit
+        : 1;
+      if (combinedScale < 1) {
+        malus.total *= combinedScale;
+        constraints.total *= combinedScale;
+        malus.details.forEach(item => { item.credit *= combinedScale; });
+        constraints.details.forEach(item => { item.credit *= combinedScale; });
+      }
+      const total = Math.max(0, beforeMalus - malus.total - constraints.total);
 
       return {
         schemaVersion:HYBRID_SCHEMA_VERSION,
@@ -368,6 +439,12 @@
         interactionSubtotal,
         stacking,
         malusCredit:malus,
+        constraintCredit:constraints,
+        combinedMalusCredit:{
+          total:malus.total + constraints.total,
+          cap:combinedCreditCap,
+          scale:combinedScale
+        },
         schoolAdjustment:school,
         calibrationUnit:unit
       };

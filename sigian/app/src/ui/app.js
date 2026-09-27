@@ -5646,7 +5646,8 @@
       [t("forge.math.interactions"), breakdown.interactionSubtotal],
       [t("forge.math.stacking"), breakdown.stacking?.total],
       [t("forge.math.schoolAdjustment"), breakdown.schoolAdjustment?.value],
-      [t("forge.math.malusCredit"), -Number(breakdown.malusCredit?.total || 0)]
+      [t("forge.math.malusCredit"), -Number(breakdown.malusCredit?.total || 0)],
+      [t("forge.math.constraintCredit"), -Number(breakdown.constraintCredit?.total || 0)]
     ].filter(([,value]) => Number.isFinite(Number(value)) && Math.abs(Number(value)) > 0.0001);
 
     const interactions = [
@@ -5665,7 +5666,7 @@
           ? interactions.map(item => `<span>${escapeHtml(forgeInteractionLabel(item.kind))}<b>${escapeHtml(forgeSignedMath(item.value))} AV</b></span>`).join("")
           : `<small>${escapeHtml(t("forge.math.noInteractions"))}</small>`}
       </div>
-      <small class="forge-math-provisional">${escapeHtml(t("forge.math.provisional"))}</small>
+      <small class="forge-math-provisional ${math.status === "hybrid-production" ? "is-production" : ""}">${escapeHtml(t(math.status === "hybrid-production" ? "forge.math.production" : "forge.math.provisional"))}</small>
     </div>`;
   }
 
@@ -6611,8 +6612,36 @@
       };
     }
     if (sealButton) {
-      sealButton.disabled = true;
-      sealButton.title = t("forge.math.sealingBlocked");
+      sealButton.disabled = inventoryReadOnly || !analysis.canSeal;
+      sealButton.title = analysis.canSeal
+        ? t("forge.math.sealingReady")
+        : t("forge.math.sealingBlocked");
+      sealButton.onclick = sealButton.disabled ? null : () => {
+        const sealedRecipe = A.deepClone?.(snapshot.draft.recipe) || JSON.parse(JSON.stringify(snapshot.draft.recipe));
+        const sealedName = sealedRecipe.presentation?.name || t("forge.newFormula");
+        try {
+          const result = session.sealFormula();
+          const sealedCost = Number(result?.evaluation?.minimumLevel || analysis.minimumLevel || 0);
+          forgeSelectedSigilSlotId = null;
+          forgeCardEditorSection = null;
+          forgeReclaimRequest = null;
+          forgeCraftSuggestionRequest = null;
+          forgeTargetCost = "auto";
+          session.reset({
+            school:sealedRecipe.school,
+            type:"creature",
+            stats:{ attack:1, health:5 },
+            presentation:{ name:t("forge.newFormula") }
+          });
+          forgeSession = null;
+          renderForgePage();
+          const status = $("#forgeAutosaveStatus");
+          if (status) status.textContent = t("forge.sealSuccess", { name:sealedName, cost:sealedCost });
+        } catch (error) {
+          const status = $("#forgeAutosaveStatus");
+          if (status) status.textContent = t("forge.sealFailed", { error:String(error?.message || error || "") });
+        }
+      };
     }
     if (labButton) {
       labButton.disabled = inventoryReadOnly;

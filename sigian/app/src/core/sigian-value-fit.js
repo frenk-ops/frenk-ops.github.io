@@ -53,6 +53,29 @@
     add(features, "grade:magnitude", gradeMagnitude);
     add(features, "grade:area-magnitude", areaGradeMagnitude);
     add(features, "grade:persistent-magnitude", persistentGradeMagnitude);
+
+    const atomicComponents = Array.isArray(sample?.atomicComponents) ? sample.atomicComponents : [];
+    if (atomicComponents.length) {
+      let atomicMagnitude = 0;
+      let atomicSigilMagnitude = 0;
+      let atomicConstraintMagnitude = 0;
+      const sigils = atomicComponents.filter(component => component.kind !== "constraint");
+      const constraints = atomicComponents.filter(component => component.kind === "constraint");
+      add(features, "atomic:component-count", atomicComponents.length);
+      add(features, "atomic:sigil-count", sigils.length);
+      add(features, "atomic:constraint-count", constraints.length);
+      atomicComponents.forEach(component => {
+        const magnitude = Math.max(0, finite(component.magnitude, 0));
+        atomicMagnitude += magnitude;
+        if (component.kind === "constraint") atomicConstraintMagnitude += magnitude;
+        else atomicSigilMagnitude += magnitude;
+        add(features, `atomic:${component.kind === "constraint" ? "constraint" : "sigil"}:${component.definitionId || "unknown"}`);
+        if (component.grade != null) add(features, `atomic:grade:${component.kind === "constraint" ? "constraint" : "sigil"}:${Math.max(1, Math.trunc(finite(component.grade, 1)))}`);
+      });
+      add(features, "atomic:magnitude", atomicMagnitude);
+      add(features, "atomic:sigil-magnitude", atomicSigilMagnitude);
+      add(features, "atomic:constraint-magnitude", atomicConstraintMagnitude);
+    }
     return features;
   }
 

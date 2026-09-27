@@ -22,7 +22,7 @@
     try {
       const required = [
         "getCardSet",
-        "buildSigianCalibrationDataset",
+        "buildSigianAtomicCalibrationDataset",
         "buildSigianRecoveredOracleDataset",
         "buildSigianOracleTargetSamples",
         "fitSigianOracleStrengthCandidate",
@@ -32,11 +32,14 @@
       if (missing.length) throw new Error(`Forgia matematica: dipendenze mancanti: ${missing.join(", ")}.`);
 
       const cards = A.getCardSet("astral-original");
-      const calibration = A.buildSigianCalibrationDataset(cards);
+      const calibration = A.buildSigianAtomicCalibrationDataset(cards);
       const oracleRows = A.buildSigianRecoveredOracleDataset(cards);
       const samples = A.buildSigianOracleTargetSamples(calibration, oracleRows);
       const candidate = A.fitSigianOracleStrengthCandidate(samples);
       const evaluator = A.createSigianHybridArcaneValueEvaluator(candidate);
+      const certification = typeof A.certifySigianHybridProduction === "function"
+        ? A.certifySigianHybridProduction({ cards, calibration, oracleRows, samples, candidate, evaluator })
+        : { productionReady:false, blockers:["production-certifier-unavailable"] };
 
       cachedCore = Object.freeze({
         cards,
@@ -44,7 +47,8 @@
         oracleRows,
         samples,
         candidate,
-        evaluator
+        evaluator,
+        certification
       });
       return cachedCore;
     } catch (error) {
@@ -53,35 +57,11 @@
     }
   }
 
-  function syntheticCard(recipe) {
-    const stats = recipe?.stats || {};
-    return {
-      id:String(recipe?.id || "forge-formula"),
-      name:String(recipe?.presentation?.name || "Formula"),
-      school:String(recipe?.school || "fire"),
-      type:recipe?.type === "spell" ? "spell" : "creature",
-      level:1,
-      cost:1,
-      attack:recipe?.type === "creature" ? Math.max(0, finite(stats.attack, 0)) : 0,
-      health:recipe?.type === "creature" ? Math.max(1, finite(stats.health, 1)) : 0,
-      hp:recipe?.type === "creature" ? Math.max(1, finite(stats.health, 1)) : 0,
-      text:"",
-      keyword:"",
-      set:"custom",
-      art:"",
-      effects:[]
-    };
-  }
-
   function sampleForRecipe(recipe) {
-    const card = syntheticCard(recipe);
-    const values = {};
-    (recipe?.sigils || []).forEach(sigil => {
-      if (sigil?.intensity != null && Number.isFinite(Number(sigil.intensity))) {
-        values[sigil.slotId] = Number(sigil.intensity);
-      }
-    });
-    return A.createSigianCalibrationSample(card, recipe, { values });
+    if (typeof A.createSigianAtomicForgeValueSample !== "function") {
+      throw new Error("Forgia matematica: builder atomico Formula non disponibile.");
+    }
+    return A.createSigianAtomicForgeValueSample(recipe);
   }
 
   function contributionRows(recipe, breakdown) {
@@ -152,8 +132,10 @@
 
     return {
       schemaVersion:FORGE_MATH_SCHEMA_VERSION,
-      status:"hybrid-diagnostic",
-      provisional:true,
+      status:core.certification?.productionReady ? "hybrid-production" : "hybrid-diagnostic",
+      provisional:!core.certification?.productionReady,
+      evaluatorId:core.certification?.evaluatorId || core.evaluator.evaluator,
+      productionCertification:clone(core.certification || {}),
       sample,
       arcaneValue:value,
       minimumLevel:minimum.level,
@@ -168,6 +150,24 @@
         oracleQuantile:core.candidate.oracleQuantile,
         baseSetSamples:core.samples.length
       }
+    };
+  };
+
+  A.getSigianForgeMathProductionCertification = function getSigianForgeMathProductionCertification() {
+    return clone(buildCore().certification || { productionReady:false, blockers:["production-certifier-unavailable"] });
+  };
+
+  A.getSigianForgeProductionEvaluation = function getSigianForgeProductionEvaluation(recipe) {
+    const analysis = A.analyzeSigianForgeRecipe(recipe);
+    if (analysis.status !== "hybrid-production" || !analysis.productionCertification?.productionReady) {
+      throw new Error(`Hybrid non certificato per la produzione: ${(analysis.productionCertification?.blockers || []).join(", ") || "certificazione assente"}.`);
+    }
+    return {
+      status:"production",
+      arcaneValue:Number(analysis.arcaneValue),
+      minimumLevel:Number(analysis.minimumLevel),
+      evaluatorId:String(analysis.evaluatorId || "hybrid-atomic-production-v1"),
+      evaluatedAt:new Date().toISOString()
     };
   };
 

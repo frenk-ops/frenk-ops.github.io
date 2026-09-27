@@ -418,6 +418,12 @@
     return pairs;
   }
 
+  function sealTargetFormulaInstanceId(draft) {
+    const raw = String(draft?.id || draft?.recipe?.id || "").trim();
+    if (!raw) return "";
+    return raw.startsWith("formula:") ? raw : `formula:${raw}`;
+  }
+
   function draftAnalysis(draft) {
     const validation = A.validateFormulaRecipe(draft.recipe);
     const structuralReasons = [];
@@ -513,8 +519,37 @@
     }
 
     const sealReasons = [...structuralReasons];
-    if (math) sealReasons.push("hybrid-diagnostic-not-production");
-    else sealReasons.push("balance-calibration-pending");
+    let productionEvaluation = null;
+    let sealValidation = null;
+    if (!math) {
+      sealReasons.push("balance-calibration-pending");
+    } else if (math.status !== "hybrid-production" || !math.productionCertification?.productionReady) {
+      sealReasons.push("hybrid-diagnostic-not-production");
+    } else if (!sealReasons.length) {
+      try {
+        productionEvaluation = A.getSigianForgeProductionEvaluation?.(draft.recipe) || null;
+        if (!productionEvaluation) {
+          sealReasons.push("production-evaluation-unavailable");
+        } else if (typeof A.validateSigianForgeAtomicCommit !== "function") {
+          sealReasons.push("atomic-commit-unavailable");
+        } else {
+          sealValidation = A.validateSigianForgeAtomicCommit({
+            targetFormulaInstanceId:sealTargetFormulaInstanceId(draft),
+            recipeId:null,
+            recipe:draft.recipe,
+            transaction:draft.transaction,
+            targetLifecycleState:"SEALED",
+            evaluation:productionEvaluation
+          });
+          if (!sealValidation.valid) {
+            sealReasons.push(...(sealValidation.blockers || ["atomic-commit-invalid"]));
+          }
+        }
+      } catch (error) {
+        sealReasons.push("production-evaluation-failed");
+        mathError = mathError || String(error?.message || error || "Valutazione production non disponibile.");
+      }
+    }
 
     const tryReasons = [...structuralReasons];
     let tryError = null;
@@ -545,8 +580,11 @@
       canTry: tryReasons.length === 0,
       tryBlockers:[...new Set(tryReasons)],
       tryError,
-      canSeal: false,
-      sealBlockers: [...new Set(sealReasons)]
+      canSeal: sealReasons.length === 0,
+      sealBlockers: [...new Set(sealReasons)],
+      productionEvaluation:productionEvaluation ? clone(productionEvaluation) : null,
+      sealValidation:sealValidation ? clone(sealValidation) : null,
+      sealTargetFormulaInstanceId:sealTargetFormulaInstanceId(draft)
     };
   }
 
@@ -1430,6 +1468,39 @@
       save() {
         persist();
         return this.snapshot();
+      },
+
+      getSealTargetFormulaInstanceId() {
+        return sealTargetFormulaInstanceId(draft);
+      },
+
+      sealFormula(options = {}) {
+        const analysis = draftAnalysis(draft);
+        if (!analysis.canSeal) {
+          throw new Error(`Sigilla Formula bloccato: ${(analysis.sealBlockers || []).join(", ") || "stato non valido"}.`);
+        }
+        if (typeof A.commitSigianForgeTransactionAtomic !== "function") {
+          throw new Error("Commit atomico Forgia non disponibile.");
+        }
+        const evaluation = analysis.productionEvaluation
+          || A.getSigianForgeProductionEvaluation?.(draft.recipe);
+        if (!evaluation || evaluation.status !== "production") {
+          throw new Error("Valutazione Hybrid production non disponibile.");
+        }
+        const result = A.commitSigianForgeTransactionAtomic({
+          targetFormulaInstanceId:sealTargetFormulaInstanceId(draft),
+          recipeId:Object.prototype.hasOwnProperty.call(options, "recipeId") ? options.recipeId : null,
+          sourceCardId:Object.prototype.hasOwnProperty.call(options, "sourceCardId") ? options.sourceCardId : null,
+          recipe:draft.recipe,
+          transaction:draft.transaction,
+          targetLifecycleState:"SEALED",
+          evaluation
+        });
+        return {
+          ...clone(result),
+          evaluation:clone(evaluation),
+          recipe:clone(draft.recipe)
+        };
       },
 
       stageTransactionOperation(operation) {
