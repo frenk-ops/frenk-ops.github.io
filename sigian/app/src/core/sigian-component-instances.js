@@ -277,6 +277,17 @@
     const instances = new Map(snapshot().instances.map(instance => [instance.componentInstanceId, clone(instance)]));
     (transaction?.operations || []).forEach(operation => {
       const payload = operation?.payload || {};
+      if (operation.type === "reclaim" && payload.craftingOnly) {
+        const id = String(payload.componentInstanceId || "");
+        const current = instances.get(id);
+        if (current
+          && current.allocation?.state === "assigned"
+          && current.allocation.formulaInstanceId === String(payload.sourceFormulaInstanceId || "")
+          && current.allocation.slotId === String(payload.sourceSlotId || "")) {
+          current.allocation = { state:"free" };
+          instances.set(id, current);
+        }
+      }
       if (operation.type === "fuse") {
         const inputIds = (payload.inputInstanceIds || []).map(String);
         if (inputIds.length !== 2 || !inputIds.every(id => instances.has(id))) return;
@@ -617,6 +628,10 @@
   A.getSigianProjectedComponentInstance = function getSigianProjectedComponentInstance(instanceId, transaction = null) {
     return projectedInstances(transaction)
       .find(instance => instance.componentInstanceId === String(instanceId || "")) || null;
+  };
+
+  A.listSigianProjectedAvailableComponentInstances = function listSigianProjectedAvailableComponentInstances(options = {}) {
+    return projectedFreeInstances(options);
   };
 
   A.listSigianVerticalCraftingOptions = function listSigianVerticalCraftingOptions(transaction = null, options = {}) {

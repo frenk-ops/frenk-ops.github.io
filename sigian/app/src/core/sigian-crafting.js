@@ -297,6 +297,35 @@
     return current;
   };
 
+  A.reclaimSigianForgeTransactionComponentForCrafting = function reclaimSigianForgeTransactionComponentForCrafting(plan, input = {}) {
+    if (!input.componentInstanceId || !input.sourceFormulaInstanceId || !input.sourceSlotId) {
+      throw new Error("Recupero crafting componente Forgia incompleto.");
+    }
+    const kind = input.kind === "constraint" ? "constraint" : "sigil";
+    const componentInstanceId = String(input.componentInstanceId);
+    const current = A.createSigianForgeTransactionPlan(plan || {});
+    if (current.operations.some(operation =>
+      operation.type === "reclaim"
+      && String(operation.payload?.componentInstanceId || "") === componentInstanceId
+    )) {
+      return current;
+    }
+    current.operations.push(transactionOperation({
+      id:`reclaim:craft:${componentInstanceId}`,
+      type:"reclaim",
+      payload:{
+        kind,
+        componentInstanceId,
+        inventoryId:input.inventoryId == null ? null : String(input.inventoryId),
+        sourceFormulaInstanceId:String(input.sourceFormulaInstanceId),
+        sourceSlotId:String(input.sourceSlotId),
+        targetSlotId:`craft:${componentInstanceId}`,
+        craftingOnly:true
+      }
+    }, current.operations.length));
+    return current;
+  };
+
   A.listSigianForgeReclaimConsequences = function listSigianForgeReclaimConsequences(plan) {
     const formulas = new Map();
     (plan?.operations || []).forEach(operation => {

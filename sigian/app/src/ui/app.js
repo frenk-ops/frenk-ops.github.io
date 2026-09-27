@@ -522,6 +522,7 @@
   let forgeMathMode = "simple";
   let forgeTestDuel = false;
   let forgeReclaimRequest = null;
+  let forgeCraftSuggestionRequest = null;
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
@@ -5351,6 +5352,19 @@
     };
   }
 
+  function forgeConstraintAvailabilityInfo(constraint, formulaSchool, transaction = null) {
+    const inventoryId = A.sigianConstraintInventoryId?.(constraint) || null;
+    const total = inventoryId ? A.getSigianComponentAvailabilityByInventoryId?.(inventoryId) : null;
+    const compatible = A.getSigianConstraintComponentAvailability?.(constraint, formulaSchool, transaction) || null;
+    const owned = Number(total?.total ?? compatible?.total ?? A.getSigianOwnedConstraintQuantity?.(constraint) ?? 0);
+    const compatibleCount = Number(compatible?.total ?? owned);
+    const free = Number(compatible?.free ?? compatibleCount);
+    const inUse = Number(compatible?.inUse ?? Math.max(0, compatibleCount - free));
+    const available = Number(compatible?.projectedFree ?? free);
+    const reclaimable = Number(compatible?.reclaimable ?? inUse);
+    return { inventoryId, owned, compatible:compatibleCount, free, inUse, available, reclaimable, raw:compatible };
+  }
+
   function forgeReclaimCandidates(recipe, transaction) {
     const request = forgeReclaimRequest;
     if (!request) return [];
@@ -5420,6 +5434,106 @@
     if (card) host.replaceChildren(card);
   }
 
+  function forgeCraftSuggestionStrategyText(suggestion) {
+    const existing = A.getSigianCollectibleSigil?.(suggestion?.existingCollectibleId);
+    const target = A.getSigianCollectibleSigil?.(suggestion?.targetCollectibleId || suggestion?.collectibleId);
+    const vars = {
+      existing:existing?.displayName || suggestion?.existingCollectibleId || "",
+      target:target?.displayName || suggestion?.targetCollectibleId || suggestion?.collectibleId || "",
+      required:Number(suggestion?.requiredReclaims || 0)
+    };
+    const keys = {
+      "replace-selected-free":"forge.craftSuggestion.replace",
+      "replace-selected-reclaim":"forge.craftSuggestion.replaceReclaim",
+      "use-higher-free":"forge.craftSuggestion.useHigher",
+      "use-higher-reclaim":"forge.craftSuggestion.useHigherReclaim",
+      "fuse-free":"forge.craftSuggestion.fuse",
+      "fuse-reclaim":"forge.craftSuggestion.fuseReclaim",
+      "blocked-max-grade":"forge.craftSuggestion.maxGrade",
+      "blocked-selected-unavailable":"forge.craftSuggestion.unavailable",
+      "blocked-no-normalization-path":"forge.craftSuggestion.noPath",
+      "blocked-existing-conflict":"forge.craftSuggestion.existingConflict"
+    };
+    return t(keys[suggestion?.strategy] || "forge.craftSuggestion.noPath", vars);
+  }
+
+  function forgeCraftSuggestionDialogMarkup() {
+    const request = forgeCraftSuggestionRequest;
+    const suggestion = request?.suggestion;
+    if (!suggestion) return "";
+    const reclaimCandidates = suggestion.reclaimCandidates || [];
+    const selectedIds = new Set(request.selectedReclaimIds || []);
+    const required = Number(suggestion.requiredReclaims || 0);
+    const actionable = new Set([
+      "replace-selected-free",
+      "replace-selected-reclaim",
+      "use-higher-free",
+      "use-higher-reclaim",
+      "fuse-free",
+      "fuse-reclaim"
+    ]).has(suggestion.strategy);
+    const enoughReclaims = required === 0 || selectedIds.size === required;
+    const preview = reclaimCandidates.find(item => item.componentInstanceId === request.previewInstanceId) || null;
+    const previewFormula = preview ? A.getSigianInventoryFormulaByInstanceId?.(preview.allocation?.formulaInstanceId) : null;
+    return `
+      <div class="forge-reclaim-backdrop" data-forge-craft-close>
+        <section class="forge-reclaim-dialog forge-craft-suggestion-dialog" role="dialog" aria-modal="true" aria-label="${escapeHtml(t("forge.craftSuggestion.title"))}">
+          <header>
+            <div><small>${escapeHtml(t("forge.craftSuggestion.kicker"))}</small><h3>${escapeHtml(t("forge.craftSuggestion.title"))}</h3></div>
+            <button type="button" data-forge-craft-close aria-label="${escapeHtml(t("ui.close"))}">×</button>
+          </header>
+          <p>${escapeHtml(forgeCraftSuggestionStrategyText(suggestion))}</p>
+          ${required > 0 ? `
+            <div class="forge-reclaim-warning">
+              <strong>${escapeHtml(t("forge.craftSuggestion.reclaimTitle", { required }))}</strong>
+              <span>${escapeHtml(t("forge.craftSuggestion.reclaimHint"))}</span>
+            </div>
+            <div class="forge-reclaim-candidates">
+              ${reclaimCandidates.map(instance => {
+                const formula = A.getSigianInventoryFormulaByInstanceId?.(instance.allocation?.formulaInstanceId);
+                const name = formula ? localizedCardNameById(formula.id, formula.name) : instance.allocation?.formulaInstanceId || "Formula";
+                const chosen = selectedIds.has(instance.componentInstanceId);
+                const previewing = preview?.componentInstanceId === instance.componentInstanceId;
+                return `<article class="forge-reclaim-candidate ${previewing ? "is-previewing" : ""}">
+                  <div>
+                    <small>${escapeHtml(t("forge.reclaimAssignedTo"))}</small>
+                    <button type="button" class="forge-reclaim-formula-link" data-forge-craft-preview="${escapeHtml(instance.componentInstanceId)}">${escapeHtml(name)}</button>
+                  </div>
+                  <button type="button" class="classic-stone-button ${chosen ? "" : "ghost"}" data-forge-craft-reclaim-toggle="${escapeHtml(instance.componentInstanceId)}" aria-pressed="${chosen}">${escapeHtml(chosen ? t("forge.craftSuggestion.selected") : t("forge.craftSuggestion.selectCopy"))}</button>
+                </article>`;
+              }).join("")}
+            </div>
+          ` : ""}
+          ${previewFormula ? `
+            <section class="forge-reclaim-preview">
+              <div class="forge-reclaim-warning">
+                <strong>${escapeHtml(t("forge.reclaimConsequenceTitle"))}</strong>
+                <span>${escapeHtml(t("forge.reclaimConsequence"))}</span>
+              </div>
+              <div class="forge-reclaim-full-host" data-forge-craft-full="${escapeHtml(previewFormula.id)}"></div>
+            </section>
+          ` : ""}
+          <div class="forge-modeler-actions">
+            <button type="button" class="classic-stone-button ghost" data-forge-craft-close>${escapeHtml(t("forge.craftSuggestion.cancel"))}</button>
+            ${actionable ? `<button type="button" class="classic-stone-button" data-forge-craft-apply ${enoughReclaims ? "" : "disabled"}>${escapeHtml(t("forge.craftSuggestion.apply"))}</button>` : ""}
+          </div>
+        </section>
+      </div>`;
+  }
+
+  function mountForgeCraftSuggestionFullPreview(root) {
+    const host = root?.querySelector?.("[data-forge-craft-full]");
+    if (!host) return;
+    const formula = A.getSigianInventoryFormula?.(host.dataset.forgeCraftFull);
+    if (!formula) return;
+    const card = A.SigianCardRenderer?.buildFull?.(formula, {
+      editable:false,
+      inspectable:true,
+      surface:"forge-craft-suggestion"
+    });
+    if (card) host.replaceChildren(card);
+  }
+
   function forgePreviewCard(recipe, analysis = null) {
     const stats = recipe.stats || {};
     const calculatedCost = Math.max(0, Number(analysis?.minimumLevel || 0));
@@ -5461,15 +5575,16 @@
     if (!definition?.baseSigilId || !definition?.id) return "";
     const name = definition.displayName || sigianCanonicalSigilName({ sigilId:definition.baseSigilId, grade:definition.grade || 1 });
     const owned = Number(definition.ownedQuantity ?? A.getSigianOwnedCollectibleSigilQuantity?.(definition.id, recipe?.school) ?? 0);
-    const free = Number(definition.freeQuantity ?? owned);
-    const inUse = Number(definition.inUseQuantity ?? Math.max(0, owned - free));
+    const compatible = Number(definition.compatibleQuantity ?? owned);
+    const free = Number(definition.compatibleFreeQuantity ?? definition.freeQuantity ?? compatible);
+    const inUse = Number(definition.compatibleInUseQuantity ?? definition.inUseQuantity ?? Math.max(0, compatible - free));
     const available = Number(definition.projectedFreeQuantity ?? free);
     const reclaimableCount = Number(definition.reclaimableQuantity ?? inUse);
     const reclaimable = available < 1 && reclaimableCount > 0;
     const unavailable = disabled || (available < 1 && !reclaimable);
     return `<button type="button" class="forge-sigil-tile ${available < 1 ? "is-unavailable" : ""} ${reclaimable ? "is-reclaimable" : ""}" data-forge-add-collectible="${escapeHtml(definition.id)}" ${unavailable ? "disabled" : ""}>
       <span class="forge-sigil-tile-icon">${sigianCanonicalSigilIconMarkup(definition.baseSigilId, "sigian-sigil-icon")}</span>
-      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small><em>${escapeHtml(t("forge.inventoryAvailability", { available, free, inUse, owned }))}</em></span>
+      <span class="forge-sigil-tile-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(forgeCollectibleSummary(definition))}</small><em>${escapeHtml(t("forge.inventoryAvailability", { available, compatible, free, inUse, owned }))}</em></span>
       <span class="forge-sigil-tile-action">${available > 0 ? escapeHtml(t("forge.imprint")) : reclaimable ? escapeHtml(t("forge.reclaim")) : escapeHtml(t("forge.inventoryUnavailable"))}</span>
     </button>`;
   }
@@ -5551,6 +5666,7 @@
         <strong>${escapeHtml(t("forge.balancePending"))}</strong>
         ${analysis?.mathError ? `<span>${escapeHtml(analysis.mathError)}</span>` : ""}
         ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<span>${escapeHtml(t("forge.spellNeedsSigil"))}</span>` : ""}
+        ${analysis?.sealBlockers?.includes("same-family-redundancy") ? `<span>${escapeHtml(t("forge.sameFamilyRedundancy"))}</span>` : ""}
       </div>`;
     }
 
@@ -5610,6 +5726,7 @@
 
       ${forgeMathMode === "detailed" ? forgeMathBreakdownMarkup(analysis) : ""}
       ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<p class="forge-math-warning">${escapeHtml(t("forge.spellNeedsSigil"))}</p>` : ""}
+      ${analysis?.sealBlockers?.includes("same-family-redundancy") ? `<p class="forge-math-warning">${escapeHtml(t("forge.sameFamilyRedundancy"))}</p>` : ""}
     </section>`;
   }
 
@@ -5935,13 +6052,9 @@
           school:schoolBound ? recipe.school : null,
           grade:gradeLess ? null : 1
         };
-        const availability = A.getSigianConstraintComponentAvailability?.(probe, recipe.school, transaction) || null;
-        const owned = Number(availability?.total ?? A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
-        const free = Number(availability?.projectedFree ?? owned);
-        const inUse = Number(availability?.inUse ?? 0);
-        const reclaimable = Number(availability?.reclaimable ?? inUse);
+        const counts = forgeConstraintAvailabilityInfo(probe, recipe.school, transaction);
         const selected = current?.definitionId === definition.id;
-        return `<option value="${escapeHtml(definition.id)}" ${selected ? "selected" : ""} ${free < 1 && reclaimable < 1 && !selected ? "disabled" : ""}>${escapeHtml(sigianV2ComponentBaseName(definition.id, definition.name))} · ${free} liberi / ${inUse} in uso / ${owned}</option>`;
+        return `<option value="${escapeHtml(definition.id)}" ${selected ? "selected" : ""} ${counts.available < 1 && counts.reclaimable < 1 && !selected ? "disabled" : ""}>${escapeHtml(sigianV2ComponentBaseName(definition.id, definition.name))} · ${escapeHtml(t("forge.inventoryOptionAvailability", { available:counts.available, compatible:counts.compatible, owned:counts.owned }))}</option>`;
       })
     ].join("");
 
@@ -5987,13 +6100,13 @@
             <span>
               <strong>${escapeHtml(sigianV2ComponentDisplayName({ kind:"constraint", ...current }))}</strong>
               <small>${(() => {
-                const availability = A.getSigianConstraintComponentAvailability?.(current, recipe.school, transaction);
-                if (!availability) return `Inventario ×${escapeHtml(A.getSigianOwnedConstraintQuantity?.(current) ?? 0)}`;
+                const counts = forgeConstraintAvailabilityInfo(current, recipe.school, transaction);
                 return escapeHtml(t("forge.inventoryAvailability", {
-                  available:availability.projectedFree,
-                  free:availability.free,
-                  inUse:availability.inUse,
-                  owned:availability.total
+                  available:counts.available,
+                  compatible:counts.compatible,
+                  free:counts.free,
+                  inUse:counts.inUse,
+                  owned:counts.owned
                 }));
               })()}</small>
             </span>
@@ -6307,7 +6420,8 @@
         </aside>
       </div>
       ${!inventoryReadOnly && forgeCardEditorSection ? `<button type="button" class="forge-mobile-sheet-backdrop" data-forge-card-editor-close aria-label="Chiudi editor"></button>` : ""}
-      ${!inventoryReadOnly ? forgeReclaimDialogMarkup(recipe, snapshot.draft.transaction) : ""}`;
+      ${!inventoryReadOnly ? forgeReclaimDialogMarkup(recipe, snapshot.draft.transaction) : ""}
+      ${!inventoryReadOnly ? forgeCraftSuggestionDialogMarkup() : ""}`;
 
     const previewStage = $("#forgePreviewStage");
     const preview = A.SigianCardRenderer?.buildFull?.(forgePreviewCard(recipe, analysis), {
@@ -6322,6 +6436,7 @@
       }
     }
     mountForgeReclaimFullPreview(root);
+    mountForgeCraftSuggestionFullPreview(root);
 
     if (!inventoryReadOnly) {
       previewStage?.querySelectorAll("[data-forge-sigil-slot]").forEach(entry => {
@@ -6425,6 +6540,7 @@
     if (newButton && !inventoryReadOnly) newButton.onclick = () => {
       forgeSelectedSigilSlotId = null;
       forgeCardEditorSection = null;
+      forgeCraftSuggestionRequest = null;
       forgeTargetCost = "auto";
       session.reset({ type:"creature", stats:{ attack:1, health:5 }, presentation:{ name:t("forge.newFormula") } });
       renderForgePage();
@@ -6442,6 +6558,7 @@
       forgeSelectedSigilSlotId = null;
       forgeCardEditorSection = null;
       forgeReclaimRequest = null;
+      forgeCraftSuggestionRequest = null;
       forgeSession = A.createSigianForgeSession?.({
         type:"creature",
         stats:{ attack:1, health:5 },
@@ -6451,10 +6568,12 @@
     });
 
     if (undoButton) undoButton.onclick = () => {
+      forgeCraftSuggestionRequest = null;
       session.undo();
       renderForgePage();
     };
     if (redoButton) redoButton.onclick = () => {
+      forgeCraftSuggestionRequest = null;
       session.redo();
       renderForgePage();
     };
@@ -6595,6 +6714,18 @@
     root.querySelectorAll("[data-forge-add-collectible]").forEach(button => button.addEventListener("click", () => {
       if (button.disabled) return;
       const collectibleId = button.dataset.forgeAddCollectible;
+      const suggestion = session.getCollectibleAddSuggestion?.(collectibleId) || null;
+      if (suggestion) {
+        forgeCraftSuggestionRequest = {
+          suggestion,
+          selectedReclaimIds:[],
+          previewInstanceId:null
+        };
+        forgeReclaimRequest = null;
+        forgeCardEditorSection = "sigils";
+        renderForgePage();
+        return;
+      }
       const option = activeSigils.find(item => item.id === collectibleId);
       if (option && Number(option.projectedFreeQuantity || 0) < 1 && Number(option.reclaimableQuantity ?? option.inUseQuantity ?? 0) > 0) {
         forgeReclaimRequest = { kind:"sigil", collectibleId, previewInstanceId:null };
@@ -6634,6 +6765,51 @@
         forgeSelectedSigilSlotId = result.draft.recipe.sigils.at(-1)?.slotId || null;
       }
       forgeReclaimRequest = null;
+      renderForgePage();
+    }));
+
+    root.querySelectorAll("[data-forge-craft-close]").forEach(control => control.addEventListener("click", event => {
+      if (control.classList.contains("forge-reclaim-backdrop") && event.target !== control) return;
+      forgeCraftSuggestionRequest = null;
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-craft-preview]").forEach(button => button.addEventListener("click", () => {
+      if (!forgeCraftSuggestionRequest) return;
+      forgeCraftSuggestionRequest = {
+        ...forgeCraftSuggestionRequest,
+        previewInstanceId:button.dataset.forgeCraftPreview
+      };
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-craft-reclaim-toggle]").forEach(button => button.addEventListener("click", () => {
+      if (!forgeCraftSuggestionRequest) return;
+      const id = String(button.dataset.forgeCraftReclaimToggle || "");
+      const required = Number(forgeCraftSuggestionRequest.suggestion?.requiredReclaims || 0);
+      const selected = new Set(forgeCraftSuggestionRequest.selectedReclaimIds || []);
+      if (selected.has(id)) {
+        selected.delete(id);
+      } else if (required === 1) {
+        selected.clear();
+        selected.add(id);
+      } else if (selected.size < required) {
+        selected.add(id);
+      }
+      forgeCraftSuggestionRequest = {
+        ...forgeCraftSuggestionRequest,
+        selectedReclaimIds:[...selected]
+      };
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-craft-apply]").forEach(button => button.addEventListener("click", () => {
+      if (button.disabled || !forgeCraftSuggestionRequest?.suggestion) return;
+      const suggestion = forgeCraftSuggestionRequest.suggestion;
+      const result = session.applyCollectibleAddSuggestion(
+        suggestion.collectibleId,
+        { reclaimInstanceIds:forgeCraftSuggestionRequest.selectedReclaimIds || [] }
+      );
+      forgeSelectedSigilSlotId = suggestion.existingSlotId || result.draft.recipe.sigils.at(-1)?.slotId || null;
+      forgeCraftSuggestionRequest = null;
+      forgeCardEditorSection = "sigils";
       renderForgePage();
     }));
 

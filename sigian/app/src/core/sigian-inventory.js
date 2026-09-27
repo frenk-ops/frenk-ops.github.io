@@ -553,6 +553,8 @@
           ...option,
           ownedQuantity,
           compatibleQuantity:availability ? availability.total : ownedQuantity,
+          compatibleFreeQuantity:availability ? availability.free : ownedQuantity,
+          compatibleInUseQuantity:availability ? availability.inUse : 0,
           freeQuantity:availability ? availability.free : ownedQuantity,
           inUseQuantity:availability ? availability.inUse : 0,
           reclaimableQuantity:availability ? availability.reclaimable : 0,

@@ -356,6 +356,17 @@
     if (!validation.valid) structuralReasons.push("recipe-invalid");
     if (draft.recipe.type === "spell" && draft.recipe.sigils.length === 0) structuralReasons.push("spell-requires-sigil");
 
+    const collectibleFamilyCounts = new Map();
+    draft.recipe.sigils.filter(item => item.collectibleId).forEach(sigil => {
+      const collectible = A.getSigianCollectibleSigil?.(sigil.collectibleId);
+      const familyKey = collectible?.templateId ? String(collectible.templateId) : null;
+      if (!familyKey) return;
+      collectibleFamilyCounts.set(familyKey, (collectibleFamilyCounts.get(familyKey) || 0) + 1);
+    });
+    if ([...collectibleFamilyCounts.values()].some(count => count > 1)) {
+      structuralReasons.push("same-family-redundancy");
+    }
+
     if (typeof A.getSigianComponentInstance === "function" && typeof A.getSigianForgeTransactionBinding === "function") {
       const school = draft.recipe.school;
       const affinityAllowsSchool = affinity => {
@@ -384,6 +395,18 @@
           structuralReasons.push("component-copy-unavailable");
         }
       });
+      (draft.transaction?.operations || []).filter(operation =>
+        operation.type === "reclaim" && operation.payload?.craftingOnly
+      ).forEach(operation => {
+        const payload = operation.payload || {};
+        const persistent = A.getSigianComponentInstance?.(payload.componentInstanceId);
+        const valid = persistent?.allocation?.state === "assigned"
+          && persistent.allocation.formulaInstanceId === payload.sourceFormulaInstanceId
+          && persistent.allocation.slotId === payload.sourceSlotId
+          && A.getSigianFormulaLifecycleState?.(payload.sourceFormulaInstanceId) !== "DISSOLVED";
+        if (!valid) structuralReasons.push("component-copy-unavailable");
+      });
+
       if (draft.recipe.constraint) {
         const binding = A.getSigianForgeTransactionBinding(draft.transaction, "constraint", "constraint");
         const instance = binding?.componentInstanceId
@@ -655,6 +678,285 @@
       }
 
       return { recipe, transaction };
+    }
+
+    function collectibleFamily(collectibleId) {
+      const collectible = A.getSigianCollectibleSigil?.(collectibleId);
+      if (!collectible?.templateId) return null;
+      return {
+        collectible,
+        key:String(collectible.templateId),
+        grade:Number(collectible.grade || 0)
+      };
+    }
+
+    function sameFamilySigils(collectibleId) {
+      const family = collectibleFamily(collectibleId);
+      if (!family) return [];
+      return draft.recipe.sigils
+        .filter(sigil => {
+          const candidate = collectibleFamily(sigil.collectibleId);
+          return candidate?.key === family.key;
+        })
+        .map(clone);
+    }
+
+    function assignedCollectibleCandidates(collectibleId, transaction) {
+      return A.listSigianAssignedCollectibleComponentInstances?.(
+        collectibleId,
+        draft.recipe.school,
+        { transaction }
+      ) || [];
+    }
+
+    function freeCollectibleCandidates(collectibleId, transaction) {
+      const identity = A.sigianCollectibleInventoryIdentity?.(collectibleId, draft.recipe.school);
+      if (!identity?.inventoryId) return [];
+      return A.listSigianProjectedAvailableComponentInstances?.({
+        transaction,
+        inventoryId:identity.inventoryId,
+        compatibleSchool:draft.recipe.school
+      }) || [];
+    }
+
+    function collectibleAddSuggestion(collectibleId) {
+      const requested = collectibleFamily(collectibleId);
+      if (!requested || !requested.grade) return null;
+      const sameFamily = sameFamilySigils(collectibleId);
+      if (!sameFamily.length) return null;
+      if (sameFamily.length > 1) {
+        return {
+          type:"same-family",
+          strategy:"blocked-existing-conflict",
+          collectibleId:String(collectibleId),
+          existingSlotIds:sameFamily.map(item => item.slotId)
+        };
+      }
+
+      const existing = sameFamily[0];
+      const current = collectibleFamily(existing.collectibleId);
+      if (!current?.grade) return null;
+
+      if (current.grade !== requested.grade) {
+        const free = A.findSigianFreeCollectibleComponentInstance?.(
+          collectibleId,
+          draft.recipe.school,
+          { transaction:draft.transaction }
+        );
+        if (free) {
+          return {
+            type:"same-family",
+            strategy:"replace-selected-free",
+            collectibleId:String(collectibleId),
+            targetCollectibleId:String(collectibleId),
+            existingSlotId:existing.slotId,
+            existingCollectibleId:existing.collectibleId,
+            existingGrade:current.grade,
+            targetGrade:requested.grade
+          };
+        }
+        const assigned = assignedCollectibleCandidates(collectibleId, draft.transaction);
+        if (assigned.length) {
+          return {
+            type:"same-family",
+            strategy:"replace-selected-reclaim",
+            collectibleId:String(collectibleId),
+            targetCollectibleId:String(collectibleId),
+            existingSlotId:existing.slotId,
+            existingCollectibleId:existing.collectibleId,
+            existingGrade:current.grade,
+            targetGrade:requested.grade,
+            requiredReclaims:1,
+            reclaimCandidates:assigned.map(clone)
+          };
+        }
+        return {
+          type:"same-family",
+          strategy:"blocked-selected-unavailable",
+          collectibleId:String(collectibleId),
+          targetCollectibleId:String(collectibleId),
+          existingSlotId:existing.slotId,
+          existingCollectibleId:existing.collectibleId,
+          existingGrade:current.grade,
+          targetGrade:requested.grade
+        };
+      }
+
+      const fusion = A.sigianCollectibleFusion?.(collectibleId);
+      if (!fusion?.to) {
+        return {
+          type:"same-family",
+          strategy:"blocked-max-grade",
+          collectibleId:String(collectibleId),
+          existingSlotId:existing.slotId,
+          existingCollectibleId:existing.collectibleId,
+          existingGrade:current.grade
+        };
+      }
+
+      const higherFree = A.findSigianFreeCollectibleComponentInstance?.(
+        fusion.to,
+        draft.recipe.school,
+        { transaction:draft.transaction }
+      );
+      if (higherFree) {
+        return {
+          type:"same-family",
+          strategy:"use-higher-free",
+          collectibleId:String(collectibleId),
+          targetCollectibleId:String(fusion.to),
+          existingSlotId:existing.slotId,
+          existingCollectibleId:existing.collectibleId,
+          existingGrade:current.grade,
+          targetGrade:current.grade + 1
+        };
+      }
+
+      const unbound = transactionWithoutBinding("sigil", existing.slotId);
+      const freeInputs = freeCollectibleCandidates(collectibleId, unbound);
+      if (freeInputs.length >= 2) {
+        return {
+          type:"same-family",
+          strategy:"fuse-free",
+          collectibleId:String(collectibleId),
+          targetCollectibleId:String(fusion.to),
+          existingSlotId:existing.slotId,
+          existingCollectibleId:existing.collectibleId,
+          existingGrade:current.grade,
+          targetGrade:current.grade + 1,
+          availableInputInstanceIds:freeInputs.slice(0, 2).map(item => item.componentInstanceId)
+        };
+      }
+
+      const higherAssigned = assignedCollectibleCandidates(fusion.to, draft.transaction);
+      if (higherAssigned.length) {
+        return {
+          type:"same-family",
+          strategy:"use-higher-reclaim",
+          collectibleId:String(collectibleId),
+          targetCollectibleId:String(fusion.to),
+          existingSlotId:existing.slotId,
+          existingCollectibleId:existing.collectibleId,
+          existingGrade:current.grade,
+          targetGrade:current.grade + 1,
+          requiredReclaims:1,
+          reclaimCandidates:higherAssigned.map(clone)
+        };
+      }
+
+      const assignedInputs = assignedCollectibleCandidates(collectibleId, unbound);
+      const requiredReclaims = Math.max(0, 2 - freeInputs.length);
+      if (requiredReclaims > 0 && assignedInputs.length >= requiredReclaims) {
+        return {
+          type:"same-family",
+          strategy:"fuse-reclaim",
+          collectibleId:String(collectibleId),
+          targetCollectibleId:String(fusion.to),
+          existingSlotId:existing.slotId,
+          existingCollectibleId:existing.collectibleId,
+          existingGrade:current.grade,
+          targetGrade:current.grade + 1,
+          requiredReclaims,
+          availableInputInstanceIds:freeInputs.map(item => item.componentInstanceId),
+          reclaimCandidates:assignedInputs.map(clone)
+        };
+      }
+
+      return {
+        type:"same-family",
+        strategy:"blocked-no-normalization-path",
+        collectibleId:String(collectibleId),
+        targetCollectibleId:String(fusion.to),
+        existingSlotId:existing.slotId,
+        existingCollectibleId:existing.collectibleId,
+        existingGrade:current.grade,
+        targetGrade:current.grade + 1
+      };
+    }
+
+    function replaceWithReclaimedCollectible(slotId, collectibleId, componentInstanceId) {
+      const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
+      if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+      const candidates = assignedCollectibleCandidates(
+        collectibleId,
+        transactionWithoutBinding("sigil", slotId)
+      );
+      const instance = candidates.find(item => item.componentInstanceId === String(componentInstanceId || ""));
+      if (!instance) throw new Error("La copia assegnata scelta non è più disponibile.");
+      const next = clone(draft.recipe.sigils);
+      const replacement = defaultForgeCollectibleSigil(collectibleId, draft.recipe.school, index);
+      replacement.slotId = slotId;
+      replacement.affinity = clone(instance.affinity);
+      next[index] = replacement;
+      const inventoryId = A.sigianCollectibleInventoryIdentity?.(collectibleId, draft.recipe.school)?.inventoryId || null;
+      const transaction = reclaimAndBindTransaction(
+        transactionWithoutBinding("sigil", slotId),
+        "sigil",
+        slotId,
+        instance,
+        inventoryId
+      );
+      return commitRecipeAndTransaction(recipeWith({ sigils:next }), transaction);
+    }
+
+    function fuseSameFamilyIntoSlot(existingSlotId, sourceCollectibleId, targetCollectibleId, reclaimInstanceIds = []) {
+      const index = draft.recipe.sigils.findIndex(item => item.slotId === existingSlotId);
+      if (index < 0) throw new Error(`Slot Sigillo non trovato: ${existingSlotId}.`);
+      let transaction = transactionWithoutBinding("sigil", existingSlotId);
+      const sourceIdentity = A.sigianCollectibleInventoryIdentity?.(sourceCollectibleId, draft.recipe.school);
+      const targetIdentity = A.sigianCollectibleInventoryIdentity?.(targetCollectibleId, draft.recipe.school);
+      if (!sourceIdentity?.inventoryId || !targetIdentity?.inventoryId) {
+        throw new Error("Identità canonica crafting non disponibile.");
+      }
+
+      [...new Set((reclaimInstanceIds || []).map(String))].forEach(instanceId => {
+        const persistent = A.getSigianComponentInstance?.(instanceId);
+        if (persistent?.inventoryId !== sourceIdentity.inventoryId || persistent.allocation?.state !== "assigned") {
+          throw new Error("La copia da recuperare non è più valida per questa Fusion.");
+        }
+        if (typeof A.reclaimSigianForgeTransactionComponentForCrafting !== "function") {
+          throw new Error("Recupero crafting non disponibile.");
+        }
+        transaction = A.reclaimSigianForgeTransactionComponentForCrafting(transaction, {
+          kind:"sigil",
+          componentInstanceId:persistent.componentInstanceId,
+          inventoryId:persistent.inventoryId,
+          sourceFormulaInstanceId:persistent.allocation.formulaInstanceId,
+          sourceSlotId:persistent.allocation.slotId
+        });
+      });
+
+      const available = A.listSigianProjectedAvailableComponentInstances?.({
+        transaction,
+        inventoryId:sourceIdentity.inventoryId,
+        compatibleSchool:draft.recipe.school
+      }) || [];
+      if (available.length < 2) {
+        throw new Error("Servono due copie compatibili disponibili per la Fusion.");
+      }
+      const staged = A.stageSigianVerticalFusion?.(
+        transaction,
+        available[0].componentInstanceId,
+        available[1].componentInstanceId,
+        { targetSlotId:existingSlotId }
+      );
+      if (!staged?.outputInstance || staged.outputInstance.inventoryId !== targetIdentity.inventoryId) {
+        throw new Error("La Fusion non produce l'identità canonica attesa.");
+      }
+
+      const next = clone(draft.recipe.sigils);
+      const replacement = defaultForgeCollectibleSigil(targetCollectibleId, draft.recipe.school, index);
+      replacement.slotId = existingSlotId;
+      replacement.affinity = clone(staged.outputInstance.affinity);
+      next[index] = replacement;
+      transaction = bindTransaction(
+        staged.transaction,
+        "sigil",
+        existingSlotId,
+        staged.outputInstance,
+        targetIdentity.inventoryId
+      );
+      return commitRecipeAndTransaction(recipeWith({ sigils:next }), transaction);
     }
 
     const api = Object.freeze({
@@ -954,7 +1256,53 @@
         return commitRecipe(recipeWith({ sigils: next }));
       },
 
+      getCollectibleAddSuggestion(collectibleId) {
+        const suggestion = collectibleAddSuggestion(collectibleId);
+        return suggestion ? clone(suggestion) : null;
+      },
+
+      applyCollectibleAddSuggestion(collectibleId, options = {}) {
+        const suggestion = collectibleAddSuggestion(collectibleId);
+        if (!suggestion) return this.addCollectibleSigil(collectibleId);
+        const strategy = suggestion.strategy;
+        if (strategy === "replace-selected-free" || strategy === "use-higher-free") {
+          return this.replaceCollectibleSigil(suggestion.existingSlotId, suggestion.targetCollectibleId);
+        }
+        if (strategy === "replace-selected-reclaim" || strategy === "use-higher-reclaim") {
+          const instanceId = String((options.reclaimInstanceIds || [])[0] || "");
+          if (!instanceId) throw new Error("Seleziona la copia assegnata da recuperare.");
+          return replaceWithReclaimedCollectible(
+            suggestion.existingSlotId,
+            suggestion.targetCollectibleId,
+            instanceId
+          );
+        }
+        if (strategy === "fuse-free") {
+          return fuseSameFamilyIntoSlot(
+            suggestion.existingSlotId,
+            suggestion.collectibleId,
+            suggestion.targetCollectibleId
+          );
+        }
+        if (strategy === "fuse-reclaim") {
+          const ids = [...new Set((options.reclaimInstanceIds || []).map(String))];
+          if (ids.length !== Number(suggestion.requiredReclaims || 0)) {
+            throw new Error(`Seleziona esattamente ${suggestion.requiredReclaims} copie da recuperare.`);
+          }
+          return fuseSameFamilyIntoSlot(
+            suggestion.existingSlotId,
+            suggestion.collectibleId,
+            suggestion.targetCollectibleId,
+            ids
+          );
+        }
+        throw new Error("Questa famiglia è già presente nella Formula e non può essere duplicata.");
+      },
+
       addCollectibleSigil(collectibleId) {
+        if (collectibleAddSuggestion(collectibleId)) {
+          throw new Error("La famiglia del Sigillo è già presente: usa il suggerimento di normalizzazione della Forgia.");
+        }
         if (draft.recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3)) {
           throw new Error(`La Formula può contenere al massimo ${A.SIGIAN_MAX_PRIMARY_SIGILS || 3} Sigilli primari.`);
         }
@@ -990,6 +1338,9 @@
       },
 
       addReclaimedCollectibleSigil(collectibleId, componentInstanceId) {
+        if (collectibleAddSuggestion(collectibleId)) {
+          throw new Error("La famiglia del Sigillo è già presente: usa il suggerimento di normalizzazione della Forgia.");
+        }
         if (draft.recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3)) {
           throw new Error(`La Formula può contenere al massimo ${A.SIGIAN_MAX_PRIMARY_SIGILS || 3} Sigilli primari.`);
         }
@@ -1047,6 +1398,12 @@
       replaceCollectibleSigil(slotId, collectibleId) {
         const index = draft.recipe.sigils.findIndex(item => item.slotId === slotId);
         if (index < 0) throw new Error(`Slot Sigillo non trovato: ${slotId}.`);
+        const targetFamily = collectibleFamily(collectibleId);
+        if (targetFamily && draft.recipe.sigils.some((item, itemIndex) =>
+          itemIndex !== index && collectibleFamily(item.collectibleId)?.key === targetFamily.key
+        )) {
+          throw new Error("La famiglia del Sigillo è già presente in un altro slot: normalizzala prima della sostituzione.");
+        }
         const current = draft.recipe.sigils[index];
 
         if (typeof A.findSigianFreeCollectibleComponentInstance === "function") {
