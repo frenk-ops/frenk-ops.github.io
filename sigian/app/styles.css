@@ -15048,7 +15048,7 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 
 /* 0.54 — Archive hierarchy, compact variants and mobile detail sheet. */
 .archive-overview {
-  grid-template-columns:repeat(5,minmax(0,1fr));
+  grid-template-columns:repeat(6,minmax(0,1fr));
 }
 
 .archive-filter-row-primary {

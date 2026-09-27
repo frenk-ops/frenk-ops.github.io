@@ -36,6 +36,7 @@
 
   const SECTION_LABEL_KEYS = Object.freeze({
     formulas:{ inventory:"archive.formulas", collection:"archive.originalFormulas" },
+    recipes:{ inventory:"archive.recipes", collection:"archive.recipes" },
     sigils:{ inventory:"archive.sigils", collection:"archive.sigils" },
     constraints:{ inventory:"archive.constraints", collection:"archive.constraints" },
     grimoires:{ inventory:"archive.grimoires", collection:"archive.grimoires" },
@@ -61,6 +62,7 @@
         targetGrimoireId:null,
         detailOpen:false,
         formula:{ search:"", school:"all", type:"all", level:"all", sigil:"all", constraint:"all", page:1 },
+        recipe:{ search:"", origin:"all", school:"all" },
         sigil:{ search:"", family:null, grade:"all", affinity:"all", school:"all" },
         constraint:{ search:"", family:null, grade:"all", affinity:"all", school:"all" },
         grimoire:{ search:"" },
@@ -72,7 +74,7 @@
 
   function sectionIds(scope) {
     return scope === "inventory"
-      ? ["formulas", "sigils", "constraints", "grimoires", "cosmetics"]
+      ? ["formulas", "recipes", "sigils", "constraints", "grimoires", "cosmetics"]
       : ["formulas", "sigils", "constraints", "cosmetics"];
   }
 
@@ -161,6 +163,7 @@
   function sectionCounts(scope, data, grimoires) {
     return {
       formulas:data.formulas.length,
+      recipes:(data.recipes || []).length,
       sigils:aggregateComponentGroups(data, "sigil").length,
       constraints:aggregateComponentGroups(data, "constraint").length,
       grimoires:grimoires.length,
@@ -224,6 +227,111 @@
             ${item.markup}
           </button>`).join("")}
       </nav>`;
+  }
+
+  function recipeFiltersMarkup(state) {
+    return `
+      <div class="archive-filter-row archive-filter-row-primary">
+        ${textFilterMarkup(state.recipe.search, t("archive.searchRecipe"))}
+        ${selectMarkup("origin", t("archive.recipeOrigin"), state.recipe.origin, [
+          { id:"all", label:t("archive.all") },
+          { id:"STANDARD", label:t("archive.recipeStandard") },
+          { id:"PERSONAL", label:t("archive.recipePersonal") }
+        ])}
+        ${selectMarkup("school", t("archive.formulaSchool"), state.recipe.school, schoolOptions())}
+      </div>`;
+  }
+
+  function applyRecipeFilters(items, filters) {
+    const search = String(filters.search || "").trim().toLowerCase();
+    return (items || []).filter(item => {
+      if (filters.origin !== "all" && item.origin !== filters.origin) return false;
+      if (filters.school !== "all" && item.school !== filters.school) return false;
+      if (search) {
+        const haystack = [
+          item.name,
+          item.recipeId,
+          schoolName(item.school),
+          item.origin,
+          ...(item.components || []).map(component => component.name)
+        ].join(" ").toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
+      return true;
+    });
+  }
+
+  function recipeTileMarkup(item, selected) {
+    const typeLabel = t(item.type === "spell" ? "archive.spell" : "archive.creature");
+    const originLabel = t(item.origin === "PERSONAL" ? "archive.recipePersonal" : "archive.recipeStandard");
+    return `
+      <article class="archive-formula-tile archive-formula-index-row archive-school-${escapeHtml(item.school || "neutral")} ${selected ? "active" : ""}" data-archive-recipe="${escapeHtml(item.recipeId)}" tabindex="0">
+        <span class="archive-index-school-rail" aria-hidden="true"></span>
+        <span class="archive-formula-copy">
+          <strong>${escapeHtml(item.name || item.recipeId)}</strong>
+          <small class="archive-formula-index-meta">
+            ${item.school ? schoolLabelMarkup(item.school) : ""}
+            <span class="archive-formula-meta-separator">·</span>
+            <span>${escapeHtml(typeLabel)}</span>
+          </small>
+          <em>${escapeHtml(originLabel)} · ${escapeHtml(t("archive.recipeKnown"))}</em>
+        </span>
+        <span class="archive-formula-index-tail">
+          <strong class="archive-quantity archive-formula-index-quantity">${escapeHtml(item.linkedFormulaCount || 0)}</strong>
+          <span class="archive-formula-index-chevron" aria-hidden="true">›</span>
+        </span>
+      </article>`;
+  }
+
+  function recipeComponentMarkup(component) {
+    const constraint = component.kind === "constraint";
+    const grade = component.grade == null ? "" : ` · ${t("archive.gradeLabel", { grade:({1:"I",2:"II",3:"III",4:"IV",5:"V"})[Number(component.grade)] || component.grade })}`;
+    return `
+      <div class="archive-embedded-component ${constraint ? "is-constraint" : "is-sigil"}">
+        <span class="archive-embedded-symbol" aria-hidden="true">${constraint ? "◇" : "✦"}</span>
+        <strong>${escapeHtml(component.name || component.definitionId || "?")}</strong>
+        <small>${escapeHtml(t(constraint ? "archive.constraint" : "archive.sigil"))}${escapeHtml(grade)}</small>
+      </div>`;
+  }
+
+  function recipeDetailMarkup(item, formulas = []) {
+    if (!item) return `<div class="archive-empty">${escapeHtml(t("archive.noRecipe"))}</div>`;
+    const originLabel = t(item.origin === "PERSONAL" ? "archive.recipePersonal" : "archive.recipeStandard");
+    return `
+      <article class="archive-detail-card archive-recipe-detail">
+        <span class="classic-menu-kicker">${escapeHtml(t("archive.recipe"))}</span>
+        <h3>${escapeHtml(item.name || item.recipeId)}</h3>
+        <div class="archive-detail-meta">
+          ${item.school ? schoolLabelMarkup(item.school) : ""}
+          <span>${escapeHtml(originLabel)}</span>
+          <span>${escapeHtml(item.type === "spell" ? t("archive.spell") : t("archive.creature"))}</span>
+        </div>
+        <p>${escapeHtml(t(item.origin === "STANDARD" ? "archive.recipeStandardHint" : "archive.recipePersonalHint"))}</p>
+        <section>
+          <h4>${escapeHtml(t("archive.recipeComposition"))}</h4>
+          <div class="archive-formula-components">
+            ${(item.components || []).map(recipeComponentMarkup).join("") || `<div class="archive-empty">${escapeHtml(t("archive.noItems"))}</div>`}
+          </div>
+        </section>
+        <section>
+          <h4>${escapeHtml(t("archive.recipeLinkedFormulas"))}</h4>
+          <p>${escapeHtml(t("archive.recipeLinkedSummary", {
+            total:item.linkedFormulaCount || 0,
+            playable:item.playableFormulaCount || 0
+          }))}</p>
+          <div class="archive-component-assignment-list">
+            ${(item.linkedFormulaInstances || []).map(instance => {
+              const formula = formulas.find(candidate => candidate.formulaInstanceId === instance.formulaInstanceId);
+              return `
+              <button type="button" class="archive-component-assigned-formula" data-recipe-linked-formula="${escapeHtml(instance.formulaInstanceId)}">
+                <strong>${escapeHtml(formula ? localizedFormula(formula).name : instance.formulaInstanceId)}</strong>
+                <small>${escapeHtml(formulaLifecycleLabel(instance))}</small>
+              </button>`;
+            }).join("") || `<span class="archive-empty">${escapeHtml(t("archive.recipeNoLinkedFormula"))}</span>`}
+          </div>
+        </section>
+        <small class="archive-full-interaction-note">${escapeHtml(t("archive.recipeRebuildPending"))}</small>
+      </article>`;
   }
 
   function componentFiltersMarkup(state, kind) {
@@ -455,6 +563,7 @@
             `}
           </section>
           <div class="archive-formula-actions">
+            ${item.recipeId && A.isSigianRecipeKnown?.(item.recipeId) ? `<button type="button" class="classic-stone-button ghost" data-open-recipe="${escapeHtml(item.recipeId)}">📜 <span>${escapeHtml(t("archive.openRecipe"))}</span></button>` : ""}
             <button type="button" class="classic-stone-button" data-archive-forge="${escapeHtml(item.id)}" title="${escapeHtml(t("archive.openForge"))}">⚒ <span>${escapeHtml(t("archive.forge"))}</span></button>
             <button type="button" class="classic-stone-button danger" disabled title="${escapeHtml(t("archive.craftingInactive"))}">🔥 <span>${escapeHtml(t("archive.destroy"))}</span></button>
           </div>` : ""}
@@ -711,6 +820,7 @@
     return `
       <section class="archive-overview" aria-label="${escapeHtml(t("archive.inventory"))}">
         <button type="button" data-archive-jump="formulas"><small>${escapeHtml(t("archive.formulas"))}</small><strong>${data.formulas.length}</strong><span>${escapeHtml(t("archive.formulasOwned"))}</span></button>
+        <button type="button" data-archive-jump="recipes"><small>${escapeHtml(t("archive.recipes"))}</small><strong>${(data.recipes || []).length}</strong><span>${escapeHtml(t("archive.known"))}</span></button>
         <button type="button" data-archive-jump="sigils"><small>${escapeHtml(t("archive.sigils"))}</small><strong>${sigilCopies}</strong><span>${escapeHtml(t("archive.copies"))}</span></button>
         <button type="button" data-archive-jump="constraints"><small>${escapeHtml(t("archive.constraints"))}</small><strong>${constraintCopies}</strong><span>${escapeHtml(t("archive.copies"))}</span></button>
         <button type="button" data-archive-jump="grimoires"><small>${escapeHtml(t("archive.grimoires"))}</small><strong>${grimoires.length}</strong><span>${escapeHtml(t("archive.saved"))}</span></button>
@@ -736,6 +846,20 @@
           ${formulaPaginationMarkup(state.formula.page, pageCount)}
         `,
         detail:formulaDetailMarkup(selected, data.scope, state.selectedComponentId, grimoires, state)
+      };
+    }
+
+    if (state.section === "recipes" && data.scope === "inventory") {
+      const filtered = applyRecipeFilters(data.recipes || [], state.recipe);
+      if (!filtered.some(item => item.recipeId === state.selectedId)) state.selectedId = filtered[0]?.recipeId || null;
+      const selected = filtered.find(item => item.recipeId === state.selectedId) || null;
+      return {
+        filters:recipeFiltersMarkup(state),
+        count:`${filtered.length} / ${(data.recipes || []).length} ${escapeHtml(t("archive.recipes"))}`,
+        list:filtered.length
+          ? `<div class="archive-formula-grid">${filtered.map(item => recipeTileMarkup(item, item.recipeId === state.selectedId)).join("")}</div>`
+          : `<div class="archive-empty">${escapeHtml(t("archive.noRecipes"))}</div>`,
+        detail:recipeDetailMarkup(selected, data.formulas)
       };
     }
 
@@ -787,6 +911,7 @@
 
   function filterBucket(state) {
     if (state.section === "formulas") return state.formula;
+    if (state.section === "recipes") return state.recipe;
     if (state.section === "sigils") return state.sigil;
     if (state.section === "constraints") return state.constraint;
     if (state.section === "grimoires") return state.grimoire;
@@ -882,6 +1007,42 @@
         render(root, scope);
       });
     });
+
+    root.querySelectorAll("[data-open-recipe]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      state.section = "recipes";
+      state.selectedId = button.dataset.openRecipe;
+      state.selectedComponentId = null;
+      state.detailOpen = true;
+      render(root, scope);
+    }));
+
+    root.querySelectorAll("[data-archive-recipe]").forEach(item => {
+      const open = () => {
+        state.selectedId = item.dataset.archiveRecipe;
+        state.selectedComponentId = null;
+        state.detailOpen = true;
+        render(root, scope);
+      };
+      item.addEventListener("click", open);
+      item.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        open();
+      });
+    });
+
+    root.querySelectorAll("[data-recipe-linked-formula]").forEach(button => button.addEventListener("click", () => {
+      const formulaInstanceId = button.dataset.recipeLinkedFormula;
+      const formula = data.formulas.find(item => item.formulaInstanceId === formulaInstanceId);
+      if (!formula) return;
+      state.section = "formulas";
+      state.selectedId = formula.id;
+      state.selectedComponentId = null;
+      state.formula.page = 1;
+      state.detailOpen = true;
+      render(root, scope);
+    }));
 
     root.querySelectorAll("[data-archive-component-group]").forEach(button => button.addEventListener("click", () => {
       state.selectedId = button.dataset.archiveComponentGroup;

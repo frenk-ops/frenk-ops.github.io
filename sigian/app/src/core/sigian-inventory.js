@@ -431,10 +431,12 @@
   function formulaItems() {
     return originalCards().map(card => {
       const formulaInstanceId = `owned:${card.id}`;
-      const lifecycleState = A.getSigianFormulaLifecycleState?.(formulaInstanceId) || "SEALED";
+      const formulaInstance = A.getSigianFormulaInstance?.(formulaInstanceId) || null;
+      const lifecycleState = formulaInstance?.lifecycleState || "SEALED";
       return {
       id:card.id,
       formulaInstanceId,
+      recipeId:formulaInstance?.recipeId || card.id,
       lifecycleState,
       playable:lifecycleState === "SEALED",
       name:card.name,
@@ -467,6 +469,7 @@
   function archiveData(scope = "collection") {
     const components = expandCanonicalEntries();
     const formulas = formulaItems();
+    const recipes = A.listSigianRecipebookEntries?.() || [];
     const cosmetics = cosmeticItems();
     const forgeSigils = collectibleSigilInventoryItems();
     const componentAvailability = A.getSigianComponentAvailabilityMap?.() || null;
@@ -474,6 +477,7 @@
     return {
       scope,
       formulas:formulas.map(item => ({ ...item, inventory })),
+      recipes:recipes.map(item => ({ ...item, inventory })),
       components:components.map(item => {
         const seededQuantity = ownedQuantity(item.kind === "constraint" ? "constraint" : "component", item.id, 3);
         const availability = componentAvailability?.[item.id] || null;
@@ -503,6 +507,7 @@
       })),
       meta:{
         formulaCount:formulas.length,
+        recipeCount:recipes.length,
         componentCount:components.length,
         cosmeticCount:cosmetics.length,
         forgeSigilCount:forgeSigils.length,
