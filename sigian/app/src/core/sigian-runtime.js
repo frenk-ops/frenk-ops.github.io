@@ -591,6 +591,45 @@
     };
   };
 
+  function standardGrimoireRuntime(grimoire) {
+    const cards = A.RAW_CARD_SETS?.["astral-original"] || [];
+    const catalog = getOriginalInventoryRuntimeCatalog();
+    const entries = cards.map(card => {
+      const formula = catalog?.byId?.[card.id] || null;
+      const materialized = formula ? A.materializeLegacyCardFromFormula?.(formula) || null : null;
+      return {
+        formulaInstanceId:`owned:${card.id}`,
+        lifecycleState:"SEALED",
+        playable:Boolean(formula && materialized),
+        blockers:formula && materialized ? [] : ["formula-runtime-catalog-missing"],
+        instance:{
+          formulaInstanceId:`owned:${card.id}`,
+          recipeId:card.id,
+          sourceCardId:card.id,
+          lifecycleState:"SEALED"
+        },
+        composition:null,
+        evaluation:null,
+        formula:formula ? cloneRuntime(formula) : null,
+        card:materialized ? { ...cloneRuntime(materialized), formulaInstanceId:`owned:${card.id}` } : null,
+        source:"standard-runtime"
+      };
+    });
+    const playableEntries = entries.filter(entry => entry.playable && entry.formula && entry.card);
+    const blockers = entries.flatMap(entry =>
+      (entry.blockers || []).map(code => ({ formulaInstanceId:entry.formulaInstanceId, code }))
+    );
+    return {
+      grimoire:cloneRuntime(grimoire),
+      entries,
+      playableEntries,
+      cards:playableEntries.map(entry => cloneRuntime(entry.card)),
+      formulas:playableEntries.map(entry => cloneRuntime(entry.formula)),
+      blockers,
+      ready:blockers.length === 0 && playableEntries.length === cards.length
+    };
+  }
+
   A.materializeSigianGrimoireForRuntime = function materializeSigianGrimoireForRuntime(grimoireId) {
     const grimoire = A.getSigianGrimoire?.(grimoireId) || null;
     if (!grimoire) {
@@ -605,6 +644,8 @@
       };
     }
 
+    if (grimoire.kind === "STANDARD") return standardGrimoireRuntime(grimoire);
+
     const entries = (grimoire.formulaIds || []).map(A.resolveSigianFormulaInstanceRuntime);
     const playableEntries = entries.filter(entry => entry.playable && entry.formula && entry.card);
     const blockers = entries.flatMap(entry =>
@@ -618,6 +659,208 @@
       formulas:playableEntries.map(entry => cloneRuntime(entry.formula)),
       blockers,
       ready:blockers.length === 0
+    };
+  };
+
+  function schoolOrderIndex(schoolId) {
+    const order = (A.SCHOOLS || []).map(item => item.id);
+    const index = order.indexOf(schoolId);
+    return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+  }
+
+  function sortGrimoireCards(cards) {
+    return [...cards].sort((left, right) => {
+      const schoolDelta = schoolOrderIndex(left.school) - schoolOrderIndex(right.school);
+      if (schoolDelta) return schoolDelta;
+      const costDelta = Number(left.level || left.cost || 0) - Number(right.level || right.cost || 0);
+      if (costDelta) return costDelta;
+      return String(left.id || "").localeCompare(String(right.id || ""));
+    });
+  }
+
+  function grimoireSelectionError(validation) {
+    const codes = (validation?.blockers || []).map(item => item.code || item).filter(Boolean);
+    const error = new Error(`Grimorio non pronto: ${codes.join(", ") || "configurazione non valida"}.`);
+    error.code = "SIGIAN_GRIMOIRE_NOT_READY";
+    error.blockers = cloneRuntime(validation?.blockers || []);
+    return error;
+  }
+
+  A.generateSigianGrimoireDuelHands = function generateSigianGrimoireDuelHands(grimoireId, options = {}) {
+    const grimoire = A.getSigianGrimoire?.(grimoireId) || null;
+    if (!grimoire) throw grimoireSelectionError({ blockers:[{ code:"grimoire-missing" }] });
+    if (grimoire.kind === "STANDARD") {
+      return A.generateRecoveredAstralHands(A.RAW_CARD_SETS?.["astral-original"] || [], options);
+    }
+
+    const specializationsEnabled = Boolean(options.specializationsEnabled);
+    const formativeSchoolId = String(options.formativeSchoolId || "").trim();
+    const validation = A.validateSigianGrimoire?.(grimoire, {
+      specializationsEnabled,
+      formativeSchoolId
+    });
+    if (!validation?.ready) throw grimoireSelectionError(validation);
+
+    const runtime = A.materializeSigianGrimoireForRuntime(grimoire.id);
+    if (!runtime.ready) throw grimoireSelectionError({ blockers:runtime.blockers });
+
+    const standardCards = A.RAW_CARD_SETS?.["astral-original"] || [];
+    const seed = String(options.seed || "sigian-grimoire-duel");
+    const distributionMode = ["arcane", "free", "mirror"].includes(options.distributionMode)
+      ? options.distributionMode
+      : "free";
+    const templateOptions = {
+      seed:`${seed}:sigian-shape`,
+      mode:"duel",
+      distributionMode:"free",
+      enemyDifficulty:options.enemyDifficulty || "advanced",
+      playerTalent:options.playerTalent,
+      enemyTalent:options.enemyTalent,
+      playerSpecialization:options.playerSpecialization,
+      enemySpecialization:options.enemySpecialization,
+      playerAbilities:options.playerAbilities || [],
+      enemyAbilities:options.enemyAbilities || [],
+      playerInitialPowers:options.playerInitialPowers,
+      enemyInitialPowers:options.enemyInitialPowers,
+      restrictedMode:options.restrictedMode,
+      maxGenerationAttempts:options.maxGenerationAttempts
+    };
+    const template = A.generateRecoveredAstralHands(standardCards, templateOptions);
+    const playerShape = (template.diagnostics || []).find(item => item.side === "player") || template.diagnostics?.[0] || null;
+    const targetBySchool = playerShape?.bySchool || {};
+    const baseFormulaCount = Number(A.SIGIAN_GRIMOIRE_BASE_FORMULA_COUNT || 20);
+    const requestedCount = Object.values(targetBySchool).reduce((sum, value) => sum + Number(value || 0), 0);
+    if (requestedCount !== baseFormulaCount) {
+      throw grimoireSelectionError({ blockers:[{
+        code:"base-distribution-count",
+        expected:baseFormulaCount,
+        actual:requestedCount
+      }] });
+    }
+
+    const specializationFormulaId = specializationsEnabled
+      ? String(grimoire.specializationFormulaId || "")
+      : "";
+    const rng = A.createRng(`${seed}:sigian-grimorio:${grimoire.id}`);
+    const entriesBySchool = new Map();
+    runtime.playableEntries.forEach(entry => {
+      const school = entry.card?.school;
+      if (!school) return;
+      if (!entriesBySchool.has(school)) entriesBySchool.set(school, []);
+      entriesBySchool.get(school).push(entry);
+    });
+
+    const selectedEntries = [];
+    (grimoire.schoolIds || []).forEach(schoolId => {
+      const needed = Number(targetBySchool[schoolId] || 0);
+      const candidates = (entriesBySchool.get(schoolId) || []).filter(entry =>
+        !specializationFormulaId || entry.formulaInstanceId !== specializationFormulaId
+      );
+      if (candidates.length < needed) {
+        throw grimoireSelectionError({ blockers:[{
+          code:"insufficient-school-pool",
+          schoolId,
+          expected:needed,
+          actual:candidates.length
+        }] });
+      }
+      selectedEntries.push(...rng.shuffle(candidates).slice(0, needed));
+    });
+
+    const baseCards = sortGrimoireCards(selectedEntries.map(entry => cloneRuntime(entry.card)));
+    const baseFormulaIds = selectedEntries.map(entry => entry.formulaInstanceId);
+    const finalPlayerCards = [...baseCards];
+    let specializationEntry = null;
+    if (specializationsEnabled) {
+      specializationEntry = runtime.playableEntries.find(entry => entry.formulaInstanceId === specializationFormulaId) || null;
+      if (!specializationEntry) {
+        throw grimoireSelectionError({ blockers:[{
+          code:"specialization-formula-runtime-missing",
+          formulaInstanceId:specializationFormulaId
+        }] });
+      }
+      finalPlayerCards.push({
+        ...cloneRuntime(specializationEntry.card),
+        sigianSpecializationGuaranteed:true
+      });
+    }
+
+    let enemyHand = template.enemy.map(cloneRuntime);
+    let enemyPowers = cloneRuntime(template.enemyPowers);
+    let enemyDiagnostic = (template.diagnostics || []).find(item => item.side === "enemy") || template.diagnostics?.[1] || null;
+
+    if (distributionMode === "mirror") {
+      enemyHand = finalPlayerCards.map(cloneRuntime);
+      enemyPowers = cloneRuntime(template.enemyPowers);
+      enemyDiagnostic = {
+        side:"enemy",
+        distributionMode,
+        baseOverlap:baseFormulaCount,
+        baseCardCount:baseFormulaCount,
+        finalCardCount:enemyHand.length,
+        bySchool:cloneRuntime(targetBySchool),
+        mirrored:true,
+        generator:"sigian-grimoire-v1"
+      };
+    } else if (distributionMode === "arcane") {
+      const standardIds = new Set(standardCards.map(card => String(card.id)));
+      const enemyExcludedCardIds = baseCards
+        .map(card => String(card.id || ""))
+        .filter(cardId => standardIds.has(cardId));
+      const enemyResult = A.generateRecoveredAstralHands(standardCards, {
+        ...templateOptions,
+        seed:`${seed}:sigian-enemy`,
+        distributionMode:"free",
+        enemyExcludedCardIds
+      });
+      enemyHand = enemyResult.enemy.map(cloneRuntime);
+      enemyPowers = cloneRuntime(enemyResult.enemyPowers);
+      enemyDiagnostic = (enemyResult.diagnostics || []).find(item => item.side === "enemy") || enemyResult.diagnostics?.[1] || null;
+    }
+
+    const baseIdSet = new Set(baseCards.map(card => String(card.id || "")));
+    const schoolIndexById = new Map((A.SCHOOLS || []).map((school, index) => [school.id, index + 1]));
+    const standardByGlobalId = new Map(standardCards.map(card => [
+      Number(schoolIndexById.get(card.school) || 0) * 13 + Number(card.level || 0),
+      card
+    ]));
+    const enemyBaseCards = enemyDiagnostic?.baseIds
+      ? (enemyDiagnostic.baseIds || []).map(globalId => standardByGlobalId.get(Number(globalId)) || null).filter(Boolean)
+      : [];
+    const actualBaseOverlap = enemyBaseCards.filter(card => baseIdSet.has(String(card.id))).length;
+
+    return {
+      player:finalPlayerCards,
+      enemy:enemyHand,
+      playerPowers:cloneRuntime(template.playerPowers),
+      enemyPowers,
+      enemyTalent:options.enemyTalent || template.enemyTalent || "water",
+      seed,
+      recovered:false,
+      distributionMode,
+      sigianGrimoireId:grimoire.id,
+      diagnostics:[
+        {
+          side:"player",
+          distributionMode,
+          baseOverlap:actualBaseOverlap,
+          baseFormulaIds:cloneRuntime(baseFormulaIds),
+          baseCardCount:baseCards.length,
+          finalCardCount:finalPlayerCards.length,
+          bySchool:cloneRuntime(targetBySchool),
+          specializationFormulaId:specializationEntry?.formulaInstanceId || null,
+          specializationGuaranteed:Boolean(specializationEntry),
+          generationAttempt:playerShape?.generationAttempt || 1,
+          generator:"sigian-grimoire-v1"
+        },
+        {
+          ...(enemyDiagnostic ? cloneRuntime(enemyDiagnostic) : {}),
+          side:"enemy",
+          distributionMode,
+          baseOverlap:actualBaseOverlap
+        }
+      ],
+      runtime
     };
   };
 

@@ -20,6 +20,7 @@
     return JSON.stringify({
       cards: (cards || []).map(card => [card.id, card.school, card.level, card.type]),
       allowedCardIds: options?.allowedCardIds ? [...options.allowedCardIds].map(String).sort() : null,
+      enemyExcludedCardIds: options?.enemyExcludedCardIds ? [...options.enemyExcludedCardIds].map(String).sort() : null,
       seed: String(options?.seed || "astral-recovered-spellbook"),
       mode: options?.mode || "duel",
       distributionMode: options?.distributionMode || "free",
@@ -462,6 +463,11 @@
     if (cached) return cached;
     const rng = A.createRng(options?.seed || "astral-recovered-spellbook");
     const numeric = buildNumericIndex(cards, options?.allowedCardIds);
+    const enemyExcludedCardIds = new Set((options?.enemyExcludedCardIds || []).map(String));
+    const enemyAllowedCardIds = enemyExcludedCardIds.size
+      ? cards.filter(card => !enemyExcludedCardIds.has(String(card.id))).map(card => card.id)
+      : options?.allowedCardIds;
+    const enemyNumeric = enemyExcludedCardIds.size ? buildNumericIndex(cards, enemyAllowedCardIds) : numeric;
     const playerAbilities = options?.playerAbilities || [];
     const enemyAbilities = options?.enemyAbilities || [];
     const playerCount = spellbookCount(options, "player");
@@ -497,7 +503,7 @@
         stats: { ...player.stats, mirrored: true }
       };
     } else {
-      enemy = generateOne(numeric, rng, {
+      enemy = generateOne(enemyNumeric, rng, {
         cardCount: enemyCount,
         ordinal: multiplayer ? 1 : 2,
         actorClassValue: actorClass(options, "enemy"),

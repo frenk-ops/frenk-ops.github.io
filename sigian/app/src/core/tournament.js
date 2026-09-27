@@ -23,6 +23,10 @@
     fire: "battlemage", water: "stormmage", air: "thundermage", nature: "druid", death: "necromancer"
   });
   const normalizePlayerSpecialization = value => SPECIALIZATION_BY_TALENT[value] || value || "battlemage";
+  const normalizeFormativeSchool = value => {
+    const id = String(value || "").trim();
+    return (A.SCHOOLS || []).some(school => school.id === id) ? id : null;
+  };
   const normalizeTournamentMode = value => TOURNAMENT_MODES[value] ? value : "league";
   const normalizeDistribution = value => ["arcane", "free", "mirror"].includes(value) ? value : "arcane";
 
@@ -121,8 +125,9 @@
 
   A.createDefaultProfile = function createDefaultProfile() {
     return {
-      version: 2,
+      version: 3,
       playerName: "",
+      formativeSchoolId:null,
       tournamentsPlayed: 0,
       tournamentsWon: 0,
       duelsWon: 0,
@@ -223,7 +228,8 @@
       const profile = {
         ...base,
         ...stored,
-        version: 2,
+        version: 3,
+        formativeSchoolId:normalizeFormativeSchool(stored.formativeSchoolId),
         stats: normalizePlayStats(stored.stats),
         achievements: Array.isArray(stored.achievements) ? stored.achievements : [],
         recordedMatches: Array.isArray(stored.recordedMatches) ? stored.recordedMatches.slice(-100) : [],
@@ -242,6 +248,16 @@
     target.setItem(PROFILE_KEY, JSON.stringify(profile));
     return profile;
   };
+
+  A.setProfileFormativeSchool = function setProfileFormativeSchool(profile, schoolId) {
+    if (!profile) return null;
+    const normalized = normalizeFormativeSchool(schoolId);
+    if (!normalized) return null;
+    profile.formativeSchoolId = normalized;
+    A.saveProfile(profile);
+    return normalized;
+  };
+
 
   A.createTournament = function createTournament(options) {
     const seed = String(options?.seed || `tournament-${Date.now()}`);

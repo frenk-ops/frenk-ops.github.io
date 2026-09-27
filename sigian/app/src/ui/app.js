@@ -602,6 +602,11 @@
       forgeTestDuel = false;
       engine = A.GameEngine.fromSnapshot(saved.snapshot, sessionSets["astral-original"]);
       engine.aiDifficulty = saved.aiDifficulty || "advanced";
+      const restoredGrimoireId = saved.currentDuelLaunch?.grimoireId;
+      if (restoredGrimoireId && restoredGrimoireId !== A.SIGIAN_STANDARD_GRIMOIRE_ID) {
+        const restoredRuntime = A.installSigianGrimoireRuntime?.(engine, restoredGrimoireId);
+        if (!restoredRuntime?.ready) throw new Error("Grimorio persistente non più disponibile per il duello salvato.");
+      }
       duelCommandSession = new A.CommandSession(engine, {
         matchId: saved.matchId || `local:${engine.state.seed}`,
         sequence: Number(saved.sequence || 0),
@@ -2754,10 +2759,86 @@
     return rng.pick(available)?.id || fallback;
   }
 
+  function selectedDuelGrimoireId() {
+    const selected = String($("#playerGrimoireSelect")?.value || "").trim();
+    return selected || A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard";
+  }
+
+  function selectedDuelGrimoireValidation(withSpecializations = $("#duelSpecializationsSelect")?.value === "on") {
+    const id = selectedDuelGrimoireId();
+    const grimoire = A.getSigianGrimoire?.(id);
+    if (!grimoire) return { ready:false, blockers:[{ code:"grimoire-missing" }], grimoire:null };
+    const validation = A.validateSigianGrimoire?.(grimoire, {
+      specializationsEnabled:Boolean(withSpecializations),
+      formativeSchoolId:profile?.formativeSchoolId
+    }) || { ready:grimoire.kind === "STANDARD", blockers:[], grimoire };
+    if (validation.ready && grimoire.kind !== "STANDARD") {
+      const runtime = A.materializeSigianGrimoireForRuntime?.(grimoire.id);
+      if (runtime && !runtime.ready) {
+        return {
+          ...validation,
+          ready:false,
+          blockers:[...(validation.blockers || []), ...(runtime.blockers || [])]
+        };
+      }
+    }
+    return validation;
+  }
+
+  function setupGrimoireOptions() {
+    const select = $("#playerGrimoireSelect");
+    if (!select) return;
+    const all = A.listSigianAllGrimoires?.() || [A.getSigianStandardGrimoire?.()].filter(Boolean);
+    const preferred = select.value
+      || localStorage.getItem("sigian.selectedGrimoireId")
+      || A.SIGIAN_STANDARD_GRIMOIRE_ID
+      || "standard";
+    select.innerHTML = all.map(grimoire => {
+      const standard = grimoire.kind === "STANDARD";
+      const label = standard ? t("menu.grimoireStandard") : grimoire.name;
+      const suffix = standard ? "" : ` · ${(grimoire.formulaIds || []).length}/65`;
+      return `<option value="${escapeHtml(grimoire.id)}">${escapeHtml(label)}${suffix}</option>`;
+    }).join("");
+    select.value = all.some(item => item.id === preferred)
+      ? preferred
+      : (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard");
+    if (!select.dataset.grimoireBound) {
+      select.dataset.grimoireBound = "true";
+      select.addEventListener("change", () => {
+        localStorage.setItem("sigian.selectedGrimoireId", select.value);
+        renderTalentChoices();
+      });
+    }
+  }
+
+  function updateSelectedGrimoireStatus(withSpecializations) {
+    const status = $("#playerGrimoireStatus");
+    if (!status) return selectedDuelGrimoireValidation(withSpecializations);
+    const validation = selectedDuelGrimoireValidation(withSpecializations);
+    const grimoire = validation.grimoire;
+    if (grimoire?.kind === "STANDARD") {
+      status.textContent = t("menu.grimoireStandardHint");
+      status.classList.remove("is-error");
+      return validation;
+    }
+    const readyText = validation.ready ? t("menu.grimoireReady") : t("menu.grimoireNotReady");
+    status.textContent = t("menu.grimoirePersonalHint", {
+      count:(grimoire?.formulaIds || []).length,
+      status:readyText
+    });
+    if (!validation.ready && withSpecializations && !profile?.formativeSchoolId) {
+      status.textContent += ` · ${t("menu.formativeSchoolRequired")}`;
+    }
+    status.classList.toggle("is-error", !validation.ready);
+    return validation;
+  }
+
   function renderTalentChoices() {
     const root = $("#talentChoices");
     const distribution = normalizeSpellbookMode($("#duelModeSelect")?.value);
     const withSpecializations = $("#duelSpecializationsSelect")?.value === "on";
+    setupGrimoireOptions();
+    const grimoireValidation = updateSelectedGrimoireStatus(withSpecializations);
     root.innerHTML = "";
     updateDuelModeDescription();
     $("#talentChoiceHeading").textContent = t("menu.startDuel");
@@ -2767,8 +2848,13 @@
 
     const button = document.createElement("button");
     button.className = "talent";
-    button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${spellbookModeDescription(distribution)}</small>`;
+    button.disabled = !grimoireValidation.ready;
+    const startHint = grimoireValidation.ready
+      ? spellbookModeDescription(distribution)
+      : t("menu.grimoireNotReady");
+    button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${escapeHtml(startHint)}</small>`;
     button.addEventListener("click", () => {
+      if (!selectedDuelGrimoireValidation(withSpecializations).ready) return;
       const playerChoice = withSpecializations ? ($("#playerSpecializationSelect")?.value || "random") : null;
       startDuel("fire", false, playerChoice, distribution);
     });
@@ -2882,6 +2968,45 @@
     const duelRules = originalMode
       ? { ...A.ASTRAL_ORIGINAL_RULESET }
       : { startingHp: setId === "arcane" ? 30 : A.DEFAULT_RULESET.startingHp };
+    const astralLeague = originalMode
+      ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting"))
+      : undefined;
+    const selectedGrimoireId = fromTournament
+      ? (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard")
+      : selectedDuelGrimoireId();
+    const personalGrimoire = !fromTournament && selectedGrimoireId !== (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard");
+    let preparedHands = null;
+    if (personalGrimoire) {
+      const validation = selectedDuelGrimoireValidation(withSpecializations);
+      if (!validation.ready) {
+        setMessage(t("menu.grimoireNotReady"));
+        return;
+      }
+      const playerAbilityIds = withSpecializations
+        ? (A.getAstralAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent) || [])
+        : [];
+      const enemyAbilityIds = withSpecializations
+        ? (A.getAstralAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water") || [])
+        : [];
+      try {
+        preparedHands = A.generateSigianGrimoireDuelHands?.(selectedGrimoireId, {
+          seed,
+          distributionMode:spellbookDistribution,
+          enemyDifficulty:difficulty,
+          playerTalent:effectivePlayerTalent,
+          enemyTalent:effectiveEnemyTalent,
+          playerSpecialization,
+          enemySpecialization,
+          playerAbilities:playerAbilityIds,
+          enemyAbilities:enemyAbilityIds,
+          formativeSchoolId:profile?.formativeSchoolId,
+          specializationsEnabled:withSpecializations
+        });
+      } catch (error) {
+        setMessage(error?.message || t("menu.grimoireNotReady"));
+        return;
+      }
+    }
     engine = new A.GameEngine({
       cards: sessionSets[setId],
       seed,
@@ -2893,14 +3018,21 @@
       aiDifficulty: difficulty,
       astralMode: fromTournament ? "tournament" : "duel",
       spellbookDistribution,
-      astralLeague: originalMode
-        ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting"))
-        : undefined,
+      astralLeague,
       playerSpecialization,
       enemySpecialization,
       playerAstralAbilities: withSpecializations ? undefined : [],
-      enemyAstralAbilities: withSpecializations ? undefined : []
+      enemyAstralAbilities: withSpecializations ? undefined : [],
+      hands:preparedHands || undefined
     });
+    if (personalGrimoire) {
+      const installedRuntime = A.installSigianGrimoireRuntime?.(engine, selectedGrimoireId);
+      if (!installedRuntime?.ready) {
+        engine = null;
+        setMessage(t("menu.grimoireNotReady"));
+        return;
+      }
+    }
     engine.aiDifficulty = difficulty;
     duelCommandSession = new A.CommandSession(engine, { matchId: `local:${seed}` });
     currentDuelLaunch = {
@@ -2909,6 +3041,7 @@
       selectedSpecialization: playerSpecializationChoice,
       enemySpecializationChoice,
       requestedMode: spellbookDistribution,
+      grimoireId:selectedGrimoireId,
       seed
     };
     enemySchool = engine.state.enemy.talent;
@@ -8686,6 +8819,13 @@
         <div class="profile-section-heading"><div><h3>${t("profile.identityTitle")}</h3><p>${t("profile.identityIntro")}</p></div></div>
         <div class="profile-identity-editor">
           <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
+          <label><span>${t("profile.formativeSchool")}</span>
+            <select id="profileFormativeSchoolSelect">
+              <option value="">${t("profile.chooseFormativeSchool")}</option>
+              ${A.SCHOOLS.map(item => `<option value="${item.id}" ${profile.formativeSchoolId === item.id ? "selected" : ""}>${escapeHtml(schoolName(item.id))}</option>`).join("")}
+            </select>
+            <small>${t("profile.formativeSchoolHint")}</small>
+          </label>
           ${online.configured && !online.error ? `<div class="profile-player-tag"><span>${t("profile.playerTag")}</span><strong>${onlineProfile.player_tag ? `#${escapeHtml(onlineProfile.player_tag)}` : "—"}</strong><small>${t("profile.playerTagHint")}</small></div>` : ""}
           <button id="saveProfileIdentityBtn" type="button" class="classic-stone-button">${t("profile.saveIdentity")}</button>
         </div>
@@ -8756,6 +8896,8 @@
     $("#saveProfileIdentityBtn")?.addEventListener("click", async () => {
       const name = normalizedPlayerName($("#profilePlayerNameInput")?.value, t("ui.player"));
       profile.playerName = name;
+      const formativeSchoolId = String($("#profileFormativeSchoolSelect")?.value || "").trim();
+      profile.formativeSchoolId = A.SCHOOLS.some(item => item.id === formativeSchoolId) ? formativeSchoolId : null;
       A.saveProfile(profile);
       localStorage.setItem("arcane.playerName", name);
       if (draftAvatar) localStorage.setItem("arcane.profileAvatar", draftAvatar);
@@ -8774,6 +8916,9 @@
           if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
         }
       }
+      setupGrimoireOptions();
+      renderTalentChoices();
+      window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
       renderPlayerProfile();
     });
     root.querySelectorAll("[data-view-jump]").forEach(button => {
@@ -9781,6 +9926,7 @@
     syncOptionsPage();
     setupDifficultyOptions();
     setupAstralSpecializationOptions();
+    setupGrimoireOptions();
     syncOnlineDuelMode();
     if (inspectedRemoteRoomSettings && inspectedRemoteRoomCode) {
       renderRemoteRoomPreview(inspectedRemoteRoomCode, { settings: inspectedRemoteRoomSettings });
@@ -9811,10 +9957,19 @@
   }
   setupLocalServerLifecycle();
   setupAstralSpecializationOptions();
+  setupGrimoireOptions();
   syncOnlineDuelMode();
   $("#duelModeSelect").addEventListener("change", renderTalentChoices);
   $("#duelSpecializationsSelect")?.addEventListener("change", renderTalentChoices);
   $("#astralLeagueSelect")?.addEventListener("change", renderTalentChoices);
+  window.addEventListener("sigian:grimoireschange", () => {
+    setupGrimoireOptions();
+    renderTalentChoices();
+  });
+  window.addEventListener("sigian:formative-school-change", () => {
+    setupGrimoireOptions();
+    renderTalentChoices();
+  });
   $("#cardArtStyleSelect").addEventListener("change", event => {
     cardArtStyle = event.target.value === "new" ? "new" : "original";
     localStorage.setItem("arcane.cardArtStyle", cardArtStyle);

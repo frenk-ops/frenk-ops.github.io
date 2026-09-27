@@ -141,6 +141,9 @@
       name: "Profilo giocatore: statistiche e sei trofei richiesti vengono persistiti e sbloccati",
       run() {
         const profile = A.createDefaultProfile();
+        assert(profile.version === 3, "Il profilo locale deve usare lo schema v3 con Scuola formativa.");
+        assert(profile.formativeSchoolId === null, "La Scuola formativa non deve essere inventata per un profilo nuovo.");
+        profile.formativeSchoolId = "fire";
         profile.playerName = "Tester";
         for (let index = 0; index < 5; index += 1) {
           A.recordProfileMatch(profile, { matchId: `single-win-${index}`, mode: "singlePlayer", result: "win", durationMs: index === 0 ? 4 * 60 * 1000 : 8 * 60 * 1000 });

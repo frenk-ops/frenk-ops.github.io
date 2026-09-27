@@ -729,6 +729,8 @@
   }
 
   function grimoireSchoolCounts(grimoire, formulas) {
+    const canonical = A.getSigianGrimoireSchoolCounts?.(grimoire);
+    if (canonical && Object.keys(canonical).length) return Object.entries(canonical);
     const counts = new Map();
     grimoireFormulaItems(grimoire, formulas).forEach(formula => {
       counts.set(formula.school, (counts.get(formula.school) || 0) + 1);
@@ -738,15 +740,17 @@
 
   function grimoireTileMarkup(grimoire, formulas, selected) {
     const formulaItems = grimoireFormulaItems(grimoire, formulas);
+    const validation = A.validateSigianGrimoire?.(grimoire, { specializationsEnabled:false }) || { ready:false };
     const schoolChips = grimoireSchoolCounts(grimoire, formulas).map(([school, count]) =>
-      `<span title="${escapeHtml(schoolName(school))}">${schoolLabelMarkup(school, { showName:false })} ${count}</span>`
+      `<span title="${escapeHtml(schoolName(school))}">${schoolLabelMarkup(school, { showName:false })} ${escapeHtml(t("archive.schoolSlots", { count }))}</span>`
     ).join("");
+    const standard = grimoire.kind === "STANDARD";
     return `
-      <button type="button" class="archive-grimoire-tile ${selected ? "active" : ""}" data-grimoire-select="${escapeHtml(grimoire.id)}">
-        <span class="archive-grimoire-icon" aria-hidden="true">📖</span>
+      <button type="button" class="archive-grimoire-tile ${selected ? "active" : ""} ${standard ? "is-standard" : ""}" data-grimoire-select="${escapeHtml(grimoire.id)}">
+        <span class="archive-grimoire-icon" aria-hidden="true">${standard ? "📜" : "📖"}</span>
         <span class="archive-grimoire-copy">
-          <strong>${escapeHtml(grimoire.name)}</strong>
-          <small>${formulaItems.length} ${escapeHtml(t(formulaItems.length === 1 ? "archive.formula" : "archive.formulas"))} · ${escapeHtml(t("archive.updated", { date:formatShortDate(grimoire.updatedAt) }))}</small>
+          <strong>${escapeHtml(standard ? t("menu.grimoireStandard") : grimoire.name)}</strong>
+          <small>${escapeHtml(t(standard ? "archive.standardGrimoire" : "archive.personalGrimoire"))} · ${formulaItems.length}/65 · ${escapeHtml(t(validation.ready ? "archive.ready" : "archive.notReady"))}</small>
           <span class="archive-grimoire-schools">${schoolChips || `<em>${escapeHtml(t("archive.empty"))}</em>`}</span>
         </span>
       </button>`;
@@ -761,34 +765,76 @@
           <button type="button" class="classic-stone-button" data-grimoire-create>＋ ${escapeHtml(t("archive.newGrimoire"))}</button>
         </div>`;
     }
+    const standard = grimoire.kind === "STANDARD";
     const formulaItems = grimoireFormulaItems(grimoire, formulas);
     const schoolCounts = grimoireSchoolCounts(grimoire, formulas);
+    const profile = A.loadProfile?.() || {};
+    const formativeSchoolId = profile.formativeSchoolId || null;
+    const normalValidation = A.validateSigianGrimoire?.(grimoire, { specializationsEnabled:false }) || { ready:false };
+    const specializedValidation = A.validateSigianGrimoire?.(grimoire, {
+      specializationsEnabled:true,
+      formativeSchoolId
+    }) || { ready:false };
+    const specializationCandidates = !standard && formativeSchoolId
+      ? formulaItems.filter(formula =>
+          formula.school === formativeSchoolId
+          && String(formula.lifecycleState || "SEALED") === "SEALED"
+        )
+      : [];
+    const specializationField = standard ? "" : formativeSchoolId
+      ? `
+        <section class="archive-grimoire-specialization">
+          <div class="archive-block-heading">
+            <strong>${escapeHtml(t("archive.specializationFormula"))}</strong>
+            <small>${escapeHtml(t("archive.specializationFormulaHint"))}</small>
+          </div>
+          <div class="archive-grimoire-specialization-row">
+            ${schoolLabelMarkup(formativeSchoolId)}
+            <select data-grimoire-specialization="${escapeHtml(grimoire.id)}">
+              <option value="">${escapeHtml(t("archive.chooseSpecializationFormula"))}</option>
+              ${specializationCandidates.map(formula => {
+                const localized = localizedFormula(formula);
+                const id = formula.formulaInstanceId || formula.id;
+                return `<option value="${escapeHtml(id)}" ${grimoire.specializationFormulaId === id ? "selected" : ""}>${escapeHtml(localized.name)} · ${escapeHtml(t("archive.cost"))} ${escapeHtml(formula.level)}</option>`;
+              }).join("")}
+            </select>
+          </div>
+          <small class="archive-grimoire-specialization-state ${specializedValidation.ready ? "is-ready" : "is-blocked"}">${escapeHtml(t(specializedValidation.ready ? "archive.ready" : "archive.notReady"))}</small>
+        </section>`
+      : `
+        <section class="archive-grimoire-specialization is-blocked">
+          <div class="archive-block-heading"><strong>${escapeHtml(t("archive.specializationFormula"))}</strong></div>
+          <p>${escapeHtml(t("archive.formativeSchoolMissing"))}</p>
+        </section>`;
+
     return `
-      <article class="archive-detail-card archive-grimoire-detail">
+      <article class="archive-detail-card archive-grimoire-detail ${standard ? "is-standard" : ""}">
         <div class="archive-grimoire-editor-head">
-          <span class="archive-grimoire-large-icon" aria-hidden="true">📖</span>
-          <label>
-            <span>${escapeHtml(t("archive.grimoireName"))}</span>
-            <input type="text" maxlength="48" value="${escapeHtml(grimoire.name)}" data-grimoire-name="${escapeHtml(grimoire.id)}">
-          </label>
+          <span class="archive-grimoire-large-icon" aria-hidden="true">${standard ? "📜" : "📖"}</span>
+          ${standard
+            ? `<div><small>${escapeHtml(t("archive.standardGrimoire"))}</small><h3>${escapeHtml(t("menu.grimoireStandard"))}</h3></div>`
+            : `<label><span>${escapeHtml(t("archive.grimoireName"))}</span><input type="text" maxlength="48" value="${escapeHtml(grimoire.name)}" data-grimoire-name="${escapeHtml(grimoire.id)}"></label>`}
         </div>
         <div class="archive-grimoire-summary">
-          <div><small>${escapeHtml(t("archive.formulasLabel"))}</small><strong>${formulaItems.length}</strong></div>
-          <div><small>${escapeHtml(t("archive.schoolsLabel"))}</small><strong>${schoolCounts.length}</strong></div>
-          <div><small>${escapeHtml(t("archive.savedLabel"))}</small><strong>${escapeHtml(formatShortDate(grimoire.updatedAt))}</strong></div>
+          <div><small>${escapeHtml(t("archive.formulasLabel"))}</small><strong>${formulaItems.length}/65</strong></div>
+          <div><small>${escapeHtml(t("archive.schoolsLabel"))}</small><strong>${(grimoire.schoolIds || []).length}/5</strong></div>
+          <div><small>${escapeHtml(t("archive.ready"))}</small><strong>${escapeHtml(t(normalValidation.ready ? "archive.ready" : "archive.notReady"))}</strong></div>
         </div>
         <div class="archive-grimoire-school-breakdown">
           ${schoolCounts.length ? schoolCounts.map(([school, count]) =>
-            `<span>${schoolLabelMarkup(school)} <b>${count}</b></span>`
+            `<span class="${Number(count) === 13 ? "is-complete" : "is-incomplete"}">${schoolLabelMarkup(school)} <b>${escapeHtml(t("archive.schoolSlots", { count }))}</b></span>`
           ).join("") : `<span class="archive-muted">${escapeHtml(t("archive.noFormulaInGrimoire"))}</span>`}
         </div>
+        ${specializationField}
         <section class="archive-grimoire-contents">
           <div class="archive-block-heading"><strong>${escapeHtml(t("archive.savedFormulas"))}</strong><small>${escapeHtml(t("archive.savedCompositionHint"))}</small></div>
           <div class="archive-grimoire-formula-grid">
             ${formulaItems.length ? formulaItems.map(formula => {
               const localized = localizedFormula(formula);
+              const formulaId = formula.formulaInstanceId || formula.id;
+              const isSpecialization = !standard && formulaId === grimoire.specializationFormulaId;
               return `
-                <article class="archive-grimoire-formula archive-grimoire-index-formula archive-school-${escapeHtml(formula.school)}">
+                <article class="archive-grimoire-formula archive-grimoire-index-formula archive-school-${escapeHtml(formula.school)} ${isSpecialization ? "is-specialization" : ""}">
                   <span class="archive-index-school-rail" aria-hidden="true"></span>
                   <span class="archive-formula-art" aria-hidden="true">
                     <img src="${escapeHtml(formula.image)}" alt="" loading="lazy">
@@ -796,21 +842,20 @@
                   </span>
                   <span class="archive-formula-copy">
                     <strong>${escapeHtml(localized.name)}</strong>
-                    <small>
-                      ${schoolLabelMarkup(formula.school)}
-                    </small>
+                    <small>${schoolLabelMarkup(formula.school)}${isSpecialization ? ` · ${escapeHtml(t("archive.specializationFormula"))}` : ""}</small>
                     <em class="archive-grimoire-formula-lifecycle lifecycle-${escapeHtml(String(formula.lifecycleState || "SEALED").toLowerCase())}" title="${escapeHtml(formulaLifecycleHint(formula))}">${escapeHtml(formulaLifecycleLabel(formula))}</em>
                   </span>
-                  <button type="button" data-grimoire-remove-formula="${escapeHtml(formula.formulaInstanceId || formula.id)}" data-grimoire-id="${escapeHtml(grimoire.id)}" aria-label="${escapeHtml(t("archive.remove", { name:localized.name }))}">×</button>
+                  ${standard ? "" : `<button type="button" data-grimoire-remove-formula="${escapeHtml(formulaId)}" data-grimoire-id="${escapeHtml(grimoire.id)}" aria-label="${escapeHtml(t("archive.remove", { name:localized.name }))}">×</button>`}
                 </article>`;
             }).join("") : `<div class="archive-empty">${escapeHtml(t("archive.emptyGrimoire"))}</div>`}
           </div>
         </section>
-        <div class="archive-grimoire-actions">
-          <button type="button" class="classic-stone-button" data-grimoire-open-formulas="${escapeHtml(grimoire.id)}">＋ ${escapeHtml(t("archive.addFormulas"))}</button>
-          <button type="button" class="classic-stone-button ghost" data-grimoire-duplicate="${escapeHtml(grimoire.id)}">${escapeHtml(t("archive.duplicate"))}</button>
-          <button type="button" class="classic-stone-button danger" data-grimoire-delete="${escapeHtml(grimoire.id)}">${escapeHtml(t("archive.delete"))}</button>
-        </div>
+        ${standard ? "" : `
+          <div class="archive-grimoire-actions">
+            <button type="button" class="classic-stone-button" data-grimoire-open-formulas="${escapeHtml(grimoire.id)}">＋ ${escapeHtml(t("archive.addFormulas"))}</button>
+            <button type="button" class="classic-stone-button ghost" data-grimoire-duplicate="${escapeHtml(grimoire.id)}">${escapeHtml(t("archive.duplicate"))}</button>
+            <button type="button" class="classic-stone-button danger" data-grimoire-delete="${escapeHtml(grimoire.id)}">${escapeHtml(t("archive.delete"))}</button>
+          </div>`}
       </article>`;
   }
 
@@ -830,7 +875,7 @@
       </section>`;
   }
 
-  function sectionContentMarkup(data, state, grimoires) {
+  function sectionContentMarkup(data, state, grimoires, personalGrimoires = grimoires) {
     if (state.section === "formulas") {
       const filtered = applyFormulaFilters(data.formulas, state.formula);
       const pageCount = Math.max(1, Math.ceil(filtered.length / FORMULA_PAGE_SIZE));
@@ -847,7 +892,7 @@
           <div class="archive-formula-grid">${pageItems.map(item => formulaTileMarkup(item, data.scope, item.id === state.selectedId)).join("")}</div>
           ${formulaPaginationMarkup(state.formula.page, pageCount)}
         `,
-        detail:formulaDetailMarkup(selected, data.scope, state.selectedComponentId, grimoires, state)
+        detail:formulaDetailMarkup(selected, data.scope, state.selectedComponentId, personalGrimoires, state)
       };
     }
 
@@ -1102,6 +1147,7 @@
       if (!targetId) return;
       A.addFormulaToSigianGrimoire?.(targetId, event.currentTarget.dataset.addFormulaGrimoire);
       state.targetGrimoireId = targetId;
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     });
 
@@ -1111,6 +1157,7 @@
       A.addFormulaToSigianGrimoire?.(grimoire.id, event.currentTarget.dataset.createGrimoireForFormula);
       state.targetGrimoireId = grimoire.id;
       state.selectedGrimoireId = grimoire.id;
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     });
 
@@ -1122,6 +1169,7 @@
       state.targetGrimoireId = grimoire.id;
       state.grimoire.search = "";
       state.detailOpen = true;
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     }));
 
@@ -1134,11 +1182,20 @@
 
     root.querySelector("[data-grimoire-name]")?.addEventListener("change", event => {
       A.renameSigianGrimoire?.(event.currentTarget.dataset.grimoireName, event.currentTarget.value);
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     });
 
     root.querySelector("[data-grimoire-name]")?.addEventListener("keydown", event => {
       if (event.key === "Enter") event.currentTarget.blur();
+    });
+
+    root.querySelector("[data-grimoire-specialization]")?.addEventListener("change", event => {
+      const grimoireId = event.currentTarget.dataset.grimoireSpecialization;
+      const formativeSchoolId = A.loadProfile?.()?.formativeSchoolId || null;
+      A.setSigianGrimoireSpecializationFormula?.(grimoireId, event.currentTarget.value, formativeSchoolId);
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
+      render(root, scope);
     });
 
     root.querySelector("[data-grimoire-duplicate]")?.addEventListener("click", event => {
@@ -1148,6 +1205,7 @@
       state.targetGrimoireId = copy.id;
       state.grimoire.search = "";
       state.detailOpen = true;
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     });
 
@@ -1159,11 +1217,13 @@
       state.selectedGrimoireId = null;
       state.detailOpen = false;
       if (state.targetGrimoireId === id) state.targetGrimoireId = null;
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     });
 
     root.querySelectorAll("[data-grimoire-remove-formula]").forEach(button => button.addEventListener("click", () => {
       A.removeFormulaFromSigianGrimoire?.(button.dataset.grimoireId, button.dataset.grimoireRemoveFormula);
+      window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     }));
 
@@ -1208,11 +1268,14 @@
     }
 
     const state = stateFor(scope);
-    const grimoires = scope === "inventory" ? (A.listSigianGrimoires?.() || []) : [];
+    const personalGrimoires = scope === "inventory" ? (A.listSigianGrimoires?.() || []) : [];
+    const grimoires = scope === "inventory"
+      ? (A.listSigianAllGrimoires?.() || personalGrimoires)
+      : [];
     if (!sectionIds(scope).includes(state.section)) state.section = "formulas";
-    if (!grimoires.some(item => item.id === state.targetGrimoireId)) state.targetGrimoireId = grimoires[0]?.id || null;
+    if (!personalGrimoires.some(item => item.id === state.targetGrimoireId)) state.targetGrimoireId = personalGrimoires[0]?.id || null;
 
-    const content = sectionContentMarkup(data, state, grimoires);
+    const content = sectionContentMarkup(data, state, grimoires, personalGrimoires);
     const title = t(scope === "inventory" ? "archive.inventory" : "archive.collection");
     const intro = t(scope === "inventory" ? "archive.inventoryIntro" : "archive.collectionIntro");
 
@@ -1262,10 +1325,12 @@
   });
 
   if (typeof window !== "undefined") {
-    window.addEventListener("arcane:languagechange", () => {
+    const rerenderConnectedRoots = () => {
       roots.forEach((root, scope) => {
         if (root?.isConnected) render(root, scope);
       });
-    });
+    };
+    window.addEventListener("arcane:languagechange", rerenderConnectedRoots);
+    window.addEventListener("sigian:formative-school-change", rerenderConnectedRoots);
   }
 })(window.Arcane = window.Arcane || {});

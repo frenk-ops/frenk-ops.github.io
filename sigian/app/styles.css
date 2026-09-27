@@ -15723,6 +15723,91 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   flex-basis:15px;
 }
 
+
+#playerGrimoireStatus.is-error {
+  color:#8b2f24;
+  font-weight:800;
+}
+
+#talentChoices .talent:disabled {
+  opacity:.48;
+  cursor:not-allowed;
+  filter:grayscale(.28);
+}
+
+.archive-grimoire-tile.is-standard {
+  border-color:rgba(148,104,43,.46);
+  background:
+    linear-gradient(135deg,rgba(248,232,190,.38),rgba(255,252,238,.72));
+}
+
+.archive-grimoire-school-breakdown .is-complete {
+  border-color:rgba(66,116,66,.28);
+  background:rgba(95,144,91,.12);
+}
+
+.archive-grimoire-school-breakdown .is-incomplete {
+  border-color:rgba(159,91,58,.28);
+  background:rgba(178,102,62,.10);
+}
+
+.archive-grimoire-specialization {
+  display:grid;
+  gap:9px;
+  margin:12px 0;
+  padding:11px;
+  border:1px solid rgba(121,76,34,.26);
+  border-radius:10px;
+  background:rgba(255,247,218,.56);
+}
+
+.archive-grimoire-specialization.is-blocked {
+  border-style:dashed;
+  opacity:.82;
+}
+
+.archive-grimoire-specialization-row {
+  display:grid;
+  grid-template-columns:minmax(130px,.55fr) minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+}
+
+.archive-grimoire-specialization-row select {
+  margin:0;
+}
+
+.archive-grimoire-specialization-state {
+  width:max-content;
+  max-width:100%;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:.7rem;
+  font-weight:800;
+}
+
+.archive-grimoire-specialization-state.is-ready {
+  background:rgba(76,128,73,.12);
+  color:#365d38;
+}
+
+.archive-grimoire-specialization-state.is-blocked {
+  background:rgba(164,86,52,.12);
+  color:#7b3d29;
+}
+
+.archive-grimoire-formula.is-specialization {
+  outline:2px solid rgba(155,105,39,.42);
+  outline-offset:-2px;
+  box-shadow:inset 0 0 0 1px rgba(255,236,174,.50);
+}
+
+@media (max-width:700px) {
+  .archive-grimoire-specialization-row {
+    grid-template-columns:1fr;
+  }
+}
+
 /* Contrast guardrail: dark Archive surfaces must never inherit dark text. */
 .archive-browser .classic-stone-button,
 .archive-browser .classic-stone-button *,
