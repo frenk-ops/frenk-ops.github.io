@@ -335,6 +335,7 @@
           mode:"simulation",
           baselineRevision:input.transaction?.baselineRevision == null ? null : String(input.transaction.baselineRevision),
           formulaBaselineRevision:input.transaction?.formulaBaselineRevision == null ? null : String(input.transaction.formulaBaselineRevision),
+          compositionBaselineRevision:input.transaction?.compositionBaselineRevision == null ? null : String(input.transaction.compositionBaselineRevision),
           nextVirtualSequence:Math.max(1, Math.trunc(Number(input.transaction?.nextVirtualSequence || 1))),
           operations:Array.isArray(input.transaction?.operations) ? clone(input.transaction.operations) : []
         };
@@ -570,6 +571,9 @@
     }
     if (draft.transaction?.formulaBaselineRevision == null && typeof A.getSigianFormulaInventorySnapshot === "function") {
       draft.transaction.formulaBaselineRevision = String(A.getSigianFormulaInventorySnapshot().revision);
+    }
+    if (draft.transaction?.compositionBaselineRevision == null && typeof A.getSigianFormulaCompositionSnapshot === "function") {
+      draft.transaction.compositionBaselineRevision = String(A.getSigianFormulaCompositionSnapshot().revision);
     }
 
     if (typeof A.findSigianFreeCollectibleComponentInstance === "function"
@@ -1440,12 +1444,14 @@
         const transaction = typeof A.createSigianForgeTransactionPlan === "function"
           ? A.createSigianForgeTransactionPlan({
               baselineRevision:draft.transaction?.baselineRevision,
-              formulaBaselineRevision:draft.transaction?.formulaBaselineRevision
+              formulaBaselineRevision:draft.transaction?.formulaBaselineRevision,
+              compositionBaselineRevision:draft.transaction?.compositionBaselineRevision
             })
           : {
               mode:"simulation",
               baselineRevision:draft.transaction?.baselineRevision ?? null,
               formulaBaselineRevision:draft.transaction?.formulaBaselineRevision ?? null,
+              compositionBaselineRevision:draft.transaction?.compositionBaselineRevision ?? null,
               nextVirtualSequence:1,
               operations:[]
             };
@@ -1492,6 +1498,9 @@
               : null,
             formulaBaselineRevision:typeof A.getSigianFormulaInventorySnapshot === "function"
               ? String(A.getSigianFormulaInventorySnapshot().revision)
+              : null,
+            compositionBaselineRevision:typeof A.getSigianFormulaCompositionSnapshot === "function"
+              ? String(A.getSigianFormulaCompositionSnapshot().revision)
               : null,
             operations:[]
           },

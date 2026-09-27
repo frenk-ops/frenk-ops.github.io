@@ -52,6 +52,7 @@
   }
 
   function readStore() {
+    A.recoverSigianForgeAtomicCommit?.();
     const storage = targetStorage();
     if (!storage) return emptyStore();
     try {

@@ -38,6 +38,7 @@
       revision:0,
       nextSequence:1,
       originalFormulaBootstrapVersion:0,
+      seededInventoryIds:[],
       instances:[]
     };
   }
@@ -69,6 +70,7 @@
   }
 
   function readRaw() {
+    A.recoverSigianForgeAtomicCommit?.();
     const target = storage();
     if (!target) return emptyStore();
     try {
@@ -80,6 +82,9 @@
         revision:Math.max(0, Math.trunc(Number(parsed.revision || 0))),
         nextSequence:Math.max(1, Math.trunc(Number(parsed.nextSequence || 1))),
         originalFormulaBootstrapVersion:Math.max(0, Math.trunc(Number(parsed.originalFormulaBootstrapVersion || 0))),
+        seededInventoryIds:Array.isArray(parsed.seededInventoryIds)
+          ? [...new Set(parsed.seededInventoryIds.map(String).filter(Boolean))]
+          : [...new Set(instances.map(instance => instance.inventoryId))],
         instances
       };
     } catch {
@@ -151,31 +156,26 @@
     const catalogById = new Map(catalog.map(item => [String(item.id), item]));
     const starterRequirements = originalFormulaRequirements();
     const starterCounts = requiredStarterCountByInventoryId(starterRequirements);
+    if (!Array.isArray(store.seededInventoryIds)) {
+      store.seededInventoryIds = [...new Set(store.instances.map(instance => instance.inventoryId))];
+    }
+    const seededInventoryIds = new Set(store.seededInventoryIds.map(String));
     let changed = false;
 
     catalog.forEach(item => {
       const inventoryId = String(item.id);
+      if (seededInventoryIds.has(inventoryId)) return;
+
       const target = Math.max(seedQuantity(item), starterCounts.get(inventoryId) || 0);
       const matching = store.instances.filter(instance => instance.inventoryId === inventoryId);
-
-      if (matching.length < target) {
-        for (let index = matching.length; index < target; index += 1) {
-          store.instances.push(createInstance(store, item));
-          changed = true;
-        }
-      } else if (matching.length > target) {
-        let excess = matching.length - target;
-        const removable = store.instances
-          .filter(instance => instance.inventoryId === inventoryId && instance.allocation?.state === "free")
-          .sort((left, right) => right.componentInstanceId.localeCompare(left.componentInstanceId));
-        const removeIds = new Set(removable.slice(0, excess).map(instance => instance.componentInstanceId));
-        if (removeIds.size) {
-          store.instances = store.instances.filter(instance => !removeIds.has(instance.componentInstanceId));
-          excess -= removeIds.size;
-          changed = true;
-        }
+      for (let index = matching.length; index < target; index += 1) {
+        store.instances.push(createInstance(store, item));
+        changed = true;
       }
+      seededInventoryIds.add(inventoryId);
+      changed = true;
     });
+    store.seededInventoryIds = [...seededInventoryIds].sort();
 
     if (store.originalFormulaBootstrapVersion < 1) {
       starterRequirements.forEach(requirement => {

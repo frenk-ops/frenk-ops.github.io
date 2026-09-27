@@ -402,6 +402,7 @@
       mode:"simulation",
       baselineRevision:input.baselineRevision == null ? null : String(input.baselineRevision),
       formulaBaselineRevision:input.formulaBaselineRevision == null ? null : String(input.formulaBaselineRevision),
+      compositionBaselineRevision:input.compositionBaselineRevision == null ? null : String(input.compositionBaselineRevision),
       nextVirtualSequence:Math.max(1, Math.trunc(Number(input.nextVirtualSequence || 1))),
       operations
     };
