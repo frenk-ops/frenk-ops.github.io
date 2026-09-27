@@ -561,7 +561,10 @@
           projectedFreeQuantity:availability ? availability.projectedFree : ownedQuantity
         };
       })
-      .filter(option => Number(option.ownedQuantity) > 0)
+      .filter(option =>
+        Number(option.ownedQuantity) > 0
+        || Number(option.projectedFreeQuantity || 0) > 0
+      )
       .map(clone);
   };
   A.sigianCollectibleInventoryIdentity = function sigianCollectibleInventoryIdentity(collectibleId, formulaSchool = "fire") {

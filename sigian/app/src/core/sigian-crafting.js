@@ -198,6 +198,202 @@
     };
   };
 
+  const HORIZONTAL_RECIPES = Object.freeze([
+    Object.freeze({
+      id:"H001-fixed",
+      leftDefinitionId:"v2-wave",
+      rightDefinitionId:"v2-damage-hero",
+      outputDefinitionId:"v2-tide",
+      scaling:"fixed",
+      schoolBound:false
+    }),
+    Object.freeze({
+      id:"H001-power-minor",
+      leftDefinitionId:"v2-wave-power-minor",
+      rightDefinitionId:"v2-damage-power-minor-hero",
+      outputDefinitionId:"v2-tide-power-minor",
+      scaling:"power-minor",
+      schoolBound:true
+    }),
+    Object.freeze({
+      id:"H001-power",
+      leftDefinitionId:"v2-wave-power",
+      rightDefinitionId:"v2-damage-power-hero",
+      outputDefinitionId:"v2-tide-power",
+      scaling:"power",
+      schoolBound:true
+    }),
+    Object.freeze({
+      id:"H001-power-major",
+      leftDefinitionId:"v2-wave-power-major",
+      rightDefinitionId:"v2-damage-power-major-hero",
+      outputDefinitionId:"v2-tide-power-major",
+      scaling:"power-major",
+      schoolBound:true
+    })
+  ]);
+
+  function horizontalRecipeForInputs(left, right) {
+    const leftId = componentDefinitionId(left);
+    const rightId = componentDefinitionId(right);
+    return HORIZONTAL_RECIPES.find(recipe =>
+      (recipe.leftDefinitionId === leftId && recipe.rightDefinitionId === rightId)
+      || (recipe.leftDefinitionId === rightId && recipe.rightDefinitionId === leftId)
+    ) || null;
+  }
+
+  function horizontalRecipeForOutput(component) {
+    const outputId = componentDefinitionId(component);
+    return HORIZONTAL_RECIPES.find(recipe => recipe.outputDefinitionId === outputId) || null;
+  }
+
+  function normalizeHorizontalSemantics(value, expectedScaling) {
+    if (!value || typeof value !== "object") return null;
+    const magnitude = Number(value.magnitude);
+    const timing = String(value.timing || "").trim();
+    const scaling = String(value.scaling || "").trim();
+    if (!Number.isFinite(magnitude) || !timing || !scaling) return null;
+    if (expectedScaling && scaling !== expectedScaling) return null;
+    return {
+      magnitude,
+      timing,
+      scaling
+    };
+  }
+
+  function sameHorizontalSemantics(left, right) {
+    return Boolean(left && right
+      && Number(left.magnitude) === Number(right.magnitude)
+      && left.timing === right.timing
+      && left.scaling === right.scaling);
+  }
+
+  function canonicalHorizontalOutput(component, recipe, affinity) {
+    const output = {
+      ...clone(component),
+      definitionId:recipe.outputDefinitionId,
+      canonicalDefinitionId:recipe.outputDefinitionId,
+      affinity:clone(affinity)
+    };
+    delete output.componentInstanceId;
+    delete output.assignment;
+    return output;
+  }
+
+  function canonicalHorizontalSplitOutput(component, definitionId, affinity) {
+    const output = {
+      ...clone(component),
+      definitionId,
+      canonicalDefinitionId:definitionId,
+      affinity:clone(affinity)
+    };
+    delete output.componentInstanceId;
+    delete output.assignment;
+    return output;
+  }
+
+  A.SIGIAN_HORIZONTAL_CRAFTING_RECIPES = HORIZONTAL_RECIPES.map(clone);
+
+  A.getSigianHorizontalCraftingRecipeForInputs = function getSigianHorizontalCraftingRecipeForInputs(left, right) {
+    const recipe = horizontalRecipeForInputs(left, right);
+    return recipe ? clone(recipe) : null;
+  };
+
+  A.getSigianHorizontalCraftingRecipeForOutput = function getSigianHorizontalCraftingRecipeForOutput(component) {
+    const recipe = horizontalRecipeForOutput(component);
+    return recipe ? clone(recipe) : null;
+  };
+
+  A.planSigianHorizontalFusion = function planSigianHorizontalFusion(left, right, options = {}) {
+    if (!left || !right) throw new Error("Fusione orizzontale: servono due componenti.");
+    if (left.kind !== "sigil" || right.kind !== "sigil") {
+      throw new Error("Fusione orizzontale: H001 è definita solo per Sigilli.");
+    }
+
+    const recipe = horizontalRecipeForInputs(left, right);
+    if (!recipe) throw new Error("Fusione orizzontale: combinazione non presente nel catalogo H001.");
+
+    const leftGrade = Math.trunc(Number(left.grade || 0));
+    const rightGrade = Math.trunc(Number(right.grade || 0));
+    if (!leftGrade || leftGrade !== rightGrade) {
+      throw new Error("Fusione orizzontale: i Gradi devono coincidere.");
+    }
+
+    const leftSchool = String(left.effectSchool || left.school || "neutral");
+    const rightSchool = String(right.effectSchool || right.school || "neutral");
+    if (recipe.schoolBound && leftSchool !== rightSchool) {
+      throw new Error("Fusione orizzontale: la Scuola deve coincidere.");
+    }
+    if (!recipe.schoolBound && (leftSchool !== "neutral" || rightSchool !== "neutral")) {
+      throw new Error("Fusione orizzontale: la forma fissa H001 non accetta una Scuola effetto.");
+    }
+
+    const leftSemantics = normalizeHorizontalSemantics(options.leftSemantics, recipe.scaling);
+    const rightSemantics = normalizeHorizontalSemantics(options.rightSemantics, recipe.scaling);
+    if (!sameHorizontalSemantics(leftSemantics, rightSemantics)) {
+      throw new Error("Fusione orizzontale: magnitudine, timing e scaling devono coincidere esattamente.");
+    }
+
+    const affinity = A.evaluateSigianCraftAffinityFusion(left.affinity, right.affinity);
+    if (!affinity.compatible) {
+      throw new Error("Fusione orizzontale: le Affinità non hanno Scuole compatibili in comune.");
+    }
+
+    const template = recipe.leftDefinitionId === componentDefinitionId(left) ? left : right;
+    const output = canonicalHorizontalOutput(template, recipe, affinity.affinity);
+    output.grade = leftGrade;
+    output.effectSchool = recipe.schoolBound ? leftSchool : null;
+
+    return {
+      type:"horizontal-fusion",
+      recipeId:recipe.id,
+      inputs:[clone(left), clone(right)],
+      output,
+      semantics:clone(leftSemantics),
+      affinityNarrowed:affinity.narrowed
+    };
+  };
+
+  A.planSigianHorizontalSplit = function planSigianHorizontalSplit(component, options = {}) {
+    if (!component) throw new Error("Scomposizione orizzontale: componente mancante.");
+    if (component.kind !== "sigil") throw new Error("Scomposizione orizzontale: H001 è definita solo per Sigilli.");
+
+    const recipe = horizontalRecipeForOutput(component);
+    if (!recipe) throw new Error("Scomposizione orizzontale: il Sigillo non è un output H001.");
+
+    const grade = Math.trunc(Number(component.grade || 0));
+    if (!grade) throw new Error("Scomposizione orizzontale: Grado non valido.");
+    const effectSchool = String(component.effectSchool || component.school || "neutral");
+    if (recipe.schoolBound && effectSchool === "neutral") {
+      throw new Error("Scomposizione orizzontale: la forma Potere richiede una Scuola.");
+    }
+    if (!recipe.schoolBound && effectSchool !== "neutral") {
+      throw new Error("Scomposizione orizzontale: la forma fissa non usa una Scuola effetto.");
+    }
+
+    const semantics = normalizeHorizontalSemantics(options.semantics, recipe.scaling);
+    if (!semantics) {
+      throw new Error("Scomposizione orizzontale: firma meccanica risolta mancante o incompatibile.");
+    }
+    const affinity = normalizeAffinity(component.affinity);
+    if (!affinity) throw new Error("Scomposizione orizzontale: Affinità non valida.");
+
+    const left = canonicalHorizontalSplitOutput(component, recipe.leftDefinitionId, affinity);
+    const right = canonicalHorizontalSplitOutput(component, recipe.rightDefinitionId, affinity);
+    left.grade = grade;
+    right.grade = grade;
+    left.effectSchool = recipe.schoolBound ? effectSchool : null;
+    right.effectSchool = recipe.schoolBound ? effectSchool : null;
+
+    return {
+      type:"horizontal-split",
+      recipeId:recipe.id,
+      input:clone(component),
+      outputs:[left, right],
+      semantics:clone(semantics)
+    };
+  };
+
   A.createSigianForgeTransactionPlan = function createSigianForgeTransactionPlan(input = {}) {
     const operations = Array.isArray(input.operations)
       ? input.operations.map((operation, index) => transactionOperation(operation, index))

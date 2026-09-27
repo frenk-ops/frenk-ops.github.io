@@ -509,6 +509,110 @@
     };
   }
 
+  function stageHorizontalFusion(plan, leftId, rightId, options = {}) {
+    let current = A.createSigianForgeTransactionPlan?.(plan || {}) || clone(plan || {});
+    const projected = new Map(projectedInstances(current).map(instance => [instance.componentInstanceId, instance]));
+    const left = projected.get(String(leftId || ""));
+    const right = projected.get(String(rightId || ""));
+    if (!left || !right || left.componentInstanceId === right.componentInstanceId) {
+      throw new Error("Fusione orizzontale: servono due copie concrete distinte disponibili nel draft.");
+    }
+    if (left.allocation?.state !== "free" || right.allocation?.state !== "free") {
+      throw new Error("Fusione orizzontale: le copie devono essere libere nel draft.");
+    }
+    const used = draftUsedIds(current);
+    if (used.has(left.componentInstanceId) || used.has(right.componentInstanceId)) {
+      throw new Error("Fusione orizzontale: una delle copie è già usata nel draft.");
+    }
+
+    const fusion = A.planSigianHorizontalFusion?.(left, right, options);
+    if (!fusion) throw new Error("Fusione orizzontale non disponibile.");
+    const outputInventoryId = verticalTargetInventoryId(fusion.output);
+    if (!outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) {
+      throw new Error("Fusione orizzontale: l'output H001 non esiste nel catalogo canonico.");
+    }
+
+    const allocated = nextVirtualId(current);
+    current = allocated.plan;
+    const outputInstance = virtualInstance(fusion.output, outputInventoryId, allocated.id);
+    current = A.appendSigianForgeTransactionOperation(current, {
+      id:`fuse:h:${allocated.id}`,
+      type:"fuse",
+      payload:{
+        kind:"sigil",
+        craftingAxis:"horizontal",
+        recipeId:fusion.recipeId,
+        inputInstanceIds:[left.componentInstanceId, right.componentInstanceId],
+        inputInventoryIds:[left.inventoryId, right.inventoryId],
+        outputInstance,
+        outputInventoryId,
+        semantics:clone(fusion.semantics),
+        affinityNarrowed:Boolean(fusion.affinityNarrowed),
+        targetSlotId:options.targetSlotId == null ? null : String(options.targetSlotId)
+      }
+    });
+    return {
+      transaction:current,
+      outputInstance:clone(outputInstance),
+      affinityNarrowed:Boolean(fusion.affinityNarrowed),
+      semantics:clone(fusion.semantics),
+      recipeId:fusion.recipeId,
+      inputs:[clone(left), clone(right)]
+    };
+  }
+
+  function stageHorizontalSplit(plan, inputId, options = {}) {
+    let current = A.createSigianForgeTransactionPlan?.(plan || {}) || clone(plan || {});
+    const projected = new Map(projectedInstances(current).map(instance => [instance.componentInstanceId, instance]));
+    const input = projected.get(String(inputId || ""));
+    if (!input || input.allocation?.state !== "free") {
+      throw new Error("Scomposizione orizzontale: la copia deve essere libera nel draft.");
+    }
+    if (draftUsedIds(current).has(input.componentInstanceId)) {
+      throw new Error("Scomposizione orizzontale: la copia è già usata nel draft.");
+    }
+
+    const split = A.planSigianHorizontalSplit?.(input, options);
+    if (!split) throw new Error("Scomposizione orizzontale non disponibile.");
+
+    const outputs = [];
+    const outputInventoryIds = [];
+    for (const component of split.outputs) {
+      const outputInventoryId = verticalTargetInventoryId(component);
+      if (!outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) {
+        throw new Error("Scomposizione orizzontale: un output H001 non esiste nel catalogo canonico.");
+      }
+      const allocated = nextVirtualId(current);
+      current = allocated.plan;
+      outputs.push(virtualInstance(component, outputInventoryId, allocated.id));
+      outputInventoryIds.push(outputInventoryId);
+    }
+
+    current = A.appendSigianForgeTransactionOperation(current, {
+      id:`split:h:${outputs[0].componentInstanceId}`,
+      type:"split",
+      payload:{
+        kind:"sigil",
+        craftingAxis:"horizontal",
+        recipeId:split.recipeId,
+        inputInstanceId:input.componentInstanceId,
+        inputInventoryId:input.inventoryId,
+        outputInstances:outputs,
+        outputInventoryIds,
+        semantics:clone(split.semantics),
+        targetSlotId:options.targetSlotId == null ? null : String(options.targetSlotId)
+      }
+    });
+    return {
+      transaction:current,
+      outputInstances:clone(outputs),
+      outputInventoryIds:[...outputInventoryIds],
+      semantics:clone(split.semantics),
+      recipeId:split.recipeId,
+      input:clone(input)
+    };
+  }
+
   function verticalCraftingOptions(transaction = null, options = {}) {
     const free = projectedFreeInstances({
       transaction,
@@ -636,6 +740,14 @@
 
   A.listSigianVerticalCraftingOptions = function listSigianVerticalCraftingOptions(transaction = null, options = {}) {
     return verticalCraftingOptions(transaction, options);
+  };
+
+  A.stageSigianHorizontalFusion = function stageSigianHorizontalFusion(plan, leftId, rightId, options = {}) {
+    return stageHorizontalFusion(plan, leftId, rightId, options);
+  };
+
+  A.stageSigianHorizontalSplit = function stageSigianHorizontalSplit(plan, inputId, options = {}) {
+    return stageHorizontalSplit(plan, inputId, options);
   };
 
   A.stageSigianVerticalFusion = function stageSigianVerticalFusion(plan, leftId, rightId, options = {}) {

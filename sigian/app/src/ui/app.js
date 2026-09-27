@@ -523,6 +523,8 @@
   let forgeTestDuel = false;
   let forgeReclaimRequest = null;
   let forgeCraftSuggestionRequest = null;
+  let forgeVerticalCraftingOpen = false;
+  let forgeHorizontalCraftingOpen = false;
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
@@ -5452,7 +5454,12 @@
       "blocked-max-grade":"forge.craftSuggestion.maxGrade",
       "blocked-selected-unavailable":"forge.craftSuggestion.unavailable",
       "blocked-no-normalization-path":"forge.craftSuggestion.noPath",
-      "blocked-existing-conflict":"forge.craftSuggestion.existingConflict"
+      "blocked-existing-conflict":"forge.craftSuggestion.existingConflict",
+      "use-horizontal-output-free":"forge.craftSuggestion.horizontalUseOutput",
+      "fuse-horizontal-free":"forge.craftSuggestion.horizontalFuse",
+      "fuse-horizontal-reclaim":"forge.craftSuggestion.horizontalFuseReclaim",
+      "blocked-horizontal-input":"forge.craftSuggestion.horizontalInputBlocked",
+      "blocked-horizontal-no-path":"forge.craftSuggestion.horizontalNoPath"
     };
     return t(keys[suggestion?.strategy] || "forge.craftSuggestion.noPath", vars);
   }
@@ -5470,7 +5477,10 @@
       "use-higher-free",
       "use-higher-reclaim",
       "fuse-free",
-      "fuse-reclaim"
+      "fuse-reclaim",
+      "use-horizontal-output-free",
+      "fuse-horizontal-free",
+      "fuse-horizontal-reclaim"
     ]).has(suggestion.strategy);
     const enoughReclaims = required === 0 || selectedIds.size === required;
     const preview = reclaimCandidates.find(item => item.componentInstanceId === request.previewInstanceId) || null;
@@ -5667,6 +5677,7 @@
         ${analysis?.mathError ? `<span>${escapeHtml(analysis.mathError)}</span>` : ""}
         ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<span>${escapeHtml(t("forge.spellNeedsSigil"))}</span>` : ""}
         ${analysis?.sealBlockers?.includes("same-family-redundancy") ? `<span>${escapeHtml(t("forge.sameFamilyRedundancy"))}</span>` : ""}
+        ${analysis?.sealBlockers?.includes("horizontal-redundancy") ? `<span>${escapeHtml(t("forge.horizontalRedundancy"))}</span>` : ""}
       </div>`;
     }
 
@@ -5727,6 +5738,7 @@
       ${forgeMathMode === "detailed" ? forgeMathBreakdownMarkup(analysis) : ""}
       ${analysis?.sealBlockers?.includes("spell-requires-sigil") ? `<p class="forge-math-warning">${escapeHtml(t("forge.spellNeedsSigil"))}</p>` : ""}
       ${analysis?.sealBlockers?.includes("same-family-redundancy") ? `<p class="forge-math-warning">${escapeHtml(t("forge.sameFamilyRedundancy"))}</p>` : ""}
+      ${analysis?.sealBlockers?.includes("horizontal-redundancy") ? `<p class="forge-math-warning">${escapeHtml(t("forge.horizontalRedundancy"))}</p>` : ""}
     </section>`;
   }
 
@@ -5830,7 +5842,8 @@
       compatibleSchool:recipe.school
     }) || { fusions:[], splits:[] };
     const craftOps = (transaction?.operations || []).filter(operation =>
-      operation.type === "fuse" || operation.type === "split"
+      (operation.type === "fuse" || operation.type === "split")
+      && operation.payload?.craftingAxis !== "horizontal"
     );
     const staged = craftOps.length
       ? `<div class="forge-vertical-staged">
@@ -5895,6 +5908,75 @@
     </details>`;
   }
 
+  function forgeHorizontalCraftingMarkup(recipe, transaction) {
+    const session = ensureForgeSession();
+    const options = session?.listHorizontalCraftingOptions?.() || { fusions:[], splits:[] };
+    const stagedOps = (transaction?.operations || []).filter(operation =>
+      (operation.type === "fuse" || operation.type === "split")
+      && operation.payload?.craftingAxis === "horizontal"
+    );
+
+    const staged = stagedOps.length
+      ? `<div class="forge-vertical-staged">
+          <strong>${escapeHtml(t("forge.horizontal.staged"))}</strong>
+          ${stagedOps.map(operation => {
+            const payload = operation.payload || {};
+            const action = operation.type === "fuse" ? t("forge.horizontal.fusion") : t("forge.horizontal.split");
+            const magnitude = Number(payload.semantics?.magnitude);
+            return `<span><b>${escapeHtml(action)}</b> · H001${Number.isFinite(magnitude) ? ` · X=${escapeHtml(magnitude)}` : ""}</span>`;
+          }).join("")}
+          <small>${escapeHtml(t("forge.vertical.undoHint"))}</small>
+        </div>`
+      : "";
+
+    const fusionRows = options.fusions.map(option => {
+      const left = A.getSigianCollectibleSigil?.(option.leftCollectibleId);
+      const right = A.getSigianCollectibleSigil?.(option.rightCollectibleId);
+      const target = A.getSigianCollectibleSigil?.(option.targetCollectibleId);
+      return `<article class="forge-vertical-option">
+        <div class="forge-vertical-option-copy">
+          <small>H001 · ${escapeHtml(t("forge.horizontal.fusion"))}</small>
+          <strong>${escapeHtml(left?.displayName || option.leftCollectibleId)} + ${escapeHtml(right?.displayName || option.rightCollectibleId)} → ${escapeHtml(target?.displayName || option.targetCollectibleId)}</strong>
+          <span>${escapeHtml(t("forge.horizontal.exactSignature", { magnitude:option.semantics?.magnitude, timing:option.semantics?.timing }))}</span>
+        </div>
+        <button type="button" class="classic-stone-button" data-forge-horizontal-fuse-left="${escapeHtml(option.leftSlotId)}" data-forge-horizontal-fuse-right="${escapeHtml(option.rightSlotId)}">${escapeHtml(t("forge.horizontal.fuse"))}</button>
+      </article>`;
+    }).join("");
+
+    const splitRows = options.splits.map(option => {
+      const source = A.getSigianCollectibleSigil?.(option.collectibleId);
+      const wave = A.getSigianCollectibleSigil?.(option.outputs?.wave);
+      const damage = A.getSigianCollectibleSigil?.(option.outputs?.damage);
+      return `<article class="forge-vertical-option">
+        <div class="forge-vertical-option-copy">
+          <small>H001 · ${escapeHtml(t("forge.horizontal.split"))}</small>
+          <strong>${escapeHtml(source?.displayName || option.collectibleId)} → ${escapeHtml(wave?.displayName || option.outputs?.wave)} + ${escapeHtml(damage?.displayName || option.outputs?.damage)}</strong>
+          <span>${escapeHtml(t("forge.horizontal.exactSignature", { magnitude:option.semantics?.magnitude, timing:option.semantics?.timing }))}</span>
+        </div>
+        <button type="button" class="classic-stone-button ghost" data-forge-horizontal-split="${escapeHtml(option.slotId)}">${escapeHtml(t("forge.horizontal.decompose"))}</button>
+      </article>`;
+    }).join("");
+
+    return `<details class="forge-vertical-crafting forge-horizontal-crafting" ${forgeHorizontalCraftingOpen ? "open" : ""} data-forge-horizontal-crafting>
+      <summary>
+        <span><strong>${escapeHtml(t("forge.horizontal.title"))}</strong><small>${escapeHtml(t("forge.horizontal.subtitle"))}</small></span>
+        <b>${escapeHtml(options.fusions.length + options.splits.length)}</b>
+      </summary>
+      <div class="forge-vertical-crafting-body">
+        <p class="forge-catalog-note">${escapeHtml(t("forge.horizontal.draftOnly"))}</p>
+        ${staged}
+        <section>
+          <h4>${escapeHtml(t("forge.horizontal.availableFusions"))}</h4>
+          <div class="forge-vertical-options">${fusionRows || `<p class="forge-empty-note">${escapeHtml(t("forge.horizontal.noFusion"))}</p>`}</div>
+        </section>
+        <section>
+          <h4>${escapeHtml(t("forge.horizontal.availableSplits"))}</h4>
+          <div class="forge-vertical-options">${splitRows || `<p class="forge-empty-note">${escapeHtml(t("forge.horizontal.noSplit"))}</p>`}</div>
+        </section>
+      </div>
+    </details>`;
+  }
+
   function forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit) {
     if (forgeCardEditorSection === "sigils") {
       const selected = recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId);
@@ -5914,6 +5996,7 @@
       <p>Seleziona Nome, Scuola, Costo, Attacco, Vita, Sigilli o Vincolo direttamente sulla carta. Il tipo Creatura/Magia cambia con un singolo tocco.</p>
       ${forgeQuickBalanceMarkup(recipe, analysis)}
       ${forgeVerticalCraftingMarkup(recipe, transaction)}
+      ${forgeHorizontalCraftingMarkup(recipe, transaction)}
     </div>`;
   }
 
@@ -6702,6 +6785,29 @@
     root.querySelectorAll("[data-forge-vertical-split]").forEach(button => button.addEventListener("click", () => {
       session.stageVerticalSplit(button.dataset.forgeVerticalSplit);
       forgeVerticalCraftingOpen = true;
+      renderForgePage();
+    }));
+
+    root.querySelectorAll("[data-forge-horizontal-crafting]").forEach(details => {
+      details.addEventListener("toggle", () => {
+        forgeHorizontalCraftingOpen = details.open;
+      });
+    });
+    root.querySelectorAll("[data-forge-horizontal-fuse-left]").forEach(button => button.addEventListener("click", () => {
+      const result = session.stageHorizontalFormulaFusion(
+        button.dataset.forgeHorizontalFuseLeft,
+        button.dataset.forgeHorizontalFuseRight
+      );
+      forgeHorizontalCraftingOpen = true;
+      forgeSelectedSigilSlotId = result.draft.recipe.sigils.find(item =>
+        item.collectibleId?.startsWith("wave-front-")
+      )?.slotId || null;
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-horizontal-split]").forEach(button => button.addEventListener("click", () => {
+      session.stageHorizontalFormulaSplit(button.dataset.forgeHorizontalSplit);
+      forgeHorizontalCraftingOpen = true;
+      forgeSelectedSigilSlotId = null;
       renderForgePage();
     }));
 
