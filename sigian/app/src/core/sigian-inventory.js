@@ -429,9 +429,14 @@
   }
 
   function formulaItems() {
-    return originalCards().map(card => ({
+    return originalCards().map(card => {
+      const formulaInstanceId = `owned:${card.id}`;
+      const lifecycleState = A.getSigianFormulaLifecycleState?.(formulaInstanceId) || "SEALED";
+      return {
       id:card.id,
-      formulaInstanceId:`owned:${card.id}`,
+      formulaInstanceId,
+      lifecycleState,
+      playable:lifecycleState === "SEALED",
       name:card.name,
       school:card.school,
       type:card.type,
@@ -446,7 +451,8 @@
       owned:true,
       conversionStatus:"complete",
       components:formulaComponents(card.id)
-    }));
+    };
+    });
   }
 
   function cosmeticItems() {

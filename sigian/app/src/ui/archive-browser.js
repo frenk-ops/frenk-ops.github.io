@@ -352,13 +352,31 @@
     return `<span class="archive-owned">${escapeHtml(t("archive.owned"))} ×${Number(quantity || 0)}</span>`;
   }
 
+  function formulaLifecycleLabel(item) {
+    const key = ({
+      SEALED:"archive.lifecycle.sealed",
+      NEEDS_RESEAL:"archive.lifecycle.needsReseal",
+      DISSOLVED:"archive.lifecycle.dissolved"
+    })[item?.lifecycleState] || "archive.lifecycle.sealed";
+    return t(key);
+  }
+
+  function formulaLifecycleHint(item) {
+    const key = ({
+      SEALED:"archive.lifecycle.sealedHint",
+      NEEDS_RESEAL:"archive.lifecycle.needsResealHint",
+      DISSOLVED:"archive.lifecycle.dissolvedHint"
+    })[item?.lifecycleState] || "archive.lifecycle.sealedHint";
+    return t(key);
+  }
+
   function formulaTileMarkup(item, scope, selected) {
     const localized = localizedFormula(item);
     const typeLabel = t(item.type === "spell" ? "archive.spell" : "archive.creature");
     const quantityLabel = scope === "inventory" ? `, ×${item.quantity || 1}` : "";
     const rowLabel = `${localized.name}, ${schoolName(item.school)}, ${typeLabel}, ${t("archive.cost")} ${item.level}${quantityLabel}`;
     return `
-      <article class="archive-formula-tile archive-formula-index-row archive-school-${escapeHtml(item.school)} ${selected ? "active" : ""}" data-archive-item="${escapeHtml(item.id)}" tabindex="0" aria-label="${escapeHtml(rowLabel)}">
+      <article class="archive-formula-tile archive-formula-index-row archive-school-${escapeHtml(item.school)} lifecycle-${escapeHtml(String(item.lifecycleState || "SEALED").toLowerCase())} ${selected ? "active" : ""}" data-archive-item="${escapeHtml(item.id)}" tabindex="0" aria-label="${escapeHtml(rowLabel)}">
         <span class="archive-index-school-rail" aria-hidden="true"></span>
         <span class="archive-formula-art" aria-hidden="true">
           <img src="${escapeHtml(item.image)}" alt="" loading="lazy">
@@ -371,7 +389,7 @@
             <span class="archive-formula-meta-separator">·</span>
             <span>${escapeHtml(typeLabel)}</span>
           </small>
-          <em>${escapeHtml(t(scope === "collection" ? "archive.originalFormula" : "archive.ownedFormula"))}</em>
+          <em>${escapeHtml(t(scope === "collection" ? "archive.originalFormula" : "archive.ownedFormula"))}${scope === "inventory" ? ` · ${escapeHtml(formulaLifecycleLabel(item))}` : ""}</em>
         </span>
         <span class="archive-formula-index-tail">
           ${scope === "inventory"
@@ -416,6 +434,10 @@
         <div class="archive-full-detail-host" data-archive-full-card="${escapeHtml(item.id)}"></div>
         <p class="archive-full-interaction-note">${escapeHtml(t("archive.fullInteractionHint"))}</p>
         ${scope === "inventory" ? `
+          <div class="archive-formula-lifecycle lifecycle-${escapeHtml(String(item.lifecycleState || "SEALED").toLowerCase())}">
+            <strong>${escapeHtml(formulaLifecycleLabel(item))}</strong>
+            <small>${escapeHtml(formulaLifecycleHint(item))}</small>
+          </div>
           <section class="archive-grimoire-quick-add">
             <div>
               <strong>${escapeHtml(t("archive.grimoire"))}</strong>

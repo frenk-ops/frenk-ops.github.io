@@ -205,6 +205,7 @@
     return {
       mode:"simulation",
       baselineRevision:input.baselineRevision == null ? null : String(input.baselineRevision),
+      formulaBaselineRevision:input.formulaBaselineRevision == null ? null : String(input.formulaBaselineRevision),
       operations
     };
   };
@@ -305,7 +306,7 @@
       if (!formulas.has(formulaInstanceId)) {
         formulas.set(formulaInstanceId, {
           formulaInstanceId,
-          statusAfterCommit:"needs-reseal",
+          statusAfterCommit:"NEEDS_RESEAL",
           componentInstanceIds:[]
         });
       }

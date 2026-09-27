@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.61.10-4dfd462";
+const BUILD_REVISION = "0.61.11-49403ae";
 const SHELL_CACHE = `sigian-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `sigian-runtime-${BUILD_REVISION}`;
 

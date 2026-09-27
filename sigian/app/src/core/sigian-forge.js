@@ -334,6 +334,7 @@
       : {
           mode:"simulation",
           baselineRevision:input.transaction?.baselineRevision == null ? null : String(input.transaction.baselineRevision),
+          formulaBaselineRevision:input.transaction?.formulaBaselineRevision == null ? null : String(input.transaction.formulaBaselineRevision),
           operations:Array.isArray(input.transaction?.operations) ? clone(input.transaction.operations) : []
         };
     return {
@@ -364,7 +365,18 @@
         const binding = A.getSigianForgeTransactionBinding(draft.transaction, "sigil", sigil.slotId);
         const instance = binding?.componentInstanceId ? A.getSigianComponentInstance(binding.componentInstanceId) : null;
         const expectedId = A.sigianCollectibleInventoryIdentity?.(sigil.collectibleId, school)?.inventoryId || null;
-        if (!binding || !instance || instance.inventoryId !== expectedId || !affinityAllowsSchool(instance.affinity)) {
+        const reclaim = (draft.transaction?.operations || []).find(operation =>
+          operation.type === "reclaim"
+          && operation.payload?.kind === "sigil"
+          && String(operation.payload?.targetSlotId || "") === String(sigil.slotId)
+        );
+        const reclaimValid = !reclaim || (
+          instance?.allocation?.state === "assigned"
+          && instance.allocation.formulaInstanceId === reclaim.payload?.sourceFormulaInstanceId
+          && instance.allocation.slotId === reclaim.payload?.sourceSlotId
+          && A.getSigianFormulaLifecycleState?.(reclaim.payload?.sourceFormulaInstanceId) !== "DISSOLVED"
+        );
+        if (!binding || !instance || instance.inventoryId !== expectedId || !affinityAllowsSchool(instance.affinity) || !reclaimValid) {
           structuralReasons.push("component-copy-unavailable");
         }
       });
@@ -372,7 +384,18 @@
         const binding = A.getSigianForgeTransactionBinding(draft.transaction, "constraint", "constraint");
         const instance = binding?.componentInstanceId ? A.getSigianComponentInstance(binding.componentInstanceId) : null;
         const expectedId = A.sigianConstraintInventoryId?.(draft.recipe.constraint) || null;
-        if (!binding || !instance || instance.inventoryId !== expectedId || !affinityAllowsSchool(instance.affinity)) {
+        const reclaim = (draft.transaction?.operations || []).find(operation =>
+          operation.type === "reclaim"
+          && operation.payload?.kind === "constraint"
+          && String(operation.payload?.targetSlotId || "") === "constraint"
+        );
+        const reclaimValid = !reclaim || (
+          instance?.allocation?.state === "assigned"
+          && instance.allocation.formulaInstanceId === reclaim.payload?.sourceFormulaInstanceId
+          && instance.allocation.slotId === reclaim.payload?.sourceSlotId
+          && A.getSigianFormulaLifecycleState?.(reclaim.payload?.sourceFormulaInstanceId) !== "DISSOLVED"
+        );
+        if (!binding || !instance || instance.inventoryId !== expectedId || !affinityAllowsSchool(instance.affinity) || !reclaimValid) {
           structuralReasons.push("component-copy-unavailable");
         }
       }
@@ -444,6 +467,9 @@
     });
     if (draft.transaction?.baselineRevision == null && typeof A.getSigianComponentInventorySnapshot === "function") {
       draft.transaction.baselineRevision = String(A.getSigianComponentInventorySnapshot().revision);
+    }
+    if (draft.transaction?.formulaBaselineRevision == null && typeof A.getSigianFormulaInventorySnapshot === "function") {
+      draft.transaction.formulaBaselineRevision = String(A.getSigianFormulaInventorySnapshot().revision);
     }
 
     if (typeof A.findSigianFreeCollectibleComponentInstance === "function"
@@ -655,8 +681,16 @@
 
       clearTransactionOperations() {
         const transaction = typeof A.createSigianForgeTransactionPlan === "function"
-          ? A.createSigianForgeTransactionPlan({ baselineRevision:draft.transaction?.baselineRevision })
-          : { mode:"simulation", baselineRevision:draft.transaction?.baselineRevision ?? null, operations:[] };
+          ? A.createSigianForgeTransactionPlan({
+              baselineRevision:draft.transaction?.baselineRevision,
+              formulaBaselineRevision:draft.transaction?.formulaBaselineRevision
+            })
+          : {
+              mode:"simulation",
+              baselineRevision:draft.transaction?.baselineRevision ?? null,
+              formulaBaselineRevision:draft.transaction?.formulaBaselineRevision ?? null,
+              operations:[]
+            };
         return commitDraftPatch({ transaction });
       },
 
@@ -665,6 +699,15 @@
         if (history.length > MAX_HISTORY) history.shift();
         future.length = 0;
         draft = normalizeDraft({
+          transaction:{
+            baselineRevision:typeof A.getSigianComponentInventorySnapshot === "function"
+              ? String(A.getSigianComponentInventorySnapshot().revision)
+              : null,
+            formulaBaselineRevision:typeof A.getSigianFormulaInventorySnapshot === "function"
+              ? String(A.getSigianFormulaInventorySnapshot().revision)
+              : null,
+            operations:[]
+          },
           recipe: {
             id: options.id || createDraftId(),
             school: options.school || draft.recipe.school,

@@ -255,7 +255,7 @@
     "archive.categoriesSigils": "Categorie Sigilli", "archive.categoriesConstraints": "Categorie Vincoli",
     "archive.newGrimoire": "Nuovo Grimorio", "archive.grimoireLocalNote": "I Grimori vengono salvati nel browser. Le regole definitive di costruzione e l'uso diretto nei duelli verranno collegati successivamente.",
     "archive.category": "Categoria", "archive.schoolTheme": "Scuola / tema",
-    "archive.owned": "Posseduta", "archive.copiesOwned": "Copie possedute", "archive.freeCopies": "libere", "archive.inUseCopies": "in uso", "archive.assignedTo": "Assegnato a", "archive.assignmentHint": "Apri la Formula che utilizza questa copia",
+    "archive.lifecycle.sealed": "Sigillata", "archive.lifecycle.needsReseal": "Da risigillare", "archive.lifecycle.dissolved": "Dissolta", "archive.lifecycle.sealedHint": "Formula giocabile e valida.", "archive.lifecycle.needsResealHint": "Formula non giocabile finché non viene rivalutata e risigillata.", "archive.lifecycle.dissolvedHint": "Formula dissolta; la Ricetta resta disponibile per ricostruirla.", "archive.owned": "Posseduta", "archive.copiesOwned": "Copie possedute", "archive.freeCopies": "libere", "archive.inUseCopies": "in uso", "archive.assignedTo": "Assegnato a", "archive.assignmentHint": "Apri la Formula che utilizza questa copia",
     "archive.sigil": "Sigillo", "archive.constraint": "Vincolo", "archive.sigilsCount": "{count} Sigilli", "archive.sigilCount": "1 Sigillo", "archive.constraintCount": "{count} Vincolo",
     "archive.page": "Pagina {page} di {pages}", "archive.formulaPages": "Pagine Formule",
     "archive.noFormula": "Nessuna Formula corrisponde ai filtri.", "archive.originalFormula": "FORMULA ORIGINALE", "archive.ownedFormula": "FORMULA POSSEDUTA",

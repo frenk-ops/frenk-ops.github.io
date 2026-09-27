@@ -18371,3 +18371,36 @@ button.sigian-full-constraint-slot {
     min-height:22px;
   }
 }
+
+
+/* Persistent Formula lifecycle */
+.archive-formula-lifecycle {
+  display:grid;
+  gap:3px;
+  padding:8px 10px;
+  border:1px solid rgba(103,68,34,.24);
+  border-radius:10px;
+  background:rgba(255,250,229,.46);
+}
+.archive-formula-lifecycle strong {
+  color:#4f321f;
+  font-size:.8rem;
+}
+.archive-formula-lifecycle small {
+  color:#76583f;
+  font-size:.7rem;
+  line-height:1.35;
+}
+.archive-formula-lifecycle.lifecycle-needs_reseal {
+  border-color:rgba(168,103,28,.48);
+  background:rgba(250,221,158,.42);
+}
+.archive-formula-lifecycle.lifecycle-dissolved {
+  opacity:.78;
+}
+.archive-formula-index-row.lifecycle-needs_reseal .archive-formula-copy em {
+  font-weight:900;
+}
+.archive-formula-index-row.lifecycle-dissolved {
+  opacity:.72;
+}

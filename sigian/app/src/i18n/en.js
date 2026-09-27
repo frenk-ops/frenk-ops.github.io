@@ -254,7 +254,7 @@
     "archive.categoriesSigils": "Sigil categories", "archive.categoriesConstraints": "Constraint categories",
     "archive.newGrimoire": "New Spellbook", "archive.grimoireLocalNote": "Spellbooks are saved in this browser. Final construction rules and direct duel use will be connected later.",
     "archive.category": "Category", "archive.schoolTheme": "School / theme",
-    "archive.owned": "Owned", "archive.copiesOwned": "Owned copies", "archive.freeCopies": "free", "archive.inUseCopies": "in use", "archive.assignedTo": "Assigned to", "archive.assignmentHint": "Open the Formula using this copy",
+    "archive.lifecycle.sealed": "Sealed", "archive.lifecycle.needsReseal": "Needs reseal", "archive.lifecycle.dissolved": "Dissolved", "archive.lifecycle.sealedHint": "Playable and valid Formula.", "archive.lifecycle.needsResealHint": "Not playable until it is reevaluated and sealed again.", "archive.lifecycle.dissolvedHint": "Dissolved Formula; its Recipe remains available for reconstruction.", "archive.owned": "Owned", "archive.copiesOwned": "Owned copies", "archive.freeCopies": "free", "archive.inUseCopies": "in use", "archive.assignedTo": "Assigned to", "archive.assignmentHint": "Open the Formula using this copy",
     "archive.sigil": "Sigil", "archive.constraint": "Constraint", "archive.sigilsCount": "{count} Sigils", "archive.sigilCount": "1 Sigil", "archive.constraintCount": "{count} Constraint",
     "archive.page": "Page {page} of {pages}", "archive.formulaPages": "Formula pages",
     "archive.noFormula": "No Formula matches the filters.", "archive.originalFormula": "ORIGINAL FORMULA", "archive.ownedFormula": "OWNED FORMULA",
