@@ -535,7 +535,8 @@
       ? state.targetGrimoireId
       : grimoires[0]?.id || null;
     const target = grimoires.find(grimoire => grimoire.id === targetId) || null;
-    const alreadyPresent = Boolean(target?.formulaIds?.includes(item.id));
+    const formulaInstanceId = item.formulaInstanceId || item.id;
+    const alreadyPresent = Boolean(target?.formulaIds?.includes(formulaInstanceId));
 
     return `
       <article class="archive-detail-card archive-formula-detail archive-formula-full-detail">
@@ -555,11 +556,11 @@
               <select data-formula-grimoire-select aria-label="${escapeHtml(t("archive.chooseGrimoire"))}">
                 ${grimoires.map(grimoire => `<option value="${escapeHtml(grimoire.id)}" ${grimoire.id === targetId ? "selected" : ""}>${escapeHtml(grimoire.name)} · ${grimoire.formulaIds.length}</option>`).join("")}
               </select>
-              <button type="button" class="classic-stone-button archive-grimoire-add-action" data-add-formula-grimoire="${escapeHtml(item.id)}" ${alreadyPresent ? "disabled" : ""}>
+              <button type="button" class="classic-stone-button archive-grimoire-add-action" data-add-formula-grimoire="${escapeHtml(formulaInstanceId)}" ${alreadyPresent ? "disabled" : ""}>
                 ${escapeHtml(alreadyPresent ? t("archive.alreadyPresent") : `＋ ${t("archive.add")}`)}
               </button>
             ` : `
-              <button type="button" class="classic-stone-button archive-grimoire-create-action" data-create-grimoire-for-formula="${escapeHtml(item.id)}">＋ ${escapeHtml(t("archive.createGrimoireAdd"))}</button>
+              <button type="button" class="classic-stone-button archive-grimoire-create-action" data-create-grimoire-for-formula="${escapeHtml(formulaInstanceId)}">＋ ${escapeHtml(t("archive.createGrimoireAdd"))}</button>
             `}
           </section>
           <div class="archive-formula-actions">
@@ -723,7 +724,7 @@
   }
 
   function grimoireFormulaItems(grimoire, formulas) {
-    const byId = new Map(formulas.map(item => [item.id, item]));
+    const byId = new Map(formulas.map(item => [item.formulaInstanceId || item.id, item]));
     return (grimoire?.formulaIds || []).map(id => byId.get(id)).filter(Boolean);
   }
 
@@ -798,8 +799,9 @@
                     <small>
                       ${schoolLabelMarkup(formula.school)}
                     </small>
+                    <em class="archive-grimoire-formula-lifecycle lifecycle-${escapeHtml(String(formula.lifecycleState || "SEALED").toLowerCase())}" title="${escapeHtml(formulaLifecycleHint(formula))}">${escapeHtml(formulaLifecycleLabel(formula))}</em>
                   </span>
-                  <button type="button" data-grimoire-remove-formula="${escapeHtml(formula.id)}" data-grimoire-id="${escapeHtml(grimoire.id)}" aria-label="${escapeHtml(t("archive.remove", { name:localized.name }))}">×</button>
+                  <button type="button" data-grimoire-remove-formula="${escapeHtml(formula.formulaInstanceId || formula.id)}" data-grimoire-id="${escapeHtml(grimoire.id)}" aria-label="${escapeHtml(t("archive.remove", { name:localized.name }))}">×</button>
                 </article>`;
             }).join("") : `<div class="archive-empty">${escapeHtml(t("archive.emptyGrimoire"))}</div>`}
           </div>

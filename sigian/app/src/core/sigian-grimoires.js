@@ -34,9 +34,30 @@
       .slice(0, 48) || fallback;
   }
 
+  function normalizeFormulaInstanceId(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (raw.startsWith("owned:") || raw.startsWith("formula:")) return raw;
+    const instance = A.getSigianFormulaInstance?.(raw);
+    return String(instance?.formulaInstanceId || raw);
+  }
+
   function normalizeFormulaIds(values) {
     const source = Array.isArray(values) ? values : [];
-    return [...new Set(source.map(value => String(value || "").trim()).filter(Boolean))];
+    return [...new Set(source.map(normalizeFormulaInstanceId).filter(Boolean))];
+  }
+
+  function formulaReference(formulaInstanceId) {
+    const id = normalizeFormulaInstanceId(formulaInstanceId);
+    const instance = id ? A.getSigianFormulaInstance?.(id) || null : null;
+    return {
+      formulaInstanceId:id,
+      exists:Boolean(instance),
+      recipeId:instance?.recipeId ?? null,
+      sourceCardId:instance?.sourceCardId ?? null,
+      lifecycleState:instance?.lifecycleState ?? null,
+      playable:Boolean(instance && instance.lifecycleState === "SEALED")
+    };
   }
 
   function normalizeGrimoire(input = {}, index = 0) {
@@ -105,6 +126,7 @@
 
   A.SIGIAN_GRIMOIRE_STORAGE_KEY = STORAGE_KEY;
   A.SIGIAN_GRIMOIRE_SCHEMA_VERSION = SCHEMA_VERSION;
+  A.normalizeSigianGrimoireFormulaInstanceId = normalizeFormulaInstanceId;
 
   A.listSigianGrimoires = function listSigianGrimoires() {
     return readState().grimoires
@@ -116,6 +138,11 @@
   A.getSigianGrimoire = function getSigianGrimoire(id) {
     const found = readState().grimoires.find(item => item.id === String(id || ""));
     return found ? clone(found) : null;
+  };
+
+  A.getSigianGrimoireFormulaEntries = function getSigianGrimoireFormulaEntries(id) {
+    const grimoire = A.getSigianGrimoire(id);
+    return (grimoire?.formulaIds || []).map(formulaReference);
   };
 
   A.createSigianGrimoire = function createSigianGrimoire(options = {}) {
@@ -170,8 +197,9 @@
   };
 
   A.addFormulaToSigianGrimoire = function addFormulaToSigianGrimoire(id, formulaId) {
-    const normalizedFormulaId = String(formulaId || "").trim();
+    const normalizedFormulaId = normalizeFormulaInstanceId(formulaId);
     if (!normalizedFormulaId) return null;
+    if (typeof A.getSigianFormulaInstance === "function" && !A.getSigianFormulaInstance(normalizedFormulaId)) return null;
     return mutate(state => {
       const grimoire = state.grimoires.find(item => item.id === String(id || ""));
       if (!grimoire) return null;
@@ -184,7 +212,7 @@
   };
 
   A.removeFormulaFromSigianGrimoire = function removeFormulaFromSigianGrimoire(id, formulaId) {
-    const normalizedFormulaId = String(formulaId || "").trim();
+    const normalizedFormulaId = normalizeFormulaInstanceId(formulaId);
     return mutate(state => {
       const grimoire = state.grimoires.find(item => item.id === String(id || ""));
       if (!grimoire) return null;
@@ -201,7 +229,10 @@
     return mutate(state => {
       const grimoire = state.grimoires.find(item => item.id === String(id || ""));
       if (!grimoire) return null;
-      grimoire.formulaIds = normalizeFormulaIds(formulaIds);
+      const normalized = normalizeFormulaIds(formulaIds);
+      grimoire.formulaIds = typeof A.getSigianFormulaInstance === "function"
+        ? normalized.filter(formulaInstanceId => A.getSigianFormulaInstance(formulaInstanceId))
+        : normalized;
       grimoire.updatedAt = nowIso();
       return clone(grimoire);
     });

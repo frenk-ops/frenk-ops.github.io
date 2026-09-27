@@ -18405,6 +18405,31 @@ button.sigian-full-constraint-slot {
   opacity:.72;
 }
 
+.archive-grimoire-formula-lifecycle {
+  display:inline-flex;
+  width:max-content;
+  max-width:100%;
+  padding:2px 6px;
+  border:1px solid rgba(74,112,67,.28);
+  border-radius:999px;
+  background:rgba(96,137,81,.12);
+  color:#536d45;
+  font-size:.62rem;
+  font-style:normal;
+  font-weight:800;
+  line-height:1.2;
+}
+.archive-grimoire-formula-lifecycle.lifecycle-needs_reseal {
+  border-color:rgba(168,103,28,.42);
+  background:rgba(250,221,158,.36);
+  color:#8a5a20;
+}
+.archive-grimoire-formula-lifecycle.lifecycle-dissolved {
+  border-color:rgba(111,82,72,.34);
+  background:rgba(111,82,72,.09);
+  color:#72584f;
+}
+
 
 /* Virtual vertical crafting */
 .forge-vertical-crafting {

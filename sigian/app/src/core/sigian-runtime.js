@@ -472,6 +472,162 @@
     return { events };
   };
 
+  function cloneRuntime(value) {
+    if (typeof A.deepClone === "function") return A.deepClone(value);
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  let originalInventoryRuntimeCatalog = null;
+
+  function getOriginalInventoryRuntimeCatalog() {
+    if (originalInventoryRuntimeCatalog) return originalInventoryRuntimeCatalog;
+    if (typeof A.buildSigianFormulaCatalog !== "function") return null;
+    const cards = A.RAW_CARD_SETS?.["astral-original"] || [];
+    originalInventoryRuntimeCatalog = A.buildSigianFormulaCatalog(cards);
+    return originalInventoryRuntimeCatalog;
+  }
+
+  A.resolveSigianFormulaInstanceRuntime = function resolveSigianFormulaInstanceRuntime(formulaInstanceId) {
+    const requested = String(formulaInstanceId || "").trim();
+    const normalized = typeof A.normalizeSigianGrimoireFormulaInstanceId === "function"
+      ? A.normalizeSigianGrimoireFormulaInstanceId(requested)
+      : requested;
+    const blockers = [];
+    const instance = normalized ? A.getSigianFormulaInstance?.(normalized) || null : null;
+    if (!instance) {
+      blockers.push("formula-instance-missing");
+      return {
+        formulaInstanceId:normalized,
+        lifecycleState:null,
+        playable:false,
+        blockers,
+        instance:null,
+        composition:null,
+        evaluation:null,
+        formula:null,
+        card:null
+      };
+    }
+
+    if (instance.lifecycleState !== "SEALED") blockers.push("formula-not-sealed");
+
+    const persisted = A.getSigianFormulaComposition?.(instance.formulaInstanceId, { allowCanonicalFallback:false }) || null;
+    const isUntouchedOriginal = Boolean(instance.sourceCardId && !persisted);
+
+    if (isUntouchedOriginal) {
+      const formula = getOriginalInventoryRuntimeCatalog()?.byId?.[instance.sourceCardId] || null;
+      if (!formula) blockers.push("formula-runtime-catalog-missing");
+      const card = formula && !blockers.length ? A.materializeLegacyCardFromFormula?.(formula) || null : null;
+      return {
+        formulaInstanceId:instance.formulaInstanceId,
+        lifecycleState:instance.lifecycleState,
+        playable:blockers.length === 0,
+        blockers,
+        instance:cloneRuntime(instance),
+        composition:null,
+        evaluation:null,
+        formula:formula && !blockers.length ? cloneRuntime(formula) : null,
+        card:card && !blockers.length ? { ...cloneRuntime(card), formulaInstanceId:instance.formulaInstanceId } : null,
+        source:"standard-runtime"
+      };
+    }
+
+    if (!persisted?.composition) blockers.push("formula-composition-missing");
+    const evaluation = persisted?.evaluation || null;
+    if (!evaluation
+      || String(evaluation.status || "") !== "production"
+      || !Number.isInteger(Math.trunc(Number(evaluation.minimumLevel)))
+      || Math.trunc(Number(evaluation.minimumLevel)) < 1) {
+      blockers.push("production-evaluation-required");
+    }
+    if (persisted?.composition?.constraint) blockers.push("global-constraint-runtime-pending");
+    if (typeof A.compileFormulaRecipe !== "function" || typeof A.materializeLegacyCardFromFormula !== "function") {
+      blockers.push("formula-runtime-compiler-unavailable");
+    }
+
+    let formula = null;
+    let card = null;
+    if (!blockers.length) {
+      try {
+        const recipe = cloneRuntime(persisted.composition);
+        recipe.id = instance.formulaInstanceId;
+        formula = A.compileFormulaRecipe(recipe, {
+          level:Math.trunc(Number(evaluation.minimumLevel)),
+          set:"sigian-inventory"
+        });
+        card = A.materializeLegacyCardFromFormula(formula);
+        card.formulaInstanceId = instance.formulaInstanceId;
+        card.formulaRecipe = cloneRuntime(persisted.composition);
+        card.formulaEvaluation = cloneRuntime(evaluation);
+      } catch (error) {
+        blockers.push("formula-runtime-compile-failed");
+        return {
+          formulaInstanceId:instance.formulaInstanceId,
+          lifecycleState:instance.lifecycleState,
+          playable:false,
+          blockers,
+          error:String(error?.message || error || ""),
+          instance:cloneRuntime(instance),
+          composition:persisted?.composition ? cloneRuntime(persisted.composition) : null,
+          evaluation:evaluation ? cloneRuntime(evaluation) : null,
+          formula:null,
+          card:null,
+          source:"persistent"
+        };
+      }
+    }
+
+    return {
+      formulaInstanceId:instance.formulaInstanceId,
+      lifecycleState:instance.lifecycleState,
+      playable:blockers.length === 0,
+      blockers:[...new Set(blockers)],
+      instance:cloneRuntime(instance),
+      composition:persisted?.composition ? cloneRuntime(persisted.composition) : null,
+      evaluation:evaluation ? cloneRuntime(evaluation) : null,
+      formula:formula ? cloneRuntime(formula) : null,
+      card:card ? cloneRuntime(card) : null,
+      source:"persistent"
+    };
+  };
+
+  A.materializeSigianGrimoireForRuntime = function materializeSigianGrimoireForRuntime(grimoireId) {
+    const grimoire = A.getSigianGrimoire?.(grimoireId) || null;
+    if (!grimoire) {
+      return {
+        grimoire:null,
+        entries:[],
+        playableEntries:[],
+        cards:[],
+        formulas:[],
+        blockers:["grimoire-missing"],
+        ready:false
+      };
+    }
+
+    const entries = (grimoire.formulaIds || []).map(A.resolveSigianFormulaInstanceRuntime);
+    const playableEntries = entries.filter(entry => entry.playable && entry.formula && entry.card);
+    const blockers = entries.flatMap(entry =>
+      (entry.blockers || []).map(code => ({ formulaInstanceId:entry.formulaInstanceId, code }))
+    );
+    return {
+      grimoire:cloneRuntime(grimoire),
+      entries,
+      playableEntries,
+      cards:playableEntries.map(entry => cloneRuntime(entry.card)),
+      formulas:playableEntries.map(entry => cloneRuntime(entry.formula)),
+      blockers,
+      ready:blockers.length === 0
+    };
+  };
+
+  A.installSigianGrimoireRuntime = function installSigianGrimoireRuntime(engine, grimoireId) {
+    if (!engine) throw new Error("Grimorio runtime: engine mancante.");
+    const runtime = A.materializeSigianGrimoireForRuntime(grimoireId);
+    runtime.formulas.forEach(formula => A.setSigianFormulaOverride(engine, formula));
+    return runtime;
+  };
+
   A.getSigianFormulaCatalogForEngine = function getSigianFormulaCatalogForEngine(engine) {
     return formulaCatalogForEngine(engine);
   };
