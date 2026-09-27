@@ -5697,6 +5697,87 @@
     </div>`;
   }
 
+  function forgeVerticalCraftingIdentity(inventoryId) {
+    return (A.listSigianCanonicalCollectibles?.({ status:"approved" }) || [])
+      .find(item => String(item.id) === String(inventoryId || "")) || null;
+  }
+
+  function forgeVerticalCraftingCopyLabel(instanceId) {
+    const id = String(instanceId || "");
+    if (id.startsWith("draft-cmp-")) return `Draft ${id.replace("draft-cmp-", "#")}`;
+    return id;
+  }
+
+  function forgeVerticalCraftingMarkup(recipe, transaction) {
+    const options = A.listSigianVerticalCraftingOptions?.(transaction, {
+      compatibleSchool:recipe.school
+    }) || { fusions:[], splits:[] };
+    const craftOps = (transaction?.operations || []).filter(operation =>
+      operation.type === "fuse" || operation.type === "split"
+    );
+    const staged = craftOps.length
+      ? `<div class="forge-vertical-staged">
+          <strong>${escapeHtml(t("forge.vertical.staged"))}</strong>
+          ${craftOps.map(operation => {
+            const payload = operation.payload || {};
+            const source = forgeVerticalCraftingIdentity(payload.inputInventoryId);
+            const output = forgeVerticalCraftingIdentity(payload.outputInventoryId);
+            const action = operation.type === "fuse" ? t("forge.vertical.fusion") : t("forge.vertical.split");
+            return `<span><b>${escapeHtml(action)}</b> · ${escapeHtml(source?.name || payload.inputInventoryId || "?")} → ${escapeHtml(output?.name || payload.outputInventoryId || "?")}</span>`;
+          }).join("")}
+          <small>${escapeHtml(t("forge.vertical.undoHint"))}</small>
+        </div>`
+      : "";
+
+    const fusionRows = options.fusions.map(option => {
+      const source = forgeVerticalCraftingIdentity(option.inputInventoryId);
+      const output = forgeVerticalCraftingIdentity(option.outputInventoryId);
+      return `<article class="forge-vertical-option ${option.affinityNarrowed ? "is-narrowed" : ""}">
+        <div class="forge-vertical-option-copy">
+          <small>${escapeHtml(t("forge.vertical.fusion"))} · ${escapeHtml(option.kind === "constraint" ? t("archive.constraint") : t("archive.sigil"))}</small>
+          <strong>${escapeHtml(source?.name || option.inputInventoryId)} ×2 → ${escapeHtml(output?.name || option.outputInventoryId)}</strong>
+          <span>${escapeHtml(option.inputInstanceIds.map(forgeVerticalCraftingCopyLabel).join(" + "))}</span>
+          <em>${escapeHtml(t("forge.affinity"))}: ${escapeHtml(forgeAffinityLabel(option.output?.affinity))}</em>
+          ${option.affinityNarrowed ? `<mark>${escapeHtml(t("forge.vertical.affinityNarrowed"))}</mark>` : ""}
+        </div>
+        <button type="button" class="classic-stone-button" data-forge-vertical-fuse-left="${escapeHtml(option.inputInstanceIds[0])}" data-forge-vertical-fuse-right="${escapeHtml(option.inputInstanceIds[1])}">${escapeHtml(t("forge.vertical.fuse"))}</button>
+      </article>`;
+    }).join("");
+
+    const splitRows = options.splits.map(option => {
+      const source = forgeVerticalCraftingIdentity(option.inputInventoryId);
+      const output = forgeVerticalCraftingIdentity(option.outputInventoryId);
+      return `<article class="forge-vertical-option">
+        <div class="forge-vertical-option-copy">
+          <small>${escapeHtml(t("forge.vertical.split"))} · ${escapeHtml(option.kind === "constraint" ? t("archive.constraint") : t("archive.sigil"))}</small>
+          <strong>${escapeHtml(source?.name || option.inputInventoryId)} → 2 × ${escapeHtml(output?.name || option.outputInventoryId)}</strong>
+          <span>${escapeHtml(forgeVerticalCraftingCopyLabel(option.inputInstanceId))}</span>
+          <em>${escapeHtml(t("forge.affinity"))}: ${escapeHtml(forgeAffinityLabel(option.outputs?.[0]?.affinity))}</em>
+        </div>
+        <button type="button" class="classic-stone-button ghost" data-forge-vertical-split="${escapeHtml(option.inputInstanceId)}">${escapeHtml(t("forge.vertical.decompose"))}</button>
+      </article>`;
+    }).join("");
+
+    return `<details class="forge-vertical-crafting" ${forgeVerticalCraftingOpen ? "open" : ""} data-forge-vertical-crafting>
+      <summary>
+        <span><strong>${escapeHtml(t("forge.vertical.title"))}</strong><small>${escapeHtml(t("forge.vertical.subtitle"))}</small></span>
+        <b>${escapeHtml(options.fusions.length + options.splits.length)}</b>
+      </summary>
+      <div class="forge-vertical-crafting-body">
+        <p class="forge-catalog-note">${escapeHtml(t("forge.vertical.draftOnly"))}</p>
+        ${staged}
+        <section>
+          <h4>${escapeHtml(t("forge.vertical.availableFusions"))}</h4>
+          <div class="forge-vertical-options">${fusionRows || `<p class="forge-empty-note">${escapeHtml(t("forge.vertical.noFusion"))}</p>`}</div>
+        </section>
+        <section>
+          <h4>${escapeHtml(t("forge.vertical.availableSplits"))}</h4>
+          <div class="forge-vertical-options">${splitRows || `<p class="forge-empty-note">${escapeHtml(t("forge.vertical.noSplit"))}</p>`}</div>
+        </section>
+      </div>
+    </details>`;
+  }
+
   function forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit) {
     if (forgeCardEditorSection === "sigils") {
       const selected = recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId);
@@ -5710,10 +5791,12 @@
     }
     if (forgeCardEditorSection === "constraint") return forgeGlobalConstraintMarkup(recipe);
     if (forgeCardEditorSection === "cost") return forgeBudgetMarkup(recipe, analysis);
+    const transaction = ensureForgeSession()?.snapshot?.()?.draft?.transaction || null;
     return `<div class="forge-context-idle">
       <strong>Forgia card-first</strong>
       <p>Seleziona Nome, Scuola, Costo, Attacco, Vita, Sigilli o Vincolo direttamente sulla carta. Il tipo Creatura/Magia cambia con un singolo tocco.</p>
       ${forgeQuickBalanceMarkup(recipe, analysis)}
+      ${forgeVerticalCraftingMarkup(recipe, transaction)}
     </div>`;
   }
 
@@ -6481,6 +6564,25 @@
     }));
     root.querySelectorAll("[data-forge-open-constraint-picker]").forEach(button => button.addEventListener("click", () => {
       forgeCardEditorSection = "constraint";
+      renderForgePage();
+    }));
+
+    root.querySelectorAll("[data-forge-vertical-crafting]").forEach(details => {
+      details.addEventListener("toggle", () => {
+        forgeVerticalCraftingOpen = details.open;
+      });
+    });
+    root.querySelectorAll("[data-forge-vertical-fuse-left]").forEach(button => button.addEventListener("click", () => {
+      session.stageVerticalFusion(
+        button.dataset.forgeVerticalFuseLeft,
+        button.dataset.forgeVerticalFuseRight
+      );
+      forgeVerticalCraftingOpen = true;
+      renderForgePage();
+    }));
+    root.querySelectorAll("[data-forge-vertical-split]").forEach(button => button.addEventListener("click", () => {
+      session.stageVerticalSplit(button.dataset.forgeVerticalSplit);
+      forgeVerticalCraftingOpen = true;
       renderForgePage();
     }));
 

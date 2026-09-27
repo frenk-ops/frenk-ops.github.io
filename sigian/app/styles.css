@@ -18404,3 +18404,128 @@ button.sigian-full-constraint-slot {
 .archive-formula-index-row.lifecycle-dissolved {
   opacity:.72;
 }
+
+
+/* Virtual vertical crafting */
+.forge-vertical-crafting {
+  margin-top:14px;
+  border:1px solid rgba(105,70,34,.3);
+  border-radius:12px;
+  background:rgba(255,248,222,.42);
+  overflow:hidden;
+}
+.forge-vertical-crafting > summary {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:11px 12px;
+  cursor:pointer;
+  list-style:none;
+}
+.forge-vertical-crafting > summary::-webkit-details-marker { display:none; }
+.forge-vertical-crafting > summary span {
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+.forge-vertical-crafting > summary strong {
+  color:#4e321e;
+  font:700 .88rem/1.15 Georgia,serif;
+}
+.forge-vertical-crafting > summary small {
+  color:#76583f;
+  font-size:.67rem;
+}
+.forge-vertical-crafting > summary > b {
+  min-width:28px;
+  padding:4px 7px;
+  border-radius:999px;
+  background:#5a3b22;
+  color:#fff0c7;
+  text-align:center;
+  font-size:.7rem;
+}
+.forge-vertical-crafting-body {
+  display:grid;
+  gap:12px;
+  padding:0 12px 12px;
+}
+.forge-vertical-crafting-body section {
+  display:grid;
+  gap:7px;
+}
+.forge-vertical-crafting-body h4 {
+  margin:0;
+  color:#553720;
+  font-size:.76rem;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.forge-vertical-options,
+.forge-vertical-staged {
+  display:grid;
+  gap:7px;
+}
+.forge-vertical-option {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:9px;
+  border:1px solid rgba(96,61,29,.24);
+  border-radius:10px;
+  background:rgba(255,252,236,.62);
+}
+.forge-vertical-option.is-narrowed {
+  border-color:rgba(166,88,32,.48);
+  background:rgba(250,223,169,.5);
+}
+.forge-vertical-option-copy {
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+.forge-vertical-option-copy small,
+.forge-vertical-option-copy span,
+.forge-vertical-option-copy em {
+  color:#785b42;
+  font-size:.65rem;
+  font-style:normal;
+}
+.forge-vertical-option-copy strong {
+  color:#4b311e;
+  font-size:.76rem;
+}
+.forge-vertical-option-copy mark {
+  width:fit-content;
+  padding:3px 6px;
+  border-radius:6px;
+  background:rgba(173,90,31,.13);
+  color:#8b451d;
+  font-size:.63rem;
+  font-weight:800;
+}
+.forge-vertical-staged {
+  padding:9px;
+  border:1px dashed rgba(96,61,29,.34);
+  border-radius:10px;
+}
+.forge-vertical-staged > strong {
+  color:#4d321e;
+  font-size:.73rem;
+}
+.forge-vertical-staged > span,
+.forge-vertical-staged > small {
+  color:#71543b;
+  font-size:.65rem;
+}
+@media (max-width:700px) {
+  .forge-vertical-option {
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .forge-vertical-option .classic-stone-button {
+    width:100%;
+  }
+}

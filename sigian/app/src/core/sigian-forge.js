@@ -335,6 +335,7 @@
           mode:"simulation",
           baselineRevision:input.transaction?.baselineRevision == null ? null : String(input.transaction.baselineRevision),
           formulaBaselineRevision:input.transaction?.formulaBaselineRevision == null ? null : String(input.transaction.formulaBaselineRevision),
+          nextVirtualSequence:Math.max(1, Math.trunc(Number(input.transaction?.nextVirtualSequence || 1))),
           operations:Array.isArray(input.transaction?.operations) ? clone(input.transaction.operations) : []
         };
     return {
@@ -363,7 +364,10 @@
       };
       draft.recipe.sigils.filter(item => item.collectibleId).forEach(sigil => {
         const binding = A.getSigianForgeTransactionBinding(draft.transaction, "sigil", sigil.slotId);
-        const instance = binding?.componentInstanceId ? A.getSigianComponentInstance(binding.componentInstanceId) : null;
+        const instance = binding?.componentInstanceId
+          ? (A.getSigianProjectedComponentInstance?.(binding.componentInstanceId, draft.transaction)
+            || A.getSigianComponentInstance(binding.componentInstanceId))
+          : null;
         const expectedId = A.sigianCollectibleInventoryIdentity?.(sigil.collectibleId, school)?.inventoryId || null;
         const reclaim = (draft.transaction?.operations || []).find(operation =>
           operation.type === "reclaim"
@@ -382,7 +386,10 @@
       });
       if (draft.recipe.constraint) {
         const binding = A.getSigianForgeTransactionBinding(draft.transaction, "constraint", "constraint");
-        const instance = binding?.componentInstanceId ? A.getSigianComponentInstance(binding.componentInstanceId) : null;
+        const instance = binding?.componentInstanceId
+          ? (A.getSigianProjectedComponentInstance?.(binding.componentInstanceId, draft.transaction)
+            || A.getSigianComponentInstance(binding.componentInstanceId))
+          : null;
         const expectedId = A.sigianConstraintInventoryId?.(draft.recipe.constraint) || null;
         const reclaim = (draft.transaction?.operations || []).find(operation =>
           operation.type === "reclaim"
@@ -689,9 +696,39 @@
               mode:"simulation",
               baselineRevision:draft.transaction?.baselineRevision ?? null,
               formulaBaselineRevision:draft.transaction?.formulaBaselineRevision ?? null,
+              nextVirtualSequence:1,
               operations:[]
             };
         return commitDraftPatch({ transaction });
+      },
+
+      listVerticalCraftingOptions(options = {}) {
+        return A.listSigianVerticalCraftingOptions?.(draft.transaction, {
+          compatibleSchool:options.compatibleSchool || draft.recipe.school
+        }) || { fusions:[], splits:[] };
+      },
+
+      stageVerticalFusion(leftInstanceId, rightInstanceId) {
+        if (typeof A.stageSigianVerticalFusion !== "function") {
+          throw new Error("Crafting verticale non disponibile.");
+        }
+        const staged = A.stageSigianVerticalFusion(
+          draft.transaction,
+          leftInstanceId,
+          rightInstanceId
+        );
+        return commitDraftPatch({ transaction:staged.transaction });
+      },
+
+      stageVerticalSplit(inputInstanceId) {
+        if (typeof A.stageSigianVerticalSplit !== "function") {
+          throw new Error("Crafting verticale non disponibile.");
+        }
+        const staged = A.stageSigianVerticalSplit(
+          draft.transaction,
+          inputInstanceId
+        );
+        return commitDraftPatch({ transaction:staged.transaction });
       },
 
       reset(options = {}) {

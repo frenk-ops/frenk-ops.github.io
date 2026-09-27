@@ -273,8 +273,56 @@
     };
   }
 
+  function projectedInstances(transaction = null) {
+    const instances = new Map(snapshot().instances.map(instance => [instance.componentInstanceId, clone(instance)]));
+    (transaction?.operations || []).forEach(operation => {
+      const payload = operation?.payload || {};
+      if (operation.type === "fuse") {
+        const inputIds = (payload.inputInstanceIds || []).map(String);
+        if (inputIds.length !== 2 || !inputIds.every(id => instances.has(id))) return;
+        inputIds.forEach(id => instances.delete(id));
+        const output = normalizeInstance(payload.outputInstance);
+        if (output) instances.set(output.componentInstanceId, output);
+      }
+      if (operation.type === "split") {
+        const inputId = String(payload.inputInstanceId || "");
+        if (!inputId || !instances.has(inputId)) return;
+        instances.delete(inputId);
+        (payload.outputInstances || []).forEach(candidate => {
+          const output = normalizeInstance(candidate);
+          if (output) instances.set(output.componentInstanceId, output);
+        });
+      }
+    });
+    return [...instances.values()];
+  }
+
+  function combineAvailability(actualInstances, projected, inventoryId, options = {}) {
+    const actual = availabilityFromInstances(actualInstances, inventoryId, {
+      compatibleSchool:options.compatibleSchool,
+      transaction:null
+    });
+    if (!options.transaction) {
+      return {
+        ...actual,
+        projectedTotal:actual.total
+      };
+    }
+    const draft = availabilityFromInstances(projected, inventoryId, options);
+    return {
+      ...actual,
+      projectedTotal:draft.total,
+      projectedFree:draft.projectedFree,
+      reclaimable:draft.reclaimable,
+      reclaimableAssigned:draft.reclaimableAssigned,
+      draftUsed:draft.draftUsed
+    };
+  }
+
   function availability(inventoryId, options = {}) {
-    return availabilityFromInstances(snapshot().instances, inventoryId, options);
+    const actualInstances = snapshot().instances;
+    const projected = options.transaction ? projectedInstances(options.transaction) : actualInstances;
+    return combineAvailability(actualInstances, projected, inventoryId, options);
   }
 
   function freeInstance(inventoryId, options = {}) {
@@ -282,12 +330,17 @@
       ...(options.excludeInstanceIds || []).map(String),
       ...draftUsedIds(options.transaction)
     ]);
-    return listInstances({
-      inventoryId,
-      allocation:"free",
-      compatibleSchool:options.compatibleSchool,
-      excludeInstanceIds:[...excluded]
-    })[0] || null;
+    const instances = options.transaction ? projectedInstances(options.transaction) : snapshot().instances;
+    return instances
+      .filter(instance => {
+        if (excluded.has(instance.componentInstanceId)) return false;
+        if (instance.inventoryId !== String(inventoryId || "")) return false;
+        if (instance.allocation?.state !== "free") return false;
+        if (options.compatibleSchool && !affinityAllows(instance.affinity, options.compatibleSchool)) return false;
+        return true;
+      })
+      .map(clone)
+      .sort((left, right) => left.componentInstanceId.localeCompare(right.componentInstanceId))[0] || null;
   }
 
   function assignedInstances(inventoryId, options = {}) {
@@ -309,6 +362,211 @@
 
   function constraintInventoryId(constraint) {
     return A.sigianConstraintInventoryId?.(constraint) || null;
+  }
+
+  function projectedFreeInstances(options = {}) {
+    const excluded = new Set([
+      ...(options.excludeInstanceIds || []).map(String),
+      ...draftUsedIds(options.transaction)
+    ]);
+    return projectedInstances(options.transaction)
+      .filter(instance => {
+        if (excluded.has(instance.componentInstanceId)) return false;
+        if (instance.allocation?.state !== "free") return false;
+        if (options.kind && instance.kind !== options.kind) return false;
+        if (options.inventoryId && instance.inventoryId !== String(options.inventoryId)) return false;
+        if (options.compatibleSchool && !affinityAllows(instance.affinity, options.compatibleSchool)) return false;
+        return true;
+      })
+      .map(clone)
+      .sort((left, right) => left.componentInstanceId.localeCompare(right.componentInstanceId));
+  }
+
+  function canonicalItemByInventoryId(inventoryId) {
+    return canonicalItems().find(item => String(item.id) === String(inventoryId || "")) || null;
+  }
+
+  function virtualInstance(component, inventoryId, componentInstanceId) {
+    const instance = normalizeInstance({
+      ...clone(component),
+      componentInstanceId,
+      inventoryId,
+      allocation:{ state:"free" },
+      createdAt:"draft"
+    });
+    if (!instance) throw new Error("Output virtuale crafting non valido.");
+    return instance;
+  }
+
+  function nextVirtualId(plan) {
+    const current = A.createSigianForgeTransactionPlan?.(plan || {}) || clone(plan || {});
+    const sequence = Math.max(1, Math.trunc(Number(current.nextVirtualSequence || 1)));
+    current.nextVirtualSequence = sequence + 1;
+    return {
+      plan:current,
+      id:`draft-cmp-${String(sequence).padStart(4, "0")}`
+    };
+  }
+
+  function verticalTargetInventoryId(component) {
+    return A.sigianCanonicalComponentInventoryId?.(component) || "";
+  }
+
+  function stageVerticalFusion(plan, leftId, rightId, options = {}) {
+    let current = A.createSigianForgeTransactionPlan?.(plan || {}) || clone(plan || {});
+    const projected = new Map(projectedInstances(current).map(instance => [instance.componentInstanceId, instance]));
+    const left = projected.get(String(leftId || ""));
+    const right = projected.get(String(rightId || ""));
+    if (!left || !right || left.componentInstanceId === right.componentInstanceId) {
+      throw new Error("Fusione verticale: servono due copie concrete distinte disponibili nel draft.");
+    }
+    if (left.allocation?.state !== "free" || right.allocation?.state !== "free") {
+      throw new Error("Fusione verticale: le copie devono essere libere nel draft.");
+    }
+    const used = draftUsedIds(current);
+    if (used.has(left.componentInstanceId) || used.has(right.componentInstanceId)) {
+      throw new Error("Fusione verticale: una delle copie è già usata nel draft.");
+    }
+    const fusion = A.planSigianVerticalFusion?.(left, right, options);
+    if (!fusion) throw new Error("Fusione verticale non disponibile.");
+    const outputInventoryId = verticalTargetInventoryId(fusion.output);
+    if (!outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) {
+      throw new Error("Fusione verticale: il Grado di destinazione non esiste nel catalogo canonico.");
+    }
+    const allocated = nextVirtualId(current);
+    current = allocated.plan;
+    const outputInstance = virtualInstance(fusion.output, outputInventoryId, allocated.id);
+    current = A.appendSigianForgeTransactionOperation(current, {
+      id:`fuse:${allocated.id}`,
+      type:"fuse",
+      payload:{
+        kind:left.kind,
+        inputInstanceIds:[left.componentInstanceId, right.componentInstanceId],
+        inputInventoryId:left.inventoryId,
+        outputInstance,
+        outputInventoryId,
+        affinityNarrowed:Boolean(fusion.affinityNarrowed),
+        targetSlotId:options.targetSlotId == null ? null : String(options.targetSlotId)
+      }
+    });
+    return {
+      transaction:current,
+      outputInstance:clone(outputInstance),
+      affinityNarrowed:Boolean(fusion.affinityNarrowed),
+      inputs:[clone(left), clone(right)]
+    };
+  }
+
+  function stageVerticalSplit(plan, inputId, options = {}) {
+    let current = A.createSigianForgeTransactionPlan?.(plan || {}) || clone(plan || {});
+    const projected = new Map(projectedInstances(current).map(instance => [instance.componentInstanceId, instance]));
+    const input = projected.get(String(inputId || ""));
+    if (!input || input.allocation?.state !== "free") {
+      throw new Error("Scomposizione verticale: la copia deve essere libera nel draft.");
+    }
+    if (draftUsedIds(current).has(input.componentInstanceId)) {
+      throw new Error("Scomposizione verticale: la copia è già usata nel draft.");
+    }
+    const split = A.planSigianVerticalSplit?.(input);
+    if (!split) throw new Error("Scomposizione verticale non disponibile.");
+    const outputInventoryId = verticalTargetInventoryId(split.outputs[0]);
+    if (!outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) {
+      throw new Error("Scomposizione verticale: il Grado di destinazione non esiste nel catalogo canonico.");
+    }
+    const outputs = [];
+    for (let index = 0; index < 2; index += 1) {
+      const allocated = nextVirtualId(current);
+      current = allocated.plan;
+      outputs.push(virtualInstance(split.outputs[index], outputInventoryId, allocated.id));
+    }
+    current = A.appendSigianForgeTransactionOperation(current, {
+      id:`split:${outputs[0].componentInstanceId}`,
+      type:"split",
+      payload:{
+        kind:input.kind,
+        inputInstanceId:input.componentInstanceId,
+        inputInventoryId:input.inventoryId,
+        outputInstances:outputs,
+        outputInventoryId,
+        targetSlotId:options.targetSlotId == null ? null : String(options.targetSlotId)
+      }
+    });
+    return {
+      transaction:current,
+      outputInstances:clone(outputs),
+      input:clone(input)
+    };
+  }
+
+  function verticalCraftingOptions(transaction = null, options = {}) {
+    const free = projectedFreeInstances({
+      transaction,
+      compatibleSchool:options.compatibleSchool
+    });
+    const byInventory = new Map();
+    free.forEach(instance => {
+      if (!byInventory.has(instance.inventoryId)) byInventory.set(instance.inventoryId, []);
+      byInventory.get(instance.inventoryId).push(instance);
+    });
+
+    const fusions = [];
+    const seenFusionOutcomes = new Set();
+    byInventory.forEach(instances => {
+      if (instances.length < 2) return;
+      for (let leftIndex = 0; leftIndex < instances.length - 1; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < instances.length; rightIndex += 1) {
+          try {
+            const fusion = A.planSigianVerticalFusion?.(instances[leftIndex], instances[rightIndex]);
+            const outputInventoryId = fusion ? verticalTargetInventoryId(fusion.output) : "";
+            if (!fusion || !outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) continue;
+            const outcomeKey = [
+              instances[leftIndex].inventoryId,
+              fusion.affinity?.mode || "",
+              ...(fusion.affinity?.schools || [])
+            ].join(":");
+            if (seenFusionOutcomes.has(outcomeKey)) continue;
+            seenFusionOutcomes.add(outcomeKey);
+            fusions.push({
+              kind:instances[leftIndex].kind,
+              inputInstanceIds:[instances[leftIndex].componentInstanceId, instances[rightIndex].componentInstanceId],
+              inputInventoryId:instances[leftIndex].inventoryId,
+              outputInventoryId,
+              output:clone(fusion.output),
+              affinityNarrowed:Boolean(fusion.affinityNarrowed)
+            });
+          } catch {}
+        }
+      }
+    });
+
+    const splits = [];
+    const seenSplitOutcomes = new Set();
+    free.forEach(instance => {
+      try {
+        const split = A.planSigianVerticalSplit?.(instance);
+        const outputInventoryId = split ? verticalTargetInventoryId(split.outputs[0]) : "";
+        if (!split || !outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) return;
+        const outcomeKey = [
+          instance.inventoryId,
+          split.outputs[0]?.affinity?.mode || "",
+          ...(split.outputs[0]?.affinity?.schools || [])
+        ].join(":");
+        if (seenSplitOutcomes.has(outcomeKey)) return;
+        seenSplitOutcomes.add(outcomeKey);
+        splits.push({
+          kind:instance.kind,
+          inputInstanceId:instance.componentInstanceId,
+          inputInventoryId:instance.inventoryId,
+          outputInventoryId,
+          outputs:clone(split.outputs)
+        });
+      } catch {}
+    });
+
+    return {
+      fusions:clone(fusions),
+      splits:clone(splits)
+    };
   }
 
   function mutate(expectedRevision, mutator) {
@@ -342,16 +600,48 @@
     return listInstances().find(instance => instance.componentInstanceId === String(instanceId || "")) || null;
   };
 
+  A.listSigianProjectedComponentInstances = function listSigianProjectedComponentInstances(options = {}) {
+    const excluded = new Set((options.excludeInstanceIds || []).map(String));
+    return projectedInstances(options.transaction)
+      .filter(instance => {
+        if (excluded.has(instance.componentInstanceId)) return false;
+        if (options.kind && instance.kind !== options.kind) return false;
+        if (options.inventoryId && instance.inventoryId !== String(options.inventoryId)) return false;
+        if (options.allocation && instance.allocation?.state !== options.allocation) return false;
+        if (options.compatibleSchool && !affinityAllows(instance.affinity, options.compatibleSchool)) return false;
+        return true;
+      })
+      .map(clone);
+  };
+
+  A.getSigianProjectedComponentInstance = function getSigianProjectedComponentInstance(instanceId, transaction = null) {
+    return projectedInstances(transaction)
+      .find(instance => instance.componentInstanceId === String(instanceId || "")) || null;
+  };
+
+  A.listSigianVerticalCraftingOptions = function listSigianVerticalCraftingOptions(transaction = null, options = {}) {
+    return verticalCraftingOptions(transaction, options);
+  };
+
+  A.stageSigianVerticalFusion = function stageSigianVerticalFusion(plan, leftId, rightId, options = {}) {
+    return stageVerticalFusion(plan, leftId, rightId, options);
+  };
+
+  A.stageSigianVerticalSplit = function stageSigianVerticalSplit(plan, inputId, options = {}) {
+    return stageVerticalSplit(plan, inputId, options);
+  };
+
   A.getSigianComponentAvailabilityByInventoryId = function getSigianComponentAvailabilityByInventoryId(inventoryId, options = {}) {
     return availability(inventoryId, options);
   };
 
   A.getSigianComponentAvailabilityMap = function getSigianComponentAvailabilityMap(options = {}) {
-    const store = snapshot();
+    const actualInstances = snapshot().instances;
+    const projected = options.transaction ? projectedInstances(options.transaction) : actualInstances;
     const out = {};
     const tracked = new Set(canonicalItems().map(item => String(item.id)));
     tracked.forEach(inventoryId => {
-      out[inventoryId] = availabilityFromInstances(store.instances, inventoryId, options);
+      out[inventoryId] = combineAvailability(actualInstances, projected, inventoryId, options);
     });
     return clone(out);
   };
