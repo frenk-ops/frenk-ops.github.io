@@ -690,6 +690,34 @@
       }
     },
     {
+      name: "Duello Standard locale usa lo stesso Slot Formula canonico",
+      run() {
+        const cards = A.RAW_CARD_SETS["astral-original"];
+        const battlemage = A.SIGIAN_TOURNAMENT_SPECIALIZATIONS.find(item => item.id === "battlemage");
+        const stormmage = A.SIGIAN_TOURNAMENT_SPECIALIZATIONS.find(item => item.id === "stormmage");
+        const playerAbilities = A.getSigianSpecializationAbilityLoadout("battlemage", "starting", "fire");
+        const enemyAbilities = A.getSigianSpecializationAbilityLoadout("stormmage", "starting", "water");
+        const hands = A.generateRecoveredAstralHands(cards, {
+          seed:"standard-local-formula-slot",
+          mode:"duel",
+          distributionMode:"free",
+          enemyDifficulty:"master",
+          playerTalent:"fire",
+          enemyTalent:"water",
+          playerSpecialization:"battlemage",
+          enemySpecialization:"stormmage",
+          playerAbilities,
+          enemyAbilities,
+          playerGuaranteedFormulaId:battlemage.specializationFormulaId,
+          enemyGuaranteedFormulaId:stormmage.specializationFormulaId
+        });
+        assert(hands.diagnostics[0].baseCardCount === 20, `Duello Standard base giocatore: ${hands.diagnostics[0].baseCardCount}`);
+        assert(hands.player.length === 21 && hands.player.filter(card => card.id === "astral_fire_13").length === 1, "Il Mago da Battaglia deve avere Efreet una sola volta come 21a Formula.");
+        assert(!playerAbilities.includes(battlemage.formulaAbilityId), "Efreet Knowledge non deve essere necessaria nel duello Standard SIGIAN.");
+        assert(hands.enemy.filter(card => card.id === "astral_water_13").length === 1, "Il Mago della Tempesta IA deve ricevere Sea Monster tramite il proprio Slot Formula.");
+      }
+    },
+    {
       name: "Torneo Personalizzato: conserva distribuzione e assi scelti",
       run() {
         const tournament=A.createTournament({

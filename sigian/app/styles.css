@@ -15809,7 +15809,7 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
 }
 
 
-/* 0.61.20 — duel setup UX audit: canonical Grimorio first, legacy specialization controls secondary. */
+/* 0.61.22 — unified Specialization path: Grimorio slot + specialization abilities. */
 .classic-menu-scene {
   grid-template-columns:minmax(560px,840px);
 }
@@ -15887,7 +15887,7 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   align-items:start;
 }
 
-.classic-legacy-specialization {
+.specialization-path-settings {
   grid-column:1 / -1;
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
@@ -15898,26 +15898,26 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   background:rgba(255,248,222,.42);
 }
 
-.classic-legacy-specialization-heading {
+.specialization-path-settings-heading {
   grid-column:1 / -1;
   display:grid;
   gap:3px;
 }
 
-.classic-legacy-specialization-heading strong {
+.specialization-path-settings-heading strong {
   color:#59331f;
   font-size:.78rem;
   letter-spacing:.04em;
   text-transform:uppercase;
 }
 
-.classic-legacy-specialization-heading small {
+.specialization-path-settings-heading small {
   color:#72563f;
   font-size:.70rem;
   line-height:1.35;
 }
 
-.classic-legacy-specialization label {
+.specialization-path-settings label {
   min-width:0;
 }
 
@@ -15967,7 +15967,7 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   .classic-config-essential select,
   .classic-advanced-grid input,
   .classic-advanced-grid select,
-  .classic-legacy-specialization select,
+  .specialization-path-settings select,
   #profileFormativeSchoolSelect {
     min-height:44px;
     font-size:16px;
@@ -15987,12 +15987,12 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
     padding:9px;
   }
 
-  .classic-legacy-specialization {
+  .specialization-path-settings {
     grid-template-columns:1fr;
     padding:9px;
   }
 
-  .classic-legacy-specialization-heading {
+  .specialization-path-settings-heading {
     grid-column:auto;
   }
 
@@ -16043,6 +16043,156 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   }
 }
 
+
+.archive-specialization-slot {
+  min-height:76px;
+  display:grid;
+  grid-template-columns:58px minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:9px 10px;
+  border:2px solid rgba(180,132,50,.58);
+  border-radius:13px;
+  background:
+    radial-gradient(circle at 10% 10%,rgba(255,238,169,.35),transparent 36%),
+    linear-gradient(145deg,rgba(255,249,220,.92),rgba(224,192,125,.66));
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.62),
+    0 5px 14px rgba(78,48,24,.12);
+}
+
+.archive-specialization-slot.is-empty {
+  grid-template-columns:52px minmax(0,1fr);
+  border-style:dashed;
+  background:rgba(255,248,221,.45);
+}
+
+.archive-specialization-slot.is-standard {
+  grid-template-columns:52px minmax(0,1fr);
+}
+
+.archive-specialization-slot > img {
+  width:58px;
+  height:58px;
+  border-radius:10px;
+  object-fit:cover;
+  border:1px solid rgba(104,69,29,.45);
+  box-shadow:0 3px 8px rgba(40,25,12,.25);
+}
+
+.archive-specialization-slot-glyph {
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  border:2px solid rgba(153,109,41,.55);
+  border-radius:50%;
+  color:#8a6128;
+  background:rgba(255,242,190,.52);
+  font-size:1.45rem;
+}
+
+.archive-specialization-slot-copy {
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+
+.archive-specialization-slot-copy small {
+  color:#77542f;
+  font-size:.67rem;
+  font-weight:800;
+}
+
+.archive-specialization-slot-copy strong {
+  color:#482d1d;
+  font:700 .92rem/1.12 Georgia,serif;
+}
+
+.archive-specialization-slot-copy em {
+  color:#765b3f;
+  font-size:.65rem;
+  font-style:normal;
+}
+
+.archive-specialization-slot > b {
+  white-space:nowrap;
+  padding:5px 8px;
+  border-radius:999px;
+  background:rgba(79,123,66,.14);
+  color:#3d6736;
+  font-size:.68rem;
+}
+
+.archive-specialization-preset-grid {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:7px;
+}
+
+.archive-specialization-preset {
+  min-width:0;
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  gap:7px;
+  align-items:center;
+  padding:7px;
+  border:1px solid rgba(119,78,35,.24);
+  border-radius:9px;
+  background:rgba(255,249,226,.58);
+}
+
+.archive-specialization-preset img {
+  width:42px;
+  height:48px;
+  border-radius:6px;
+  object-fit:cover;
+}
+
+.archive-specialization-preset > span {
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.archive-specialization-preset small,
+.archive-specialization-preset em {
+  color:#765b40;
+  font-size:.55rem;
+  font-style:normal;
+}
+
+.archive-specialization-preset strong {
+  color:#4b311e;
+  font:700 .65rem/1.08 Georgia,serif;
+  overflow-wrap:anywhere;
+}
+
+@media (max-width:900px) {
+  .archive-specialization-preset-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width:560px) {
+  .archive-specialization-slot {
+    grid-template-columns:50px minmax(0,1fr);
+  }
+
+  .archive-specialization-slot > img {
+    width:50px;
+    height:54px;
+  }
+
+  .archive-specialization-slot > b {
+    grid-column:1 / -1;
+    justify-self:start;
+  }
+
+  .archive-specialization-preset-grid {
+    grid-template-columns:1fr;
+  }
+}
 
 .tournament-specialization-formula-slot {
   display:grid;

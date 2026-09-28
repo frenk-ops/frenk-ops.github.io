@@ -29,7 +29,10 @@
     if (!spec) return "";
     const stages = ["starting", "advanced", "major"];
     const panels = stages.map((league, index) => {
-      const abilities = A.getAstralAbilityRecords?.(spec.groups[index] || []) || [];
+      const abilityIds = A.getSigianSpecializationAbilityLoadout?.(spec.id, league, spec.talent)
+        || A.getAstralAbilityLoadout?.(spec.id, league, spec.talent)
+        || [];
+      const abilities = A.getAstralAbilityRecords?.(abilityIds) || [];
       const names = abilities.map(ability => escapeHtml(abilityName(ability))).join(" · ");
       return `<section class="tournament-league-detail hidden" data-league-detail="${league}">
         <header>
@@ -122,7 +125,9 @@
   function activeAbilityChips(specId, league, context) {
     if (!specId) return `<span class="passive-chip">${context.t("tournament.noSpecialization")}</span>`;
     const spec = context.specialization(specId);
-    const ids = A.getAstralAbilityLoadout?.(specId, league, spec?.talent) || [];
+    const ids = A.getSigianSpecializationAbilityLoadout?.(specId, league, spec?.talent)
+      || A.getAstralAbilityLoadout?.(specId, league, spec?.talent)
+      || [];
     const abilities = A.getAstralAbilityRecords?.(ids) || [];
     return abilities.map(ability => `<span class="passive-chip" title="${context.escapeHtml(context.abilityDescription(ability))}">${context.escapeHtml(context.abilityName(ability))}</span>`).join("");
   }

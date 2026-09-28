@@ -781,31 +781,93 @@
           && String(formula.lifecycleState || "SEALED") === "SEALED"
         )
       : [];
-    const specializationField = standard ? "" : formativeSchoolId
+    const selectedSpecializationFormula = specializationCandidates.find(formula =>
+      (formula.formulaInstanceId || formula.id) === grimoire.specializationFormulaId
+    ) || null;
+    const selectedSpecializationLocalized = selectedSpecializationFormula
+      ? localizedFormula(selectedSpecializationFormula)
+      : null;
+    const standardSpecializationPresets = standard
+      ? (A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || []).map(spec => {
+          const formula = formulaItems.find(item => {
+            const formulaInstanceId = String(item.formulaInstanceId || item.id || "");
+            return item.sourceCardId === spec.specializationFormulaId
+              || item.recipeId === spec.specializationFormulaId
+              || formulaInstanceId === `owned:${spec.specializationFormulaId}`;
+          }) || null;
+          return { spec, formula, localized:formula ? localizedFormula(formula) : null };
+        }).filter(item => item.formula && item.localized)
+      : [];
+    const specializationField = standard
       ? `
-        <section class="archive-grimoire-specialization">
+        <section class="archive-grimoire-specialization is-standard-preset">
           <div class="archive-block-heading">
             <strong>${escapeHtml(t("archive.specializationFormula"))}</strong>
-            <small>${escapeHtml(t("archive.specializationFormulaHint"))}</small>
+            <small>${escapeHtml(t("archive.standardSpecializationHint"))}</small>
           </div>
-          <div class="archive-grimoire-specialization-row">
-            ${schoolLabelMarkup(formativeSchoolId)}
-            <select data-grimoire-specialization="${escapeHtml(grimoire.id)}">
-              <option value="">${escapeHtml(t("archive.chooseSpecializationFormula"))}</option>
-              ${specializationCandidates.map(formula => {
-                const localized = localizedFormula(formula);
-                const id = formula.formulaInstanceId || formula.id;
-                return `<option value="${escapeHtml(id)}" ${grimoire.specializationFormulaId === id ? "selected" : ""}>${escapeHtml(localized.name)} · ${escapeHtml(t("archive.cost"))} ${escapeHtml(formula.level)}</option>`;
-              }).join("")}
-            </select>
+          <div class="archive-specialization-slot is-standard">
+            <span class="archive-specialization-slot-glyph" aria-hidden="true">✦</span>
+            <span class="archive-specialization-slot-copy">
+              <small>${escapeHtml(t("archive.standardSpecializationPresets"))}</small>
+              <strong>${escapeHtml(t("archive.specializationGuaranteed"))}</strong>
+            </span>
           </div>
-          <small class="archive-grimoire-specialization-state ${specializedValidation.ready ? "is-ready" : "is-blocked"}">${escapeHtml(t(specializedValidation.ready ? "archive.ready" : "archive.notReady"))}</small>
+          <div class="archive-specialization-preset-grid">
+            ${standardSpecializationPresets.map(({ spec, formula, localized }) => `
+              <div class="archive-specialization-preset archive-school-${escapeHtml(formula.school)}">
+                <img src="${escapeHtml(formula.image)}" alt="" loading="lazy">
+                <span>
+                  <small>${escapeHtml(t(`specialization.${spec.id}`))}</small>
+                  <strong>${escapeHtml(localized.name)}</strong>
+                  <em>${escapeHtml(t("archive.cost"))} ${escapeHtml(formula.level || formula.cost || 13)}</em>
+                </span>
+              </div>`).join("")}
+          </div>
         </section>`
-      : `
-        <section class="archive-grimoire-specialization is-blocked">
-          <div class="archive-block-heading"><strong>${escapeHtml(t("archive.specializationFormula"))}</strong></div>
-          <p>${escapeHtml(t("archive.formativeSchoolMissing"))}</p>
-        </section>`;
+      : formativeSchoolId
+        ? `
+          <section class="archive-grimoire-specialization">
+            <div class="archive-block-heading">
+              <strong>${escapeHtml(t("archive.specializationFormula"))}</strong>
+              <small>${escapeHtml(t("archive.specializationFormulaHint"))}</small>
+            </div>
+            <div class="archive-specialization-slot ${selectedSpecializationFormula ? "is-filled" : "is-empty"}">
+              ${selectedSpecializationFormula
+                ? `<img src="${escapeHtml(selectedSpecializationFormula.image)}" alt="" loading="lazy">
+                   <span class="archive-specialization-slot-copy">
+                     <small>${schoolLabelMarkup(selectedSpecializationFormula.school)}</small>
+                     <strong>${escapeHtml(selectedSpecializationLocalized.name)}</strong>
+                     <em>${escapeHtml(t("archive.cost"))} ${escapeHtml(selectedSpecializationFormula.level || selectedSpecializationFormula.cost || 0)}</em>
+                   </span>
+                   <b>${escapeHtml(t("archive.specializationGuaranteed"))}</b>`
+                : `<span class="archive-specialization-slot-glyph" aria-hidden="true">✦</span>
+                   <span class="archive-specialization-slot-copy">
+                     <small>${schoolLabelMarkup(formativeSchoolId)}</small>
+                     <strong>${escapeHtml(t("archive.specializationSlotEmpty"))}</strong>
+                   </span>`}
+            </div>
+            <div class="archive-grimoire-specialization-row">
+              ${schoolLabelMarkup(formativeSchoolId)}
+              <select data-grimoire-specialization="${escapeHtml(grimoire.id)}">
+                <option value="">${escapeHtml(t("archive.chooseSpecializationFormula"))}</option>
+                ${specializationCandidates.map(formula => {
+                  const localized = localizedFormula(formula);
+                  const id = formula.formulaInstanceId || formula.id;
+                  return `<option value="${escapeHtml(id)}" ${grimoire.specializationFormulaId === id ? "selected" : ""}>${escapeHtml(localized.name)} · ${escapeHtml(t("archive.cost"))} ${escapeHtml(formula.level)}</option>`;
+                }).join("")}
+              </select>
+            </div>
+            <small class="archive-grimoire-specialization-state ${specializedValidation.ready ? "is-ready" : "is-blocked"}">${escapeHtml(t(specializedValidation.ready ? "archive.ready" : "archive.notReady"))}</small>
+          </section>`
+        : `
+          <section class="archive-grimoire-specialization is-blocked">
+            <div class="archive-block-heading"><strong>${escapeHtml(t("archive.specializationFormula"))}</strong></div>
+            <div class="archive-specialization-slot is-empty">
+              <span class="archive-specialization-slot-glyph" aria-hidden="true">✦</span>
+              <span class="archive-specialization-slot-copy"><strong>${escapeHtml(t("archive.specializationSlotEmpty"))}</strong></span>
+            </div>
+            <p>${escapeHtml(t("archive.formativeSchoolMissing"))}</p>
+          </section>`;
 
     return `
       <article class="archive-detail-card archive-grimoire-detail ${standard ? "is-standard" : ""}">

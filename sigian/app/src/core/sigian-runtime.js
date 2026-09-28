@@ -720,6 +720,7 @@
       enemySpecialization:options.enemySpecialization,
       playerAbilities:options.playerAbilities || [],
       enemyAbilities:options.enemyAbilities || [],
+      enemyGuaranteedFormulaId:options.enemyGuaranteedFormulaId || null,
       playerInitialPowers:options.playerInitialPowers,
       enemyInitialPowers:options.enemyInitialPowers,
       restrictedMode:options.restrictedMode,

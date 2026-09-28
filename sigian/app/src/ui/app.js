@@ -2735,14 +2735,20 @@
     icon.innerHTML = specializationIconMarkup(choice);
   }
 
-  function populateSpecializationSelect(select, fallback = "random") {
+  function sigianSpecializationOptions() {
+    const canonical = A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || [];
+    return canonical.length ? canonical : (A.ASTRAL_SPECIALIZATIONS || []).filter(item => !item.legacyOnly);
+  }
+
+  function populateSpecializationSelect(select, fallback = "random", options = {}) {
     if (!select) return;
     const current = select.value;
+    const available = options.sigianOnly ? sigianSpecializationOptions() : (A.ASTRAL_SPECIALIZATIONS || []);
     select.innerHTML = [
       `<option value="random">${t("menu.randomSpecialization")}</option>`,
-      ...A.ASTRAL_SPECIALIZATIONS.map(item => `<option value="${item.id}">${t(`specialization.${item.id}`)}</option>`)
+      ...available.map(item => `<option value="${item.id}">${t(`specialization.${item.id}`)}</option>`)
     ].join("");
-    const valid = current === "random" || A.ASTRAL_SPECIALIZATIONS.some(item => item.id === current);
+    const valid = current === "random" || available.some(item => item.id === current);
     select.value = valid ? current : fallback;
     syncSpecializationSelectIcon(select);
     if (!select.dataset.specializationIconBound) {
@@ -2752,8 +2758,10 @@
   }
 
   function resolveSpecializationChoice(choice, seed, side, fallback = "battlemage") {
-    if (choice && choice !== "random") return A.getAstralSpecialization?.(choice)?.id || fallback;
-    const available = A.ASTRAL_SPECIALIZATIONS || [];
+    const available = sigianSpecializationOptions();
+    if (choice && choice !== "random") {
+      return available.some(item => item.id === choice) ? choice : fallback;
+    }
     if (!available.length) return fallback;
     const rng = A.createRng(`${seed}-specialization-${side}`);
     return rng.pick(available)?.id || fallback;
@@ -2846,7 +2854,24 @@
 
     root.classList.remove("hidden", "is-error", "is-standard");
     if (grimoire.kind === "STANDARD") {
-      root.textContent = t("menu.specializationStandardRules");
+      const specializationChoice = String($("#playerSpecializationSelect")?.value || "random");
+      if (specializationChoice !== "random") {
+        const spec = A.getAstralSpecialization?.(specializationChoice) || null;
+        const formulaId = A.getSigianSpecializationFormulaId?.(specializationChoice, spec?.talent) || null;
+        const card = formulaId ? allAstralCards().find(item => item.id === formulaId) || null : null;
+        if (spec && card) {
+          root.textContent = t("menu.specializationStandardFormulaReady", {
+            specialization:t(`specialization.${spec.id}`),
+            name:cardName(card),
+            school:schoolName(card.school),
+            cost:Number(card.level || card.cost || 13)
+          });
+        } else {
+          root.textContent = t("menu.specializationStandardRules");
+        }
+      } else {
+        root.textContent = t("menu.specializationStandardRules");
+      }
       root.classList.add("is-standard");
       return;
     }
@@ -2875,7 +2900,7 @@
     root.innerHTML = "";
     updateDuelModeDescription();
     $("#talentChoiceHeading").textContent = t("menu.startDuel");
-    $("#legacySpecializationSettings")?.classList.toggle("hidden", !withSpecializations);
+    $("#specializationPathSettings")?.classList.toggle("hidden", !withSpecializations);
     $("#astralLeagueLabel")?.classList.toggle("hidden", !withSpecializations);
     $("#playerSpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
     $("#enemySpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
@@ -2906,8 +2931,8 @@
   }
 
   function setupAstralSpecializationOptions() {
-    populateSpecializationSelect($("#playerSpecializationSelect"), "random");
-    populateSpecializationSelect($("#enemySpecializationSelect"), "random");
+    populateSpecializationSelect($("#playerSpecializationSelect"), "random", { sigianOnly:true });
+    populateSpecializationSelect($("#enemySpecializationSelect"), "random", { sigianOnly:true });
     populateSpecializationSelect($("#onlineSpecializationSelect"), "random");
     populateSpecializationSelect($("#onlineJoinSpecializationSelect"), "random");
     populateSpecializationSelect($("#onlineLobbyHostSpecializationSelect"), "random");
@@ -3006,26 +3031,31 @@
     const astralLeague = originalMode
       ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting"))
       : undefined;
-    const tournamentPlayerAbilityIds = fromTournament && withSpecializations
+    const specializationPlayerAbilityIds = withSpecializations
       ? (A.getSigianSpecializationAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent)
         || A.getAstralAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent)
         || [])
-      : null;
-    const tournamentEnemyAbilityIds = fromTournament && withSpecializations
+      : [];
+    const specializationEnemyAbilityIds = withSpecializations
       ? (A.getSigianSpecializationAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water")
         || A.getAstralAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water")
         || [])
-      : null;
-    const tournamentPlayerFormulaId = fromTournament && withSpecializations
-      ? (tournament?.specializationFormulaId || A.getSigianSpecializationFormulaId?.(playerSpecialization, effectivePlayerTalent) || null)
-      : null;
-    const tournamentEnemyFormulaId = fromTournament && withSpecializations
-      ? (opponent?.specializationFormulaId || A.getSigianSpecializationFormulaId?.(enemySpecialization, effectiveEnemyTalent || "water") || null)
-      : null;
+      : [];
     const selectedGrimoireId = fromTournament
       ? (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard")
       : selectedDuelGrimoireId();
     const personalGrimoire = !fromTournament && selectedGrimoireId !== (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard");
+    const standardSpecialization = withSpecializations && !personalGrimoire;
+    const playerSpecializationFormulaId = standardSpecialization
+      ? (fromTournament
+        ? (tournament?.specializationFormulaId || A.getSigianSpecializationFormulaId?.(playerSpecialization, effectivePlayerTalent) || null)
+        : (A.getSigianSpecializationFormulaId?.(playerSpecialization, effectivePlayerTalent) || null))
+      : null;
+    const enemySpecializationFormulaId = withSpecializations
+      ? (fromTournament
+        ? (opponent?.specializationFormulaId || A.getSigianSpecializationFormulaId?.(enemySpecialization, effectiveEnemyTalent || "water") || null)
+        : (A.getSigianSpecializationFormulaId?.(enemySpecialization, effectiveEnemyTalent || "water") || null))
+      : null;
     let preparedHands = null;
     if (personalGrimoire) {
       const validation = selectedDuelGrimoireValidation(withSpecializations);
@@ -3033,12 +3063,8 @@
         setMessage(t("menu.grimoireNotReady"));
         return;
       }
-      const playerAbilityIds = withSpecializations
-        ? (A.getAstralAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent) || [])
-        : [];
-      const enemyAbilityIds = withSpecializations
-        ? (A.getAstralAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water") || [])
-        : [];
+      const playerAbilityIds = specializationPlayerAbilityIds;
+      const enemyAbilityIds = specializationEnemyAbilityIds;
       try {
         preparedHands = A.generateSigianGrimoireDuelHands?.(selectedGrimoireId, {
           seed,
@@ -3050,6 +3076,7 @@
           enemySpecialization,
           playerAbilities:playerAbilityIds,
           enemyAbilities:enemyAbilityIds,
+          enemyGuaranteedFormulaId:enemySpecializationFormulaId,
           formativeSchoolId:profile?.formativeSchoolId,
           specializationsEnabled:withSpecializations
         });
@@ -3072,14 +3099,10 @@
       astralLeague,
       playerSpecialization,
       enemySpecialization,
-      playerAstralAbilities: withSpecializations
-        ? (fromTournament ? tournamentPlayerAbilityIds : undefined)
-        : [],
-      enemyAstralAbilities: withSpecializations
-        ? (fromTournament ? tournamentEnemyAbilityIds : undefined)
-        : [],
-      playerGuaranteedFormulaId:tournamentPlayerFormulaId,
-      enemyGuaranteedFormulaId:tournamentEnemyFormulaId,
+      playerAstralAbilities: withSpecializations ? specializationPlayerAbilityIds : [],
+      enemyAstralAbilities: withSpecializations ? specializationEnemyAbilityIds : [],
+      playerGuaranteedFormulaId:playerSpecializationFormulaId,
+      enemyGuaranteedFormulaId:enemySpecializationFormulaId,
       hands:preparedHands || undefined
     });
     if (personalGrimoire) {
@@ -10022,6 +10045,8 @@
   syncOnlineDuelMode();
   $("#duelModeSelect").addEventListener("change", renderTalentChoices);
   $("#duelSpecializationsSelect")?.addEventListener("change", renderTalentChoices);
+  $("#playerSpecializationSelect")?.addEventListener("change", renderTalentChoices);
+  $("#enemySpecializationSelect")?.addEventListener("change", renderTalentChoices);
   $("#astralLeagueSelect")?.addEventListener("change", renderTalentChoices);
   window.addEventListener("sigian:grimoireschange", () => {
     setupGrimoireOptions();
