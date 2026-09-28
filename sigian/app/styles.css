@@ -19544,10 +19544,117 @@ button.sigian-full-constraint-slot {
   font-size:.78rem;
   font-weight:800;
 }
-.academy-map-grid {
+.academy-campus {
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:13px;
+  gap:12px;
+}
+.academy-campus-heading {
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  gap:18px;
+  padding:0 4px;
+}
+.academy-campus-heading > div {
+  display:grid;
+  gap:3px;
+}
+.academy-campus-heading small {
+  color:#795a37;
+  font-size:.66rem;
+  font-weight:900;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.academy-campus-heading h3 {
+  margin:0;
+  color:#4a2f1d;
+  font:800 1.18rem/1.08 Georgia,serif;
+}
+.academy-campus-heading p {
+  max-width:560px;
+  margin:0;
+  color:#71583f;
+  font-size:.76rem;
+  line-height:1.4;
+  text-align:right;
+}
+.academy-campus-map {
+  position:relative;
+  isolation:isolate;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-areas:
+    "schools schools library library"
+    "forge atrium atrium arena"
+    "trials atrium atrium arena";
+  grid-template-rows:minmax(178px,auto) minmax(158px,auto) minmax(158px,auto);
+  gap:14px;
+  padding:18px;
+  overflow:hidden;
+  border:1px solid rgba(83,55,29,.26);
+  border-radius:22px;
+  background:
+    radial-gradient(circle at 50% 56%,rgba(208,157,67,.18),transparent 24%),
+    linear-gradient(145deg,rgba(242,229,193,.72),rgba(213,194,153,.46));
+  box-shadow:inset 0 1px rgba(255,255,255,.52), 0 10px 24px rgba(55,36,22,.1);
+}
+.academy-campus-map::before {
+  content:"";
+  position:absolute;
+  inset:24px;
+  z-index:-1;
+  pointer-events:none;
+  opacity:.62;
+  background:
+    linear-gradient(90deg,transparent 48%,rgba(132,99,56,.2) 49%,rgba(132,99,56,.2) 51%,transparent 52%),
+    linear-gradient(0deg,transparent 48%,rgba(132,99,56,.18) 49%,rgba(132,99,56,.18) 51%,transparent 52%),
+    radial-gradient(circle at 50% 58%,rgba(255,244,207,.72) 0 13%,rgba(126,91,49,.18) 13.5% 14.5%,transparent 15%);
+}
+.academy-campus-routes {
+  position:absolute;
+  inset:4%;
+  z-index:0;
+  width:92%;
+  height:92%;
+  overflow:visible;
+  pointer-events:none;
+}
+.academy-campus-routes path {
+  fill:none;
+  stroke:rgba(119,80,39,.34);
+  stroke-width:1.15;
+  stroke-dasharray:2.2 1.8;
+  vector-effect:non-scaling-stroke;
+}
+.academy-campus-map .academy-location {
+  z-index:1;
+}
+.academy-location-atrium { grid-area:atrium; min-height:330px; }
+.academy-location-schools { grid-area:schools; }
+.academy-location-library { grid-area:library; }
+.academy-location-forge { grid-area:forge; }
+.academy-location-trials { grid-area:trials; }
+.academy-location-arena { grid-area:arena; }
+.academy-location-atrium {
+  align-content:center;
+  padding:22px;
+  border-width:2px;
+  background:
+    radial-gradient(circle at 50% 15%,rgba(232,184,86,.3),transparent 38%),
+    linear-gradient(180deg,rgba(255,251,232,.98),rgba(230,205,151,.9));
+  box-shadow:0 14px 30px rgba(63,39,19,.17), inset 0 1px rgba(255,255,255,.72);
+}
+.academy-location-atrium .academy-location-icon {
+  width:62px;
+  height:62px;
+  font-size:1.9rem;
+}
+.academy-location-atrium .academy-location-heading h3 {
+  font-size:1.28rem;
+}
+.academy-location-atrium .academy-location-copy > p {
+  font-size:.88rem;
 }
 .academy-location {
   position:relative;
@@ -19872,7 +19979,17 @@ button.sigian-full-constraint-slot {
   margin-top:4px;
 }
 @media (max-width:900px) {
-  .academy-map-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .academy-campus-map {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-areas:
+      "atrium atrium"
+      "schools library"
+      "forge trials"
+      "arena arena";
+    grid-template-rows:auto;
+  }
+  .academy-location-atrium { min-height:260px; }
+  .academy-location-arena { min-height:190px; }
   .academy-school-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .academy-school-confirmation { align-items:stretch;flex-direction:column; }
   .academy-school-confirmation .classic-stone-button { width:100%; }
@@ -19902,9 +20019,43 @@ button.sigian-full-constraint-slot {
   .profile-formative-school-summary > .classic-stone-button {
     width:100%;
   }
-  .academy-status-strip,
-  .academy-map-grid {
+  .academy-status-strip {
     grid-template-columns:1fr;
+  }
+  .academy-campus-heading {
+    display:grid;
+  }
+  .academy-campus-heading p {
+    max-width:none;
+    text-align:left;
+  }
+  .academy-campus-map {
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "atrium"
+      "schools"
+      "library"
+      "forge"
+      "trials"
+      "arena";
+    gap:10px;
+    padding:12px;
+  }
+  .academy-campus-map::before {
+    top:28px;
+    right:auto;
+    bottom:28px;
+    left:50%;
+    width:2px;
+    opacity:.45;
+    background:linear-gradient(180deg,rgba(132,99,56,.12),rgba(132,99,56,.34),rgba(132,99,56,.12));
+  }
+  .academy-campus-routes {
+    display:none;
+  }
+  .academy-location-atrium,
+  .academy-location-arena {
+    min-height:0;
   }
   .academy-status-strip > div { grid-column:auto; }
   .academy-location {

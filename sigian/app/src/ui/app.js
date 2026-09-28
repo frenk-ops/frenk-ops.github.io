@@ -807,7 +807,7 @@
       : t("academy.schoolNone");
 
     const locationCard = ({ id, icon, title, description, status, state = "available", action = "", target = "", letter = false, schoolWing = false, disabled = false, note = "", extraAction = "", admissionLetter = false }) => `
-      <article class="academy-location academy-location-${escapeHtml(id)} is-${escapeHtml(state)}">
+      <article class="academy-location academy-location-${escapeHtml(id)} is-${escapeHtml(state)}" data-academy-location="${escapeHtml(id)}">
         <div class="academy-location-icon" aria-hidden="true">${icon}</div>
         <div class="academy-location-copy">
           <div class="academy-location-heading">
@@ -864,7 +864,19 @@
         <span>${escapeHtml(schoolLabel)}</span>
       </section>
 
-      <section class="academy-map-grid" aria-label="${escapeHtml(t("academy.title"))}">
+      <section class="academy-campus" aria-labelledby="academyCampusTitle">
+        <header class="academy-campus-heading">
+          <div><small>${t("academy.campus.kicker")}</small><h3 id="academyCampusTitle">${t("academy.campus.title")}</h3></div>
+          <p>${t("academy.campus.hint")}</p>
+        </header>
+        <div class="academy-campus-map" data-academy-campus>
+        <svg class="academy-campus-routes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M50 57 L25 19"></path>
+          <path d="M50 57 L75 19"></path>
+          <path d="M50 57 L13 50"></path>
+          <path d="M50 57 L13 82"></path>
+          <path d="M50 57 L88 66"></path>
+        </svg>
         ${locationCard({
           id:"atrium", icon:"✉", title:t("academy.atrium.title"), description:t("academy.atrium.description"),
           status:t("academy.available"), action:t("academy.atrium.action"), letter:true,
@@ -894,6 +906,7 @@
           state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
           disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
         })}
+        </div>
       </section>
 
       <section id="academySchoolWing" class="academy-school-wing ${academySchoolWingOpen && schoolAvailable ? "" : "hidden"}" aria-labelledby="academySchoolWingTitle">
