@@ -1,9 +1,24 @@
 (function (A) {
   "use strict";
 
+  const VIEW_GROUPS = Object.freeze({
+    game:"play",
+    multiplayer:"play",
+    tournament:"play",
+    cards:"archive",
+    inventory:"archive",
+    forge:"forge",
+    uiLab:"forge",
+    academy:"academy",
+    profile:"path",
+    rules:"path",
+    diagnostics:"path"
+  });
+
   function createNavigation(options = {}) {
     const tabs = [...document.querySelectorAll(".tab[data-view]")];
     const jumps = [...document.querySelectorAll("[data-view-jump]")];
+    const modeTabs = [...document.querySelectorAll("[data-play-mode-navigation] [data-mode-view]")];
     const params = new URLSearchParams(window.location.search);
     const developerMode = params.get("dev") === "1";
 
@@ -20,15 +35,25 @@
       options.onViewChange?.(view);
     }));
 
+    modeTabs.forEach(control => control.addEventListener("click", () => {
+      options.onViewChange?.(control.dataset.modeView);
+    }));
+
     return Object.freeze({
       developerMode,
       setActive(viewName) {
+        const group = VIEW_GROUPS[viewName] || null;
         tabs.forEach(tab => {
-          const mobileArchive = viewName === "inventory" && tab.classList.contains("mobile-nav-item") && tab.dataset.view === "cards";
-          const active = tab.dataset.view === viewName || mobileArchive;
+          const active = tab.dataset.view === viewName
+            || Boolean(group && tab.dataset.navGroup === group);
           tab.classList.toggle("active", active);
           if (active) tab.setAttribute("aria-current", "page");
           else tab.removeAttribute("aria-current");
+        });
+        modeTabs.forEach(tab => {
+          const active = tab.dataset.modeView === viewName;
+          tab.classList.toggle("is-active", active);
+          tab.setAttribute("aria-pressed", active ? "true" : "false");
         });
       }
     });
