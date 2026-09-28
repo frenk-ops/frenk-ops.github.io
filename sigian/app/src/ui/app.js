@@ -527,7 +527,9 @@
   let forgeHorizontalCraftingOpen = false;
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
-  const RESTORABLE_VIEWS = new Set(["game", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
+  const ACADEMY_SUMMONS_SEEN_KEY = "arcane.academy.summonsSeen.v1";
+  const RESTORABLE_VIEWS = new Set(["game", "academy", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
+  let academySchoolWingOpen = false;
 
   function rememberedView() {
     try {
@@ -543,6 +545,43 @@
   function rememberView(name) {
     if (!RESTORABLE_VIEWS.has(name)) return;
     try { sessionStorage.setItem(ACTIVE_VIEW_KEY, name); } catch {}
+  }
+
+  function academySummonsSeen() {
+    try { return localStorage.getItem(ACADEMY_SUMMONS_SEEN_KEY) === "1"; }
+    catch { return false; }
+  }
+
+  function markAcademySummonsSeen() {
+    try { localStorage.setItem(ACADEMY_SUMMONS_SEEN_KEY, "1"); } catch {}
+  }
+
+  function shouldAutoPresentAcademySummons() {
+    if (academySummonsSeen()) return false;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("qa") || params.get("view")) return false;
+    try {
+      if (localStorage.getItem(ACTIVE_LOCAL_DUEL_KEY)) return false;
+      const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
+      if (savedRoom?.code && savedRoom?.token) return false;
+    } catch {}
+    return true;
+  }
+
+  function openAcademySummons() {
+    const modal = $("#academySummonsModal");
+    if (!modal) return false;
+    modal.classList.remove("hidden");
+    modal.querySelector(".academy-summons-close")?.focus();
+    return true;
+  }
+
+  function closeAcademySummons() {
+    const modal = $("#academySummonsModal");
+    if (!modal) return false;
+    modal.classList.add("hidden");
+    markAcademySummonsSeen();
+    return true;
   }
 
   function clearPersistedLocalDuel() {
@@ -715,6 +754,193 @@
       formativeSchoolId:null,
       allowedSpecializationSchoolIds:[]
     };
+  }
+
+  function renderAcademy(options = {}) {
+    const root = $("#academyContent");
+    if (!root) return;
+    const summonsWasOpen = Boolean(root.querySelector("#academySummonsModal:not(.hidden)"));
+    profile = A.loadProfile();
+    const academy = currentAcademyState();
+    const level = Number(academy.level || A.normalizeAccountProgression?.(profile.accountProgression || { xp:0 })?.level || 1);
+    const phaseLabel = t(`profile.academyPhase.${academy.phase}`);
+    const schoolLabel = academy.formativeSchoolId
+      ? t("academy.school", { school:schoolName(academy.formativeSchoolId) })
+      : t("academy.schoolNone");
+
+    const locationCard = ({ id, icon, title, description, status, state = "available", action = "", target = "", letter = false, schoolWing = false, disabled = false, note = "" }) => `
+      <article class="academy-location academy-location-${escapeHtml(id)} is-${escapeHtml(state)}">
+        <div class="academy-location-icon" aria-hidden="true">${icon}</div>
+        <div class="academy-location-copy">
+          <div class="academy-location-heading">
+            <h3>${escapeHtml(title)}</h3>
+            <span class="academy-location-status">${escapeHtml(status)}</span>
+          </div>
+          <p>${escapeHtml(description)}</p>
+          ${note ? `<small>${escapeHtml(note)}</small>` : ""}
+        </div>
+        ${action ? `<button class="classic-stone-button ${disabled ? "ghost" : ""}" type="button" ${target ? `data-academy-target="${escapeHtml(target)}"` : ""} ${letter ? "data-academy-summons-open" : ""} ${schoolWing ? "data-academy-school-wing-open" : ""} ${disabled ? "disabled" : ""}>${escapeHtml(action)}</button>` : ""}
+      </article>`;
+
+    const schoolAvailable = Boolean(academy.schoolSelectionUnlocked);
+    const schoolAction = academy.formativeSchoolId ? t("academy.schools.manage") : t("academy.schools.choose");
+    const schoolNote = !schoolAvailable
+      ? t("academy.schools.locked", { level:academy.academyAdmissionLevel })
+      : academy.schoolConfirmationRequired
+        ? t("profile.schoolConfirmationRequired")
+        : academy.formativeSchoolId
+          ? t(`profile.academyPhase.${academy.phase}`)
+          : t("profile.chooseFormativeSchool");
+    const arenaAvailable = Boolean(academy.tournamentUnlocked);
+    const schoolChoices = A.SCHOOLS.map(item => {
+      const selected = academy.formativeSchoolId === item.id;
+      const disabled = !academy.schoolChangeAllowed || selected;
+      const stateLabel = selected
+        ? (academy.schoolConfirmed ? t("academy.schools.confirmed") : t("academy.schools.selected"))
+        : academy.schoolChangeAllowed
+          ? t("academy.schools.select")
+          : t("academy.sealed");
+      return `
+        <button class="academy-school-choice ${selected ? "is-selected" : ""}" type="button"
+          data-academy-school-choice="${escapeHtml(item.id)}" ${disabled ? "disabled" : ""} aria-pressed="${selected ? "true" : "false"}">
+          <span class="academy-school-choice-icon" aria-hidden="true">${schoolIconMarkup(item.id, "school-icon-svg academy-school-icon")}</span>
+          <span class="academy-school-choice-copy"><strong>${escapeHtml(schoolName(item.id))}</strong><small>${escapeHtml(stateLabel)}</small></span>
+          <span class="academy-school-choice-mark" aria-hidden="true">${selected ? "✓" : "›"}</span>
+        </button>`;
+    }).join("");
+
+    root.innerHTML = `
+      <header class="academy-heading">
+        <div>
+          <span class="classic-menu-kicker">${t("nav.academy")}</span>
+          <h2>${t("academy.title")}</h2>
+          <p class="unified-menu-intro">${t("academy.intro")}</p>
+        </div>
+        <button class="classic-stone-button ghost" type="button" data-academy-target="profile">${t("academy.openPath")}</button>
+      </header>
+
+      <section class="academy-status-strip" aria-label="${escapeHtml(t("academy.statusTitle"))}">
+        <div><small>${t("academy.statusTitle")}</small><strong>${escapeHtml(phaseLabel)}</strong></div>
+        <span>${escapeHtml(t("academy.level", { level }))}</span>
+        <span>${escapeHtml(schoolLabel)}</span>
+      </section>
+
+      <section class="academy-map-grid" aria-label="${escapeHtml(t("academy.title"))}">
+        ${locationCard({
+          id:"atrium", icon:"✉", title:t("academy.atrium.title"), description:t("academy.atrium.description"),
+          status:t("academy.available"), action:t("academy.atrium.action"), letter:true
+        })}
+        ${locationCard({
+          id:"schools", icon:"✦", title:t("academy.schools.title"), description:t("academy.schools.description"),
+          status:schoolAvailable ? t("academy.available") : t("academy.sealed"),
+          state:schoolAvailable ? "available" : "sealed", action:schoolAction, schoolWing:true, disabled:!schoolAvailable, note:schoolNote
+        })}
+        ${locationCard({
+          id:"library", icon:"⌘", title:t("academy.library.title"), description:t("academy.library.description"),
+          status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
+        })}
+        ${locationCard({
+          id:"forge", icon:"⚒", title:t("academy.forge.title"), description:t("academy.forge.description"),
+          status:t("academy.available"), action:t("academy.forge.action"), target:"forge"
+        })}
+        ${locationCard({
+          id:"trials", icon:"⚔", title:t("academy.trials.title"), description:t("academy.trials.description"),
+          status:t("academy.available"), action:t("academy.trials.action"), target:"game"
+        })}
+        ${locationCard({
+          id:"arena", icon:"♜", title:t("academy.arena.title"), description:t("academy.arena.description"),
+          status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
+          state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
+          disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
+        })}
+      </section>
+
+      <section id="academySchoolWing" class="academy-school-wing ${academySchoolWingOpen && schoolAvailable ? "" : "hidden"}" aria-labelledby="academySchoolWingTitle">
+        <header class="academy-school-wing-heading">
+          <div>
+            <span class="classic-menu-kicker">${t("academy.schools.title")}</span>
+            <h3 id="academySchoolWingTitle">${t("academy.schools.panelTitle")}</h3>
+            <p>${t("academy.schools.panelIntro")}</p>
+          </div>
+          <button class="classic-stone-button ghost" type="button" data-academy-school-wing-close>${t("academy.schools.close")}</button>
+        </header>
+        <div class="academy-school-grid" role="list">
+          ${schoolChoices}
+        </div>
+        ${academy.schoolConfirmationRequired && academy.formativeSchoolId ? `
+          <div class="academy-school-confirmation">
+            <div><strong>${t("academy.schools.confirmTitle")}</strong><p>${t("academy.schools.confirmText", { school:schoolName(academy.formativeSchoolId) })}</p></div>
+            <button class="classic-stone-button" type="button" data-academy-school-confirm>${t("academy.schools.confirmAction")}</button>
+          </div>` : ""}
+        ${academy.schoolConfirmed ? `<p class="academy-school-locked-note">${t("profile.schoolConfirmedHint")}</p>` : ""}
+      </section>
+
+      <div id="academySummonsModal" class="academy-summons-modal hidden" role="dialog" aria-modal="true" aria-labelledby="academySummonsTitle">
+        <div class="academy-summons-letter">
+          <button class="academy-summons-close" type="button" data-academy-summons-close aria-label="${escapeHtml(t("academy.summons.close"))}">×</button>
+          <span class="classic-menu-kicker">${t("academy.atrium.title")}</span>
+          <h3 id="academySummonsTitle">${t("academy.summons.title")}</h3>
+          <p>${t("academy.summons.p1")}</p>
+          <p>${t("academy.summons.p2")}</p>
+          <p>${t("academy.summons.p3")}</p>
+          <div class="academy-summons-actions">
+            <button class="classic-stone-button" type="button" data-academy-summons-close>${t("academy.summons.continue")}</button>
+            <button class="classic-stone-button ghost" type="button" data-academy-summons-close>${t("academy.summons.skip")}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    root.querySelectorAll("[data-academy-target]").forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.disabled) return;
+        const target = String(button.dataset.academyTarget || "");
+        if (RESTORABLE_VIEWS.has(target)) switchView(target);
+      });
+    });
+    root.querySelector("[data-academy-school-wing-open]")?.addEventListener("click", () => {
+      if (!schoolAvailable) return;
+      academySchoolWingOpen = true;
+      const panel = $("#academySchoolWing");
+      panel?.classList.remove("hidden");
+      panel?.scrollIntoView({ behavior:"smooth", block:"start" });
+    });
+    root.querySelector("[data-academy-school-wing-close]")?.addEventListener("click", () => {
+      academySchoolWingOpen = false;
+      $("#academySchoolWing")?.classList.add("hidden");
+    });
+    root.querySelectorAll("[data-academy-school-choice]").forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.disabled || !academy.schoolChangeAllowed) return;
+        const schoolId = String(button.dataset.academySchoolChoice || "");
+        if (!A.SCHOOLS.some(item => item.id === schoolId)) return;
+        const beforeSchoolId = profile.formativeSchoolId || null;
+        if (A.setProfileFormativeSchool?.(profile, schoolId) !== schoolId) return;
+        profile = A.loadProfile();
+        academySchoolWingOpen = true;
+        if (beforeSchoolId !== profile.formativeSchoolId) {
+          window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
+        } else {
+          renderAcademy();
+        }
+      });
+    });
+    root.querySelector("[data-academy-school-confirm]")?.addEventListener("click", () => {
+      if (!A.confirmProfileFormativeSchool?.(profile)) return;
+      profile = A.loadProfile();
+      academySchoolWingOpen = true;
+      window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
+    });
+    root.querySelector("[data-academy-summons-open]")?.addEventListener("click", openAcademySummons);
+    root.querySelectorAll("[data-academy-summons-close]").forEach(button => button.addEventListener("click", closeAcademySummons));
+    const modal = root.querySelector("#academySummonsModal");
+    modal?.addEventListener("click", event => {
+      if (event.target === modal) closeAcademySummons();
+    });
+    modal?.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeAcademySummons();
+    });
+    if (options.openSummons || summonsWasOpen) openAcademySummons();
   }
 
   function schoolIconMarkup(id, className = "school-icon-svg") {
@@ -2388,6 +2614,7 @@
       clearInterval(roomBrowserPoll);
       roomBrowserPoll = null;
     }
+    if (name === "academy") renderAcademy();
     if (name === "tournament") renderTournament();
     if (name === "cards") A.SigianArchiveBrowser?.render?.($("#cardsContent"), "collection");
     if (name === "inventory") A.SigianArchiveBrowser?.render?.($("#inventoryContent"), "inventory");
@@ -3408,6 +3635,7 @@
     tournament = A.loadTournament();
     restartDuel();
     renderTournament();
+    renderAcademy();
     renderPlayerProfile();
     switchView("tournament");
   }
@@ -9207,16 +9435,14 @@
         <div class="profile-section-heading"><div><h3>${t("profile.identityTitle")}</h3><p>${t("profile.identityIntro")}</p></div></div>
         <div class="profile-identity-editor">
           <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
-          <label><span>${t("profile.formativeSchool")}</span>
-            <select id="profileFormativeSchoolSelect" ${academy.schoolChangeAllowed ? "" : "disabled"}>
-              <option value="">${t("profile.chooseFormativeSchool")}</option>
-              ${A.SCHOOLS.map(item => `<option value="${item.id}" ${profile.formativeSchoolId === item.id ? "selected" : ""}>${escapeHtml(schoolName(item.id))}</option>`).join("")}
-            </select>
+          <div class="profile-formative-school-summary">
+            <span>${t("profile.formativeSchool")}</span>
+            <strong>${academy.formativeSchoolId ? escapeHtml(schoolName(academy.formativeSchoolId)) : "—"}</strong>
             <small>${escapeHtml(formativeSchoolHint)}</small>
-          </label>
+            <button type="button" class="classic-stone-button ghost" data-view-jump="academy">${t("profile.manageSchoolInAcademy")}</button>
+          </div>
           ${online.configured && !online.error ? `<div class="profile-player-tag"><span>${t("profile.playerTag")}</span><strong>${onlineProfile.player_tag ? `#${escapeHtml(onlineProfile.player_tag)}` : "—"}</strong><small>${t("profile.playerTagHint")}</small></div>` : ""}
           <button id="saveProfileIdentityBtn" type="button" class="classic-stone-button">${t("profile.saveIdentity")}</button>
-          ${academy.schoolConfirmationRequired ? `<button id="confirmFormativeSchoolBtn" type="button" class="classic-stone-button">${t("profile.confirmFormativeSchool")}</button>` : ""}
         </div>
         <div class="profile-avatar-editor">
           <div class="profile-avatar-editor-copy"><strong>${t("profile.avatar")}</strong><small>${t("profile.avatarHint")}</small></div>
@@ -9285,15 +9511,7 @@
     $("#saveProfileIdentityBtn")?.addEventListener("click", async () => {
       const name = normalizedPlayerName($("#profilePlayerNameInput")?.value, t("ui.player"));
       profile.playerName = name;
-      const beforeSchoolId = profile.formativeSchoolId || null;
-      const formativeSchoolId = String($("#profileFormativeSchoolSelect")?.value || "").trim();
-      const validSchoolId = A.SCHOOLS.some(item => item.id === formativeSchoolId) ? formativeSchoolId : null;
-      const academyBeforeSave = currentAcademyState();
-      if (validSchoolId && academyBeforeSave.schoolChangeAllowed && typeof A.setProfileFormativeSchool === "function") {
-        A.setProfileFormativeSchool(profile, validSchoolId);
-      } else {
-        A.saveProfile(profile);
-      }
+      A.saveProfile(profile);
       profile = A.loadProfile();
       localStorage.setItem("arcane.playerName", name);
       if (draftAvatar) localStorage.setItem("arcane.profileAvatar", draftAvatar);
@@ -9313,26 +9531,6 @@
           if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");
         }
       }
-      setupGrimoireOptions();
-      renderTalentChoices();
-      renderTournament();
-      if (beforeSchoolId !== (profile.formativeSchoolId || null)) {
-        window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
-      }
-      renderPlayerProfile();
-    });
-    $("#confirmFormativeSchoolBtn")?.addEventListener("click", () => {
-      const selectedSchoolId = String($("#profileFormativeSchoolSelect")?.value || "").trim();
-      if (!A.SCHOOLS.some(item => item.id === selectedSchoolId)) return;
-      if (typeof A.setProfileFormativeSchool === "function") {
-        A.setProfileFormativeSchool(profile, selectedSchoolId);
-      }
-      if (!A.confirmProfileFormativeSchool?.(profile)) return;
-      profile = A.loadProfile();
-      setupGrimoireOptions();
-      renderTalentChoices();
-      renderTournament();
-      window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
       renderPlayerProfile();
     });
     root.querySelectorAll("[data-view-jump]").forEach(button => {
@@ -10348,6 +10546,7 @@
     renderTalentChoices();
     renderCollectionPanels();
     renderTournament();
+    renderAcademy();
     renderPlayerProfile();
     renderRuleset();
     if (pauseMenu?.isOpen()) $("#duelPauseSubtitle").textContent = pauseSubtitle();
@@ -10358,6 +10557,7 @@
   renderMultiplayerEntryMode();
   initializeOnlineAccount().then(() => {
     if ($("#profileView")?.classList.contains("active")) renderPlayerProfile();
+    if ($("#academyView")?.classList.contains("active")) renderAcademy();
   }).catch(() => {});
   setupDifficultyOptions();
   if ($("#playerNameInput") || $("#onlinePlayerNameInput") || $("#optionsPlayerNameInput")) {
@@ -10383,6 +10583,9 @@
   window.addEventListener("sigian:formative-school-change", () => {
     setupGrimoireOptions();
     renderTalentChoices();
+    renderTournament();
+    renderAcademy();
+    renderPlayerProfile();
   });
   $("#cardArtStyleSelect").addEventListener("change", event => {
     cardArtStyle = event.target.value === "new" ? "new" : "original";
@@ -10405,7 +10608,9 @@
   inspectedCardId = allAstralCards()[0]?.id || null;
   collectionSelectedCardId = inspectedCardId;
   renderCollectionPanels();
-  switchView(rememberedView());
+  const presentAcademySummons = shouldAutoPresentAcademySummons();
+  switchView(presentAcademySummons ? "academy" : rememberedView());
+  if (presentAcademySummons) openAcademySummons();
   let restoredRemoteRoom = false;
   try {
     const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
