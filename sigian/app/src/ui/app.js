@@ -2780,6 +2780,13 @@
       specializationsEnabled:Boolean(withSpecializations),
       formativeSchoolId:profile?.formativeSchoolId
     }) || { ready:grimoire.kind === "STANDARD", blockers:[], grimoire };
+    if (withSpecializations && grimoire.kind === "STANDARD" && !profile?.formativeSchoolId) {
+      return {
+        ...validation,
+        ready:false,
+        blockers:[...(validation.blockers || []), { code:"formative-school-missing" }]
+      };
+    }
     if (validation.ready && grimoire.kind !== "STANDARD") {
       const runtime = A.materializeSigianGrimoireForRuntime?.(grimoire.id);
       if (runtime && !runtime.ready) {
@@ -2826,7 +2833,10 @@
     const grimoire = validation.grimoire;
     if (grimoire?.kind === "STANDARD") {
       status.textContent = t("menu.grimoireStandardHint");
-      status.classList.remove("is-error");
+      if (!validation.ready && withSpecializations && !profile?.formativeSchoolId) {
+        status.textContent += ` · ${t("menu.formativeSchoolRequired")}`;
+      }
+      status.classList.toggle("is-error", !validation.ready);
       return validation;
     }
     const readyText = validation.ready ? t("menu.grimoireReady") : t("menu.grimoireNotReady");
@@ -2854,23 +2864,26 @@
 
     root.classList.remove("hidden", "is-error", "is-standard");
     if (grimoire.kind === "STANDARD") {
-      const specializationChoice = String($("#playerSpecializationSelect")?.value || "random");
-      if (specializationChoice !== "random") {
-        const spec = A.getAstralSpecialization?.(specializationChoice) || null;
-        const formulaId = A.getSigianSpecializationFormulaId?.(specializationChoice, spec?.talent) || null;
-        const card = formulaId ? allAstralCards().find(item => item.id === formulaId) || null : null;
-        if (spec && card) {
-          root.textContent = t("menu.specializationStandardFormulaReady", {
-            specialization:t(`specialization.${spec.id}`),
-            name:cardName(card),
-            school:schoolName(card.school),
-            cost:Number(card.level || card.cost || 13)
-          });
-        } else {
-          root.textContent = t("menu.specializationStandardRules");
-        }
+      const formativeSchoolId = String(profile?.formativeSchoolId || "").trim();
+      if (!formativeSchoolId) {
+        root.textContent = t("menu.formativeSchoolRequired");
+        root.classList.add("is-error", "is-standard");
+        return;
+      }
+      const specializationId = A.normalizeAstralSpecialization?.(formativeSchoolId, formativeSchoolId) || formativeSchoolId;
+      const spec = A.getAstralSpecialization?.(specializationId, formativeSchoolId) || null;
+      const formulaId = A.getSigianSpecializationFormulaId?.(specializationId, formativeSchoolId) || null;
+      const card = formulaId ? allAstralCards().find(item => item.id === formulaId) || null : null;
+      if (spec && card) {
+        root.textContent = t("menu.specializationStandardFormulaReady", {
+          specialization:t(`specialization.${spec.id}`),
+          name:cardName(card),
+          school:schoolName(card.school),
+          cost:Number(card.level || card.cost || 13)
+        });
       } else {
         root.textContent = t("menu.specializationStandardRules");
+        root.classList.add("is-error");
       }
       root.classList.add("is-standard");
       return;
@@ -2901,8 +2914,6 @@
     updateDuelModeDescription();
     $("#talentChoiceHeading").textContent = t("menu.startDuel");
     $("#specializationPathSettings")?.classList.toggle("hidden", !withSpecializations);
-    $("#astralLeagueLabel")?.classList.toggle("hidden", !withSpecializations);
-    $("#playerSpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
     $("#enemySpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
     updateDuelSpecializationSummary(withSpecializations, grimoireValidation);
 
@@ -2915,8 +2926,7 @@
     button.innerHTML = `<span>⚔️</span><strong>${t("menu.startDuel")}</strong><small>${escapeHtml(startHint)}</small>`;
     button.addEventListener("click", () => {
       if (!selectedDuelGrimoireValidation(withSpecializations).ready) return;
-      const playerChoice = withSpecializations ? ($("#playerSpecializationSelect")?.value || "random") : null;
-      startDuel("fire", false, playerChoice, distribution);
+      startDuel(profile?.formativeSchoolId || "fire", false, null, distribution);
     });
     root.appendChild(button);
   }
@@ -2931,7 +2941,6 @@
   }
 
   function setupAstralSpecializationOptions() {
-    populateSpecializationSelect($("#playerSpecializationSelect"), "random", { sigianOnly:true });
     populateSpecializationSelect($("#enemySpecializationSelect"), "random", { sigianOnly:true });
     populateSpecializationSelect($("#onlineSpecializationSelect"), "random");
     populateSpecializationSelect($("#onlineJoinSpecializationSelect"), "random");
@@ -2983,7 +2992,7 @@
       : normalizeSpellbookMode(requestedMode || $("#duelModeSelect")?.value);
     const withSpecializations = fromTournament
       ? Boolean(tournament?.specializationsEnabled)
-      : Boolean(selectedSpecialization);
+      : $("#duelSpecializationsSelect")?.value === "on";
     const opponent = fromTournament ? tournament.opponents[tournament.currentMatch] : null;
     const requestedSeed = $("#seedInput").value.trim();
     const seed = fromTournament
@@ -2995,8 +3004,11 @@
       ? normalizedPlayerName(opponent?.name, t("ui.opponent"))
       : normalizedPlayerName(t(`difficulty.${difficulty}`), t("ui.opponent"));
 
+    const formativeSchoolId = String(profile?.formativeSchoolId || "").trim();
     const playerSpecializationChoice = withSpecializations
-      ? (fromTournament ? tournament?.specialization : (selectedSpecialization || "random"))
+      ? (fromTournament
+        ? tournament?.specialization
+        : (A.normalizeAstralSpecialization?.(formativeSchoolId, formativeSchoolId) || formativeSchoolId || undefined))
       : undefined;
     const enemySpecializationChoice = withSpecializations
       ? (fromTournament
@@ -3004,18 +3016,22 @@
         : (enemySpecializationOverride || $("#enemySpecializationSelect")?.value || "random"))
       : undefined;
     const playerSpecialization = withSpecializations
-      ? resolveSpecializationChoice(playerSpecializationChoice, seed, "player", "battlemage")
+      ? (fromTournament
+        ? resolveSpecializationChoice(playerSpecializationChoice, seed, "player", "battlemage")
+        : playerSpecializationChoice)
       : undefined;
     const enemySpecialization = withSpecializations
       ? resolveSpecializationChoice(enemySpecializationChoice, seed, "enemy", "stormmage")
       : undefined;
     const specializationRecord = playerSpecialization && A.getAstralSpecialization
-      ? A.getAstralSpecialization(playerSpecialization, playerTalent)
+      ? A.getAstralSpecialization(playerSpecialization, formativeSchoolId || playerTalent)
       : null;
     const enemySpecializationRecord = enemySpecialization && A.getAstralSpecialization
       ? A.getAstralSpecialization(enemySpecialization, opponent?.talent || "water")
       : null;
-    const effectivePlayerTalent = specializationRecord?.talent || playerTalent || "fire";
+    const effectivePlayerTalent = fromTournament
+      ? (specializationRecord?.talent || playerTalent || "fire")
+      : (formativeSchoolId || playerTalent || specializationRecord?.talent || "fire");
     const effectiveEnemyTalent = enemySpecializationRecord?.talent || opponent?.talent;
 
     tournamentMatch = Boolean(fromTournament);
@@ -3028,15 +3044,15 @@
     const duelRules = originalMode
       ? { ...A.ASTRAL_ORIGINAL_RULESET }
       : { startingHp: setId === "arcane" ? 30 : A.DEFAULT_RULESET.startingHp };
-    const astralLeague = originalMode
-      ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting"))
+    const astralLeague = originalMode && fromTournament
+      ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch)
       : undefined;
-    const specializationPlayerAbilityIds = withSpecializations
+    const specializationPlayerAbilityIds = fromTournament && withSpecializations
       ? (A.getSigianSpecializationAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent)
         || A.getAstralAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent)
         || [])
       : [];
-    const specializationEnemyAbilityIds = withSpecializations
+    const specializationEnemyAbilityIds = fromTournament && withSpecializations
       ? (A.getSigianSpecializationAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water")
         || A.getAstralAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water")
         || [])
@@ -10045,9 +10061,7 @@
   syncOnlineDuelMode();
   $("#duelModeSelect").addEventListener("change", renderTalentChoices);
   $("#duelSpecializationsSelect")?.addEventListener("change", renderTalentChoices);
-  $("#playerSpecializationSelect")?.addEventListener("change", renderTalentChoices);
   $("#enemySpecializationSelect")?.addEventListener("change", renderTalentChoices);
-  $("#astralLeagueSelect")?.addEventListener("change", renderTalentChoices);
   window.addEventListener("sigian:grimoireschange", () => {
     setupGrimoireOptions();
     renderTalentChoices();
