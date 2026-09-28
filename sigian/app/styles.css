@@ -20194,3 +20194,17 @@ button.sigian-full-constraint-slot {
     width:100%;
   }
 }
+
+
+/* ===== SIGIAN 0.61.31 — Academy admission event ===== */
+.academy-location > .academy-location-secondary-action {
+  position:relative;
+  z-index:1;
+  width:100%;
+  min-width:0;
+  margin-top:-5px;
+}
+.academy-admission-letter {
+  border-color:#c4923e;
+  box-shadow:0 24px 70px rgba(0,0,0,.52), inset 0 0 42px rgba(148,96,25,.14);
+}

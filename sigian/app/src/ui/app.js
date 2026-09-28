@@ -528,6 +528,7 @@
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const ACADEMY_SUMMONS_SEEN_KEY = "arcane.academy.summonsSeen.v1";
+  const ACADEMY_ADMISSION_SEEN_KEY = "arcane.academy.admissionSeen.v1";
   const RESTORABLE_VIEWS = new Set(["game", "academy", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
   let academySchoolWingOpen = false;
 
@@ -571,6 +572,7 @@
   function openAcademySummons() {
     const modal = $("#academySummonsModal");
     if (!modal) return false;
+    $("#academyAdmissionModal")?.classList.add("hidden");
     modal.classList.remove("hidden");
     modal.querySelector(".academy-summons-close")?.focus();
     return true;
@@ -581,6 +583,41 @@
     if (!modal) return false;
     modal.classList.add("hidden");
     markAcademySummonsSeen();
+    if ($("#academyView")?.classList.contains("active") && shouldPresentAcademyAdmission()) openAcademyAdmission();
+    return true;
+  }
+
+  function academyAdmissionSeen() {
+    try { return localStorage.getItem(ACADEMY_ADMISSION_SEEN_KEY) === "1"; }
+    catch { return false; }
+  }
+
+  function markAcademyAdmissionSeen() {
+    try { localStorage.setItem(ACADEMY_ADMISSION_SEEN_KEY, "1"); } catch {}
+  }
+
+  function shouldPresentAcademyAdmission(academy = currentAcademyState()) {
+    if (!academySummonsSeen() || academyAdmissionSeen()) return false;
+    return Boolean(
+      academy?.academyAdmissionEligible
+      && !academy?.formativeSchoolId
+    );
+  }
+
+  function openAcademyAdmission() {
+    const modal = $("#academyAdmissionModal");
+    if (!modal) return false;
+    $("#academySummonsModal")?.classList.add("hidden");
+    modal.classList.remove("hidden");
+    modal.querySelector(".academy-admission-close")?.focus();
+    return true;
+  }
+
+  function closeAcademyAdmission() {
+    const modal = $("#academyAdmissionModal");
+    if (!modal) return false;
+    modal.classList.add("hidden");
+    markAcademyAdmissionSeen();
     return true;
   }
 
@@ -760,6 +797,7 @@
     const root = $("#academyContent");
     if (!root) return;
     const summonsWasOpen = Boolean(root.querySelector("#academySummonsModal:not(.hidden)"));
+    const admissionWasOpen = Boolean(root.querySelector("#academyAdmissionModal:not(.hidden)"));
     profile = A.loadProfile();
     const academy = currentAcademyState();
     const level = Number(academy.level || A.normalizeAccountProgression?.(profile.accountProgression || { xp:0 })?.level || 1);
@@ -768,7 +806,7 @@
       ? t("academy.school", { school:schoolName(academy.formativeSchoolId) })
       : t("academy.schoolNone");
 
-    const locationCard = ({ id, icon, title, description, status, state = "available", action = "", target = "", letter = false, schoolWing = false, disabled = false, note = "" }) => `
+    const locationCard = ({ id, icon, title, description, status, state = "available", action = "", target = "", letter = false, schoolWing = false, disabled = false, note = "", extraAction = "", admissionLetter = false }) => `
       <article class="academy-location academy-location-${escapeHtml(id)} is-${escapeHtml(state)}">
         <div class="academy-location-icon" aria-hidden="true">${icon}</div>
         <div class="academy-location-copy">
@@ -780,6 +818,7 @@
           ${note ? `<small>${escapeHtml(note)}</small>` : ""}
         </div>
         ${action ? `<button class="classic-stone-button ${disabled ? "ghost" : ""}" type="button" ${target ? `data-academy-target="${escapeHtml(target)}"` : ""} ${letter ? "data-academy-summons-open" : ""} ${schoolWing ? "data-academy-school-wing-open" : ""} ${disabled ? "disabled" : ""}>${escapeHtml(action)}</button>` : ""}
+        ${extraAction ? `<button class="classic-stone-button ghost academy-location-secondary-action" type="button" ${admissionLetter ? "data-academy-admission-open" : ""}>${escapeHtml(extraAction)}</button>` : ""}
       </article>`;
 
     const schoolAvailable = Boolean(academy.schoolSelectionUnlocked);
@@ -828,7 +867,9 @@
       <section class="academy-map-grid" aria-label="${escapeHtml(t("academy.title"))}">
         ${locationCard({
           id:"atrium", icon:"✉", title:t("academy.atrium.title"), description:t("academy.atrium.description"),
-          status:t("academy.available"), action:t("academy.atrium.action"), letter:true
+          status:t("academy.available"), action:t("academy.atrium.action"), letter:true,
+          extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
+          admissionLetter:Boolean(academy.academyAdmissionEligible)
         })}
         ${locationCard({
           id:"schools", icon:"✦", title:t("academy.schools.title"), description:t("academy.schools.description"),
@@ -889,6 +930,21 @@
           </div>
         </div>
       </div>
+
+      <div id="academyAdmissionModal" class="academy-summons-modal hidden" role="dialog" aria-modal="true" aria-labelledby="academyAdmissionTitle">
+        <div class="academy-summons-letter academy-admission-letter">
+          <button class="academy-summons-close academy-admission-close" type="button" data-academy-admission-close aria-label="${escapeHtml(t("academy.admission.close"))}">×</button>
+          <span class="classic-menu-kicker">${t("academy.admission.kicker")}</span>
+          <h3 id="academyAdmissionTitle">${t("academy.admission.title")}</h3>
+          <p>${t("academy.admission.p1", { level:academy.academyAdmissionLevel })}</p>
+          <p>${t("academy.admission.p2")}</p>
+          <p>${t("academy.admission.p3", { level:academy.schoolConfirmationLevel })}</p>
+          <div class="academy-summons-actions">
+            <button class="classic-stone-button" type="button" data-academy-admission-school>${t("academy.admission.chooseSchool")}</button>
+            <button class="classic-stone-button ghost" type="button" data-academy-admission-close>${t("academy.admission.later")}</button>
+          </div>
+        </div>
+      </div>
     `;
 
     root.querySelectorAll("[data-academy-target]").forEach(button => {
@@ -940,7 +996,27 @@
     modal?.addEventListener("keydown", event => {
       if (event.key === "Escape") closeAcademySummons();
     });
+
+    root.querySelector("[data-academy-admission-open]")?.addEventListener("click", openAcademyAdmission);
+    root.querySelectorAll("[data-academy-admission-close]").forEach(button => button.addEventListener("click", closeAcademyAdmission));
+    root.querySelector("[data-academy-admission-school]")?.addEventListener("click", () => {
+      closeAcademyAdmission();
+      if (!schoolAvailable) return;
+      academySchoolWingOpen = true;
+      const panel = $("#academySchoolWing");
+      panel?.classList.remove("hidden");
+      panel?.scrollIntoView({ behavior:"smooth", block:"start" });
+    });
+    const admissionModal = root.querySelector("#academyAdmissionModal");
+    admissionModal?.addEventListener("click", event => {
+      if (event.target === admissionModal) closeAcademyAdmission();
+    });
+    admissionModal?.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeAcademyAdmission();
+    });
+
     if (options.openSummons || summonsWasOpen) openAcademySummons();
+    else if (options.openAdmission || admissionWasOpen || shouldPresentAcademyAdmission(academy)) openAcademyAdmission();
   }
 
   function schoolIconMarkup(id, className = "school-icon-svg") {
