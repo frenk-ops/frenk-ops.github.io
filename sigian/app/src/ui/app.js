@@ -841,31 +841,31 @@
 
     const academyLocations = [
       {
-        id:"atrium", icon:"✉", x:50, y:43, title:t("academy.atrium.title"), description:t("academy.atrium.description"),
+        id:"atrium", icon:"✉", x:50, y:43, title:t("academy.atrium.title"), description:t("academy.atrium.description"), info:t("academy.atrium.info"),
         status:t("academy.available"), state:"available", action:t("academy.atrium.action"), letter:true,
         extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
         admissionLetter:Boolean(academy.academyAdmissionEligible)
       },
       {
-        id:"schools", icon:"✦", x:22, y:17, title:t("academy.schools.title"), description:t("academy.schools.description"),
+        id:"schools", icon:"✦", x:22, y:17, title:t("academy.schools.title"), description:t("academy.schools.description"), info:t("academy.schools.info"),
         status:schoolAvailable ? t("academy.available") : t("academy.sealed"),
         state:schoolAvailable ? "available" : "sealed", action:schoolAction, schoolWing:true,
         disabled:!schoolAvailable, note:schoolNote
       },
       {
-        id:"library", icon:"⌘", x:80, y:19, title:t("academy.library.title"), description:t("academy.library.description"),
+        id:"library", icon:"⌘", x:80, y:19, title:t("academy.library.title"), description:t("academy.library.description"), info:t("academy.library.info"),
         status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
       },
       {
-        id:"forge", icon:"⚒", x:19, y:62, title:t("academy.forge.title"), description:t("academy.forge.description"),
+        id:"forge", icon:"⚒", x:19, y:62, title:t("academy.forge.title"), description:t("academy.forge.description"), info:t("academy.forge.info"),
         status:t("academy.available"), state:"available", action:t("academy.forge.action"), target:"forge"
       },
       {
-        id:"trials", icon:"⚔", x:49, y:80, title:t("academy.trials.title"), description:t("academy.trials.description"),
+        id:"trials", icon:"⚔", x:49, y:80, title:t("academy.trials.title"), description:t("academy.trials.description"), info:t("academy.trials.info"),
         status:t("academy.available"), state:"available", action:t("academy.trials.action"), target:"game"
       },
       {
-        id:"arena", icon:"♜", x:80, y:65, title:t("academy.arena.title"), description:t("academy.arena.description"),
+        id:"arena", icon:"♜", x:80, y:65, title:t("academy.arena.title"), description:t("academy.arena.description"), info:t("academy.arena.info"),
         status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
         state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
         disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
@@ -904,11 +904,20 @@
           ${location.extraAction ? `<button class="classic-stone-button ghost academy-location-secondary-action" type="button"
             ${location.admissionLetter ? "data-academy-admission-open" : ""}>${escapeHtml(location.extraAction)}</button>` : ""}
         </div>
+        <div class="academy-map-path-summary" aria-label="${escapeHtml(t("academy.statusTitle"))}">
+          <div><small>${t("academy.statusTitle")}</small><strong>${escapeHtml(phaseLabel)}</strong></div>
+          <span>${escapeHtml(t("academy.level", { level }))}</span>
+          <span>${escapeHtml(schoolLabel)}</span>
+        </div>
+        <section class="academy-map-detail-information" aria-label="${escapeHtml(t("academy.informationTitle"))}">
+          <small>${escapeHtml(t("academy.informationTitle"))}</small>
+          <p>${escapeHtml(location.info || location.description)}</p>
+        </section>
       </article>`;
 
     root.innerHTML = `
       <header class="academy-mobile-titlebar" aria-label="${escapeHtml(t("nav.academy"))}">
-        <span class="academy-mobile-title-icon" aria-hidden="true">⌂</span>
+        <span class="academy-mobile-title-icon" aria-hidden="true"><svg><use href="#sigian-nav-academy"></use></svg></span>
         <strong>${t("nav.academy")}</strong>
       </header>
       <header class="academy-heading">
@@ -946,11 +955,6 @@
           </div>
           <aside id="academyMapDetail" class="academy-map-detail-panel" aria-live="polite">
             ${academyLocations.map(locationDetail).join("")}
-            <div class="academy-map-path-summary" aria-label="${escapeHtml(t("academy.statusTitle"))}">
-              <div><small>${t("academy.statusTitle")}</small><strong>${escapeHtml(phaseLabel)}</strong></div>
-              <span>${escapeHtml(t("academy.level", { level }))}</span>
-              <span>${escapeHtml(schoolLabel)}</span>
-            </div>
           </aside>
         </div>
       </section>
