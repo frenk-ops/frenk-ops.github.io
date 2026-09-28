@@ -2833,6 +2833,39 @@
     return validation;
   }
 
+  function updateDuelSpecializationSummary(withSpecializations, validation) {
+    const root = $("#duelSpecializationSummary");
+    if (!root) return;
+    const grimoire = validation?.grimoire || A.getSigianGrimoire?.(selectedDuelGrimoireId()) || null;
+    if (!withSpecializations || !grimoire) {
+      root.textContent = "";
+      root.classList.add("hidden");
+      root.classList.remove("is-error", "is-standard");
+      return;
+    }
+
+    root.classList.remove("hidden", "is-error", "is-standard");
+    if (grimoire.kind === "STANDARD") {
+      root.textContent = t("menu.specializationStandardRules");
+      root.classList.add("is-standard");
+      return;
+    }
+
+    const formulaInstanceId = String(grimoire.specializationFormulaId || "");
+    const runtime = formulaInstanceId ? A.resolveSigianFormulaInstanceRuntime?.(formulaInstanceId) : null;
+    if (!formulaInstanceId || !runtime?.playable || !runtime?.card) {
+      root.textContent = t("menu.specializationFormulaMissing");
+      root.classList.add("is-error");
+      return;
+    }
+
+    root.textContent = t("menu.specializationFormulaReady", {
+      name:cardName(runtime.card),
+      school:schoolName(runtime.card.school),
+      cost:Number(runtime.card.level || runtime.card.cost || 0)
+    });
+  }
+
   function renderTalentChoices() {
     const root = $("#talentChoices");
     const distribution = normalizeSpellbookMode($("#duelModeSelect")?.value);
@@ -2842,9 +2875,11 @@
     root.innerHTML = "";
     updateDuelModeDescription();
     $("#talentChoiceHeading").textContent = t("menu.startDuel");
+    $("#legacySpecializationSettings")?.classList.toggle("hidden", !withSpecializations);
     $("#astralLeagueLabel")?.classList.toggle("hidden", !withSpecializations);
     $("#playerSpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
     $("#enemySpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
+    updateDuelSpecializationSummary(withSpecializations, grimoireValidation);
 
     const button = document.createElement("button");
     button.className = "talent";

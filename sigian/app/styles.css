@@ -15808,6 +15808,241 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   }
 }
 
+
+/* 0.61.20 — duel setup UX audit: canonical Grimorio first, legacy specialization controls secondary. */
+.classic-menu-scene {
+  grid-template-columns:minmax(560px,840px);
+}
+
+.classic-config-essential {
+  grid-template-columns:minmax(0,1.16fr) minmax(0,.84fr);
+  grid-template-areas:
+    "grimoire mode"
+    "opponent specialization";
+  gap:12px;
+}
+
+.classic-config-essential .setup-field-grimoire { grid-area:grimoire; }
+.classic-config-essential .setup-field-mode { grid-area:mode; }
+.classic-config-essential .setup-field-opponent { grid-area:opponent; }
+.classic-config-essential .setup-field-specialization { grid-area:specialization; }
+
+.classic-config-essential label {
+  min-width:0;
+  min-height:104px;
+  display:grid;
+  align-content:start;
+  gap:5px;
+}
+
+.classic-config-essential label > small {
+  margin-top:1px;
+  color:#ead7a4;
+  font-size:.72rem;
+  font-weight:500;
+  line-height:1.3;
+}
+
+.classic-config-essential select {
+  min-width:0;
+  min-height:42px;
+}
+
+.duel-specialization-summary {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:42px;
+  margin-top:10px;
+  padding:9px 12px;
+  border:1px solid rgba(69,111,64,.42);
+  border-radius:9px;
+  background:rgba(229,239,194,.50);
+  color:#36512f;
+  font-size:.78rem;
+  font-weight:700;
+  line-height:1.35;
+}
+
+.duel-specialization-summary::before {
+  content:"✦";
+  flex:0 0 auto;
+  color:#7b5a1e;
+}
+
+.duel-specialization-summary.is-standard {
+  border-color:rgba(89,72,132,.34);
+  background:rgba(221,211,239,.46);
+  color:#4f416f;
+}
+
+.duel-specialization-summary.is-error {
+  border-color:rgba(150,63,43,.40);
+  background:rgba(244,210,190,.54);
+  color:#7b3527;
+}
+
+.classic-advanced-grid {
+  grid-template-columns:minmax(220px,.7fr) minmax(0,1.3fr);
+  align-items:start;
+}
+
+.classic-legacy-specialization {
+  grid-column:1 / -1;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  padding:11px;
+  border:1px dashed rgba(89,51,31,.42);
+  border-radius:8px;
+  background:rgba(255,248,222,.42);
+}
+
+.classic-legacy-specialization-heading {
+  grid-column:1 / -1;
+  display:grid;
+  gap:3px;
+}
+
+.classic-legacy-specialization-heading strong {
+  color:#59331f;
+  font-size:.78rem;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+
+.classic-legacy-specialization-heading small {
+  color:#72563f;
+  font-size:.70rem;
+  line-height:1.35;
+}
+
+.classic-legacy-specialization label {
+  min-width:0;
+}
+
+#profileFormativeSchoolSelect {
+  min-height:42px;
+}
+
+@media (max-width:820px) {
+  .classic-menu-screen {
+    min-height:calc(100dvh - 64px);
+    padding:10px 8px calc(96px + env(safe-area-inset-bottom));
+    overflow:visible;
+  }
+
+  .classic-menu-scene {
+    grid-template-columns:minmax(0,1fr);
+    width:100%;
+  }
+
+  .classic-menu-config {
+    width:100%;
+    padding:14px 12px 12px;
+    border-width:4px;
+  }
+
+  .classic-menu-config h2 {
+    font-size:1.55rem;
+  }
+
+  .classic-config-essential {
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "grimoire"
+      "mode"
+      "opponent"
+      "specialization";
+    gap:8px;
+  }
+
+  .classic-config-essential label,
+  .classic-config-essential label:last-child {
+    grid-column:auto;
+    min-height:0;
+    padding:9px 10px;
+  }
+
+  .classic-config-essential select,
+  .classic-advanced-grid input,
+  .classic-advanced-grid select,
+  .classic-legacy-specialization select,
+  #profileFormativeSchoolSelect {
+    min-height:44px;
+    font-size:16px;
+  }
+
+  .classic-advanced-settings {
+    margin-top:9px;
+  }
+
+  .classic-advanced-settings > summary {
+    min-height:52px;
+    padding:9px 11px;
+  }
+
+  .classic-advanced-grid {
+    grid-template-columns:1fr;
+    padding:9px;
+  }
+
+  .classic-legacy-specialization {
+    grid-template-columns:1fr;
+    padding:9px;
+  }
+
+  .classic-legacy-specialization-heading {
+    grid-column:auto;
+  }
+
+  .duel-specialization-summary {
+    margin-top:8px;
+    font-size:.74rem;
+  }
+
+  .classic-start-buttons {
+    position:sticky;
+    z-index:22;
+    bottom:calc(70px + env(safe-area-inset-bottom));
+    margin:10px -3px 0;
+    padding:8px 3px 4px;
+    background:linear-gradient(180deg,rgba(224,199,143,.04),rgba(218,189,128,.96) 28%,rgba(218,189,128,.98));
+  }
+
+  .classic-start-buttons .talent {
+    min-height:62px;
+    padding:8px 13px;
+    column-gap:10px;
+  }
+
+  .classic-start-buttons .talent > span {
+    font-size:1.65rem;
+  }
+
+  .classic-start-buttons .talent > strong {
+    font-size:1.08rem;
+  }
+
+  .classic-start-buttons .talent > small {
+    font-size:.68rem;
+  }
+
+  .archive-grimoire-tile {
+    min-height:76px;
+  }
+
+  .archive-grimoire-schools {
+    max-width:100%;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+
+  .archive-grimoire-schools::-webkit-scrollbar {
+    display:none;
+  }
+}
+
 /* Contrast guardrail: dark Archive surfaces must never inherit dark text. */
 .archive-browser .classic-stone-button,
 .archive-browser .classic-stone-button *,
