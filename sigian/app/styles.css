@@ -21265,3 +21265,264 @@ body.ui-classic .classic-topbar .classic-nav .classic-nav-primary.active .nav-ic
     margin-bottom:0;
   }
 }
+
+
+/* ===== SIGIAN 0.61.42 — global premium game shell ===== */
+body.ui-classic {
+  --sigian-shell-night-1000:#020817;
+  --sigian-shell-night-950:#040c20;
+  --sigian-shell-night-900:#07142f;
+  --sigian-shell-night-800:#0c1c3d;
+  --sigian-shell-gold-500:#d9ad4d;
+  --sigian-shell-gold-300:#f2d77e;
+  --sigian-shell-ink:#cbd3df;
+  --sigian-shell-focus:#ffe694;
+}
+
+body.ui-classic .classic-topbar {
+  min-height:78px;
+  grid-template-columns:minmax(205px,250px) minmax(0,1fr) max-content;
+  gap:14px;
+  padding:5px 14px;
+  border-bottom:1px solid rgba(227,187,78,.92);
+  background:
+    radial-gradient(circle at 50% 0,rgba(37,61,121,.22),transparent 56%),
+    linear-gradient(180deg,var(--sigian-shell-night-800),var(--sigian-shell-night-1000));
+  box-shadow:
+    0 5px 20px rgba(0,0,0,.48),
+    inset 0 -1px rgba(255,226,140,.08);
+}
+
+.sigian-brand-lockup {
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr);
+  grid-template-rows:auto;
+  align-items:center;
+  justify-content:start;
+  gap:9px;
+  min-width:0;
+  text-align:left;
+  line-height:1;
+}
+
+.sigian-brand-mark {
+  grid-row:1;
+  width:44px;
+  height:56px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(231,190,79,.76);
+  border-radius:52% 48% 54% 46% / 42% 42% 58% 58%;
+  background:
+    radial-gradient(circle at 50% 35%,rgba(76,97,160,.42),transparent 58%),
+    linear-gradient(180deg,#101f43,#050c20);
+  color:#f0ca62;
+  font:italic 800 2.2rem/1 Georgia,serif;
+  text-shadow:0 1px 0 #6b4815,0 0 10px rgba(237,191,66,.22);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,231,151,.06),
+    0 0 13px rgba(217,173,77,.12);
+  transform:skewY(-4deg);
+}
+
+.sigian-brand-copy {
+  min-width:0;
+  display:grid;
+  align-content:center;
+  justify-items:start;
+  gap:1px;
+}
+
+body.ui-classic .sigian-brand-lockup .classic-brand-main {
+  color:#f3d77e;
+  font:800 1.55rem/.95 Georgia,serif;
+  font-style:normal;
+  letter-spacing:.045em;
+  text-shadow:0 1px 0 #5c4119,0 0 8px rgba(224,181,74,.16);
+}
+
+body.ui-classic .sigian-brand-lockup .classic-brand-sub {
+  color:#d9c185;
+  font:700 .63rem/1 Georgia,serif;
+  letter-spacing:.14em;
+  text-shadow:none;
+}
+
+.sigian-brand-lockup .app-version-badge {
+  margin-top:3px;
+  color:rgba(197,207,222,.52);
+  font-size:.48rem;
+  letter-spacing:.035em;
+}
+
+body.ui-classic .classic-topbar .classic-nav {
+  width:min(100%,570px);
+  margin:0 auto;
+  grid-template-columns:repeat(5,minmax(72px,108px));
+  gap:4px;
+}
+
+body.ui-classic .classic-topbar .classic-nav .classic-nav-item {
+  min-height:66px;
+  border-radius:7px;
+  transition:
+    background .14s ease,
+    border-color .14s ease,
+    color .14s ease,
+    transform .12s ease,
+    box-shadow .14s ease;
+}
+
+body.ui-classic .classic-topbar .classic-nav .classic-nav-item:hover {
+  transform:translateY(-1px);
+}
+
+body.ui-classic .classic-topbar .classic-nav .classic-nav-item:focus-visible {
+  outline:2px solid var(--sigian-shell-focus);
+  outline-offset:1px;
+}
+
+body.ui-classic .classic-topbar .classic-nav .classic-nav-item.active {
+  border-color:rgba(238,198,94,.76);
+  background:
+    radial-gradient(circle at 50% 0,rgba(153,116,43,.28),transparent 65%),
+    linear-gradient(180deg,rgba(83,66,34,.48),rgba(14,21,41,.72));
+  color:#f6dc83;
+}
+
+.nav-label,
+.mobile-nav-label {
+  text-transform:uppercase;
+  letter-spacing:.035em;
+}
+
+.sigian-shell-utilities {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+  min-width:92px;
+}
+
+.sigian-shell-utility {
+  position:relative;
+  width:40px;
+  height:40px;
+  display:grid;
+  place-items:center;
+  flex:0 0 40px;
+  padding:0;
+  border:1px solid rgba(221,185,88,.68);
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 34%,rgba(53,73,128,.42),transparent 64%),
+    linear-gradient(180deg,#101d3c,#050c20);
+  color:#d7dde7;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,232,157,.05),
+    0 3px 10px rgba(0,0,0,.22);
+}
+
+.sigian-shell-utility:hover,
+.sigian-shell-utility.is-active {
+  border-color:#f0cb66;
+  color:#ffe8a2;
+  background:
+    radial-gradient(circle at 50% 34%,rgba(91,84,62,.46),transparent 66%),
+    linear-gradient(180deg,#1a2748,#090f24);
+}
+
+.sigian-shell-utility:focus-visible {
+  outline:2px solid var(--sigian-shell-focus);
+  outline-offset:2px;
+}
+
+.sigian-shell-utility-icon {
+  width:21px;
+  height:21px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+@media (max-width:1100px) and (min-width:821px) {
+  body.ui-classic .classic-topbar {
+    grid-template-columns:180px minmax(0,1fr) max-content;
+    gap:8px;
+    padding-inline:9px;
+  }
+  .sigian-brand-lockup {
+    grid-template-columns:38px minmax(0,1fr);
+    gap:7px;
+  }
+  .sigian-brand-mark {
+    width:36px;
+    height:46px;
+    font-size:1.8rem;
+  }
+  body.ui-classic .sigian-brand-lockup .classic-brand-main { font-size:1.25rem; }
+  body.ui-classic .sigian-brand-lockup .classic-brand-sub { font-size:.54rem; }
+  body.ui-classic .classic-topbar .classic-nav {
+    grid-template-columns:repeat(5,minmax(66px,92px));
+  }
+  .sigian-shell-utility {
+    width:36px;
+    height:36px;
+    flex-basis:36px;
+  }
+}
+
+@media (max-width:820px) {
+  body.ui-classic .classic-topbar {
+    min-height:58px;
+    grid-template-columns:minmax(0,1fr) max-content;
+    gap:8px;
+    padding:5px 8px;
+    border-bottom-width:1px;
+  }
+  .sigian-brand-lockup {
+    grid-template-columns:32px minmax(0,1fr);
+    gap:6px;
+  }
+  .sigian-brand-mark {
+    width:30px;
+    height:38px;
+    font-size:1.5rem;
+  }
+  body.ui-classic .sigian-brand-lockup .classic-brand-main {
+    font-size:1.05rem;
+    letter-spacing:.05em;
+  }
+  body.ui-classic .sigian-brand-lockup .classic-brand-sub {
+    font-size:.48rem;
+    letter-spacing:.12em;
+  }
+  .sigian-brand-lockup .app-version-badge { display:none; }
+  .sigian-shell-utilities { gap:5px;min-width:0; }
+  .sigian-shell-utility {
+    width:34px;
+    height:34px;
+    flex-basis:34px;
+  }
+  .sigian-shell-utility-icon { width:19px;height:19px; }
+
+  .mobile-bottom-nav .mobile-nav-item {
+    color:#aeb9ca;
+  }
+  .mobile-bottom-nav .mobile-nav-item.active:not(.mobile-nav-primary) .mobile-nav-icon-frame {
+    color:#f4d672;
+    filter:drop-shadow(0 0 5px rgba(234,189,75,.22));
+  }
+  .mobile-bottom-nav .mobile-nav-item:focus-visible {
+    outline:2px solid var(--sigian-shell-focus);
+    outline-offset:-2px;
+  }
+}
+
+@media (max-width:460px) {
+  .sigian-shell-utility[data-shell-target="profile"] {
+    display:none;
+  }
+}

@@ -19,6 +19,7 @@
     const tabs = [...document.querySelectorAll(".tab[data-view]")];
     const jumps = [...document.querySelectorAll("[data-view-jump]")];
     const modeTabs = [...document.querySelectorAll("[data-play-mode-navigation] [data-mode-view]")];
+    const shellUtilities = [...document.querySelectorAll("[data-shell-utility][data-view-jump]")];
     const params = new URLSearchParams(window.location.search);
     const developerMode = params.get("dev") === "1";
 
@@ -54,6 +55,12 @@
           const active = tab.dataset.modeView === viewName;
           tab.classList.toggle("is-active", active);
           tab.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        shellUtilities.forEach(control => {
+          const active = control.dataset.viewJump === viewName;
+          control.classList.toggle("is-active", active);
+          if (active) control.setAttribute("aria-current", "page");
+          else control.removeAttribute("aria-current");
         });
       }
     });
