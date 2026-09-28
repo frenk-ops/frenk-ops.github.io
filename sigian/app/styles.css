@@ -19508,41 +19508,41 @@ button.sigian-full-constraint-slot {
   max-width:760px;
   margin:0;
 }
-.academy-status-strip {
+.academy-map-path-summary {
   display:grid;
-  grid-template-columns:minmax(190px,1.5fr) repeat(2,minmax(130px,.7fr));
-  align-items:center;
-  gap:10px;
-  padding:12px 14px;
-  border:1px solid rgba(91,59,31,.28);
-  border-radius:12px;
-  background:
-    radial-gradient(circle at 96% 0,rgba(216,169,75,.18),transparent 38%),
-    rgba(255,248,225,.62);
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  padding:14px 16px 12px;
+  border-bottom:1px solid rgba(92,60,31,.18);
   color:#4b321f;
 }
-.academy-status-strip > div {
+.academy-map-path-summary > div {
+  grid-column:1 / -1;
   display:grid;
   gap:2px;
 }
-.academy-status-strip small {
+.academy-map-path-summary small {
   color:#7b5d3d;
-  font-size:.68rem;
-  font-weight:800;
-  letter-spacing:.08em;
+  font-size:.66rem;
+  font-weight:900;
+  letter-spacing:.09em;
   text-transform:uppercase;
 }
-.academy-status-strip strong {
-  font:800 1.08rem/1.1 Georgia,serif;
+.academy-map-path-summary strong {
+  font:800 1.06rem/1.1 Georgia,serif;
 }
-.academy-status-strip > span {
-  justify-self:end;
-  padding:6px 9px;
-  border:1px solid rgba(105,72,34,.2);
+.academy-map-path-summary > span {
+  min-width:0;
+  padding:6px 8px;
+  border:1px solid rgba(105,72,34,.18);
   border-radius:999px;
-  background:rgba(255,255,255,.28);
-  font-size:.78rem;
+  background:rgba(255,255,255,.3);
+  font-size:.72rem;
   font-weight:800;
+  text-align:center;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 .academy-campus {
   display:grid;
@@ -19597,15 +19597,22 @@ button.sigian-full-constraint-slot {
   box-shadow:inset 0 1px rgba(255,255,255,.56),0 14px 30px rgba(55,36,22,.18);
 }
 .academy-map-art {
-  --academy-map-artwork:url("assets/ui/academy/academy-campus-map.svg");
   position:absolute;
   inset:0;
   z-index:0;
-  background-image:var(--academy-map-artwork);
-  background-position:center;
-  background-size:100% 100%;
-  background-repeat:no-repeat;
+  margin:0;
+  overflow:hidden;
+  pointer-events:none;
   filter:saturate(.94) contrast(1.02);
+}
+.academy-map-art > img {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+  user-select:none;
+  -webkit-user-drag:none;
 }
 .academy-map-scene::after {
   content:"";
@@ -19725,6 +19732,8 @@ button.sigian-full-constraint-slot {
 .academy-map-detail-panel {
   min-width:0;
   display:grid;
+  grid-template-rows:auto minmax(0,1fr);
+  overflow:hidden;
   border:1px solid rgba(92,60,31,.3);
   border-radius:20px;
   background:
@@ -19733,7 +19742,7 @@ button.sigian-full-constraint-slot {
   box-shadow:inset 0 1px rgba(255,255,255,.68),0 10px 24px rgba(55,36,22,.12);
 }
 .academy-map-detail-card {
-  min-height:100%;
+  min-height:0;
   display:flex;
   flex-direction:column;
   gap:12px;
@@ -19826,14 +19835,33 @@ button.sigian-full-constraint-slot {
   .academy-map-detail-card { min-height:180px; }
 }
 @media (max-width:620px) {
-  .academy-campus-heading {
-    align-items:flex-start;
-    flex-direction:column;
-    gap:6px;
+  .academy-heading {
+    align-items:center;
+    gap:8px;
+    padding:0 4px 4px;
   }
-  .academy-campus-heading p {
-    max-width:none;
-    text-align:left;
+  .academy-heading .classic-menu-kicker,
+  .academy-heading .unified-menu-intro,
+  .academy-heading > .classic-stone-button {
+    display:none;
+  }
+  .academy-heading h2 {
+    font-size:1.42rem;
+    line-height:1;
+  }
+  .academy-campus {
+    gap:0;
+  }
+  .academy-campus-heading {
+    position:absolute !important;
+    width:1px !important;
+    height:1px !important;
+    padding:0 !important;
+    margin:-1px !important;
+    overflow:hidden !important;
+    clip:rect(0 0 0 0) !important;
+    white-space:nowrap !important;
+    border:0 !important;
   }
   .academy-map-layout {
     gap:0;
@@ -19843,8 +19871,8 @@ button.sigian-full-constraint-slot {
     aspect-ratio:4 / 5;
     border-radius:18px;
   }
-  .academy-map-art {
-    background-size:100% 100%;
+  .academy-map-path-summary {
+    display:none;
   }
   .academy-map-hotspot {
     min-width:48px;
@@ -19864,10 +19892,12 @@ button.sigian-full-constraint-slot {
     max-width:92px;
     transform:translateX(-50%);
     padding:3px 6px;
-    border-radius:7px;
-    background:rgba(34,28,25,.88);
-    box-shadow:0 2px 8px rgba(28,22,20,.24);
-    font-size:.58rem;
+    border:1px solid rgba(244,209,111,.42);
+    border-radius:8px;
+    background:linear-gradient(180deg,rgba(34,28,25,.94),rgba(18,17,18,.92));
+    color:#fff1c6;
+    box-shadow:0 3px 10px rgba(28,22,20,.34);
+    font-size:.6rem;
     text-align:center;
   }
   .academy-map-hotspot-state { display:none; }

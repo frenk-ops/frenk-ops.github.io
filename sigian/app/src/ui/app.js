@@ -816,6 +816,11 @@
           ? t(`profile.academyPhase.${academy.phase}`)
           : t("profile.chooseFormativeSchool");
     const arenaAvailable = Boolean(academy.tournamentUnlocked);
+    const academyArtwork = Object.freeze({
+      src:"assets/ui/academy/academy-campus-map.svg",
+      kind:"scaffold-svg",
+      ratio:"4:5"
+    });
     const schoolChoices = A.SCHOOLS.map(item => {
       const selected = academy.formativeSchoolId === item.id;
       const disabled = !academy.schoolChangeAllowed || selected;
@@ -909,12 +914,6 @@
         <button class="classic-stone-button ghost" type="button" data-academy-target="profile">${t("academy.openPath")}</button>
       </header>
 
-      <section class="academy-status-strip" aria-label="${escapeHtml(t("academy.statusTitle"))}">
-        <div><small>${t("academy.statusTitle")}</small><strong>${escapeHtml(phaseLabel)}</strong></div>
-        <span>${escapeHtml(t("academy.level", { level }))}</span>
-        <span>${escapeHtml(schoolLabel)}</span>
-      </section>
-
       <section class="academy-campus" aria-labelledby="academyCampusTitle">
         <header class="academy-campus-heading">
           <div><small>${t("academy.campus.kicker")}</small><h3 id="academyCampusTitle">${t("academy.campus.title")}</h3></div>
@@ -922,7 +921,9 @@
         </header>
         <div class="academy-map-layout">
           <div class="academy-map-scene" data-academy-campus data-academy-coordinate-space="portrait-v1" aria-label="${escapeHtml(t("academy.campus.title"))}">
-            <div class="academy-map-art" aria-hidden="true"></div>
+            <figure class="academy-map-art" data-academy-artwork data-academy-artwork-kind="${academyArtwork.kind}" data-academy-artwork-ratio="${academyArtwork.ratio}" aria-hidden="true">
+              <img src="${academyArtwork.src}" alt="" decoding="async" draggable="false">
+            </figure>
             <svg class="academy-map-routes" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true">
               <path d="M50 44 C40 36 31 27 24 19"></path>
               <path d="M52 43 C63 37 71 30 76 24"></path>
@@ -935,6 +936,11 @@
             </div>
           </div>
           <aside id="academyMapDetail" class="academy-map-detail-panel" aria-live="polite">
+            <div class="academy-map-path-summary" aria-label="${escapeHtml(t("academy.statusTitle"))}">
+              <div><small>${t("academy.statusTitle")}</small><strong>${escapeHtml(phaseLabel)}</strong></div>
+              <span>${escapeHtml(t("academy.level", { level }))}</span>
+              <span>${escapeHtml(schoolLabel)}</span>
+            </div>
             ${academyLocations.map(locationDetail).join("")}
           </aside>
         </div>
