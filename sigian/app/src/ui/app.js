@@ -2699,17 +2699,9 @@
     return spec ? t(`specialization.${spec.id}`) : t("menu.randomSpecialization");
   }
 
-  function arcaneWizardIconMarkup(className = "school-icon-svg specialization-school-icon") {
-    return `<svg class="${className} specialization-wizard-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"></path>
-      <path d="M5 3v4M3 5h4M19 17v4M17 19h4"></path>
-    </svg>`;
-  }
-
   function specializationIconMarkup(choice, className = "school-icon-svg specialization-school-icon") {
     if (choice === "random") return '<span class="specialization-random-icon" aria-hidden="true">🎲</span>';
     const spec = A.getAstralSpecialization?.(choice);
-    if (spec?.id === "wizard") return arcaneWizardIconMarkup(className);
     return spec?.talent ? schoolIconMarkup(spec.talent, className) : "";
   }
 
@@ -2731,13 +2723,12 @@
     }
     const choice = select.value || "random";
     icon.classList.toggle("is-random", choice === "random");
-    icon.classList.toggle("is-wizard", choice === "wizard");
     icon.innerHTML = specializationIconMarkup(choice);
   }
 
   function sigianSpecializationOptions() {
     const canonical = A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || [];
-    return canonical.length ? canonical : (A.ASTRAL_SPECIALIZATIONS || []).filter(item => !item.legacyOnly);
+    return canonical.length ? canonical : (A.ASTRAL_SPECIALIZATIONS || []);
   }
 
   function populateSpecializationSelect(select, fallback = "random", options = {}) {
@@ -7954,6 +7945,11 @@
     $("#enemyNameBattle").textContent = currentOpponentName || t("ui.opponent");
     $("#playerNameBattle").title = currentPlayerName || t("ui.player");
     $("#enemyNameBattle").title = currentOpponentName || t("ui.opponent");
+    const tournamentInfoVisible = Boolean(tournamentMatch && tournament);
+    $("#playerTournamentInfoBtn")?.classList.toggle("hidden", !tournamentInfoVisible);
+    $("#enemyTournamentInfoBtn")?.classList.toggle("hidden", !tournamentInfoVisible);
+    if ($("#playerTournamentInfoBtn")) $("#playerTournamentInfoBtn").setAttribute("aria-label", t("tournament.inspectPlayer"));
+    if ($("#enemyTournamentInfoBtn")) $("#enemyTournamentInfoBtn").setAttribute("aria-label", t("tournament.inspectOpponent"));
     $("#mobileSpellDropTarget").textContent = t("mobile.castSpell");
     updatePhaseVisual(state);
     $("#enemyHpBattle").textContent = `${state.enemy.hp} ♥`;
@@ -8658,6 +8654,125 @@
     if (event.key === "Escape") closeDuelCardZoom();
   });
 
+  function tournamentCombatantInfoData(side) {
+    if (!tournament) return null;
+    const matchIndex = Math.max(0, Math.min(Number(tournament.currentMatch || 0), Math.max(0, (tournament.opponents?.length || 1) - 1)));
+    const opponent = tournament.opponents?.[matchIndex] || null;
+    const playerSide = side === "player";
+    const specializationId = playerSide ? tournament.specialization : opponent?.specialization;
+    const specialization = specializationId ? A.getAstralSpecialization?.(specializationId) : null;
+    const league = A.getTournamentLeagueForMatch?.(tournament, matchIndex) || opponent?.league || "starting";
+    const fighter = tournamentMatch && engine ? engine.state?.[side] : null;
+    const talent = specialization?.talent || fighter?.talent || (playerSide ? profile?.formativeSchoolId : opponent?.talent) || null;
+    const formulaId = playerSide
+      ? (tournament.specializationFormulaId || A.getSigianSpecializationFormulaId?.(specializationId, talent))
+      : (opponent?.specializationFormulaId || A.getSigianSpecializationFormulaId?.(specializationId, talent));
+    const formula = formulaId ? allAstralCards().find(card => card.id === formulaId) || null : null;
+    const abilityIds = specializationId
+      ? (A.getSigianSpecializationAbilityLoadout?.(specializationId, league, talent)
+        || A.getAstralAbilityLoadout?.(specializationId, league, talent)
+        || [])
+      : [];
+    const abilities = fighter?.astralAbilities?.length
+      ? fighter.astralAbilities
+      : (A.getAstralAbilityRecords?.(abilityIds) || []);
+    const powerupIds = tournament.evolutionEnabled
+      ? (playerSide
+        ? (tournament.selectedPassives || [])
+        : (A.getTournamentOpponentPassives?.(tournament, matchIndex) || []))
+      : [];
+    const powerups = powerupIds.map(id => A.getPassive?.(id)).filter(Boolean);
+    return {
+      side,
+      playerSide,
+      name: playerSide ? (currentPlayerName || t("ui.player")) : normalizedPlayerName(opponent?.name, t("ui.opponent")),
+      role: playerSide ? t("tournament.combatantPlayer") : t(`tournament.rank.${matchIndex}`),
+      league,
+      talent,
+      specializationId,
+      specialization,
+      formula,
+      abilities,
+      powerups
+    };
+  }
+
+  function tournamentCombatantInfoMarkup(side) {
+    const info = tournamentCombatantInfoData(side);
+    if (!info) return "";
+    const specializationLabelText = info.specialization
+      ? t(`specialization.${info.specialization.id}`)
+      : t("tournament.noSpecialization");
+    const abilityRows = info.abilities.length
+      ? info.abilities.map(ability => `<article class="tournament-combatant-rule">
+          <strong>${escapeHtml(abilityName(ability))}</strong>
+          <p>${escapeHtml(abilityDescription(ability))}</p>
+        </article>`).join("")
+      : `<p class="tournament-combatant-empty">${escapeHtml(t("tournament.noActiveAbilities"))}</p>`;
+    const formulaMarkup = info.formula
+      ? `<section class="tournament-combatant-section">
+          <h3>${escapeHtml(t("tournament.specializationFormula"))}</h3>
+          <div class="tournament-combatant-formula school-${escapeHtml(info.formula.school)}">
+            <span class="tournament-combatant-formula-icon" aria-hidden="true">${schoolIconMarkup(info.formula.school, "school-icon-svg tournament-school-icon")}</span>
+            <div><strong>${escapeHtml(cardName(info.formula))}</strong><small>${escapeHtml(schoolName(info.formula.school))} · Lv ${escapeHtml(info.formula.level)} · ${escapeHtml(t("tournament.specializationFormulaGuaranteed"))}</small></div>
+          </div>
+        </section>`
+      : "";
+    const powerupsMarkup = info.powerups.length
+      ? `<section class="tournament-combatant-section">
+          <h3>${escapeHtml(t("tournament.evolutionModifiers"))}</h3>
+          <div class="tournament-combatant-rules">
+            ${info.powerups.map(passive => `<article class="tournament-combatant-rule is-powerup"><strong>${escapeHtml(passive.name)}</strong><p>${escapeHtml(passive.description || "")}</p></article>`).join("")}
+          </div>
+        </section>`
+      : "";
+    return `<header class="tournament-combatant-heading">
+        <span class="tournament-combatant-school-mark" aria-hidden="true">${info.specializationId ? specializationIconMarkup(info.specializationId, "school-icon-svg tournament-school-icon") : (info.talent ? schoolIconMarkup(info.talent, "school-icon-svg tournament-school-icon") : "✦")}</span>
+        <div><small>${escapeHtml(info.role)}</small><h2 id="tournamentCombatantInfoTitle">${escapeHtml(info.name)}</h2><p>${escapeHtml(t("tournament.combatantInfoHint"))}</p></div>
+      </header>
+      <div class="tournament-combatant-meta">
+        <span><small>${escapeHtml(t("tournament.school"))}</small><b>${escapeHtml(info.talent ? schoolName(info.talent) : "—")}</b></span>
+        <span><small>${escapeHtml(t("tournament.specialization"))}</small><b>${escapeHtml(specializationLabelText)}</b></span>
+        <span><small>${escapeHtml(t("tournament.league"))}</small><b>${escapeHtml(t(`league.${info.league}`))}</b></span>
+      </div>
+      ${formulaMarkup}
+      <section class="tournament-combatant-section">
+        <h3>${escapeHtml(t("tournament.activeAbilities"))}</h3>
+        <div class="tournament-combatant-rules">${abilityRows}</div>
+      </section>
+      ${powerupsMarkup}`;
+  }
+
+  function openTournamentCombatantInfo(side) {
+    const modal = $("#tournamentCombatantInfoModal");
+    const content = $("#tournamentCombatantInfoContent");
+    if (!modal || !content || !tournament) return;
+    const markup = tournamentCombatantInfoMarkup(side);
+    if (!markup) return;
+    content.innerHTML = markup;
+    modal.dataset.combatantSide = side;
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeTournamentCombatantInfo() {
+    const modal = $("#tournamentCombatantInfoModal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+    delete modal.dataset.combatantSide;
+  }
+
+  $("#playerTournamentInfoBtn")?.addEventListener("click", () => openTournamentCombatantInfo("player"));
+  $("#enemyTournamentInfoBtn")?.addEventListener("click", () => openTournamentCombatantInfo("enemy"));
+  $("#tournamentCombatantInfoClose")?.addEventListener("click", closeTournamentCombatantInfo);
+  $("#tournamentCombatantInfoModal")?.addEventListener("click", event => {
+    if (event.target === event.currentTarget) closeTournamentCombatantInfo();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeTournamentCombatantInfo();
+  });
+
   function renderTournament() {
     const root = $("#tournamentContent");
     const newButton = $("#newTournamentBtn");
@@ -8779,6 +8894,7 @@
       ? A.UITournamentView.renderCompleted(context)
       : A.UITournamentView.renderActive(context);
 
+    $("#inspectTournamentOpponentBtn")?.addEventListener("click", () => openTournamentCombatantInfo("enemy"));
     const actions = $("#tournamentActions");
     if (tournament.pendingPassiveChoice && actions) {
       actions.innerHTML = `<h3>${t("tournament.choosePowerup")}</h3><div class="passive-choice-grid">${tournament.offeredPassives.map(id => {

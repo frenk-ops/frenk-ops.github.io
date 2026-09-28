@@ -57,7 +57,6 @@
   }
 
   const ABILITY = Object.freeze({
-    ELEMENTAL_KNOWLEDGE: 29,
     EFREETS_KNOWLEDGE: 30,
     SEA_KNOWLEDGE: 31,
     TITANS_KNOWLEDGE: 32,
@@ -123,10 +122,7 @@
   }
 
   function spellbookCount(options, side) {
-    if (options?.mode === "tournament") {
-      const specialization = side === "player" ? options.playerSpecialization : options.enemySpecialization;
-      return specialization === "wizard" ? 24 : 20;
-    }
+    if (options?.mode === "tournament") return 20;
     if (options?.mode === "multiplayer") return 20;
     if (options?.mode === "network-equalized") return side === "player" ? 20 : 19;
     if (side === "player") return 20;
@@ -136,7 +132,7 @@
   function actorClass(options, side) {
     if (options?.mode === "tournament") {
       const specialization = side === "player" ? options.playerSpecialization : options.enemySpecialization;
-      const table = { necromancer: 1, battlemage: 2, druid: 3, thundermage: 4, stormmage: 5, wizard: 6 };
+      const table = { necromancer: 1, battlemage: 2, druid: 3, thundermage: 4, stormmage: 5 };
       return table[specialization] || 1;
     }
     if (options?.mode === "multiplayer") return 0;
@@ -177,8 +173,6 @@
       if (abilities.has(11 + i)) values[i] += 1; // Craft
       if (abilities.has(1 + i)) values[i] += 2;  // Mystery
       if (i < 4 && abilities.has(16 + i)) values[i] = Math.max(0, values[i] - 1); // Penalty
-      if (abilities.has(35)) values[i] += 1; // Meditation
-      if (abilities.has(36)) values[i] += 2; // Ancient Knowledge
     }
 
     return Object.fromEntries(SCHOOL_ORDER.map((school, index) => [school, values[index]]));
@@ -203,9 +197,6 @@
 
   function addAbilityCards(bookIds, numeric, abilities) {
     const additions = [];
-    if (abilities.has(ABILITY.ELEMENTAL_KNOWLEDGE)) {
-      additions.push(23, 36, 49, 63); // Fire10, Water10, Air10, Earth11
-    }
     if (abilities.has(ABILITY.EFREETS_KNOWLEDGE)) additions.push(26);
     if (abilities.has(ABILITY.SEA_KNOWLEDGE)) additions.push(39);
     if (abilities.has(ABILITY.TITANS_KNOWLEDGE)) additions.push(52);
@@ -335,13 +326,7 @@
       if (failed) continue;
       if (level12 !== 1 || healing === 0 || c30 === 2) continue;
 
-      // Elemental Knowledge injects its own four elementals after validation, so the
-      // randomly generated base book must contain none of them.
-      if (abilities.has(ABILITY.ELEMENTAL_KNOWLEDGE)) {
-        if (elementals > 0) continue;
-      } else if (elementals === 0 || elementals > 2) {
-        continue;
-      }
+      if (elementals === 0 || elementals > 2) continue;
 
       if (cardCount >= 19) {
         if (damage !== 2) continue;

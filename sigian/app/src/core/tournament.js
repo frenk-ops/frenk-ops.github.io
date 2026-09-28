@@ -16,8 +16,7 @@
     stormmage: Object.freeze(["elemental_focus", "vitality", "arcane_reserve", "battle_instinct", "fire_aura"]),
     thundermage: Object.freeze(["battle_instinct", "elemental_focus", "arcane_reserve", "vitality", "fire_aura"]),
     druid: Object.freeze(["vitality", "elemental_focus", "arcane_reserve", "battle_instinct", "fire_aura"]),
-    necromancer: Object.freeze(["vitality", "battle_instinct", "elemental_focus", "arcane_reserve", "fire_aura"]),
-    wizard: Object.freeze(["arcane_reserve", "vitality", "battle_instinct", "elemental_focus", "fire_aura"])
+    necromancer: Object.freeze(["vitality", "battle_instinct", "elemental_focus", "arcane_reserve", "fire_aura"])
   });
   const SPECIALIZATION_BY_TALENT = Object.freeze({
     fire: "battlemage", water: "stormmage", air: "thundermage", nature: "druid", death: "necromancer"
@@ -30,7 +29,7 @@
   const normalizeTournamentMode = value => TOURNAMENT_MODES[value] ? value : "league";
   const canonicalTournamentSpecializationIds = () =>
     (A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || A.ASTRAL_SPECIALIZATIONS || [])
-      .filter(item => !item.legacyOnly && item.specializationFormulaId)
+      .filter(item => item.specializationFormulaId)
       .map(item => item.id)
       .filter(Boolean);
   const specializationFormulaId = specializationId =>
@@ -330,6 +329,9 @@
 
   function normalizeTournament(tournament) {
     if (!tournament) return null;
+    const containsRetiredWizard = String(tournament.specialization || "").toLowerCase() === "wizard"
+      || (tournament.opponents || []).some(opponent => String(opponent?.specialization || "").toLowerCase() === "wizard");
+    if (containsRetiredWizard) return null;
     const sourceVersion = Number(tournament.version || 0);
     const legacyEvolution = sourceVersion < 3;
     const tournamentMode = normalizeTournamentMode(tournament.tournamentMode || (legacyEvolution ? "evolution" : "league"));
@@ -347,7 +349,7 @@
     tournament.specialization = tournament.specializationsEnabled
       ? (tournament.specialization === "random"
         ? (A.createRng(`${tournament.seed}-player-specialization`).pick(canonicalTournamentSpecializationIds()) || "battlemage")
-        : normalizePlayerSpecialization(tournament.specialization))
+        : normalizeNewTournamentSpecialization(tournament.specialization))
       : null;
     tournament.specializationFormulaId = tournament.specializationsEnabled
       ? specializationFormulaId(tournament.specialization)
@@ -361,10 +363,10 @@
       ...opponent,
       league: opponent.league || LEAGUE_BY_MATCH[index] || "major",
       specialization: tournament.specializationsEnabled
-        ? (opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage")
+        ? normalizeNewTournamentSpecialization(opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage")
         : undefined,
       specializationFormulaId: tournament.specializationsEnabled
-        ? specializationFormulaId(opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage")
+        ? specializationFormulaId(normalizeNewTournamentSpecialization(opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage"))
         : null,
       passives: [],
       result: opponent.result || (opponent.defeated ? "win" : null),
@@ -376,7 +378,10 @@
   A.loadTournament = function loadTournament(storage) {
     const target = storage || A.getStorage();
     try {
-      return normalizeTournament(JSON.parse(target.getItem(TOURNAMENT_KEY) || "null"));
+      const saved = JSON.parse(target.getItem(TOURNAMENT_KEY) || "null");
+      const normalized = normalizeTournament(saved);
+      if (saved && !normalized) target.removeItem(TOURNAMENT_KEY);
+      return normalized;
     } catch (error) {
       return null;
     }

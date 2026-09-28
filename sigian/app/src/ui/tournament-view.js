@@ -6,11 +6,7 @@
   function specializationFormulaSlot(specId, context) {
     const spec = context.specialization(specId);
     const card = context.specializationFormula?.(specId) || null;
-    if (!spec || !card) {
-      return spec?.legacyOnly
-        ? `<section class="tournament-specialization-formula-slot is-legacy"><small>${context.t("tournament.specializationFormula")}</small><strong>${context.escapeHtml(context.t("tournament.legacyWizardCompatibility"))}</strong></section>`
-        : "";
-    }
+    if (!spec || !card) return "";
     const localizedName = context.t(`cards.${card.id}.name`);
     return `<section class="tournament-specialization-formula-slot">
       <div class="tournament-specialization-slot-seal" aria-hidden="true">${context.specializationIconMarkup(spec.id, "school-icon-svg tournament-school-icon")}</div>
@@ -149,6 +145,7 @@
           <span>${t("tournament.mode")}: <b>${escapeHtml(tournamentModeLabel(tournament.tournamentMode))}</b></span>
           ${tournament.evolutionEnabled ? `<span>${t("tournament.opponentPowerups")}: <b>${opponentPowerups.length}</b></span>` : ""}
         </div>
+        <button id="inspectTournamentOpponentBtn" class="tournament-combatant-inspect-button" type="button"><span aria-hidden="true">ⓘ</span>${t("tournament.inspectOpponent")}</button>
         <button id="continueTournamentBtn" class="primary tournament-primary-action">${t("tournament.resume")}</button>
       </aside>
       <section class="tournament-progress-panel">
@@ -163,7 +160,7 @@
         ${specializationFormulaSlot(tournament.specialization, context)}
 
         <div class="passive-list">
-          <h3>${t("tournament.activeAbilities")} · ${leagueLabel(current.league)}</h3>
+          <h3>${t("tournament.yourActiveAbilities")} · ${leagueLabel(current.league)}</h3>
           ${activeAbilityChips(tournament.specialization, current.league, context)}
         </div>
 

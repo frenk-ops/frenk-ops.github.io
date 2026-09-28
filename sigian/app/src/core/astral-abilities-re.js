@@ -31,15 +31,16 @@
     { id: 26, key: "healing_aura", name: "Healing Aura", effect: "Gain 2 life each turn" },
     { id: 27, key: "faery_master", name: "Faery Master", effect: "Start combat with 1 Faerie" },
     { id: 28, key: "astral_nets", name: "Astral Nets", effect: "When opponent summons a creature, it loses 3 life" },
-    { id: 29, key: "elemental_knowledge", name: "Elemental Knowledge", effect: "Can summon all elementals" },
+    null, // 29 retired with the removed Wizard / Elemental Knowledge path.
     { id: 30, key: "efreets_knowledge", name: "Efreets Knowledge", effect: "Additional Efreet creature spell" },
     { id: 31, key: "sea_knowledge", name: "Sea Knowledge", effect: "Additional Sea Monster creature spell" },
     { id: 32, key: "titans_knowledge", name: "Titans Knowledge", effect: "Additional Titan creature spell" },
     { id: 33, key: "stone_knowledge", name: "Stone Knowledge", effect: "Additional Stone Giant creature spell" },
     { id: 34, key: "hell_knowledge", name: "Hell Knowledge", effect: "Additional Greater Demon creature spell" },
-    { id: 35, key: "meditation", name: "Meditation", effect: "Start with +1 to all powers" },
-    { id: 36, key: "ancient_knowledge", name: "Ancient Knowledge", effect: "Start with +2 to all powers" },
-    { id: 37, key: "life_knowledge", name: "Life Knowledge", effect: "Start with +20 life" }
+    null, // 35 retired with Wizard.
+    null, // 36 retired with Wizard.
+    null  // 37 retired with Wizard.
+
   ];
 
   const SPECIALIZATIONS = [
@@ -47,8 +48,7 @@
     { id: "battlemage", name: "BattleMage", talent: "fire", school: "fire", icon: "🔥", specializationFormulaId: "astral_fire_13", formulaAbilityId: 30, groups: [[11,30],[1,23,30],[6,1,23,30]] },
     { id: "druid", name: "Druid", talent: "nature", school: "nature", icon: "🌿", specializationFormulaId: "astral_earth_13", formulaAbilityId: 33, groups: [[14,33],[4,26,33],[9,4,26,33]] },
     { id: "thundermage", name: "ThunderMage", talent: "air", school: "air", icon: "🌪️", specializationFormulaId: "astral_air_13", formulaAbilityId: 32, groups: [[13,32],[3,27,32],[8,3,4,27,32]] },
-    { id: "stormmage", name: "StormMage", talent: "water", school: "water", icon: "💧", specializationFormulaId: "astral_water_13", formulaAbilityId: 31, groups: [[12,31],[2,28,31],[7,2,28,31,17]] },
-    { id: "wizard", name: "Wizard", talent: "fire", icon: "✨", legacyOnly: true, groups: [[29],[29,35],[29,36,37]] }
+    { id: "stormmage", name: "StormMage", talent: "water", school: "water", icon: "💧", specializationFormulaId: "astral_water_13", formulaAbilityId: 31, groups: [[12,31],[2,28,31],[7,2,28,31,17]] }
   ];
 
   const LEAGUE_STAGE = Object.freeze({ starting: 1, advanced: 2, major: 3, 1: 1, 2: 2, 3: 3 });
@@ -60,7 +60,7 @@
     const key = String(value || "").toLowerCase().replace(/[^a-z]/g, "");
     const aliases = {
       necromancer: "necromancer", battlemage: "battlemage", druid: "druid",
-      thundermage: "thundermage", stormmage: "stormmage", wizard: "wizard",
+      thundermage: "thundermage", stormmage: "stormmage",
       fire: "battlemage", water: "stormmage", air: "thundermage",
       earth: "druid", nature: "druid", death: "necromancer"
     };
@@ -96,7 +96,7 @@
   }
 
   function tournamentSpecializations() {
-    return SPECIALIZATIONS.filter(item => !item.legacyOnly && item.specializationFormulaId);
+    return SPECIALIZATIONS.filter(item => item.specializationFormulaId);
   }
 
   function abilityRecords(ids) {
@@ -128,11 +128,6 @@
       fighter.hp = Math.max(1, fighter.hp - 15);
       fighter.maxHp = Math.max(1, fighter.maxHp - 15);
     }
-    if (abilityIds.includes(37)) {
-      fighter.hp += 20;
-      fighter.maxHp += 20;
-    }
-
     Object.entries(LORD_SCHOOLS).forEach(([abilityId, school]) => {
       if (abilityIds.includes(Number(abilityId))) fighter.powerGain[school] = (fighter.powerGain[school] || 0) + 1;
     });

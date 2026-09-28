@@ -634,9 +634,10 @@
           assert(!loadout.includes(spec.formulaAbilityId), `${specializationId}: la vecchia Knowledge non deve restare nel loadout SIGIAN`);
         });
 
+        assert(!A.ASTRAL_SPECIALIZATIONS.some(item => item.id === "wizard"), "Wizard non deve esistere nel modello SIGIAN");
         const wizardRequest = A.createTournament({ seed: "wizard-new-cup", specialization: "wizard" });
-        assert(wizardRequest.specialization !== "wizard", "Il Mago Arcano legacy non deve essere selezionabile nei nuovi tornei");
-        assert(wizardRequest.specializationFormulaId, "Il fallback dei nuovi tornei deve avere uno slot Formula canonico");
+        assert(wizardRequest.specialization !== "wizard", "Una richiesta Wizard deve normalizzarsi su una specializzazione canonica");
+        assert(wizardRequest.specializationFormulaId, "Il fallback canonico deve avere uno slot Formula");
 
         const legacyStorage = (() => {
           const data = {};
@@ -649,9 +650,8 @@
           specializationFormulaId:null
         };
         legacyStorage.setItem("arcane-duels-tournament-v013", JSON.stringify(legacyWizard));
-        const restoredWizard = A.loadTournament(legacyStorage);
-        assert(restoredWizard.specialization === "wizard", "Un vecchio torneo Wizard deve restare riprendibile");
-        assert(restoredWizard.specializationFormulaId === null, "Il Wizard legacy non deve ricevere una Formula inventata");
+        assert(A.loadTournament(legacyStorage) === null, "I vecchi tornei Wizard devono essere scartati");
+        assert(legacyStorage.getItem("arcane-duels-tournament-v013") === null, "Il salvataggio Wizard deve essere eliminato dallo storage");
 
         const randomA = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });
         const randomB = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });
@@ -999,17 +999,16 @@
         Object.entries(expected).forEach(([difficulty,count])=>{
           assert(A.getRecoveredAstralSpellbookCount({enemyDifficulty:difficulty},"enemy")===count,`Conteggio ${difficulty} errato`);
         });
-        assert(A.getRecoveredAstralSpellbookCount({mode:"tournament",enemySpecialization:"wizard"},"enemy")===24,"Wizard non riceve 24 carte");
+        assert(A.getRecoveredAstralSpellbookCount({mode:"tournament",enemySpecialization:"necromancer"},"enemy")===20,"Un torneo canonico deve usare 20 carte base");
       }
     },
     {
-      name: "Knowledge aggiunge elementali e livello 13 senza estrarli casualmente",
+      name: "Le Knowledge di Formula aggiungono il livello 13 senza estrarlo casualmente",
       run() {
         const cards=A.getCardSet("astral-original");
-        const result=A.generateRecoveredAstralHands(cards,{seed:"knowledge-ability",enemyDifficulty:"novice",playerAbilities:[29,30]});
-        const names=new Set(result.player.map(card=>card.name));
-        ["Fire Elemental","Water Elemental","Air Elemental","Earth Elemental","Efreet"].forEach(name=>assert(names.has(name),`Carta Knowledge mancante: ${name}`));
-        assert(result.player.length===25,`Conteggio dopo Knowledge: ${result.player.length}`);
+        const result=A.generateRecoveredAstralHands(cards,{seed:"knowledge-ability",enemyDifficulty:"novice",playerAbilities:[30]});
+        assert(result.player.some(card=>card.id==="astral_fire_13"),"Efreet Knowledge non ha aggiunto Efreet");
+        assert(result.player.length===21,`Conteggio dopo Knowledge: ${result.player.length}`);
       }
     },
     {
@@ -1629,9 +1628,8 @@
         assert(JSON.stringify(A.getAstralAbilityLoadout("battlemage", "starting")) === JSON.stringify([11,30]), "BattleMage Starting errato");
         assert(JSON.stringify(A.getAstralAbilityLoadout("battlemage", "advanced")) === JSON.stringify([1,23,30]), "BattleMage Advanced errato");
         assert(JSON.stringify(A.getAstralAbilityLoadout("battlemage", "major")) === JSON.stringify([6,1,23,30]), "BattleMage Major errato");
-        const wizardMajor = A.getAstralAbilityLoadout("wizard", "major");
-        assert(JSON.stringify(wizardMajor) === JSON.stringify([29,36,37]), "Wizard Major errato");
-        assert(!wizardMajor.includes(35), "Meditation non deve restare nel Major loadout");
+        assert(A.ASTRAL_SPECIALIZATIONS.length === 5, `Specializzazioni storiche attive inattese: ${A.ASTRAL_SPECIALIZATIONS.length}`);
+        assert(!A.ASTRAL_SPECIALIZATIONS.some(item => item.id === "wizard"), "Wizard non deve avere loadout");
       }
     },
     {
@@ -1662,13 +1660,13 @@
       }
     },
     {
-      name: "Life Knowledge e Life Penalty modificano vita iniziale e massimo",
+      name: "Life Penalty modifica vita iniziale e massimo",
       run() {
         const engine = astralEngine(["astral_fire_01"], ["astral_water_01"], {
-          playerAstralAbilities: [37],
+          playerAstralAbilities: [],
           enemyAstralAbilities: [20]
         });
-        assert(engine.state.player.hp === 70 && engine.state.player.maxHp === 70, "Life Knowledge non applicata");
+        assert(engine.state.player.hp === 50 && engine.state.player.maxHp === 50, "La vita base del giocatore è cambiata");
         assert(engine.state.enemy.hp === 35 && engine.state.enemy.maxHp === 35, "Life Penalty non applicata");
       }
     },
@@ -1712,19 +1710,18 @@
       }
     },
     {
-      name: "Knowledge aggiunge le carte extra al libro generato",
+      name: "Le Knowledge storiche di Formula aggiungono la carta extra al libro generato",
       run() {
         const cards = A.getCardSet("astral-original");
         const result = A.generateRecoveredAstralHands(cards, {
           seed: "knowledge-loadout",
           enemyDifficulty: "grandmaster",
-          playerSpecialization: "wizard",
+          playerSpecialization: "battlemage",
           enemySpecialization: "necromancer",
-          playerAbilities: [29],
+          playerAbilities: [30],
           enemyAbilities: [34]
         });
-        const playerIds = new Set(result.player.map(card => card.id));
-        ["astral_fire_10","astral_water_10","astral_air_10","astral_earth_11"].forEach(id => assert(playerIds.has(id), `Elementale mancante: ${id}`));
+        assert(result.player.some(card => card.id === "astral_fire_13"), "Efreet mancante");
         assert(result.enemy.some(card => card.id === "astral_death_13"), "Greater Demon mancante");
       }
     }
