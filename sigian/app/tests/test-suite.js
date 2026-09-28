@@ -617,17 +617,76 @@
       }
     },
     {
-      name: "Il torneo accetta tutte le specializzazioni, incluso Mago Arcano",
+      name: "Il torneo usa cinque specializzazioni SIGIAN con Formula di livello 13",
       run() {
-        const wizard = A.createTournament({ seed: "wizard-cup", specialization: "wizard" });
-        assert(wizard.specialization === "wizard", `Specializzazione Mago persa: ${wizard.specialization}`);
-        assert(A.ASTRAL_SPECIALIZATIONS.length === 6, `Specializzazioni disponibili: ${A.ASTRAL_SPECIALIZATIONS.length}`);
-        assert(A.ASTRAL_SPECIALIZATIONS.some(item => item.id === "wizard"), "Mago non disponibile nel torneo");
+        const expected = {
+          battlemage: "astral_fire_13",
+          stormmage: "astral_water_13",
+          thundermage: "astral_air_13",
+          druid: "astral_earth_13",
+          necromancer: "astral_death_13"
+        };
+        assert(A.SIGIAN_TOURNAMENT_SPECIALIZATIONS.length === 5, `Specializzazioni torneo canoniche: ${A.SIGIAN_TOURNAMENT_SPECIALIZATIONS.length}`);
+        Object.entries(expected).forEach(([specializationId, formulaId]) => {
+          const spec = A.SIGIAN_TOURNAMENT_SPECIALIZATIONS.find(item => item.id === specializationId);
+          assert(spec?.specializationFormulaId === formulaId, `${specializationId}: slot Formula errato ${spec?.specializationFormulaId}`);
+          const loadout = A.getSigianSpecializationAbilityLoadout(specializationId, "starting", spec?.talent);
+          assert(!loadout.includes(spec.formulaAbilityId), `${specializationId}: la vecchia Knowledge non deve restare nel loadout SIGIAN`);
+        });
+
+        const wizardRequest = A.createTournament({ seed: "wizard-new-cup", specialization: "wizard" });
+        assert(wizardRequest.specialization !== "wizard", "Il Mago Arcano legacy non deve essere selezionabile nei nuovi tornei");
+        assert(wizardRequest.specializationFormulaId, "Il fallback dei nuovi tornei deve avere uno slot Formula canonico");
+
+        const legacyStorage = (() => {
+          const data = {};
+          return { getItem:key => data[key] ?? null, setItem:(key,value) => { data[key] = String(value); }, removeItem:key => { delete data[key]; } };
+        })();
+        const legacyWizard = {
+          ...A.createTournament({ seed:"legacy-wizard-base", specialization:"fire" }),
+          version:3,
+          specialization:"wizard",
+          specializationFormulaId:null
+        };
+        legacyStorage.setItem("arcane-duels-tournament-v013", JSON.stringify(legacyWizard));
+        const restoredWizard = A.loadTournament(legacyStorage);
+        assert(restoredWizard.specialization === "wizard", "Un vecchio torneo Wizard deve restare riprendibile");
+        assert(restoredWizard.specializationFormulaId === null, "Il Wizard legacy non deve ricevere una Formula inventata");
 
         const randomA = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });
         const randomB = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });
-        assert(randomA.specialization && randomA.specialization !== "random", "Casuale torneo non risolta in una specializzazione concreta");
+        assert(randomA.specialization && randomA.specialization !== "random" && randomA.specialization !== "wizard", "Casuale torneo non risolta in una specializzazione SIGIAN concreta");
         assert(randomA.specialization === randomB.specialization, "Casuale torneo non stabile rispetto al seed");
+      }
+    },
+    {
+      name: "La specializzazione torneo usa 20 Formula base più la 21a garantita",
+      run() {
+        const cards = A.RAW_CARD_SETS["astral-original"];
+        const tournament = A.createTournament({ seed:"formula-slot-cup", specialization:"fire" });
+        const opponent = tournament.opponents[0];
+        const league = A.getTournamentLeagueForMatch(tournament, 0);
+        const playerAbilities = A.getSigianSpecializationAbilityLoadout(tournament.specialization, league, "fire");
+        const enemyAbilities = A.getSigianSpecializationAbilityLoadout(opponent.specialization, league, opponent.talent);
+        const hands = A.generateRecoveredAstralHands(cards, {
+          seed:"formula-slot-cup-match-1",
+          mode:"tournament",
+          distributionMode:"arcane",
+          enemyDifficulty:opponent.difficulty,
+          playerTalent:"fire",
+          enemyTalent:opponent.talent,
+          playerSpecialization:tournament.specialization,
+          enemySpecialization:opponent.specialization,
+          playerAbilities,
+          enemyAbilities,
+          playerGuaranteedFormulaId:tournament.specializationFormulaId,
+          enemyGuaranteedFormulaId:opponent.specializationFormulaId
+        });
+        assert(hands.diagnostics[0].baseCardCount === 20, `Base giocatore: ${hands.diagnostics[0].baseCardCount}`);
+        assert(hands.player.length === 21 && hands.diagnostics[0].finalCardCount === 21, `Mano giocatore: ${hands.player.length}`);
+        assert(hands.player.filter(card => card.id === "astral_fire_13").length === 1, "Efreet deve comparire una sola volta come Formula garantita");
+        assert(hands.diagnostics[0].specializationFormulaId === "astral_fire_13" && hands.diagnostics[0].specializationGuaranteed, "Diagnostica slot Formula giocatore mancante");
+        assert(hands.diagnostics[1].baseCardCount === 20 && hands.enemy.length === 21, "Anche l'avversario specializzato deve usare 20+1");
       }
     },
     {

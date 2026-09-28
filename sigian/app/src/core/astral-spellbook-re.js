@@ -27,6 +27,8 @@
       enemyDifficulty: options?.enemyDifficulty || "advanced",
       playerSpecialization: options?.playerSpecialization || null,
       enemySpecialization: options?.enemySpecialization || null,
+      playerGuaranteedFormulaId: options?.playerGuaranteedFormulaId || null,
+      enemyGuaranteedFormulaId: options?.enemyGuaranteedFormulaId || null,
       playerAbilities: [...(options?.playerAbilities || [])].map(Number).sort((a, b) => a - b),
       enemyAbilities: [...(options?.enemyAbilities || [])].map(Number).sort((a, b) => a - b),
       playerInitialPowers: powers(options?.playerInitialPowers),
@@ -457,6 +459,34 @@
     return counts;
   }
 
+  function appendGuaranteedFormula(result, numeric, formulaId) {
+    const requestedId = String(formulaId || "").trim();
+    if (!requestedId) return result;
+    const card = numeric.cardByGlobalId.find(candidate => candidate?.id === requestedId) || null;
+    if (!card) throw new Error(`Formula di Specializzazione non trovata nel pool: ${requestedId}`);
+    const alreadyPresent = result.hand.some(candidate => candidate?.id === requestedId);
+    if (alreadyPresent) {
+      return {
+        ...result,
+        specializationFormulaId:requestedId,
+        specializationGuaranteed:true,
+        finalCardCount:result.hand.length
+      };
+    }
+    const hand = [...result.hand, A.deepClone(card)].sort((left, right) => {
+      const leftId = cardGlobalId(left);
+      const rightId = cardGlobalId(right);
+      return leftId - rightId;
+    });
+    return {
+      ...result,
+      hand,
+      specializationFormulaId:requestedId,
+      specializationGuaranteed:true,
+      finalCardCount:hand.length
+    };
+  }
+
   A.generateRecoveredAstralHands = function generateRecoveredAstralHands(cards, options) {
     const key = cacheKey(cards, options);
     const cached = readCachedSpellbook(key);
@@ -477,7 +507,7 @@
     const enemyCount = distributionMode === "mirror" ? playerCount : spellbookCount(options, "enemy");
     const multiplayer = options?.mode === "multiplayer";
 
-    const player = generateOne(numeric, rng, {
+    const player = appendGuaranteedFormula(generateOne(numeric, rng, {
       cardCount: playerCount,
       ordinal: 1,
       actorClassValue: actorClass(options, "player"),
@@ -485,25 +515,26 @@
       powers: options?.playerInitialPowers,
       restrictedMode: options?.restrictedMode,
       maxGenerationAttempts: options?.maxGenerationAttempts
-    });
+    }), numeric, options?.playerGuaranteedFormulaId);
 
     let enemy;
     if (distributionMode === "mirror") {
       const enemyOrdinal = multiplayer ? 1 : 2;
       const enemyPowers = options?.enemyInitialPowers || generateBasePowers(rng, enemyOrdinal, normalizeAbilities(enemyAbilities));
       const enemyBaseIds = player.baseIds.slice(0, enemyCount);
-      enemy = {
-        hand: handFromBaseIds(enemyBaseIds, numeric, enemyAbilities),
+      const enemyMirrorHand = handFromBaseIds(enemyBaseIds, numeric, enemyAbilities);
+      enemy = appendGuaranteedFormula({
+        hand: enemyMirrorHand,
         powers: enemyPowers,
         baseIds: enemyBaseIds,
         baseCardCount: enemyBaseIds.length,
-        finalCardCount: enemyBaseIds.length + handFromBaseIds(enemyBaseIds, numeric, enemyAbilities).length - enemyBaseIds.length,
+        finalCardCount: enemyMirrorHand.length,
         generationAttempt: player.generationAttempt,
         bySchool: bySchoolFromBaseIds(enemyBaseIds),
         stats: { ...player.stats, mirrored: true }
-      };
+      }, numeric, options?.enemyGuaranteedFormulaId);
     } else {
-      enemy = generateOne(enemyNumeric, rng, {
+      enemy = appendGuaranteedFormula(generateOne(enemyNumeric, rng, {
         cardCount: enemyCount,
         ordinal: multiplayer ? 1 : 2,
         actorClassValue: actorClass(options, "enemy"),
@@ -512,7 +543,7 @@
         excludedBaseIds: distributionMode === "arcane" ? new Set(player.baseIds) : undefined,
         restrictedMode: options?.restrictedMode,
         maxGenerationAttempts: options?.maxGenerationAttempts
-      });
+      }), enemyNumeric, options?.enemyGuaranteedFormulaId);
     }
 
     const playerBase = new Set(player.baseIds);

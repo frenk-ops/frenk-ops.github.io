@@ -16043,6 +16043,92 @@ body[data-board-creature-names="hide"] #battlePanel .classic-board-column .unit-
   }
 }
 
+
+.tournament-specialization-formula-slot {
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr) auto;
+  gap:11px;
+  align-items:center;
+  margin:12px 0;
+  padding:11px 13px;
+  border:1px solid rgba(121,76,34,.34);
+  border-radius:12px;
+  background:
+    linear-gradient(135deg,rgba(255,247,218,.9),rgba(225,197,137,.62));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
+  color:#4b382c;
+}
+
+.tournament-specialization-slot-seal {
+  width:46px;
+  height:46px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  border:2px solid rgba(116,76,32,.42);
+  background:rgba(74,50,27,.12);
+}
+
+.tournament-specialization-slot-copy {
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+
+.tournament-specialization-slot-copy small {
+  font-size:.69rem;
+  font-weight:800;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+  color:#79532f;
+}
+
+.tournament-specialization-slot-copy strong {
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:1.02rem;
+  color:#4d2c1d;
+}
+
+.tournament-specialization-slot-copy span {
+  font-size:.76rem;
+  color:#6f5842;
+}
+
+.tournament-specialization-formula-slot > em {
+  white-space:nowrap;
+  padding:5px 9px;
+  border-radius:999px;
+  background:rgba(104,126,69,.14);
+  color:#46613d;
+  font-size:.71rem;
+  font-style:normal;
+  font-weight:850;
+}
+
+.tournament-specialization-formula-slot.is-legacy {
+  grid-template-columns:1fr;
+  border-style:dashed;
+  opacity:.82;
+}
+
+@media (max-width:700px) {
+  .tournament-specialization-formula-slot {
+    grid-template-columns:42px minmax(0,1fr);
+    gap:9px;
+    padding:10px;
+  }
+
+  .tournament-specialization-slot-seal {
+    width:40px;
+    height:40px;
+  }
+
+  .tournament-specialization-formula-slot > em {
+    grid-column:1 / -1;
+    justify-self:start;
+  }
+}
+
 /* Contrast guardrail: dark Archive surfaces must never inherit dark text. */
 .archive-browser .classic-stone-button,
 .archive-browser .classic-stone-button *,

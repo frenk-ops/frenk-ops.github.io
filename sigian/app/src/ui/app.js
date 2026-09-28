@@ -3006,6 +3006,22 @@
     const astralLeague = originalMode
       ? (fromTournament ? A.getTournamentLeagueForMatch(tournament, tournament.currentMatch) : ($("#astralLeagueSelect")?.value || "starting"))
       : undefined;
+    const tournamentPlayerAbilityIds = fromTournament && withSpecializations
+      ? (A.getSigianSpecializationAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent)
+        || A.getAstralAbilityLoadout?.(playerSpecialization, astralLeague, effectivePlayerTalent)
+        || [])
+      : null;
+    const tournamentEnemyAbilityIds = fromTournament && withSpecializations
+      ? (A.getSigianSpecializationAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water")
+        || A.getAstralAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water")
+        || [])
+      : null;
+    const tournamentPlayerFormulaId = fromTournament && withSpecializations
+      ? (tournament?.specializationFormulaId || A.getSigianSpecializationFormulaId?.(playerSpecialization, effectivePlayerTalent) || null)
+      : null;
+    const tournamentEnemyFormulaId = fromTournament && withSpecializations
+      ? (opponent?.specializationFormulaId || A.getSigianSpecializationFormulaId?.(enemySpecialization, effectiveEnemyTalent || "water") || null)
+      : null;
     const selectedGrimoireId = fromTournament
       ? (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard")
       : selectedDuelGrimoireId();
@@ -3056,8 +3072,14 @@
       astralLeague,
       playerSpecialization,
       enemySpecialization,
-      playerAstralAbilities: withSpecializations ? undefined : [],
-      enemyAstralAbilities: withSpecializations ? undefined : [],
+      playerAstralAbilities: withSpecializations
+        ? (fromTournament ? tournamentPlayerAbilityIds : undefined)
+        : [],
+      enemyAstralAbilities: withSpecializations
+        ? (fromTournament ? tournamentEnemyAbilityIds : undefined)
+        : [],
+      playerGuaranteedFormulaId:tournamentPlayerFormulaId,
+      enemyGuaranteedFormulaId:tournamentEnemyFormulaId,
       hands:preparedHands || undefined
     });
     if (personalGrimoire) {
@@ -8603,8 +8625,12 @@
     const abandonButton = $("#abandonTournamentBtn");
     const context = {
       tournament, t, school, schoolName, schoolIconMarkup, specializationIconMarkup, escapeHtml, abilityName, abilityDescription, spellbookModeLabel,
-      specializations: A.ASTRAL_SPECIALIZATIONS,
+      specializations: A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || A.ASTRAL_SPECIALIZATIONS,
       specialization: id => A.getAstralSpecialization?.(id),
+      specializationFormula: id => {
+        const formulaId = A.getSigianSpecializationFormulaId?.(id);
+        return formulaId ? allAstralCards().find(card => card.id === formulaId) || null : null;
+      },
       specializationName: id => t(`specialization.${A.getAstralSpecialization?.(id)?.id || id}`),
       leagueLabel: id => t(`league.${id}`),
       difficultyLabel: id => t(`difficulty.${id}`),

@@ -212,6 +212,8 @@
             enemyTalent: options?.enemyTalent || enemySpecializationRecord?.talent,
             playerSpecialization,
             enemySpecialization,
+            playerGuaranteedFormulaId: options?.playerGuaranteedFormulaId,
+            enemyGuaranteedFormulaId: options?.enemyGuaranteedFormulaId,
             playerAbilities: resolvedPlayerAstralAbilities,
             enemyAbilities: resolvedEnemyAstralAbilities,
             playerInitialPowers: options?.playerInitialPowers,

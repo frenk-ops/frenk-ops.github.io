@@ -28,6 +28,18 @@
     return (A.SCHOOLS || []).some(school => school.id === id) ? id : null;
   };
   const normalizeTournamentMode = value => TOURNAMENT_MODES[value] ? value : "league";
+  const canonicalTournamentSpecializationIds = () =>
+    (A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || A.ASTRAL_SPECIALIZATIONS || [])
+      .filter(item => !item.legacyOnly && item.specializationFormulaId)
+      .map(item => item.id)
+      .filter(Boolean);
+  const specializationFormulaId = specializationId =>
+    A.getSigianSpecializationFormulaId?.(specializationId) || null;
+  const normalizeNewTournamentSpecialization = value => {
+    const normalized = normalizePlayerSpecialization(value);
+    const canonical = canonicalTournamentSpecializationIds();
+    return canonical.includes(normalized) ? normalized : (canonical[0] || "battlemage");
+  };
   const normalizeDistribution = value => ["arcane", "free", "mirror"].includes(value) ? value : "arcane";
 
   function resolveTournamentRules(options = {}) {
@@ -273,6 +285,7 @@
         rank,
         talent,
         specialization: tournamentRules.specializationsEnabled ? specialization : undefined,
+        specializationFormulaId: tournamentRules.specializationsEnabled ? specializationFormulaId(specialization) : null,
         difficulty: difficultyOrder[index],
         league: LEAGUE_BY_MATCH[index],
         passives: [],
@@ -282,14 +295,14 @@
       };
     });
     const requestedSpecialization = options?.specialization;
-    const availableSpecializations = (A.ASTRAL_SPECIALIZATIONS || []).map(item => item.id).filter(Boolean);
+    const availableSpecializations = canonicalTournamentSpecializationIds();
     const resolvedSpecialization = tournamentRules.specializationsEnabled
       ? (requestedSpecialization === "random"
         ? (rng.pick(availableSpecializations) || "battlemage")
-        : normalizePlayerSpecialization(requestedSpecialization))
+        : normalizeNewTournamentSpecialization(requestedSpecialization))
       : null;
     return {
-      version: 3,
+      version: 4,
       id: seed,
       seed,
       tournamentMode: tournamentRules.tournamentMode,
@@ -297,6 +310,7 @@
       specializationsEnabled: tournamentRules.specializationsEnabled,
       evolutionEnabled: tournamentRules.evolutionEnabled,
       specialization: resolvedSpecialization,
+      specializationFormulaId: resolvedSpecialization ? specializationFormulaId(resolvedSpecialization) : null,
       setId: "astral-original",
       currentMatch: 0,
       points: 0,
@@ -316,10 +330,11 @@
 
   function normalizeTournament(tournament) {
     if (!tournament) return null;
-    const legacyEvolution = Number(tournament.version || 0) < 3;
+    const sourceVersion = Number(tournament.version || 0);
+    const legacyEvolution = sourceVersion < 3;
     const tournamentMode = normalizeTournamentMode(tournament.tournamentMode || (legacyEvolution ? "evolution" : "league"));
     const preset = TOURNAMENT_MODES[tournamentMode];
-    tournament.version = 3;
+    tournament.version = 4;
     tournament.setId = "astral-original";
     tournament.tournamentMode = tournamentMode;
     tournament.spellbookDistribution = normalizeDistribution(tournament.spellbookDistribution || preset.spellbookDistribution);
@@ -331,8 +346,11 @@
       : (legacyEvolution || preset.evolutionEnabled);
     tournament.specialization = tournament.specializationsEnabled
       ? (tournament.specialization === "random"
-        ? (A.createRng(`${tournament.seed}-player-specialization`).pick((A.ASTRAL_SPECIALIZATIONS || []).map(item => item.id).filter(Boolean)) || "battlemage")
+        ? (A.createRng(`${tournament.seed}-player-specialization`).pick(canonicalTournamentSpecializationIds()) || "battlemage")
         : normalizePlayerSpecialization(tournament.specialization))
+      : null;
+    tournament.specializationFormulaId = tournament.specializationsEnabled
+      ? specializationFormulaId(tournament.specialization)
       : null;
     tournament.winTarget = WIN_TARGET;
     tournament.selectedPassives = Array.isArray(tournament.selectedPassives) ? tournament.selectedPassives : [];
@@ -345,6 +363,9 @@
       specialization: tournament.specializationsEnabled
         ? (opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage")
         : undefined,
+      specializationFormulaId: tournament.specializationsEnabled
+        ? specializationFormulaId(opponent.specialization || SPECIALIZATION_BY_TALENT[opponent.talent] || "battlemage")
+        : null,
       passives: [],
       result: opponent.result || (opponent.defeated ? "win" : null),
       score: Number(opponent.score || 0)

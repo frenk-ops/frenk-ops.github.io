@@ -3,6 +3,26 @@
 
   const portraitFor = index => index % 2 === 0 ? "assets/ui/portraits/alice.png" : "assets/ui/portraits/cooler.png";
 
+  function specializationFormulaSlot(specId, context) {
+    const spec = context.specialization(specId);
+    const card = context.specializationFormula?.(specId) || null;
+    if (!spec || !card) {
+      return spec?.legacyOnly
+        ? `<section class="tournament-specialization-formula-slot is-legacy"><small>${context.t("tournament.specializationFormula")}</small><strong>${context.escapeHtml(context.t("tournament.legacyWizardCompatibility"))}</strong></section>`
+        : "";
+    }
+    const localizedName = context.t(`cards.${card.id}.name`);
+    return `<section class="tournament-specialization-formula-slot">
+      <div class="tournament-specialization-slot-seal" aria-hidden="true">${context.specializationIconMarkup(spec.id, "school-icon-svg tournament-school-icon")}</div>
+      <div class="tournament-specialization-slot-copy">
+        <small>${context.escapeHtml(context.t("tournament.specializationFormula"))}</small>
+        <strong>${context.escapeHtml(localizedName)}</strong>
+        <span>${context.escapeHtml(context.schoolName(spec.school || card.school))} · ${context.escapeHtml(context.t("archive.cost"))} ${context.escapeHtml(card.level || card.cost || 13)}</span>
+      </div>
+      <em>${context.escapeHtml(context.t("tournament.specializationFormulaGuaranteed"))}</em>
+    </section>`;
+  }
+
   function specializationProgression(specId, context) {
     const { t, specialization, abilityName, abilityDescription, escapeHtml } = context;
     const spec = specialization(specId);
@@ -21,7 +41,7 @@
         </div>
       </section>`;
     }).join("");
-    return `<div class="tournament-league-details hidden" aria-live="polite">${panels}</div>`;
+    return `${specializationFormulaSlot(specId, context)}<div class="tournament-league-details hidden" aria-live="polite">${panels}</div>`;
   }
 
   function renderEmpty(context) {
@@ -134,6 +154,8 @@
           <div class="tournament-summary-stat"><small>${t("tournament.points")}</small><strong>${tournament.points}</strong></div>
           <div class="tournament-summary-specialization"><small>${t("tournament.specialization")}</small><strong class="tournament-specialization-value">${playerSpecialization ? `${specializationIconMarkup(tournament.specialization, "school-icon-svg tournament-school-icon")}<span>${escapeHtml(specializationName(tournament.specialization))}</span>` : t("tournament.noSpecialization")}</strong></div>
         </div>
+
+        ${specializationFormulaSlot(tournament.specialization, context)}
 
         <div class="passive-list">
           <h3>${t("tournament.activeAbilities")} · ${leagueLabel(current.league)}</h3>

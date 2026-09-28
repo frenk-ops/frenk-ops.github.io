@@ -43,12 +43,12 @@
   ];
 
   const SPECIALIZATIONS = [
-    { id: "necromancer", name: "Necromancer", talent: "death", icon: "☠️", groups: [[15,34],[5,22,34],[10,5,22,34,1]] },
-    { id: "battlemage", name: "BattleMage", talent: "fire", icon: "🔥", groups: [[11,30],[1,23,30],[6,1,23,30]] },
-    { id: "druid", name: "Druid", talent: "nature", icon: "🌿", groups: [[14,33],[4,26,33],[9,4,26,33]] },
-    { id: "thundermage", name: "ThunderMage", talent: "air", icon: "🌪️", groups: [[13,32],[3,27,32],[8,3,4,27,32]] },
-    { id: "stormmage", name: "StormMage", talent: "water", icon: "💧", groups: [[12,31],[2,28,31],[7,2,28,31,17]] },
-    { id: "wizard", name: "Wizard", talent: "fire", icon: "✨", groups: [[29],[29,35],[29,36,37]] }
+    { id: "necromancer", name: "Necromancer", talent: "death", school: "death", icon: "☠️", specializationFormulaId: "astral_death_13", formulaAbilityId: 34, groups: [[15,34],[5,22,34],[10,5,22,34,1]] },
+    { id: "battlemage", name: "BattleMage", talent: "fire", school: "fire", icon: "🔥", specializationFormulaId: "astral_fire_13", formulaAbilityId: 30, groups: [[11,30],[1,23,30],[6,1,23,30]] },
+    { id: "druid", name: "Druid", talent: "nature", school: "nature", icon: "🌿", specializationFormulaId: "astral_earth_13", formulaAbilityId: 33, groups: [[14,33],[4,26,33],[9,4,26,33]] },
+    { id: "thundermage", name: "ThunderMage", talent: "air", school: "air", icon: "🌪️", specializationFormulaId: "astral_air_13", formulaAbilityId: 32, groups: [[13,32],[3,27,32],[8,3,4,27,32]] },
+    { id: "stormmage", name: "StormMage", talent: "water", school: "water", icon: "💧", specializationFormulaId: "astral_water_13", formulaAbilityId: 31, groups: [[12,31],[2,28,31],[7,2,28,31,17]] },
+    { id: "wizard", name: "Wizard", talent: "fire", icon: "✨", legacyOnly: true, groups: [[29],[29,35],[29,36,37]] }
   ];
 
   const LEAGUE_STAGE = Object.freeze({ starting: 1, advanced: 2, major: 3, 1: 1, 2: 2, 3: 3 });
@@ -81,6 +81,22 @@
     const spec = specialization(specializationValue, fallbackTalent);
     const stage = normalizeStage(stageValue);
     return [...spec.groups[stage - 1]];
+  }
+
+  function sigianAbilityLoadout(specializationValue, stageValue, fallbackTalent) {
+    const spec = specialization(specializationValue, fallbackTalent);
+    const ids = abilityLoadout(spec.id, stageValue, fallbackTalent);
+    return spec.formulaAbilityId
+      ? ids.filter(id => Number(id) !== Number(spec.formulaAbilityId))
+      : ids;
+  }
+
+  function specializationFormulaId(specializationValue, fallbackTalent) {
+    return specialization(specializationValue, fallbackTalent)?.specializationFormulaId || null;
+  }
+
+  function tournamentSpecializations() {
+    return SPECIALIZATIONS.filter(item => !item.legacyOnly && item.specializationFormulaId);
   }
 
   function abilityRecords(ids) {
@@ -134,6 +150,7 @@
 
   A.ASTRAL_ABILITIES = Object.freeze(ABILITIES.map(item => item ? Object.freeze({ ...item }) : null));
   A.ASTRAL_SPECIALIZATIONS = Object.freeze(SPECIALIZATIONS.map(item => Object.freeze({ ...item, groups: item.groups.map(group => Object.freeze([...group])) })));
+  A.SIGIAN_TOURNAMENT_SPECIALIZATIONS = Object.freeze(tournamentSpecializations().map(item => Object.freeze({ ...item, groups: item.groups.map(group => Object.freeze([...group])) })));
   A.ASTRAL_ABILITY_RE = Object.freeze({
     specializationTableAddress: "0x478330",
     profileAbilityOffset: "0x2C",
@@ -147,6 +164,9 @@
   A.normalizeAstralLeagueStage = normalizeStage;
   A.getAstralSpecialization = specialization;
   A.getAstralAbilityLoadout = abilityLoadout;
+  A.getSigianSpecializationAbilityLoadout = sigianAbilityLoadout;
+  A.getSigianSpecializationFormulaId = specializationFormulaId;
+  A.getSigianTournamentSpecializations = () => A.SIGIAN_TOURNAMENT_SPECIALIZATIONS.map(item => ({ ...item, groups:item.groups.map(group => [...group]) }));
   A.getAstralAbilityRecords = abilityRecords;
   A.getAstralRuntimePassiveKeys = abilityKeys;
   A.applyAstralAbilityFighterSetup = applyFighterSetup;
