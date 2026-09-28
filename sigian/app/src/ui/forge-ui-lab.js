@@ -13,9 +13,10 @@
   const FULL_IMPRINT_MS = 1450;
   const QUICK_IMPRINT_MS = 780;
   const MOTION_IDLE_MS = 420;
-  const MOTION_LIMIT_X = 4;
-  const MOTION_LIMIT_Y = 4.5;
-  const MOTION_DEAD_ZONE = .14;
+  const MOTION_LIMIT_X = 4.5;
+  const MOTION_LIMIT_Y = 5;
+  const MOTION_DEAD_ZONE = .1;
+  const INTERACTIVE_SELECTOR = "button, input, select, textarea, label, a, [role='button'], [data-lab-interactive]";
 
   const state = {
     session: null,
@@ -27,7 +28,7 @@
     tiltX: 18,
     tiltY: -6,
     tiltZ: -2,
-    depth: 72,
+    depth: 92,
     atmosphere: true,
     motionEnabled: false,
     motionSensorStatus: "idle",
@@ -36,6 +37,23 @@
   };
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
+
+  const isInteractiveTarget = target => Boolean(target?.closest?.(INTERACTIVE_SELECTOR));
+
+  function motionParallaxVector(rotateX, rotateY) {
+    const horizontal = clamp(rotateY, -MOTION_LIMIT_Y, MOTION_LIMIT_Y);
+    const vertical = clamp(-rotateX, -MOTION_LIMIT_X, MOTION_LIMIT_X);
+    const layer = factor => ({
+      x: horizontal * factor,
+      y: vertical * factor
+    });
+    return {
+      impressed: layer(.06),
+      art: layer(.34),
+      raised: layer(.58),
+      floating: layer(.82)
+    };
+  }
 
   function pointerMotionVector(rect, clientX, clientY) {
     const normalize = (value, size) => clamp((value / Math.max(1, size) - .5) * 2, -1, 1);
@@ -96,6 +114,13 @@
       if (!card) return;
       card.style.setProperty("--lab-pointer-x", runtime.currentX.toFixed(3) + "deg");
       card.style.setProperty("--lab-pointer-y", runtime.currentY.toFixed(3) + "deg");
+      card.style.setProperty("--lab-motion-skew-x", (runtime.currentY * .45).toFixed(3) + "deg");
+      card.style.setProperty("--lab-motion-skew-y", (runtime.currentX * .22).toFixed(3) + "deg");
+      const parallax = motionParallaxVector(runtime.currentX, runtime.currentY);
+      Object.entries(parallax).forEach(([layer, vector]) => {
+        card.style.setProperty("--lab-motion-" + layer + "-x", vector.x.toFixed(3) + "px");
+        card.style.setProperty("--lab-motion-" + layer + "-y", vector.y.toFixed(3) + "px");
+      });
       const moving = Math.max(Math.abs(runtime.currentX), Math.abs(runtime.currentY)) > .08;
       card.classList.toggle("is-motion-active", moving || runtime.direct);
     };
@@ -109,21 +134,31 @@
 
     const tick = now => {
       runtime.frame = 0;
+      let returning = false;
       if (!runtime.card?.isConnected || !state.motionEnabled || prefersReducedMotion() || document.hidden || !viewIsActive()) {
         runtime.targetX = 0;
         runtime.targetY = 0;
       } else if (!runtime.direct && now - runtime.lastInput >= MOTION_IDLE_MS) {
         runtime.targetX = 0;
         runtime.targetY = 0;
+        returning = true;
       }
 
       const elapsed = runtime.lastFrame ? clamp((now - runtime.lastFrame) / 16.67, .5, 2) : 1;
       runtime.lastFrame = now;
-      const damping = Math.pow(.72, elapsed);
-      runtime.velocityX = (runtime.velocityX + (runtime.targetX - runtime.currentX) * .12 * elapsed) * damping;
-      runtime.velocityY = (runtime.velocityY + (runtime.targetY - runtime.currentY) * .12 * elapsed) * damping;
-      runtime.currentX += runtime.velocityX * elapsed;
-      runtime.currentY += runtime.velocityY * elapsed;
+      if (returning) {
+        const follow = 1 - Math.pow(.76, elapsed);
+        runtime.velocityX = 0;
+        runtime.velocityY = 0;
+        runtime.currentX += (runtime.targetX - runtime.currentX) * follow;
+        runtime.currentY += (runtime.targetY - runtime.currentY) * follow;
+      } else {
+        const damping = Math.pow(.72, elapsed);
+        runtime.velocityX = (runtime.velocityX + (runtime.targetX - runtime.currentX) * .12 * elapsed) * damping;
+        runtime.velocityY = (runtime.velocityY + (runtime.targetY - runtime.currentY) * .12 * elapsed) * damping;
+        runtime.currentX += runtime.velocityX * elapsed;
+        runtime.currentY += runtime.velocityY * elapsed;
+      }
       if (Math.abs(runtime.currentX) >= MOTION_LIMIT_X) runtime.velocityX = 0;
       if (Math.abs(runtime.currentY) >= MOTION_LIMIT_Y) runtime.velocityY = 0;
       runtime.currentX = clamp(runtime.currentX, -MOTION_LIMIT_X, MOTION_LIMIT_X);
@@ -238,7 +273,7 @@
         if (state.motionEnabled) bindEnvironment();
       },
       pointer(event) {
-        if (!runtime.stage || event.pointerType === "touch") return;
+        if (!runtime.stage || event.pointerType === "touch" || isInteractiveTarget(event.target)) return;
         const vector = pointerMotionVector(runtime.stage.getBoundingClientRect(), event.clientX, event.clientY);
         input(vector.x, vector.y);
       },
@@ -422,6 +457,8 @@
       "--lab-tilt-x:" + Number(state.tiltX || 0) + "deg",
       "--lab-tilt-y:" + Number(state.tiltY || 0) + "deg",
       "--lab-tilt-z:" + Number(state.tiltZ || 0) + "deg",
+      "--lab-pose-skew-x:" + (Number(state.tiltY || 0) * .45) + "deg",
+      "--lab-pose-skew-y:" + (Number(state.tiltX || 0) * .22) + "deg",
       "--lab-art-z:var(--lab-z-art)",
       "--lab-ui-z:var(--lab-z-floating)",
       "--lab-name-z:var(--lab-z-raised)",
@@ -517,7 +554,7 @@
       const imprint = state.imprintSlotId === sigil.slotId ? " is-imprinting" : "";
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
-        '<div class="forge-lab-sigil-row forge-lab-control-anchor forge-lab-sigil-anchor' + imprint + breaking + '" data-lab-control-anchor="sigil" data-lab-depth-layer="impressed" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
+        '<div class="forge-lab-sigil-row forge-lab-sigil-anchor' + imprint + breaking + '" data-lab-control-anchor="sigil" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
           '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente">‹</button>' +
           '<button type="button" class="forge-lab-sigil-mark" data-lab-sigil="' + escapeHtml(sigil.slotId) + '">' +
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
@@ -541,23 +578,6 @@
   function inlineControlMarkup(recipe) {
     const control = state.inlineControl;
     if (!control) return "";
-
-    if (control === "school") {
-      const schools = activeSchools();
-      return (
-        '<div class="forge-lab-school-radial" data-lab-inline-wheel="school" aria-label="Scelta rapida scuola">' +
-          schools.map((school, index) =>
-            '<button type="button" class="' + (school.id === recipe.school ? "is-selected" : "") + '" ' +
-              'data-lab-inline-school="' + escapeHtml(school.id) + '" ' +
-              'style="--lab-orbit-index:' + index + ';--lab-orbit-count:' + schools.length + '" ' +
-              'aria-label="' + escapeHtml(schoolLabel(school.id)) + '">' +
-              schoolIconMarkup(school.id, "forge-lab-radial-school-icon") +
-            '</button>'
-          ).join("") +
-        '</div>'
-      );
-    }
-
     if (!["cost", "attack", "health"].includes(control)) return "";
     const isCost = control === "cost";
     const value = isCost
@@ -574,6 +594,23 @@
     );
   }
 
+  function schoolRadialMarkup(recipe) {
+    if (state.inlineControl !== "school") return "";
+    const schools = activeSchools();
+    return (
+      '<div class="forge-lab-school-radial" data-lab-inline-wheel="school" aria-label="Selezione completa Scuole">' +
+        schools.map((school, index) =>
+          '<button type="button" class="' + (school.id === recipe.school ? "is-selected" : "") + '" ' +
+            'data-lab-inline-school="' + escapeHtml(school.id) + '" ' +
+            'style="--lab-orbit-index:' + index + ';--lab-orbit-count:' + schools.length + '" ' +
+            'aria-label="' + escapeHtml(schoolLabel(school.id)) + '">' +
+            schoolIconMarkup(school.id, "forge-lab-radial-school-icon") +
+          '</button>'
+        ).join("") +
+      '</div>'
+    );
+  }
+
   function cardMarkup(recipe) {
     const art = selectedArtCard(recipe);
     const name = recipe.presentation?.name || "Nuova Formula";
@@ -581,10 +618,10 @@
     const stats = recipe.stats || {};
     const longName = name.length > 34 ? " is-very-long" : name.length > 22 ? " is-long" : "";
     const nameplate = state.nameEditing
-      ? '<form class="forge-lab-nameplate forge-lab-name-editing' + longName + '" data-lab-depth-layer="raised" data-lab-name-inline-form>' +
+      ? '<form class="forge-lab-nameplate forge-lab-name-editing' + longName + '" data-lab-name-inline-form>' +
           '<input name="name" maxlength="48" value="' + escapeHtml(name) + '" aria-label="Nome Formula" autocomplete="off">' +
         '</form>'
-      : '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-depth-layer="raised" data-lab-edit-name><span>' + escapeHtml(name) + '</span></button>';
+      : '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-edit-name><span>' + escapeHtml(name) + '</span></button>';
 
     return (
       '<div class="forge-lab-card-shell">' +
@@ -593,30 +630,36 @@
           '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-control-anchor forge-lab-art-anchor" data-lab-control-anchor="art" data-lab-depth-layer="art">' +
             '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
-            '<button type="button" class="forge-lab-art-layer" data-lab-art-main aria-label="Scegli o scorri illustrazione">' +
+            '<div class="forge-lab-art-layer" data-lab-art-visual aria-hidden="true">' +
               (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
-            '</button>' +
+            '</div>' +
+            '<button type="button" class="forge-lab-art-hit" data-lab-art-main aria-label="Scegli o scorri illustrazione"></button>' +
             '<button type="button" class="forge-lab-art-arrow is-next" data-lab-art-step="1" aria-label="Illustrazione successiva">›</button>' +
           '</div>' +
-          '<button type="button" class="forge-lab-cost" data-lab-depth-layer="floating" data-lab-control="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
-          '<button type="button" class="forge-lab-type" data-lab-depth-layer="floating" data-lab-toggle-type>' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
+          '<div class="forge-lab-control-anchor forge-lab-cost-anchor" data-lab-control-anchor="cost" data-lab-depth-layer="floating">' +
+            '<button type="button" class="forge-lab-cost" data-lab-control="cost"><small>COSTO</small><strong>' + escapeHtml(cost) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+            (state.inlineControl === "cost" ? inlineControlMarkup(recipe) : "") +
+          '</div>' +
+          '<div class="forge-lab-control-anchor forge-lab-type-anchor" data-lab-control-anchor="type" data-lab-depth-layer="floating">' +
+            '<button type="button" class="forge-lab-type" data-lab-toggle-type>' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
+          '</div>' +
           '<div class="forge-lab-control-anchor forge-lab-school-anchor" data-lab-control-anchor="school" data-lab-depth-layer="floating">' +
-            '<button type="button" class="forge-lab-school-nav is-prev" data-lab-school-step="-1" aria-label="Scuola precedente">‹</button>' +
-            '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per scegliere; scorri per cambiare">' +
+            '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per la successiva; scorri per cambiare">' +
               schoolIconMarkup(recipe.school, "forge-lab-school-icon") +
             '</button>' +
-            '<button type="button" class="forge-lab-school-nav is-next" data-lab-school-step="1" aria-label="Scuola successiva">›</button>' +
+            '<button type="button" class="forge-lab-school-picker-toggle" data-lab-school-picker-toggle aria-label="Apri selezione completa Scuole"><span aria-hidden="true">✥</span></button>' +
+            schoolRadialMarkup(recipe) +
           '</div>' +
-          nameplate +
+          '<div class="forge-lab-control-anchor forge-lab-name-anchor" data-lab-control-anchor="name" data-lab-depth-layer="raised">' + nameplate + '</div>' +
           (recipe.type === "creature"
-            ? '<div class="forge-lab-stats" data-lab-depth-layer="floating">' +
+            ? '<div class="forge-lab-stats" data-lab-control-anchor="stats" data-lab-depth-layer="floating">' +
                 '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '"><span aria-hidden="true">⚔</span><strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
                 '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '"><span aria-hidden="true">♥</span><strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+                (["attack", "health"].includes(state.inlineControl) ? inlineControlMarkup(recipe) : "") +
               '</div>'
             : "") +
-          inlineControlMarkup(recipe) +
           constraintCardMarkup(recipe) +
-          '<section class="forge-lab-sigils" aria-label="Sigilli">' + sigilRowsMarkup(recipe) + '</section>' +
+          '<section class="forge-lab-sigils" data-lab-control-anchor="sigils" data-lab-depth-layer="impressed" aria-label="Sigilli">' + sigilRowsMarkup(recipe) + '</section>' +
         '</article>' +
       '</div>'
     );
@@ -875,7 +918,7 @@
     const expanded = window.matchMedia?.("(min-width: 981px)")?.matches ? " open" : "";
     return (
       '<details class="forge-lab-tuning"' + expanded + '>' +
-        '<summary class="forge-lab-tuning-summary"><span><small>LABORATORIO UI</small><strong>Calibrazione 2.5D</strong></span><span class="forge-lab-tech-badge">CSS 3D · DOM</span></summary>' +
+        '<summary class="forge-lab-tuning-summary"><span><small>LABORATORIO UI</small><strong>Calibrazione 2.5D</strong></span><span class="forge-lab-tech-badge">Layer motion · DOM</span></summary>' +
         '<div class="forge-lab-tuning-body">' +
           '<div class="forge-lab-tuning-heading"><div><span class="classic-menu-kicker">Regolazione</span><h3>Profondità e atmosfera</h3></div></div>' +
           '<div class="forge-lab-tuning-grid">' +
@@ -901,6 +944,8 @@
     card.style.setProperty("--lab-tilt-x", Number(state.tiltX || 0) + "deg");
     card.style.setProperty("--lab-tilt-y", Number(state.tiltY || 0) + "deg");
     card.style.setProperty("--lab-tilt-z", Number(state.tiltZ || 0) + "deg");
+    card.style.setProperty("--lab-pose-skew-x", (Number(state.tiltY || 0) * .45) + "deg");
+    card.style.setProperty("--lab-pose-skew-y", (Number(state.tiltX || 0) * .22) + "deg");
     depthGeometryProperties(depth).forEach(([name, value]) => card.style.setProperty(name, value));
     card.style.setProperty("--lab-art-z", "var(--lab-z-art)");
     card.style.setProperty("--lab-ui-z", "var(--lab-z-floating)");
@@ -1217,7 +1262,10 @@
   function bindSchoolControl(root, recipe) {
     const button = root.querySelector("[data-lab-school-main]");
     if (!button) return;
-    bindHorizontalControl(button, delta => cycleSchool(recipe, delta), () => {
+    bindHorizontalControl(button, delta => cycleSchool(recipe, delta), () => cycleSchool(recipe, 1));
+    root.querySelector("[data-lab-school-picker-toggle]")?.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       state.inlineControl = state.inlineControl === "school" ? null : "school";
       render();
     });
@@ -1249,7 +1297,7 @@
 
     card.addEventListener("pointerdown", event => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
-      if (event.target.closest("button, input, select, textarea, label, a")) return;
+      if (isInteractiveTarget(event.target)) return;
       startX = event.clientX;
       startY = event.clientY;
       pointerId = event.pointerId;
@@ -1268,8 +1316,8 @@
       const dy = event.clientY - startY;
       const rotateY = clamp(dx / 12, -MOTION_LIMIT_Y, MOTION_LIMIT_Y);
       const rotateX = clamp(-dy / 14, -MOTION_LIMIT_X, MOTION_LIMIT_X);
-      card.style.setProperty("--lab-grab-x", rotateX.toFixed(2) + "deg");
-      card.style.setProperty("--lab-grab-y", rotateY.toFixed(2) + "deg");
+      card.style.setProperty("--lab-grab-x", (rotateX * .22).toFixed(2) + "deg");
+      card.style.setProperty("--lab-grab-y", (rotateY * .45).toFixed(2) + "deg");
       event.preventDefault();
     });
 
@@ -1327,11 +1375,6 @@
     if (!session) return;
 
     root.querySelectorAll("[data-lab-art-step]").forEach(button => button.addEventListener("click", () => cycleArt(recipe, button.dataset.labArtStep)));
-    root.querySelectorAll(".forge-lab-school-nav[data-lab-school-step]").forEach(button => button.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      cycleSchool(recipe, button.dataset.labSchoolStep);
-    }));
     root.querySelectorAll("[data-lab-sigil-step]").forEach(button => button.addEventListener("click", () => cycleSigil(recipe, button.dataset.labSlot, button.dataset.labSigilStep)));
 
     root.querySelectorAll("[data-lab-add-empty]").forEach(button => button.addEventListener("click", () => {
@@ -1503,7 +1546,7 @@
           '<div class="forge-lab-arcane-filaments" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-stage">' + cardMarkup(recipe) + '</div>' +
-          '<p class="forge-lab-gesture-hint">Tap sui medaglioni per la ruota · tieni premuto e trascina alto/destra o basso/sinistra per cambiare valore · scorri Art e Scuola direttamente sulla Formula</p>' +
+          '<p class="forge-lab-gesture-hint">Tap su Costo/ATT/Vita per la ruota · tap Scuola per la successiva · ✥ apre tutte le Scuole · scorri Art e Scuola direttamente sulla Formula</p>' +
         '</section>' +
         tuningMarkup() +
       '</div>' +

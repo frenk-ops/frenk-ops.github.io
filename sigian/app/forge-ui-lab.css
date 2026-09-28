@@ -1452,9 +1452,10 @@
   width: min(100%, 404px);
   aspect-ratio: .69;
   border-radius: 28px;
-  filter:
-    drop-shadow(0 44px 34px rgba(0, 0, 0, .55))
-    drop-shadow(0 8px 10px rgba(0, 0, 0, .24));
+  filter: none;
+  box-shadow:
+    0 44px 34px rgba(0, 0, 0, .48),
+    0 8px 10px rgba(0, 0, 0, .2);
 }
 
 .forge-lab-card::before {
@@ -2814,10 +2815,11 @@
   cursor: grabbing;
   transition:
     transform 55ms linear,
-    filter 180ms ease;
-  filter:
-    drop-shadow(0 52px 38px rgba(0, 0, 0, .6))
-    drop-shadow(0 9px 12px rgba(0, 0, 0, .28));
+    box-shadow 180ms ease;
+  filter: none;
+  box-shadow:
+    0 52px 38px rgba(0, 0, 0, .54),
+    0 9px 12px rgba(0, 0, 0, .24);
 }
 
 .forge-lab-card-frame {
@@ -3021,31 +3023,6 @@
     rotateZ(4deg);
 }
 
-.forge-lab-school-nav {
-  position: absolute;
-  z-index: 13;
-  top: .5%;
-  width: 28px;
-  height: 48px;
-  padding: 0;
-  border: 0;
-  color: rgba(250, 229, 185, .8);
-  background: transparent;
-  text-shadow:
-    0 2px 5px rgba(0, 0, 0, .92),
-    0 0 8px var(--lab-school-soft);
-  font: 700 1.45rem/1 Georgia, serif;
-  transform: translateZ(calc(var(--lab-ui-z) + 18px));
-  opacity: .72;
-}
-
-.forge-lab-school-nav.is-prev { right: 22.7%; }
-.forge-lab-school-nav.is-next { right: -3.2%; }
-
-.forge-lab-school-nav:active {
-  transform: translateZ(calc(var(--lab-ui-z) + 18px)) scale(.9);
-}
-
 .forge-lab-stats {
   left: 5%;
   right: 5%;
@@ -3186,16 +3163,6 @@
     height: 66px;
   }
 
-  .forge-lab-school-nav {
-    top: .1%;
-    width: 22px;
-    height: 42px;
-    font-size: 1.1rem;
-  }
-
-  .forge-lab-school-nav.is-prev { right: 22%; }
-  .forge-lab-school-nav.is-next { right: -4.5%; }
-
   .forge-lab-nameplate {
     left: 6%;
     right: 6%;
@@ -3314,17 +3281,17 @@
     rotateZ(var(--lab-tilt-z));
   transition:
     transform 190ms cubic-bezier(.2,.78,.25,1),
-    filter 180ms ease;
+    box-shadow 180ms ease;
   cursor: grab;
 }
 
 .forge-lab-card.is-grabbed {
   cursor: grabbing;
-  transition: transform 42ms linear, filter 180ms ease;
+  transition: transform 42ms linear, box-shadow 180ms ease;
 }
 
 .forge-lab-card.is-returning {
-  transition: transform 390ms cubic-bezier(.16,.92,.28,1.18), filter 180ms ease;
+  transition: transform 390ms cubic-bezier(.16,.92,.28,1.18), box-shadow 180ms ease;
 }
 
 .forge-lab-card.school-fire {
@@ -3742,14 +3709,6 @@
 
 .forge-lab-stat.health span {
   color: #d89178;
-}
-
-.forge-lab-school-nav {
-  color: var(--lab-switch-fg);
-  opacity: .9;
-  text-shadow:
-    0 2px 5px rgba(0,0,0,.82),
-    0 0 8px var(--lab-school-soft);
 }
 
 .forge-lab-tuning-grid label:first-child {
@@ -4228,9 +4187,8 @@
   background: color-mix(in srgb, var(--lab-sigil-metal) 13%, rgba(105,58,25,.08));
 }
 
-/* Navigazione arte e scuola: stesso linguaggio di glifi arcani, meno UI. */
-.forge-lab-art-arrow,
-.forge-lab-school-nav {
+/* Navigazione Art: glifi arcani esterni alla Formula. */
+.forge-lab-art-arrow {
   border: 0;
   border-radius: 0;
   clip-path: polygon(50% 0, 92% 18%, 100% 50%, 92% 82%, 50% 100%, 8% 82%, 0 50%, 8% 18%);
@@ -4261,26 +4219,6 @@
   transform: translateX(-9px);
 }
 
-.forge-lab-school-nav {
-  z-index: 30;
-  top: -.2%;
-  width: 31px;
-  height: 48px;
-  opacity: .96;
-  pointer-events: auto;
-  touch-action: manipulation;
-  transform: translateZ(calc(var(--lab-ui-z) + 26px));
-}
-
-.forge-lab-school-nav.is-prev {
-  right: 24.5%;
-}
-
-.forge-lab-school-nav.is-next {
-  right: -8.8%;
-}
-
-.forge-lab-school-nav:hover,
 .forge-lab-art-arrow:hover {
   filter: brightness(1.16);
 }
@@ -4328,19 +4266,6 @@
 
   .forge-lab-art-arrow.is-next {
     transform: translateX(-5px);
-  }
-
-  .forge-lab-school-nav {
-    width: 27px;
-    height: 43px;
-  }
-
-  .forge-lab-school-nav.is-prev {
-    right: 23.8%;
-  }
-
-  .forge-lab-school-nav.is-next {
-    right: -9.5%;
   }
 
   .forge-lab-cloud {
@@ -4528,9 +4453,8 @@
   caret-color: var(--lab-school-bright);
 }
 
-/* Le frecce sono segni arcani, non bottoni. */
-.forge-lab-art-arrow,
-.forge-lab-school-nav {
+/* Le frecce Art sono segni arcani, non bottoni. */
+.forge-lab-art-arrow {
   border: 0;
   border-radius: 0;
   clip-path: none;
@@ -4551,29 +4475,9 @@
   transform: translateY(-17px);
 }
 
-.forge-lab-art-arrow:hover,
-.forge-lab-school-nav:hover {
+.forge-lab-art-arrow:hover {
   opacity: 1;
   filter: brightness(1.3);
-}
-
-.forge-lab-school-nav {
-  z-index: 36;
-  top: -1.8%;
-  width: 25px;
-  height: 42px;
-  padding: 0;
-  font: 700 1.7rem/1 Georgia, serif;
-  opacity: .84;
-  transform: translateZ(calc(var(--lab-ui-z) + 28px));
-}
-
-.forge-lab-school-nav.is-prev {
-  right: 17.5%;
-}
-
-.forge-lab-school-nav.is-next {
-  right: -12.8%;
 }
 
 /* Costo e Scuola diventano applicazioni più esterne alla carta. */
@@ -4729,18 +4633,18 @@
 }
 
 .forge-lab-inline-wheel.is-attack {
-  left: -12.5%;
-  bottom: 6.2%;
+  left: -26px;
+  bottom: 60px;
 }
 
 .forge-lab-inline-wheel.is-health {
-  right: -12.5%;
-  bottom: 6.2%;
+  right: -26px;
+  bottom: 60px;
 }
 
 .forge-lab-inline-wheel.is-cost {
-  left: -12%;
-  top: 8.2%;
+  left: -24px;
+  top: 64px;
 }
 
 .forge-lab-inline-wheel > button {
@@ -4800,10 +4704,10 @@
 .forge-lab-school-radial {
   position: absolute;
   z-index: 43;
-  right: -15%;
-  top: 8.5%;
-  width: 164px;
-  height: 82px;
+  right: -21%;
+  top: -86px;
+  width: 220px;
+  height: 124px;
   transform: translateZ(calc(var(--lab-ui-z) + 44px));
   pointer-events: none;
 }
@@ -4822,8 +4726,8 @@
   position: absolute;
   left: calc(14px + var(--lab-orbit-index) * 30px);
   top: calc(35px - abs(2 - var(--lab-orbit-index)) * 7px);
-  width: 31px;
-  height: 31px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 0;
@@ -5023,19 +4927,6 @@
     transform: translateY(-13px);
   }
 
-  .forge-lab-school-nav {
-    width: 22px;
-    font-size: 1.45rem;
-  }
-
-  .forge-lab-school-nav.is-prev {
-    right: 17%;
-  }
-
-  .forge-lab-school-nav.is-next {
-    right: -12%;
-  }
-
   .forge-lab-stats {
     left: -6.3%;
     right: -6.3%;
@@ -5053,18 +4944,18 @@
   }
 
   .forge-lab-inline-wheel.is-attack {
-    left: 1%;
-    bottom: 6%;
+    left: -8px;
+    bottom: 54px;
   }
 
   .forge-lab-inline-wheel.is-health {
-    right: 1%;
-    bottom: 6%;
+    right: -8px;
+    bottom: 54px;
   }
 
   .forge-lab-inline-wheel.is-cost {
-    left: 1%;
-    top: 8%;
+    left: -16px;
+    top: 58px;
   }
 
   .forge-lab-inline-wheel > button {
@@ -5073,8 +4964,8 @@
   }
 
   .forge-lab-school-radial {
-    right: -11%;
-    top: 8%;
+    right: -8%;
+    top: 58px;
     transform: translateZ(calc(var(--lab-ui-z) + 36px)) scale(.9);
     transform-origin: right top;
   }
@@ -5101,11 +4992,11 @@
   left: auto;
   top: auto;
 }
-.forge-lab-school-radial button:nth-child(1) { left: 8px;   top: 42px; }
-.forge-lab-school-radial button:nth-child(2) { left: 38px;  top: 24px; }
-.forge-lab-school-radial button:nth-child(3) { left: 68px;  top: 15px; }
-.forge-lab-school-radial button:nth-child(4) { left: 98px;  top: 24px; }
-.forge-lab-school-radial button:nth-child(5) { left: 128px; top: 42px; }
+.forge-lab-school-radial button:nth-child(1) { left: 2px;   top: 70px; }
+.forge-lab-school-radial button:nth-child(2) { left: 43px;  top: 36px; }
+.forge-lab-school-radial button:nth-child(3) { left: 86px;  top: 16px; }
+.forge-lab-school-radial button:nth-child(4) { left: 129px; top: 30px; }
+.forge-lab-school-radial button:nth-child(5) { left: 172px; top: 62px; }
 
 /* Milestone 2: every previous/next pair shares the controlled element's transform context. */
 .forge-lab-control-anchor {
@@ -5133,11 +5024,23 @@
   width: 100%;
   height: 100%;
   transform: none;
+  pointer-events: none;
+}
+
+.forge-lab-art-anchor .forge-lab-art-hit {
+  position: absolute;
+  z-index: 3;
+  inset: 0 0 auto;
+  width: 100%;
+  height: 65%;
+  padding: 0;
+  border: 0;
+  background: transparent;
   pointer-events: auto;
+  touch-action: pan-y;
 }
 
 .forge-lab-art-arrow,
-.forge-lab-school-nav,
 .forge-lab-cycle {
   min-width: 44px;
   min-height: 44px;
@@ -5168,6 +5071,42 @@
 .forge-lab-art-anchor .forge-lab-art-arrow.is-prev { left: -54px; }
 .forge-lab-art-anchor .forge-lab-art-arrow.is-next { right: -54px; }
 
+.forge-lab-cost-anchor {
+  position: absolute;
+  z-index: 38;
+  left: -7.6%;
+  top: -3.8%;
+  width: 76px;
+  height: 76px;
+  pointer-events: none;
+}
+
+.forge-lab-cost-anchor .forge-lab-cost {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: auto;
+  transform: rotateZ(-5deg);
+}
+
+.forge-lab-type-anchor {
+  position: absolute;
+  z-index: 37;
+  left: 50%;
+  top: -1.6%;
+  pointer-events: none;
+}
+
+.forge-lab-type-anchor .forge-lab-type {
+  position: relative;
+  left: auto;
+  top: auto;
+  pointer-events: auto;
+  transform: none;
+}
+
 .forge-lab-school-anchor {
   position: absolute;
   z-index: 36;
@@ -5189,18 +5128,55 @@
   pointer-events: auto;
 }
 
-.forge-lab-school-anchor .forge-lab-school-nav {
+.forge-lab-school-picker-toggle {
   position: absolute;
-  top: 50%;
+  z-index: 44;
+  right: -15.5%;
+  top: -24px;
   width: 44px;
   height: 44px;
-  opacity: .84;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: color-mix(in srgb, var(--lab-school-bright) 72%, #f1dfb7);
+  background: transparent;
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--lab-school-bright) 52%, transparent),
+    0 2px 3px rgba(0, 0, 0, .8);
   pointer-events: auto;
-  transform: translateY(-50%) translateZ(var(--lab-z-control-local));
+  touch-action: manipulation;
+  transform: translateZ(var(--lab-z-control-local));
 }
 
-.forge-lab-school-anchor .forge-lab-school-nav.is-prev { left: -54px; right: auto; }
-.forge-lab-school-anchor .forge-lab-school-nav.is-next { right: -54px; }
+.forge-lab-school-picker-toggle span {
+  font: 700 1.18rem/1 Georgia, serif;
+  transform: rotate(12deg);
+}
+
+.forge-lab-school-picker-toggle:hover,
+.forge-lab-school-picker-toggle:focus-visible {
+  color: #fff0c8;
+  filter: brightness(1.18);
+}
+
+.forge-lab-name-anchor {
+  position: absolute;
+  z-index: 30;
+  left: -7.2%;
+  right: -7.2%;
+  top: 46.5%;
+  pointer-events: none;
+}
+
+.forge-lab-name-anchor .forge-lab-nameplate {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  pointer-events: auto;
+  transform: rotateZ(-.45deg);
+}
 
 .forge-lab-sigil-anchor {
   grid-template-columns: minmax(0, 1fr);
@@ -5226,32 +5202,147 @@
   transform: translateY(-50%) translateZ(var(--lab-z-control-local));
 }
 
-/* Milestone 3: semantic depth grammar for the unfinished Formula. */
+/* Milestone 4.1: every visible control and its hit target share one transformed anchor. */
+.forge-lab-card {
+  --lab-pose-skew-x: 0deg;
+  --lab-pose-skew-y: 0deg;
+  --lab-motion-skew-x: 0deg;
+  --lab-motion-skew-y: 0deg;
+  transform-style: flat;
+  transform:
+    rotate(var(--lab-tilt-z))
+    skewX(calc(var(--lab-pose-skew-x) + var(--lab-motion-skew-x) + var(--lab-grab-y)))
+    skewY(calc(var(--lab-pose-skew-y) + var(--lab-motion-skew-y) + var(--lab-grab-x)))
+    scaleY(.96);
+}
+
+@keyframes forgeLabCardRitual {
+  0%, 100% {
+    transform:
+      rotate(var(--lab-tilt-z))
+      skewX(calc(var(--lab-pose-skew-x) + var(--lab-motion-skew-x)))
+      skewY(calc(var(--lab-pose-skew-y) + var(--lab-motion-skew-y)))
+      scaleY(.96);
+  }
+  16% {
+    transform:
+      translateY(-4px)
+      rotate(var(--lab-tilt-z))
+      skewX(calc(var(--lab-pose-skew-x) + var(--lab-motion-skew-x)))
+      skewY(calc(var(--lab-pose-skew-y) + var(--lab-motion-skew-y)))
+      scale(.995, .965);
+  }
+  42% {
+    transform:
+      translateY(-1px)
+      rotate(var(--lab-tilt-z))
+      skewX(calc(var(--lab-pose-skew-x) + var(--lab-motion-skew-x)))
+      skewY(calc(var(--lab-pose-skew-y) + var(--lab-motion-skew-y)))
+      scaleY(.96);
+  }
+}
+
 .forge-lab-card [data-lab-depth-layer="surface"] {
   transform: translateZ(var(--lab-z-surface));
+  pointer-events: none;
 }
 
-.forge-lab-card [data-lab-depth-layer="impressed"] {
-  transform: translateZ(var(--lab-z-impressed));
+.forge-lab-art-anchor {
+  transform: translate3d(
+    var(--lab-motion-art-x, 0px),
+    var(--lab-motion-art-y, 0px),
+    var(--lab-z-art)
+  );
 }
 
-.forge-lab-card [data-lab-depth-layer="raised"] {
-  transform: translateZ(var(--lab-z-raised));
+.forge-lab-name-anchor {
+  transform: translate3d(
+    var(--lab-motion-raised-x, 0px),
+    var(--lab-motion-raised-y, 0px),
+    var(--lab-z-raised)
+  );
 }
 
-.forge-lab-card [data-lab-depth-layer="floating"] {
-  filter: drop-shadow(0 3px 3px rgba(25, 14, 8, .16));
+.forge-lab-cost-anchor,
+.forge-lab-school-anchor {
+  transform: translate3d(
+    var(--lab-motion-floating-x, 0px),
+    var(--lab-motion-floating-y, 0px),
+    var(--lab-z-floating)
+  );
+  filter: none;
+  pointer-events: none;
+}
+
+.forge-lab-type-anchor {
+  transform: translate3d(
+    calc(-50% + var(--lab-motion-floating-x, 0px)),
+    var(--lab-motion-floating-y, 0px),
+    var(--lab-z-floating)
+  );
+  filter: none;
+  pointer-events: none;
+}
+
+.forge-lab-sigils {
+  transform: translate3d(
+    var(--lab-motion-impressed-x, 0px),
+    var(--lab-motion-impressed-y, 0px),
+    0
+  );
+  transform-style: flat;
+  pointer-events: auto;
+}
+
+.forge-lab-stats {
+  transform: translate3d(
+    var(--lab-motion-floating-x, 0px),
+    var(--lab-motion-floating-y, 0px),
+    0
+  );
+  transform-style: flat;
+  filter: none;
+  pointer-events: auto;
+}
+
+.forge-lab-sigil-anchor {
+  transform: translateZ(0);
+}
+
+.forge-lab-sigil-row {
+  transform: none;
+  pointer-events: auto;
+}
+
+.forge-lab-sigil-row::before,
+.forge-lab-sigil-row::after {
+  pointer-events: none;
+}
+
+.forge-lab-sigil-row button,
+.forge-lab-sigil-row [role="button"] {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.forge-lab-stats .forge-lab-stat {
+  position: relative;
+  z-index: 2;
+  transform: none;
+  rotate: none !important;
+  clip-path: none;
+  pointer-events: auto;
 }
 
 .forge-lab-inline-wheel,
 .forge-lab-school-radial {
-  transform: translateZ(var(--lab-z-fx));
+  transform: translateZ(calc(var(--lab-z-fx) - var(--lab-z-floating)));
 }
 
 .forge-lab-stat.is-scrubbing,
 .forge-lab-cost.is-scrubbing {
   transform:
-    translateZ(var(--lab-z-fx))
     rotateZ(var(--lab-control-lean))
     scale(1.06);
 }
@@ -5277,34 +5368,44 @@
 }
 
 .forge-lab-card.motion-enabled:not(.is-grabbed):not(.is-returning) {
-  transition: filter 180ms ease;
+  transition: box-shadow 180ms ease;
 }
 
-.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-nameplate,
-.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-cost,
-.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-type,
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-name-anchor,
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-cost-anchor,
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-type-anchor,
 .forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-school-anchor,
 .forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-stats {
   animation: forgeLabResidualDrift 6.8s ease-in-out infinite;
 }
 
-.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-cost { animation-delay: -1.7s; animation-duration: 7.4s; }
-.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-type { animation-delay: -4.1s; animation-duration: 8.1s; }
+.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-cost-anchor { animation-delay: -1.7s; animation-duration: 7.4s; }
+.forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-type-anchor { animation-delay: -4.1s; animation-duration: 8.1s; }
 .forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-school-anchor { animation-delay: -2.8s; animation-duration: 7.7s; }
 .forge-lab-card.motion-enabled:not(.is-motion-active) .forge-lab-stats { animation-delay: -5.2s; animation-duration: 8.4s; }
+.forge-lab-card.motion-enabled:not(.is-motion-active):not(.is-grabbed) .forge-lab-art-anchor {
+  animation: forgeLabArtResidualDrift 9.2s ease-in-out -3.6s infinite;
+}
 
 @keyframes forgeLabResidualDrift {
   0%, 100% { translate: 0 0; rotate: 0deg; }
-  38% { translate: .8px -1px; rotate: .1deg; }
-  72% { translate: -1px .6px; rotate: -.08deg; }
+  38% { translate: 1.5px -1.8px; rotate: .2deg; }
+  72% { translate: -1.7px 1.1px; rotate: -.16deg; }
+}
+
+@keyframes forgeLabArtResidualDrift {
+  0%, 100% { translate: 0 0; rotate: 0deg; }
+  42% { translate: .55px -.7px; rotate: .05deg; }
+  76% { translate: -.6px .4px; rotate: -.04deg; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .forge-lab-card.motion-enabled .forge-lab-nameplate,
-  .forge-lab-card.motion-enabled .forge-lab-cost,
-  .forge-lab-card.motion-enabled .forge-lab-type,
+  .forge-lab-card.motion-enabled .forge-lab-name-anchor,
+  .forge-lab-card.motion-enabled .forge-lab-cost-anchor,
+  .forge-lab-card.motion-enabled .forge-lab-type-anchor,
   .forge-lab-card.motion-enabled .forge-lab-school-anchor,
-  .forge-lab-card.motion-enabled .forge-lab-stats {
+  .forge-lab-card.motion-enabled .forge-lab-stats,
+  .forge-lab-card.motion-enabled .forge-lab-art-anchor {
     animation: none !important;
     translate: 0 0;
     rotate: 0deg;
@@ -5314,7 +5415,7 @@
 @media (max-width: 640px) {
   .forge-lab-card-shell {
     grid-template-columns: minmax(0, 300px);
-    transform: translateX(-24px);
+    transform: none;
   }
 
   .forge-lab-art-anchor {
@@ -5323,6 +5424,20 @@
 
   .forge-lab-art-anchor .forge-lab-art-arrow.is-prev { left: -34px; }
   .forge-lab-art-anchor .forge-lab-art-arrow.is-next { right: -34px; }
+
+  .forge-lab-cost-anchor {
+    left: -6.5%;
+    top: -3%;
+    width: 66px;
+    height: 66px;
+  }
+
+  .forge-lab-type-anchor { top: -1.1%; }
+
+  .forge-lab-name-anchor {
+    left: -5%;
+    right: -5%;
+  }
 
   .forge-lab-school-anchor {
     top: -3.4%;
@@ -5335,8 +5450,17 @@
     height: 62px;
   }
 
-  .forge-lab-school-anchor .forge-lab-school-nav.is-prev { left: -34px; }
-  .forge-lab-school-anchor .forge-lab-school-nav.is-next { right: -34px; }
+  .forge-lab-school-picker-toggle {
+    right: -14%;
+    top: -22px;
+  }
+
+  .forge-lab-school-radial {
+    right: -8%;
+    top: 58px;
+    transform: translateZ(calc(var(--lab-z-fx) - var(--lab-z-floating))) scale(.82);
+    transform-origin: right top;
+  }
 
   .forge-lab-sigil-anchor [data-lab-sigil-step="-1"] { left: calc(-9% - 34px); }
   .forge-lab-sigil-anchor [data-lab-sigil-step="1"] { right: calc(-9% - 34px); }
