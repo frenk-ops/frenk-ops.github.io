@@ -806,21 +806,6 @@
       ? t("academy.school", { school:schoolName(academy.formativeSchoolId) })
       : t("academy.schoolNone");
 
-    const locationCard = ({ id, icon, title, description, status, state = "available", action = "", target = "", letter = false, schoolWing = false, disabled = false, note = "", extraAction = "", admissionLetter = false }) => `
-      <article class="academy-location academy-location-${escapeHtml(id)} is-${escapeHtml(state)}" data-academy-location="${escapeHtml(id)}">
-        <div class="academy-location-icon" aria-hidden="true">${icon}</div>
-        <div class="academy-location-copy">
-          <div class="academy-location-heading">
-            <h3>${escapeHtml(title)}</h3>
-            <span class="academy-location-status">${escapeHtml(status)}</span>
-          </div>
-          <p>${escapeHtml(description)}</p>
-          ${note ? `<small>${escapeHtml(note)}</small>` : ""}
-        </div>
-        ${action ? `<button class="classic-stone-button ${disabled ? "ghost" : ""}" type="button" ${target ? `data-academy-target="${escapeHtml(target)}"` : ""} ${letter ? "data-academy-summons-open" : ""} ${schoolWing ? "data-academy-school-wing-open" : ""} ${disabled ? "disabled" : ""}>${escapeHtml(action)}</button>` : ""}
-        ${extraAction ? `<button class="classic-stone-button ghost academy-location-secondary-action" type="button" ${admissionLetter ? "data-academy-admission-open" : ""}>${escapeHtml(extraAction)}</button>` : ""}
-      </article>`;
-
     const schoolAvailable = Boolean(academy.schoolSelectionUnlocked);
     const schoolAction = academy.formativeSchoolId ? t("academy.schools.manage") : t("academy.schools.choose");
     const schoolNote = !schoolAvailable
@@ -848,6 +833,71 @@
         </button>`;
     }).join("");
 
+    const academyLocations = [
+      {
+        id:"atrium", icon:"✉", title:t("academy.atrium.title"), description:t("academy.atrium.description"),
+        status:t("academy.available"), state:"available", action:t("academy.atrium.action"), letter:true,
+        extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
+        admissionLetter:Boolean(academy.academyAdmissionEligible)
+      },
+      {
+        id:"schools", icon:"✦", title:t("academy.schools.title"), description:t("academy.schools.description"),
+        status:schoolAvailable ? t("academy.available") : t("academy.sealed"),
+        state:schoolAvailable ? "available" : "sealed", action:schoolAction, schoolWing:true,
+        disabled:!schoolAvailable, note:schoolNote
+      },
+      {
+        id:"library", icon:"⌘", title:t("academy.library.title"), description:t("academy.library.description"),
+        status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
+      },
+      {
+        id:"forge", icon:"⚒", title:t("academy.forge.title"), description:t("academy.forge.description"),
+        status:t("academy.available"), state:"available", action:t("academy.forge.action"), target:"forge"
+      },
+      {
+        id:"trials", icon:"⚔", title:t("academy.trials.title"), description:t("academy.trials.description"),
+        status:t("academy.available"), state:"available", action:t("academy.trials.action"), target:"game"
+      },
+      {
+        id:"arena", icon:"♜", title:t("academy.arena.title"), description:t("academy.arena.description"),
+        status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
+        state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
+        disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
+      }
+    ];
+
+    const locationHotspot = location => `
+      <button class="academy-map-hotspot academy-map-hotspot-${escapeHtml(location.id)} is-${escapeHtml(location.state)} ${location.id === "atrium" ? "is-active" : ""}"
+        type="button" data-academy-location="${escapeHtml(location.id)}" data-academy-state="${escapeHtml(location.state)}"
+        aria-controls="academyMapDetail" aria-pressed="${location.id === "atrium" ? "true" : "false"}"
+        aria-label="${escapeHtml(`${location.title} — ${location.status}`)}">
+        <span class="academy-map-hotspot-pulse" aria-hidden="true"></span>
+        <span class="academy-map-hotspot-glyph" aria-hidden="true">${location.icon}</span>
+        <span class="academy-map-hotspot-label">${escapeHtml(location.title)}</span>
+        <span class="academy-map-hotspot-state" aria-hidden="true">${location.state === "sealed" ? "◆" : location.state === "planned" ? "◇" : "•"}</span>
+      </button>`;
+
+    const locationDetail = location => `
+      <article class="academy-location academy-map-detail-card is-${escapeHtml(location.state)} ${location.id === "atrium" ? "is-active" : ""}"
+        data-academy-map-detail="${escapeHtml(location.id)}" data-academy-state="${escapeHtml(location.state)}"
+        ${location.id === "atrium" ? "" : "hidden"} aria-hidden="${location.id === "atrium" ? "false" : "true"}">
+        <div class="academy-map-detail-heading">
+          <span class="academy-map-detail-icon" aria-hidden="true">${location.icon}</span>
+          <div><small>${escapeHtml(location.status)}</small><h3>${escapeHtml(location.title)}</h3></div>
+        </div>
+        <p>${escapeHtml(location.description)}</p>
+        ${location.note ? `<small class="academy-map-detail-note">${escapeHtml(location.note)}</small>` : ""}
+        <div class="academy-map-detail-actions">
+          ${location.action ? `<button class="classic-stone-button ${location.disabled ? "ghost" : ""}" type="button"
+            ${location.target ? `data-academy-target="${escapeHtml(location.target)}"` : ""}
+            ${location.letter ? "data-academy-summons-open" : ""}
+            ${location.schoolWing ? "data-academy-school-wing-open" : ""}
+            ${location.disabled ? "disabled" : ""}>${escapeHtml(location.action)}</button>` : ""}
+          ${location.extraAction ? `<button class="classic-stone-button ghost academy-location-secondary-action" type="button"
+            ${location.admissionLetter ? "data-academy-admission-open" : ""}>${escapeHtml(location.extraAction)}</button>` : ""}
+        </div>
+      </article>`;
+
     root.innerHTML = `
       <header class="academy-heading">
         <div>
@@ -869,43 +919,23 @@
           <div><small>${t("academy.campus.kicker")}</small><h3 id="academyCampusTitle">${t("academy.campus.title")}</h3></div>
           <p>${t("academy.campus.hint")}</p>
         </header>
-        <div class="academy-campus-map" data-academy-campus>
-        <svg class="academy-campus-routes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M50 57 L25 19"></path>
-          <path d="M50 57 L75 19"></path>
-          <path d="M50 57 L13 50"></path>
-          <path d="M50 57 L13 82"></path>
-          <path d="M50 57 L88 66"></path>
-        </svg>
-        ${locationCard({
-          id:"atrium", icon:"✉", title:t("academy.atrium.title"), description:t("academy.atrium.description"),
-          status:t("academy.available"), action:t("academy.atrium.action"), letter:true,
-          extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
-          admissionLetter:Boolean(academy.academyAdmissionEligible)
-        })}
-        ${locationCard({
-          id:"schools", icon:"✦", title:t("academy.schools.title"), description:t("academy.schools.description"),
-          status:schoolAvailable ? t("academy.available") : t("academy.sealed"),
-          state:schoolAvailable ? "available" : "sealed", action:schoolAction, schoolWing:true, disabled:!schoolAvailable, note:schoolNote
-        })}
-        ${locationCard({
-          id:"library", icon:"⌘", title:t("academy.library.title"), description:t("academy.library.description"),
-          status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
-        })}
-        ${locationCard({
-          id:"forge", icon:"⚒", title:t("academy.forge.title"), description:t("academy.forge.description"),
-          status:t("academy.available"), action:t("academy.forge.action"), target:"forge"
-        })}
-        ${locationCard({
-          id:"trials", icon:"⚔", title:t("academy.trials.title"), description:t("academy.trials.description"),
-          status:t("academy.available"), action:t("academy.trials.action"), target:"game"
-        })}
-        ${locationCard({
-          id:"arena", icon:"♜", title:t("academy.arena.title"), description:t("academy.arena.description"),
-          status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
-          state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
-          disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
-        })}
+        <div class="academy-map-layout">
+          <div class="academy-map-scene" data-academy-campus aria-label="${escapeHtml(t("academy.campus.title"))}">
+            <div class="academy-map-art" aria-hidden="true"></div>
+            <svg class="academy-map-routes" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M50 32 C39 29 29 23 22 18"></path>
+              <path d="M52 30 C64 25 73 20 81 17"></path>
+              <path d="M46 36 C34 40 24 47 16 53"></path>
+              <path d="M53 38 C66 43 76 49 86 53"></path>
+              <path d="M49 40 C45 48 40 55 36 59"></path>
+            </svg>
+            <div class="academy-map-hotspots" role="group" aria-label="${escapeHtml(t("academy.campus.title"))}">
+              ${academyLocations.map(locationHotspot).join("")}
+            </div>
+          </div>
+          <aside id="academyMapDetail" class="academy-map-detail-panel" aria-live="polite">
+            ${academyLocations.map(locationDetail).join("")}
+          </aside>
         </div>
       </section>
 
@@ -959,6 +989,28 @@
         </div>
       </div>
     `;
+
+    const setActiveAcademyLocation = id => {
+      const hotspot = root.querySelector(`[data-academy-location="${CSS.escape(id)}"]`);
+      const detail = root.querySelector(`[data-academy-map-detail="${CSS.escape(id)}"]`);
+      if (!hotspot || !detail) return;
+      root.querySelectorAll("[data-academy-location]").forEach(item => {
+        const active = item === hotspot;
+        item.classList.toggle("is-active", active);
+        item.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      root.querySelectorAll("[data-academy-map-detail]").forEach(item => {
+        const active = item === detail;
+        item.hidden = !active;
+        item.classList.toggle("is-active", active);
+        item.setAttribute("aria-hidden", active ? "false" : "true");
+      });
+    };
+    root.querySelectorAll("[data-academy-location]").forEach(hotspot => {
+      const select = () => setActiveAcademyLocation(String(hotspot.dataset.academyLocation || ""));
+      hotspot.addEventListener("click", select);
+      hotspot.addEventListener("focus", select);
+    });
 
     root.querySelectorAll("[data-academy-target]").forEach(button => {
       button.addEventListener("click", () => {

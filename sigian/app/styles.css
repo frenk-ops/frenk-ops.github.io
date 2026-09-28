@@ -19555,10 +19555,7 @@ button.sigian-full-constraint-slot {
   gap:18px;
   padding:0 4px;
 }
-.academy-campus-heading > div {
-  display:grid;
-  gap:3px;
-}
+.academy-campus-heading > div { display:grid;gap:3px; }
 .academy-campus-heading small {
   color:#795a37;
   font-size:.66rem;
@@ -19579,182 +19576,294 @@ button.sigian-full-constraint-slot {
   line-height:1.4;
   text-align:right;
 }
-.academy-campus-map {
+.academy-map-layout {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(250px,300px);
+  gap:14px;
+  align-items:stretch;
+}
+.academy-map-scene {
   position:relative;
   isolation:isolate;
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  grid-template-areas:
-    "schools schools library library"
-    "forge atrium atrium arena"
-    "trials atrium atrium arena";
-  grid-template-rows:minmax(178px,auto) minmax(158px,auto) minmax(158px,auto);
-  gap:14px;
-  padding:18px;
+  min-height:0;
+  aspect-ratio:1200 / 760;
   overflow:hidden;
-  border:1px solid rgba(83,55,29,.26);
-  border-radius:22px;
-  background:
-    radial-gradient(circle at 50% 56%,rgba(208,157,67,.18),transparent 24%),
-    linear-gradient(145deg,rgba(242,229,193,.72),rgba(213,194,153,.46));
-  box-shadow:inset 0 1px rgba(255,255,255,.52), 0 10px 24px rgba(55,36,22,.1);
+  border:1px solid rgba(83,55,29,.38);
+  border-radius:24px;
+  background:#b9a47d;
+  box-shadow:inset 0 1px rgba(255,255,255,.56),0 14px 30px rgba(55,36,22,.18);
 }
-.academy-campus-map::before {
-  content:"";
+.academy-map-art {
   position:absolute;
-  inset:24px;
-  z-index:-1;
-  pointer-events:none;
-  opacity:.62;
-  background:
-    linear-gradient(90deg,transparent 48%,rgba(132,99,56,.2) 49%,rgba(132,99,56,.2) 51%,transparent 52%),
-    linear-gradient(0deg,transparent 48%,rgba(132,99,56,.18) 49%,rgba(132,99,56,.18) 51%,transparent 52%),
-    radial-gradient(circle at 50% 58%,rgba(255,244,207,.72) 0 13%,rgba(126,91,49,.18) 13.5% 14.5%,transparent 15%);
-}
-.academy-campus-routes {
-  position:absolute;
-  inset:4%;
+  inset:0;
   z-index:0;
-  width:92%;
-  height:92%;
-  overflow:visible;
-  pointer-events:none;
+  background:url("assets/ui/academy/academy-campus-map.svg") center/cover no-repeat;
+  filter:saturate(.94) contrast(1.02);
+  transform:scale(1.005);
 }
-.academy-campus-routes path {
-  fill:none;
-  stroke:rgba(119,80,39,.34);
-  stroke-width:1.15;
-  stroke-dasharray:2.2 1.8;
-  vector-effect:non-scaling-stroke;
-}
-.academy-campus-map .academy-location {
-  z-index:1;
-}
-.academy-location-atrium { grid-area:atrium; min-height:330px; }
-.academy-location-schools { grid-area:schools; }
-.academy-location-library { grid-area:library; }
-.academy-location-forge { grid-area:forge; }
-.academy-location-trials { grid-area:trials; }
-.academy-location-arena { grid-area:arena; }
-.academy-location-atrium {
-  align-content:center;
-  padding:22px;
-  border-width:2px;
-  background:
-    radial-gradient(circle at 50% 15%,rgba(232,184,86,.3),transparent 38%),
-    linear-gradient(180deg,rgba(255,251,232,.98),rgba(230,205,151,.9));
-  box-shadow:0 14px 30px rgba(63,39,19,.17), inset 0 1px rgba(255,255,255,.72);
-}
-.academy-location-atrium .academy-location-icon {
-  width:62px;
-  height:62px;
-  font-size:1.9rem;
-}
-.academy-location-atrium .academy-location-heading h3 {
-  font-size:1.28rem;
-}
-.academy-location-atrium .academy-location-copy > p {
-  font-size:.88rem;
-}
-.academy-location {
-  position:relative;
-  min-height:222px;
-  display:grid;
-  grid-template-rows:auto 1fr auto;
-  gap:12px;
-  padding:16px;
-  overflow:hidden;
-  border:1px solid rgba(85,57,30,.32);
-  border-radius:16px;
-  background:
-    radial-gradient(circle at 90% 5%,rgba(209,158,63,.22),transparent 38%),
-    linear-gradient(180deg,rgba(255,250,232,.94),rgba(232,214,174,.82));
-  color:#3f2b1e;
-  box-shadow:0 8px 18px rgba(55,36,22,.12), inset 0 1px rgba(255,255,255,.58);
-}
-.academy-location::after {
+.academy-map-scene::after {
   content:"";
   position:absolute;
-  inset:7px;
+  inset:0;
+  z-index:1;
   pointer-events:none;
-  border:1px solid rgba(117,77,34,.14);
-  border-radius:11px;
-}
-.academy-location.is-sealed,
-.academy-location.is-planned {
   background:
-    linear-gradient(135deg,rgba(74,63,53,.08),transparent 45%),
-    linear-gradient(180deg,rgba(239,232,211,.9),rgba(205,195,171,.82));
+    linear-gradient(180deg,rgba(255,248,220,.06),rgba(36,27,20,.16)),
+    radial-gradient(circle at 50% 48%,transparent 38%,rgba(45,32,23,.17) 100%);
+  box-shadow:inset 0 0 55px rgba(47,34,24,.24);
 }
-.academy-location.is-sealed .academy-location-icon,
-.academy-location.is-planned .academy-location-icon {
-  filter:grayscale(.65);
-  opacity:.58;
+.academy-map-routes {
+  position:absolute;
+  inset:0;
+  z-index:2;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  opacity:.72;
 }
-.academy-location-icon {
-  width:48px;
-  height:48px;
+.academy-map-routes path {
+  fill:none;
+  stroke:rgba(251,224,137,.66);
+  stroke-width:1.2;
+  stroke-dasharray:1.7 2.2;
+  vector-effect:non-scaling-stroke;
+  filter:drop-shadow(0 1px 1px rgba(66,42,24,.5));
+}
+.academy-map-hotspots {
+  position:absolute;
+  inset:0;
+  z-index:3;
+}
+.academy-map-hotspot {
+  --academy-hotspot-x:50%;
+  --academy-hotspot-y:50%;
+  position:absolute;
+  left:var(--academy-hotspot-x);
+  top:var(--academy-hotspot-y);
+  transform:translate(-50%,-50%);
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:7px;
+  min-width:118px;
+  max-width:180px;
+  min-height:48px;
+  padding:6px 9px 6px 7px;
+  border:1px solid rgba(248,225,159,.62);
+  border-radius:999px;
+  background:linear-gradient(180deg,rgba(46,37,31,.92),rgba(28,24,24,.9));
+  color:#fff6d5;
+  box-shadow:0 7px 18px rgba(31,23,20,.36),inset 0 1px rgba(255,255,255,.16);
+  cursor:pointer;
+  text-align:left;
+  transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,filter .16s ease;
+}
+.academy-map-hotspot:hover,
+.academy-map-hotspot:focus-visible {
+  transform:translate(-50%,-50%) scale(1.045);
+  border-color:#f7db79;
+  outline:none;
+  box-shadow:0 0 0 3px rgba(247,219,121,.23),0 9px 24px rgba(31,23,20,.46);
+}
+.academy-map-hotspot.is-active {
+  border-color:#ffe48c;
+  box-shadow:0 0 0 3px rgba(255,224,116,.28),0 0 30px rgba(255,205,84,.38),0 9px 24px rgba(31,23,20,.42);
+}
+.academy-map-hotspot.is-sealed {
+  filter:saturate(.48) brightness(.74);
+  border-color:rgba(166,176,183,.46);
+}
+.academy-map-hotspot.is-planned {
+  filter:saturate(.55);
+  border-style:dashed;
+  border-color:rgba(173,219,218,.58);
+  background:linear-gradient(180deg,rgba(37,54,56,.88),rgba(27,35,38,.9));
+}
+.academy-map-hotspot-pulse {
+  position:absolute;
+  inset:-8px;
+  z-index:-1;
+  border:1px solid rgba(247,210,111,.38);
+  border-radius:999px;
+  opacity:.72;
+  animation:academy-hotspot-breathe 3.2s ease-in-out infinite;
+}
+.academy-map-hotspot.is-sealed .academy-map-hotspot-pulse { display:none; }
+.academy-map-hotspot.is-planned .academy-map-hotspot-pulse {
+  border-color:rgba(153,221,218,.34);
+  animation-duration:4.4s;
+}
+.academy-map-hotspot-glyph {
   display:grid;
   place-items:center;
-  border:1px solid rgba(105,69,30,.28);
+  width:34px;
+  height:34px;
+  border:1px solid rgba(245,219,141,.35);
   border-radius:50%;
-  background:rgba(90,57,27,.08);
-  color:#6a461f;
-  font-size:1.55rem;
-  box-shadow:inset 0 0 0 4px rgba(255,248,222,.42);
+  background:rgba(238,203,112,.13);
+  font-size:1.08rem;
 }
-.academy-location-copy {
+.academy-map-hotspot-label {
+  overflow:hidden;
+  font:800 .7rem/1.08 Georgia,serif;
+  white-space:normal;
+  text-wrap:balance;
+}
+.academy-map-hotspot-state {
+  color:#f6d46f;
+  font-size:.72rem;
+}
+.academy-map-hotspot.is-sealed .academy-map-hotspot-state { color:#aeb8bd; }
+.academy-map-hotspot.is-planned .academy-map-hotspot-state { color:#a9d9d4; }
+.academy-map-hotspot-atrium { --academy-hotspot-x:50.5%;--academy-hotspot-y:48%; }
+.academy-map-hotspot-schools { --academy-hotspot-x:22.5%;--academy-hotspot-y:24%; }
+.academy-map-hotspot-library { --academy-hotspot-x:80.5%;--academy-hotspot-y:22.5%; }
+.academy-map-hotspot-forge { --academy-hotspot-x:16.5%;--academy-hotspot-y:68%; }
+.academy-map-hotspot-trials { --academy-hotspot-x:37%;--academy-hotspot-y:82%; }
+.academy-map-hotspot-arena { --academy-hotspot-x:84%;--academy-hotspot-y:68%; }
+
+.academy-map-detail-panel {
+  min-width:0;
   display:grid;
-  align-content:start;
-  gap:7px;
+  border:1px solid rgba(92,60,31,.3);
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 100% 0,rgba(216,169,75,.2),transparent 38%),
+    linear-gradient(160deg,rgba(255,249,229,.88),rgba(224,207,168,.72));
+  box-shadow:inset 0 1px rgba(255,255,255,.68),0 10px 24px rgba(55,36,22,.12);
 }
-.academy-location-heading {
+.academy-map-detail-card {
+  min-height:100%;
   display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:9px;
+  flex-direction:column;
+  gap:12px;
+  padding:18px;
+  color:#4b321f;
 }
-.academy-location-heading h3 {
-  margin:0;
-  color:#4a2e19;
-  font:800 1.08rem/1.12 Georgia,serif;
+.academy-map-detail-card[hidden] { display:none !important; }
+.academy-map-detail-card.is-active { animation:academy-detail-in .18s ease-out; }
+.academy-map-detail-card.is-sealed {
+  background:linear-gradient(160deg,rgba(221,218,205,.42),rgba(155,154,145,.18));
 }
-.academy-location-status {
-  flex:0 0 auto;
-  max-width:45%;
-  padding:4px 7px;
-  border:1px solid rgba(104,72,38,.22);
-  border-radius:999px;
-  background:rgba(255,255,255,.3);
-  color:#70512e;
-  font-size:.62rem;
+.academy-map-detail-card.is-planned {
+  background:linear-gradient(160deg,rgba(218,235,227,.44),rgba(149,174,170,.16));
+}
+.academy-map-detail-heading {
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:10px;
+  align-items:center;
+}
+.academy-map-detail-icon {
+  display:grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  border:1px solid rgba(113,77,38,.26);
+  border-radius:14px;
+  background:rgba(255,251,231,.54);
+  font-size:1.35rem;
+}
+.academy-map-detail-heading > div { min-width:0;display:grid;gap:2px; }
+.academy-map-detail-heading small {
+  color:#8a653c;
+  font-size:.64rem;
   font-weight:900;
-  letter-spacing:.045em;
-  text-align:center;
+  letter-spacing:.1em;
   text-transform:uppercase;
 }
-.academy-location p {
+.academy-map-detail-heading h3 {
   margin:0;
-  color:#5d4937;
-  font-size:.82rem;
-  line-height:1.4;
+  color:#4b2f1d;
+  font:800 1.12rem/1.06 Georgia,serif;
 }
-.academy-location small {
-  color:#765b40;
-  font-size:.72rem;
+.academy-map-detail-card > p {
+  margin:0;
+  color:#644a33;
+  font:500 .82rem/1.5 Georgia,serif;
+}
+.academy-map-detail-note {
+  display:block;
+  padding:8px 9px;
+  border:1px solid rgba(113,77,38,.16);
+  border-radius:10px;
+  background:rgba(255,255,255,.24);
+  color:#72563c;
+  font-size:.7rem;
   line-height:1.35;
 }
-.academy-location > .classic-stone-button {
-  position:relative;
-  z-index:1;
-  width:100%;
-  min-width:0;
+.academy-map-detail-actions {
+  display:grid;
+  gap:8px;
+  margin-top:auto;
 }
-.academy-location > .classic-stone-button:disabled {
+.academy-map-detail-actions .classic-stone-button { width:100%; }
+.academy-map-detail-actions .classic-stone-button:disabled {
   cursor:not-allowed;
-  opacity:.52;
-  filter:saturate(.5);
+  filter:grayscale(.45);
+  opacity:.58;
 }
+@keyframes academy-hotspot-breathe {
+  0%,100% { transform:scale(.96);opacity:.35; }
+  50% { transform:scale(1.05);opacity:.82; }
+}
+@keyframes academy-detail-in {
+  from { opacity:.45;transform:translateY(4px); }
+  to { opacity:1;transform:translateY(0); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .academy-map-hotspot,
+  .academy-map-hotspot-pulse,
+  .academy-map-detail-card.is-active { animation:none;transition:none; }
+}
+@media (max-width:900px) {
+  .academy-map-layout { grid-template-columns:1fr; }
+  .academy-map-detail-card { min-height:180px; }
+}
+@media (max-width:620px) {
+  .academy-map-scene {
+    width:100%;
+    aspect-ratio:1200 / 760;
+    border-radius:18px;
+  }
+  .academy-map-art {
+    background-size:100% 100%;
+    transform:none;
+  }
+  .academy-map-hotspot {
+    min-width:48px;
+    width:48px;
+    height:48px;
+    max-width:48px;
+    padding:6px;
+    grid-template-columns:1fr;
+    justify-items:center;
+  }
+  .academy-map-hotspot-glyph { width:32px;height:32px; }
+  .academy-map-hotspot-label {
+    position:absolute;
+    top:calc(100% + 4px);
+    left:50%;
+    width:max-content;
+    max-width:92px;
+    transform:translateX(-50%);
+    padding:3px 6px;
+    border-radius:7px;
+    background:rgba(34,28,25,.88);
+    box-shadow:0 2px 8px rgba(28,22,20,.24);
+    font-size:.58rem;
+    text-align:center;
+  }
+  .academy-map-hotspot-state { display:none; }
+  .academy-map-hotspot-atrium { --academy-hotspot-x:51%;--academy-hotspot-y:45%; }
+  .academy-map-hotspot-schools { --academy-hotspot-x:23%;--academy-hotspot-y:25%; }
+  .academy-map-hotspot-library { --academy-hotspot-x:80%;--academy-hotspot-y:23%; }
+  .academy-map-hotspot-forge { --academy-hotspot-x:17%;--academy-hotspot-y:67%; }
+  .academy-map-hotspot-trials { --academy-hotspot-x:39%;--academy-hotspot-y:80%; }
+  .academy-map-hotspot-arena { --academy-hotspot-x:83%;--academy-hotspot-y:67%; }
+  .academy-map-detail-card { min-height:190px;padding:15px; }
+}
+
 .academy-school-wing {
   display:grid;
   gap:16px;
@@ -19979,17 +20088,6 @@ button.sigian-full-constraint-slot {
   margin-top:4px;
 }
 @media (max-width:900px) {
-  .academy-campus-map {
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    grid-template-areas:
-      "atrium atrium"
-      "schools library"
-      "forge trials"
-      "arena arena";
-    grid-template-rows:auto;
-  }
-  .academy-location-atrium { min-height:260px; }
-  .academy-location-arena { min-height:190px; }
   .academy-school-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .academy-school-confirmation { align-items:stretch;flex-direction:column; }
   .academy-school-confirmation .classic-stone-button { width:100%; }
@@ -20029,44 +20127,7 @@ button.sigian-full-constraint-slot {
     max-width:none;
     text-align:left;
   }
-  .academy-campus-map {
-    grid-template-columns:1fr;
-    grid-template-areas:
-      "atrium"
-      "schools"
-      "library"
-      "forge"
-      "trials"
-      "arena";
-    gap:10px;
-    padding:12px;
-  }
-  .academy-campus-map::before {
-    top:28px;
-    right:auto;
-    bottom:28px;
-    left:50%;
-    width:2px;
-    opacity:.45;
-    background:linear-gradient(180deg,rgba(132,99,56,.12),rgba(132,99,56,.34),rgba(132,99,56,.12));
-  }
-  .academy-campus-routes {
-    display:none;
-  }
-  .academy-location-atrium,
-  .academy-location-arena {
-    min-height:0;
-  }
   .academy-status-strip > div { grid-column:auto; }
-  .academy-location {
-    min-height:0;
-  }
-  .academy-location-heading {
-    align-items:center;
-  }
-  .academy-location-status {
-    max-width:50%;
-  }
   .academy-summons-modal {
     padding:10px;
   }
