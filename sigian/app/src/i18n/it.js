@@ -324,6 +324,7 @@
     "ranked.leaderboard": "Classifica stagione", "ranked.refresh": "Aggiorna", "ranked.preseason": "Preseason",
     "ranked.noPlayers": "Nessun giocatore classificato.", "ranked.gamesShort": "{games} partite",
     "profile.onlineAccount": "Account online", "profile.guestAccount": "Account ospite",
+    "profile.accountProgression": "Progressione generale", "profile.accountLevel": "Livello {level}", "profile.xpToNextLevel": "{xp} XP al prossimo livello", "profile.maxCurrentLevel": "Livello corrente", "profile.progressionOnline": "Progressione sincronizzata con l'account online", "profile.progressionLocal": "Progressione disponibile offline su questo dispositivo",
     "profile.onlineLevel": "Livello {level}", "profile.onlineXp": "{xp} XP",
     "profile.onlineRecord": "{wins} V · {losses} S · {draws} P", "profile.rankedRating": "Rating Classica",
     "profile.playerTag": "Tag giocatore", "profile.playerTagHint": "Identificativo pubblico assegnato automaticamente e non modificabile.",

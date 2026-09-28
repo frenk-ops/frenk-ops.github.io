@@ -323,6 +323,7 @@
     "ranked.leaderboard": "Season leaderboard", "ranked.refresh": "Refresh", "ranked.preseason": "Preseason",
     "ranked.noPlayers": "No ranked players yet.", "ranked.gamesShort": "{games} games",
     "profile.onlineAccount": "Online account", "profile.guestAccount": "Guest account",
+    "profile.accountProgression": "General progression", "profile.accountLevel": "Level {level}", "profile.xpToNextLevel": "{xp} XP to next level", "profile.maxCurrentLevel": "Current level", "profile.progressionOnline": "Progression synced with the online account", "profile.progressionLocal": "Progression available offline on this device",
     "profile.onlineLevel": "Level {level}", "profile.onlineXp": "{xp} XP",
     "profile.onlineRecord": "{wins} W · {losses} L · {draws} D", "profile.rankedRating": "Classic rating",
     "profile.playerTag": "Player tag", "profile.playerTagHint": "Public identifier assigned automatically and not editable.",

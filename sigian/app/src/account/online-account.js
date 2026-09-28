@@ -154,7 +154,15 @@
       if (!this.user?.id) return null;
       const id = encodeURIComponent(this.user.id);
       const rows = await this.rest(`player_progression?user_id=eq.${id}&select=user_id,xp,level,games_played,wins,losses,draws,updated_at&limit=1`);
-      this.progression = rows?.[0] || null;
+      const row = rows?.[0] || null;
+      this.progression = row
+        ? {
+            ...A.normalizeAccountProgression(row, { source:"online-authoritative", syncedAt:row.updated_at || null }),
+            user_id:row.user_id,
+            updated_at:row.updated_at || null,
+            reported_level:Number(row.level || 1)
+          }
+        : null;
       return this.progression;
     }
 

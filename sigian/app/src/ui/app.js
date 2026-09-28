@@ -858,9 +858,18 @@
     renderMultiplayerEntryMode();
   }
 
+  function syncCanonicalProgressionFromOnline() {
+    if (!onlineAccountSnapshot?.user || !onlineAccountSnapshot?.progression || !A.syncProfileAccountProgression) return null;
+    profile = A.loadProfile();
+    A.syncProfileAccountProgression(profile, onlineAccountSnapshot.progression);
+    profile = A.loadProfile();
+    return profile.accountProgression;
+  }
+
   async function initializeOnlineAccount(options = {}) {
     if (!A.onlineAccount) return null;
     onlineAccountSnapshot = await A.onlineAccount.initialize(selectedPlayerName());
+    syncCanonicalProgressionFromOnline();
     if (onlineAccountSnapshot?.user && onlineAccountSnapshot?.profile) {
       const localName = selectedPlayerName();
       const remoteName = String(onlineAccountSnapshot.profile.display_name || "");
@@ -1440,6 +1449,7 @@
         window.setTimeout(async () => {
           try {
             onlineAccountSnapshot = await A.onlineAccount.refreshData();
+            syncCanonicalProgressionFromOnline();
             renderOnlineAccountState();
             refreshRankedLeaderboard().catch(() => {});
             if ($("#profileView")?.classList.contains("active")) renderPlayerProfile();
@@ -9009,6 +9019,15 @@
     const onlineProgress = online.progression || {};
     const onlineRating = online.rating || {};
     const onlineProfile = online.profile || {};
+    const accountProgression = A.normalizeAccountProgression
+      ? A.normalizeAccountProgression(profile.accountProgression || { xp:0 }, { source:profile.accountProgression?.source || "local" })
+      : (profile.accountProgression || { xp:0, level:1, source:"local" });
+    const accountLevelProgress = A.accountLevelProgress
+      ? A.accountLevelProgress(accountProgression)
+      : { level:Number(accountProgression.level || 1), xp:Number(accountProgression.xp || 0), xpToNextLevel:0, progress:0 };
+    const accountProgressionSource = accountProgression.source === "online-authoritative"
+      ? t("profile.progressionOnline")
+      : t("profile.progressionLocal");
     const selectedAvatar = normalizeProfileAvatar(onlineProfile.avatar_url || localStorage.getItem("arcane.profileAvatar") || "");
     const avatarCards = profileAvatarChoices(selectedAvatar);
     let draftAvatar = selectedAvatar;
@@ -9025,11 +9044,23 @@
               <div class="profile-online-rating"><small>${t("profile.rankedRating")}</small><strong>${Number(onlineRating.rating || 1000)}</strong><span>${t("ranked.classic")}</span></div>
             </div>
             <div class="profile-online-stats">
-              <span><small>${t("profile.onlineLevel", { level: Number(onlineProgress.level || 1) })}</small><strong>${t("profile.onlineXp", { xp: Number(onlineProgress.xp || 0) })}</strong></span>
               <span><small>${Number(onlineProgress.games_played || 0)} ${t("profile.gamesPlayed", { value: "" }).replace(/^\s+|\s+$/g, "")}</small><strong>${t("profile.onlineRecord", { wins: Number(onlineProgress.wins || 0), losses: Number(onlineProgress.losses || 0), draws: Number(onlineProgress.draws || 0) })}</strong></span>
             </div>
           </section>`;
     root.innerHTML = `
+      <section class="profile-account-progression ornate-subpanel">
+        <div class="profile-account-progression-heading">
+          <div><small>${t("profile.accountProgression")}</small><h3>${t("profile.accountLevel", { level:accountLevelProgress.level })}</h3></div>
+          <strong>${accountLevelProgress.xp} XP</strong>
+        </div>
+        <div class="profile-account-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(accountLevelProgress.progress * 100)}">
+          <span style="width:${Math.round(accountLevelProgress.progress * 100)}%"></span>
+        </div>
+        <div class="profile-account-progression-meta">
+          <span>${accountLevelProgress.xpToNextLevel > 0 ? t("profile.xpToNextLevel", { xp:accountLevelProgress.xpToNextLevel }) : t("profile.maxCurrentLevel")}</span>
+          <small>${accountProgressionSource}</small>
+        </div>
+      </section>
       ${onlineCard}
       <section class="profile-customize-card ornate-subpanel">
         <div class="profile-section-heading"><div><h3>${t("profile.identityTitle")}</h3><p>${t("profile.identityIntro")}</p></div></div>
@@ -9127,6 +9158,7 @@
             avatarUrl: draftAvatar
           });
           onlineAccountSnapshot = await A.onlineAccount.refreshData();
+          syncCanonicalProgressionFromOnline();
           renderOnlineAccountState();
         } catch (error) {
           if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = error.message || t("online.error");

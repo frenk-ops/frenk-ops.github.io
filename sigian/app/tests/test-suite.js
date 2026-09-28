@@ -138,11 +138,42 @@
 
   const tests = [
     {
+      name: "Profilo v4: XP canonico migra e sincronizza il livello derivato",
+      run() {
+        const data = {
+          "arcane-duels-profile-v013": JSON.stringify({
+            version:3,
+            playerName:"Legacy",
+            accountProgression:{ xp:400, level:99, source:"local" }
+          })
+        };
+        const storage = {
+          getItem:key => data[key] ?? null,
+          setItem:(key,value) => { data[key] = String(value); },
+          removeItem:key => { delete data[key]; }
+        };
+        const migrated = A.loadProfile(storage);
+        assert(migrated.version === 4, `Versione profilo migrata: ${migrated.version}`);
+        assert(migrated.accountProgression.xp === 400, "XP locale non preservato durante la migrazione");
+        assert(!Object.hasOwn(migrated.accountProgression, "level"), "Il livello legacy non deve restare persistito nel profilo v4");
+        assert(A.normalizeAccountProgression(migrated.accountProgression).level === 3, "Il livello legacy non è stato ricalcolato dall'XP");
+        A.syncProfileAccountProgression(migrated, { xp:100, level:999, games_played:2 }, storage);
+        assert(migrated.accountProgression.xp === 100, "L'XP online autorevole non ha aggiornato la cache locale");
+        assert(A.normalizeAccountProgression(migrated.accountProgression).level === 2, "Il livello sincronizzato non deriva dall'XP online");
+        const persisted = JSON.parse(storage.getItem("arcane-duels-profile-v013"));
+        assert(persisted.version === 4 && persisted.accountProgression.xp === 100, "La progressione sincronizzata non è stata persistita");
+        assert(!Object.hasOwn(persisted.accountProgression, "level"), "Il profilo persistito non deve contenere il livello derivato");
+      }
+    },
+    {
       name: "Profilo giocatore: statistiche e sei trofei richiesti vengono persistiti e sbloccati",
       run() {
         const profile = A.createDefaultProfile();
-        assert(profile.version === 3, "Il profilo locale deve usare lo schema v3 con Scuola formativa.");
+        assert(profile.version === 4, "Il profilo locale deve usare lo schema v4 con progressione account canonica.");
         assert(profile.formativeSchoolId === null, "La Scuola formativa non deve essere inventata per un profilo nuovo.");
+        assert(profile.accountProgression?.xp === 0 && !Object.hasOwn(profile.accountProgression, "level"), "Un nuovo profilo deve persistere solo 0 XP, non il livello derivato.");
+        assert(A.normalizeAccountProgression(profile.accountProgression).level === 1, "0 XP deve derivare nel livello 1.");
+        assert(A.ACCOUNT_PROGRESSION_CURVE_VERSION === "provisional-sqrt-v1", "Il profilo deve usare la curva account condivisa.");
         profile.formativeSchoolId = "fire";
         profile.playerName = "Tester";
         for (let index = 0; index < 5; index += 1) {

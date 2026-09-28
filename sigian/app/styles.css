@@ -19347,3 +19347,81 @@ button.sigian-full-constraint-slot {
   }
 }
 
+/* 0.61.25 — one account XP source with a derived, versioned level. */
+.profile-account-progression {
+  display:grid;
+  gap:10px;
+  margin-bottom:14px;
+  border:1px solid rgba(91,59,31,.32);
+  background:
+    radial-gradient(circle at 92% 0,rgba(211,162,71,.18),transparent 38%),
+    linear-gradient(180deg,rgba(255,250,232,.92),rgba(239,224,186,.78));
+  color:#3d2b20;
+}
+.profile-account-progression-heading {
+  display:flex;
+  align-items:end;
+  justify-content:space-between;
+  gap:16px;
+}
+.profile-account-progression-heading div {
+  display:grid;
+  gap:2px;
+}
+.profile-account-progression-heading small {
+  color:#7a5a38;
+  font-size:.7rem;
+  font-weight:800;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.profile-account-progression-heading h3 {
+  margin:0;
+  color:#4b2d19;
+  font:800 1.35rem/1.05 Georgia,serif;
+}
+.profile-account-progression-heading > strong {
+  color:#694416;
+  font-size:1.05rem;
+  font-variant-numeric:tabular-nums;
+}
+.profile-account-progress-track {
+  height:10px;
+  overflow:hidden;
+  border:1px solid rgba(88,55,27,.28);
+  border-radius:999px;
+  background:rgba(78,54,32,.12);
+  box-shadow:inset 0 1px 3px rgba(58,38,22,.14);
+}
+.profile-account-progress-track > span {
+  display:block;
+  height:100%;
+  min-width:0;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#8f642e,#d8aa4c);
+  box-shadow:0 0 9px rgba(181,129,48,.26);
+}
+.profile-account-progression-meta {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  color:#6e4f33;
+  font-size:.74rem;
+}
+.profile-account-progression-meta small {
+  text-align:right;
+  opacity:.78;
+}
+.profile-online-stats:has(> span:only-child) {
+  grid-template-columns:1fr;
+}
+@media (max-width:620px) {
+  .profile-account-progression-heading,
+  .profile-account-progression-meta {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:5px;
+  }
+  .profile-account-progression-meta small { text-align:left; }
+}
+

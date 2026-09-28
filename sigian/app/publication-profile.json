@@ -9,7 +9,7 @@
   "multiplayerServerIncluded": false,
   "multiplayerApiConfigured": true,
   "onlineAccountsConfigured": true,
-  "version": "0.61.24",
-  "build": "101220a",
-  "revision": "0.61.24-101220a"
+  "version": "0.61.25",
+  "build": "a65e9f5",
+  "revision": "0.61.25-a65e9f5"
 }

@@ -136,9 +136,12 @@
 
   A.createDefaultProfile = function createDefaultProfile() {
     return {
-      version: 3,
+      version: 4,
       playerName: "",
       formativeSchoolId:null,
+      accountProgression:A.accountProgressionState
+        ? A.accountProgressionState({ xp:0 }, { source:"local" })
+        : { xp:0, source:"local", synced_at:null },
       tournamentsPlayed: 0,
       tournamentsWon: 0,
       duelsWon: 0,
@@ -239,8 +242,14 @@
       const profile = {
         ...base,
         ...stored,
-        version: 3,
+        version: 4,
         formativeSchoolId:normalizeFormativeSchool(stored.formativeSchoolId),
+        accountProgression:A.accountProgressionState
+          ? A.accountProgressionState(stored.accountProgression || { xp:stored.xp || 0 }, {
+              source:stored.accountProgression?.source || "local",
+              syncedAt:stored.accountProgression?.synced_at || stored.accountProgression?.syncedAt || null
+            })
+          : (stored.accountProgression || base.accountProgression),
         stats: normalizePlayStats(stored.stats),
         achievements: Array.isArray(stored.achievements) ? stored.achievements : [],
         recordedMatches: Array.isArray(stored.recordedMatches) ? stored.recordedMatches.slice(-100) : [],
@@ -255,9 +264,28 @@
 
   A.saveProfile = function saveProfile(profile, storage) {
     const target = storage || A.getStorage();
+    profile.version = 4;
+    if (A.accountProgressionState) {
+      profile.accountProgression = A.accountProgressionState(profile.accountProgression || { xp:0 }, {
+        source:profile.accountProgression?.source || "local",
+        syncedAt:profile.accountProgression?.synced_at || null
+      });
+    }
     profile.updatedAt = new Date().toISOString();
     target.setItem(PROFILE_KEY, JSON.stringify(profile));
     return profile;
+  };
+
+  A.syncProfileAccountProgression = function syncProfileAccountProgression(profile, remoteProgression, storage) {
+    if (!profile || !A.reconcileAccountProgression) return profile;
+    const reconciled = A.reconcileAccountProgression(profile.accountProgression || { xp:0 }, remoteProgression);
+    profile.accountProgression = A.accountProgressionState
+      ? A.accountProgressionState(reconciled)
+      : { xp:reconciled.xp, source:reconciled.source, synced_at:reconciled.synced_at || null };
+    A.saveProfile(profile, storage);
+    return A.normalizeAccountProgression
+      ? A.normalizeAccountProgression(profile.accountProgression)
+      : reconciled;
   };
 
   A.setProfileFormativeSchool = function setProfileFormativeSchool(profile, schoolId) {
