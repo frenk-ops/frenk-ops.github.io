@@ -19,23 +19,23 @@ The current coordinate space is `portrait-v1`, shared by mobile and desktop.
 
 | Location | X | Y |
 | --- | ---: | ---: |
-| Atrium | 50% | 44% |
-| School Wing | 24% | 19% |
-| Study Library | 76% | 24% |
-| Arcane Forge | 21% | 65% |
-| Trial Hall | 48% | 87% |
-| Academy Arena | 78% | 69% |
+| Atrium | 50% | 43% |
+| School Wing | 22% | 17% |
+| Study Library | 80% | 19% |
+| Arcane Forge | 19% | 62% |
+| Trial Hall | 49% | 80% |
+| Academy Arena | 80% | 65% |
 
 A replacement artwork must preserve these landmark centers closely enough that the HTML hotspots still sit on the intended structures.
 
-## Final raster target
+## Raster candidate — v0.61.37
 
-Preferred production asset:
-- `academy-campus-map.webp`;
-- exact 4:5 composition;
-- no embedded UI/text;
-- painterly premium fantasy environment;
-- enough detail for a CSS width up to roughly 720 px;
-- keep the existing SVG only as development/fallback scaffold until the raster is explicitly approved and committed.
+The repository now contains `academy-campus-map.webp` as the first premium raster candidate:
+- 1200 × 1500 (exact 4:5);
+- painterly fantasy environment;
+- no embedded player-facing text or UI;
+- six landmark zones aligned to the canonical HTML hotspots;
+- WebP is the preferred runtime source;
+- the existing SVG remains the explicit fallback and structural reference.
 
-Replacing the artwork must not require changes to Academy progression, navigation, gates or hotspot semantics.
+The candidate is intentionally replaceable: final art-direction approval may swap the WebP while preserving this coordinate contract. Replacing the artwork must not require changes to Academy progression, navigation, gates or hotspot semantics.

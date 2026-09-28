@@ -817,8 +817,9 @@
           : t("profile.chooseFormativeSchool");
     const arenaAvailable = Boolean(academy.tournamentUnlocked);
     const academyArtwork = Object.freeze({
-      src:"assets/ui/academy/academy-campus-map.svg",
-      kind:"scaffold-svg",
+      src:"assets/ui/academy/academy-campus-map.webp",
+      fallback:"assets/ui/academy/academy-campus-map.svg",
+      kind:"raster-webp-candidate",
       ratio:"4:5"
     });
     const schoolChoices = A.SCHOOLS.map(item => {
@@ -840,31 +841,31 @@
 
     const academyLocations = [
       {
-        id:"atrium", icon:"✉", x:50, y:44, title:t("academy.atrium.title"), description:t("academy.atrium.description"),
+        id:"atrium", icon:"✉", x:50, y:43, title:t("academy.atrium.title"), description:t("academy.atrium.description"),
         status:t("academy.available"), state:"available", action:t("academy.atrium.action"), letter:true,
         extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
         admissionLetter:Boolean(academy.academyAdmissionEligible)
       },
       {
-        id:"schools", icon:"✦", x:24, y:19, title:t("academy.schools.title"), description:t("academy.schools.description"),
+        id:"schools", icon:"✦", x:22, y:17, title:t("academy.schools.title"), description:t("academy.schools.description"),
         status:schoolAvailable ? t("academy.available") : t("academy.sealed"),
         state:schoolAvailable ? "available" : "sealed", action:schoolAction, schoolWing:true,
         disabled:!schoolAvailable, note:schoolNote
       },
       {
-        id:"library", icon:"⌘", x:76, y:24, title:t("academy.library.title"), description:t("academy.library.description"),
+        id:"library", icon:"⌘", x:80, y:19, title:t("academy.library.title"), description:t("academy.library.description"),
         status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
       },
       {
-        id:"forge", icon:"⚒", x:21, y:65, title:t("academy.forge.title"), description:t("academy.forge.description"),
+        id:"forge", icon:"⚒", x:19, y:62, title:t("academy.forge.title"), description:t("academy.forge.description"),
         status:t("academy.available"), state:"available", action:t("academy.forge.action"), target:"forge"
       },
       {
-        id:"trials", icon:"⚔", x:48, y:87, title:t("academy.trials.title"), description:t("academy.trials.description"),
+        id:"trials", icon:"⚔", x:49, y:80, title:t("academy.trials.title"), description:t("academy.trials.description"),
         status:t("academy.available"), state:"available", action:t("academy.trials.action"), target:"game"
       },
       {
-        id:"arena", icon:"♜", x:78, y:69, title:t("academy.arena.title"), description:t("academy.arena.description"),
+        id:"arena", icon:"♜", x:80, y:65, title:t("academy.arena.title"), description:t("academy.arena.description"),
         status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
         state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
         disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
@@ -922,7 +923,10 @@
         <div class="academy-map-layout">
           <div class="academy-map-scene" data-academy-campus data-academy-coordinate-space="portrait-v1" aria-label="${escapeHtml(t("academy.campus.title"))}">
             <figure class="academy-map-art" data-academy-artwork data-academy-artwork-kind="${academyArtwork.kind}" data-academy-artwork-ratio="${academyArtwork.ratio}" aria-hidden="true">
-              <img src="${academyArtwork.src}" alt="" decoding="async" draggable="false">
+              <picture>
+                <source srcset="${academyArtwork.src}" type="image/webp">
+                <img src="${academyArtwork.fallback}" alt="" decoding="async" draggable="false">
+              </picture>
             </figure>
             <svg class="academy-map-routes" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true">
               <path d="M50 44 C40 36 31 27 24 19"></path>

@@ -9377,6 +9377,16 @@ body.ui-classic:not(:has(#battlePanel:not(.hidden))) .multiplayer-screen {
   font-weight:600;
 }
 
+@media (min-width:901px) {
+  .academy-map-detail-panel {
+    position:sticky;
+    top:88px;
+    max-height:calc(100vh - 112px);
+  }
+  .academy-map-detail-card {
+    overflow:auto;
+  }
+}
 @media (max-width:900px) {
   #tournamentView .tournament-progress-panel .tournament-summary {
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -19605,7 +19615,12 @@ button.sigian-full-constraint-slot {
   pointer-events:none;
   filter:saturate(.94) contrast(1.02);
 }
-.academy-map-art > img {
+.academy-map-art > picture {
+  display:block;
+  width:100%;
+  height:100%;
+}
+.academy-map-art img {
   display:block;
   width:100%;
   height:100%;
@@ -19632,7 +19647,8 @@ button.sigian-full-constraint-slot {
   width:100%;
   height:100%;
   pointer-events:none;
-  opacity:.72;
+  opacity:.42;
+  mix-blend-mode:screen;
 }
 .academy-map-routes path {
   fill:none;
@@ -19873,6 +19889,9 @@ button.sigian-full-constraint-slot {
   }
   .academy-map-path-summary {
     display:none;
+  }
+  .academy-map-routes {
+    opacity:.28;
   }
   .academy-map-hotspot {
     min-width:48px;
