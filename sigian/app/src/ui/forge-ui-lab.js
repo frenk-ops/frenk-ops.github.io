@@ -32,6 +32,8 @@
     atmosphere: true,
     motionEnabled: false,
     motionSensorStatus: "idle",
+    constraintPreview: "canonical",
+    constraintMockColor: "#7866d7",
     inlineControl: null,
     nameEditing: false
   };
@@ -512,15 +514,37 @@
       || "Vincolo";
   }
 
-  function constraintCardMarkup(recipe) {
+  function constraintSocketPreview(recipe) {
+    // Forge UI Lab changes presentation only: the Forge model always exposes one Constraint slot.
     const current = recipe.constraint || null;
-    const name = current ? constraintName(recipe) : "Vincolo vuoto";
-    return '<button type="button" class="forge-lab-constraint ' + (current ? "is-filled" : "is-empty") +
-      (current?.school ? " school-" + escapeHtml(current.school) : "") +
-      '" data-lab-constraint-main data-lab-depth-layer="floating" aria-label="' + escapeHtml(name) + '">' +
-      '<span aria-hidden="true">◇</span>' +
-      (current ? '<small>' + escapeHtml(name) + '</small>' : '<small>Vincolo</small>') +
-    '</button>';
+    if (state.constraintPreview === "empty") return [{ occupied:false, label:"Socket Vincolo vuoto", mock:true }];
+    if (state.constraintPreview === "occupied") return [{ occupied:true, label:"Vincolo mock", color:state.constraintMockColor, mock:true }];
+    return [{
+      occupied:Boolean(current),
+      label:current ? constraintName(recipe) : "Socket Vincolo vuoto",
+      school:current?.school || "",
+      canonical:true
+    }];
+  }
+
+  function constraintCardMarkup(recipe) {
+    const sockets = constraintSocketPreview(recipe);
+    const color = escapeHtml(state.constraintMockColor);
+    return '<div class="forge-lab-constraint-bank is-count-' + sockets.length + '" ' +
+      'data-lab-control-anchor="constraints" data-lab-depth-layer="impressed" ' +
+      'data-lab-constraint-preview="' + escapeHtml(state.constraintPreview) + '" ' +
+      'style="--lab-constraint-mock-color:' + color + '">' +
+      sockets.map((socket, index) => {
+        const classes = 'forge-lab-constraint-socket ' + (socket.occupied ? "is-occupied" : "is-empty") +
+          (socket.mock ? " is-mock" : "") + (socket.school ? " school-" + escapeHtml(socket.school) : "");
+        const contents = '<span class="forge-lab-constraint-well" aria-hidden="true">' +
+          (socket.occupied ? '<i class="forge-lab-constraint-orb"></i>' : '<i class="forge-lab-constraint-rune">◇</i>') +
+          '</span><small>' + (socket.mock ? "MOCK" : "VINCOLO") + '</small>';
+        return socket.canonical
+          ? '<button type="button" class="' + classes + '" data-lab-constraint-main aria-label="' + escapeHtml(socket.label) + '">' + contents + '</button>'
+          : '<span class="' + classes + '" data-lab-constraint-mock="' + index + '" role="img" aria-label="' + escapeHtml(socket.label) + '">' + contents + '</span>';
+      }).join("") +
+    '</div>';
   }
 
   function sigilQuickMarkup(recipe, sigil) {
@@ -555,6 +579,7 @@
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
         '<div class="forge-lab-sigil-row forge-lab-sigil-anchor' + imprint + breaking + '" data-lab-control-anchor="sigil" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
+          '<button type="button" class="forge-lab-sigil-remove" data-lab-remove-sigil-direct="' + escapeHtml(sigil.slotId) + '" aria-label="Rimuovi Sigillo">×</button>' +
           '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente">‹</button>' +
           '<button type="button" class="forge-lab-sigil-mark" data-lab-sigil="' + escapeHtml(sigil.slotId) + '">' +
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
@@ -930,6 +955,14 @@
           '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Nubi, brace e aura rituale</label>' +
           '<label class="forge-lab-motion-toggle"><input type="checkbox" data-lab-motion ' + (state.motionEnabled ? "checked" : "") + '> Movimento carta</label>' +
           '<p class="forge-lab-motion-status" data-lab-motion-status aria-live="polite">' + escapeHtml(motionStatusText()) + '</p>' +
+          '<fieldset class="forge-lab-constraint-preview-controls"><legend>Socket Vincolo · preview Lab</legend>' +
+            '<label>Stato <select data-lab-constraint-preview>' +
+              '<option value="canonical"' + (state.constraintPreview === "canonical" ? " selected" : "") + '>Dati correnti</option>' +
+              '<option value="empty"' + (state.constraintPreview === "empty" ? " selected" : "") + '>1 vuoto mock</option>' +
+              '<option value="occupied"' + (state.constraintPreview === "occupied" ? " selected" : "") + '>1 occupato mock</option>' +
+            '</select></label>' +
+            '<label>Colore sfera <input type="color" value="' + escapeHtml(state.constraintMockColor) + '" data-lab-constraint-mock-color></label>' +
+          '</fieldset>' +
           "<p>Il movimento è temporaneo: al rilascio la Formula torna progressivamente al proprio assetto neutro.</p>" +
         '</div>' +
       '</details>'
@@ -1432,9 +1465,9 @@
       render();
     });
 
-    root.querySelector("[data-lab-remove-sigil]")?.addEventListener("click", event => {
-      const slotId = event.currentTarget.dataset.labRemoveSigil;
+    const beginSigilRemoval = slotId => {
       state.breakSlotId = slotId;
+      state.inlineControl = null;
       state.modal = null;
       render();
       window.setTimeout(() => {
@@ -1442,7 +1475,15 @@
         state.breakSlotId = null;
         render();
       }, 470);
+    };
+
+    root.querySelector("[data-lab-remove-sigil]")?.addEventListener("click", event => {
+      beginSigilRemoval(event.currentTarget.dataset.labRemoveSigil);
     });
+
+    root.querySelectorAll("[data-lab-remove-sigil-direct]").forEach(button => button.addEventListener("click", event => {
+      beginSigilRemoval(event.currentTarget.dataset.labRemoveSigilDirect);
+    }));
 
     root.querySelectorAll("[data-lab-intensity]").forEach(button => button.addEventListener("click", () => {
       const slotId = button.dataset.labSlot;
@@ -1511,6 +1552,17 @@
       toggle.checked = state.motionEnabled;
       const output = root.querySelector("[data-lab-motion-status]");
       if (output) output.textContent = motionStatusText(status);
+    });
+
+    root.querySelector("[data-lab-constraint-preview]")?.addEventListener("change", event => {
+      state.constraintPreview = event.currentTarget.value;
+      state.modal = null;
+      render();
+    });
+
+    root.querySelector("[data-lab-constraint-mock-color]")?.addEventListener("input", event => {
+      state.constraintMockColor = event.currentTarget.value;
+      root.querySelector(".forge-lab-constraint-bank")?.style.setProperty("--lab-constraint-mock-color", state.constraintMockColor);
     });
 
     const stage = root.querySelector(".forge-lab-card-stage");

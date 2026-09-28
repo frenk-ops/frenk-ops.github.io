@@ -3043,8 +3043,8 @@
 }
 
 .forge-lab-sigils {
-  top: 66.3%;
-  bottom: 4.2%;
+  top: 62.5%;
+  bottom: 12%;
   min-height: 0;
   align-content: stretch;
   grid-template-rows: repeat(3, minmax(0, 1fr));
@@ -4739,7 +4739,7 @@
   box-shadow:
     0 4px 9px rgba(0,0,0,.28),
     0 0 7px var(--lab-school-soft);
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .forge-lab-school-radial button.is-selected {
@@ -5182,14 +5182,37 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.forge-lab-sigil-anchor .forge-lab-cycle {
+.forge-lab-sigil-anchor .forge-lab-cycle,
+.forge-lab-sigil-anchor .forge-lab-sigil-remove {
   position: absolute;
   z-index: 12;
   top: 50%;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
   color: color-mix(in srgb, var(--lab-sigil-metal) 72%, #ead5a6);
+  font: 800 1.35rem/1 Georgia, serif;
+  touch-action: manipulation;
   pointer-events: auto;
+}
+
+.forge-lab-sigil-anchor .forge-lab-sigil-remove {
+  left: calc(-11% - 100px);
+  transform: translateY(-50%) translateZ(var(--lab-z-control-local));
+  color: #e7a18d;
+  background: color-mix(in srgb, #5b1f19 34%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(235,154,130,.28);
+  text-shadow: 0 0 7px rgba(220,82,55,.4);
+}
+
+.forge-lab-sigil-anchor .forge-lab-sigil-remove:active {
+  filter: brightness(1.28);
+  scale: .94;
 }
 
 .forge-lab-sigil-anchor [data-lab-sigil-step="-1"] {
@@ -5302,7 +5325,7 @@
   );
   transform-style: flat;
   filter: none;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .forge-lab-sigil-anchor {
@@ -5338,6 +5361,10 @@
 .forge-lab-inline-wheel,
 .forge-lab-school-radial {
   transform: translateZ(calc(var(--lab-z-fx) - var(--lab-z-floating)));
+}
+
+.forge-lab-school-radial button {
+  pointer-events: auto;
 }
 
 .forge-lab-stat.is-scrubbing,
@@ -5462,8 +5489,24 @@
     transform-origin: right top;
   }
 
-  .forge-lab-sigil-anchor [data-lab-sigil-step="-1"] { left: calc(-9% - 34px); }
-  .forge-lab-sigil-anchor [data-lab-sigil-step="1"] { right: calc(-9% - 34px); }
+  .forge-lab-sigils {
+    left: 21%;
+    right: 8.3%;
+    top: 61.5%;
+    bottom: 12.5%;
+  }
+
+  .forge-lab-sigil-anchor .forge-lab-cycle,
+  .forge-lab-sigil-anchor .forge-lab-sigil-remove {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .forge-lab-sigil-anchor .forge-lab-sigil-remove { left: -98px; }
+  .forge-lab-sigil-anchor [data-lab-sigil-step="-1"] { left: -49px; }
+  .forge-lab-sigil-anchor [data-lab-sigil-step="1"] { right: -49px; }
 }
 
 
@@ -5601,55 +5644,125 @@
 }
 
 
-/* ===== Sigian 0.60 — unified canonical content in UI Lab ===== */
-.forge-lab-constraint {
+/* Milestone 5: structural Constraint sockets, inset between Attack and Health. */
+.forge-lab-constraint-bank {
+  --lab-constraint-mock-color:#7866d7;
   position:absolute;
-  z-index:48;
+  z-index:10;
   left:50%;
-  top:60.4%;
-  width:48px;
-  height:48px;
+  bottom:-2.1%;
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:44px;
+  place-content:center;
+  gap:6px;
+  width:96px;
+  min-height:54px;
+  transform:translate3d(
+    calc(-50% + var(--lab-motion-impressed-x, 0px)),
+    var(--lab-motion-impressed-y, 0px),
+    0
+  );
+  transform-style:flat;
+  pointer-events:none;
+}
+
+.forge-lab-constraint-socket {
+  position:relative;
+  width:44px;
+  height:44px;
   display:grid;
   place-items:center;
   padding:0;
-  transform:translateX(-50%) translateZ(calc(var(--lab-ui-z) + 10px));
-  border:2px solid rgba(103,64,31,.62);
-  border-radius:50%;
+  border:0;
   color:#4a2818;
-  background:
-    radial-gradient(circle at 34% 27%,rgba(255,240,196,.8),transparent 20%),
-    radial-gradient(circle,#d0a65e,#80502b 72%);
-  box-shadow:
-    0 8px 14px rgba(30,16,8,.3),
-    0 0 0 3px rgba(220,183,116,.28),
-    inset 0 0 10px rgba(58,27,10,.28);
+  background:transparent;
+  font:inherit;
+  pointer-events:auto;
+}
+
+button.forge-lab-constraint-socket {
   cursor:pointer;
 }
 
-.forge-lab-constraint.is-empty {
-  color:rgba(73,43,24,.52);
-  background:rgba(211,183,129,.55);
-  border-style:dashed;
-  box-shadow:0 5px 12px rgba(30,16,8,.18),inset 0 0 8px rgba(58,27,10,.14);
-}
-
-.forge-lab-constraint > span {
-  font:800 1.1rem/1 Georgia,serif;
-}
-
-.forge-lab-constraint > small {
+.forge-lab-constraint-well {
   position:absolute;
-  top:calc(100% + 3px);
+  inset:3px;
+  display:grid;
+  place-items:center;
+  border:2px solid rgba(80,45,24,.72);
+  border-radius:50%;
+  background:
+    conic-gradient(from 22deg,rgba(91,49,23,.3),rgba(235,200,132,.34),rgba(91,49,23,.3),rgba(224,184,112,.26),rgba(91,49,23,.3)),
+    radial-gradient(circle at 48% 54%,rgba(61,34,19,.2),rgba(217,184,122,.52) 62%,rgba(73,39,20,.7) 100%);
+  box-shadow:
+    inset 0 4px 8px rgba(38,18,8,.5),
+    inset 0 -2px 3px rgba(255,226,164,.28),
+    0 0 0 2px rgba(218,180,111,.22);
+}
+
+.forge-lab-constraint-rune {
+  color:rgba(75,42,23,.56);
+  font:800 1rem/1 Georgia,serif;
+  text-shadow:0 1px rgba(255,226,165,.32);
+}
+
+.forge-lab-constraint-orb {
+  width:27px;
+  height:27px;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 32% 25%,rgba(255,255,255,.92),rgba(255,255,255,.2) 17%,transparent 29%),
+    radial-gradient(circle at 55% 62%,var(--lab-constraint-mock-color),color-mix(in srgb,var(--lab-constraint-mock-color) 48%,#181026) 78%);
+  box-shadow:
+    0 4px 7px rgba(24,12,11,.42),
+    0 0 8px color-mix(in srgb,var(--lab-constraint-mock-color) 55%,transparent),
+    inset 0 -4px 7px rgba(16,8,25,.38);
+  transform:translateY(-2px) translateZ(var(--lab-z-raised));
+}
+
+.forge-lab-constraint-socket > small {
+  position:absolute;
+  top:calc(100% + 1px);
   left:50%;
-  width:max-content;
-  max-width:130px;
   transform:translateX(-50%);
-  overflow:hidden;
-  text-overflow:ellipsis;
+  color:rgba(69,39,22,.72);
+  font:800 .42rem/1 Georgia,serif;
+  letter-spacing:.08em;
   white-space:nowrap;
-  color:#4a2918;
-  text-shadow:0 1px rgba(255,229,177,.4);
-  font:700 .48rem/1.05 Georgia,serif;
+}
+
+.forge-lab-constraint-preview-controls {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px 12px;
+  margin:0;
+  padding:10px 12px;
+  border:1px solid rgba(214,176,104,.2);
+  border-radius:12px;
+}
+
+.forge-lab-constraint-preview-controls legend {
+  padding:0 5px;
+  color:rgba(244,230,197,.72);
+  font-size:.7rem;
+}
+
+.forge-lab-constraint-preview-controls label {
+  display:grid;
+  gap:5px;
+  color:rgba(244,230,197,.82);
+  font-size:.68rem;
+}
+
+.forge-lab-constraint-preview-controls select {
+  min-height:36px;
+}
+
+.forge-lab-constraint-preview-controls input[type="color"] {
+  width:48px;
+  height:36px;
+  padding:3px;
 }
 
 .forge-lab-sigil-choice {
@@ -5743,14 +5856,30 @@
 .forge-lab-constraint-choice.is-disabled { opacity:.48; }
 
 @media (max-width:720px) {
-  .forge-lab-constraint {
-    top:60.8%;
-    width:44px;
-    height:44px;
+  .forge-lab-constraint-bank {
+    bottom:-1.8%;
+    grid-auto-columns:37px;
+    gap:4px;
+    width:82px;
+    min-height:48px;
   }
 
-  .forge-lab-constraint > small {
+  .forge-lab-constraint-socket {
+    width:37px;
+    height:37px;
+  }
+
+  .forge-lab-constraint-orb {
+    width:23px;
+    height:23px;
+  }
+
+  .forge-lab-constraint-socket > small {
     display:none;
+  }
+
+  .forge-lab-constraint-preview-controls {
+    grid-template-columns:1fr auto;
   }
 
   .forge-lab-constraint-picker {
