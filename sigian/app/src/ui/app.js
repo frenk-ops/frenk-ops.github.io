@@ -888,6 +888,7 @@
       <article class="academy-location academy-map-detail-card is-${escapeHtml(location.state)} ${location.id === "atrium" ? "is-active" : ""}"
         data-academy-map-detail="${escapeHtml(location.id)}" data-academy-state="${escapeHtml(location.state)}"
         ${location.id === "atrium" ? "" : "hidden"} aria-hidden="${location.id === "atrium" ? "false" : "true"}">
+        <div class="academy-map-detail-hero" style="--academy-detail-x:${location.x}%;--academy-detail-y:${location.y}%;" aria-hidden="true"></div>
         <div class="academy-map-detail-heading">
           <span class="academy-map-detail-icon" aria-hidden="true">${location.icon}</span>
           <div><small>${escapeHtml(location.status)}</small><h3>${escapeHtml(location.title)}</h3></div>
@@ -906,6 +907,10 @@
       </article>`;
 
     root.innerHTML = `
+      <header class="academy-mobile-titlebar" aria-label="${escapeHtml(t("nav.academy"))}">
+        <span class="academy-mobile-title-icon" aria-hidden="true">⌂</span>
+        <strong>${t("nav.academy")}</strong>
+      </header>
       <header class="academy-heading">
         <div>
           <span class="classic-menu-kicker">${t("nav.academy")}</span>
@@ -929,23 +934,23 @@
               </picture>
             </figure>
             <svg class="academy-map-routes" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M50 44 C40 36 31 27 24 19"></path>
-              <path d="M52 43 C63 37 71 30 76 24"></path>
-              <path d="M47 50 C37 55 29 61 21 65"></path>
-              <path d="M53 51 C64 57 71 63 78 69"></path>
-              <path d="M50 54 C50 65 49 76 48 87"></path>
+              <path d="M50 43 C40 35 31 25 22 17"></path>
+              <path d="M52 42 C64 35 72 27 80 19"></path>
+              <path d="M47 49 C36 54 27 59 19 62"></path>
+              <path d="M53 50 C65 56 73 61 80 65"></path>
+              <path d="M50 53 C50 63 49 72 49 80"></path>
             </svg>
             <div class="academy-map-hotspots" role="group" aria-label="${escapeHtml(t("academy.campus.title"))}">
               ${academyLocations.map(locationHotspot).join("")}
             </div>
           </div>
           <aside id="academyMapDetail" class="academy-map-detail-panel" aria-live="polite">
+            ${academyLocations.map(locationDetail).join("")}
             <div class="academy-map-path-summary" aria-label="${escapeHtml(t("academy.statusTitle"))}">
               <div><small>${t("academy.statusTitle")}</small><strong>${escapeHtml(phaseLabel)}</strong></div>
               <span>${escapeHtml(t("academy.level", { level }))}</span>
               <span>${escapeHtml(schoolLabel)}</span>
             </div>
-            ${academyLocations.map(locationDetail).join("")}
           </aside>
         </div>
       </section>
