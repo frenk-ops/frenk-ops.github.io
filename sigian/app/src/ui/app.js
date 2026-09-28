@@ -9379,6 +9379,36 @@
       ? t("profile.progressionOnline")
       : t("profile.progressionLocal");
     const academy = currentAcademyState();
+    tournament = A.loadTournament?.() || tournament;
+    const activeTournament = tournament && !tournament.completed ? tournament : null;
+    const activeTournamentLeague = activeTournament
+      ? (A.getTournamentLeagueForMatch?.(activeTournament, activeTournament.currentMatch) || "starting")
+      : null;
+    const tournamentMatchesTotal = Number(A.TOURNAMENT_RULES?.matches || activeTournament?.opponents?.length || 7);
+    const tournamentMatchNumber = activeTournament
+      ? Math.min(tournamentMatchesTotal, Number(activeTournament.currentMatch || 0) + 1)
+      : 0;
+    const academyMilestones = [
+      {
+        id:"admission",
+        label:t("profile.pathMilestoneAdmission"),
+        level:Number(academy.academyAdmissionLevel || 3),
+        done:Boolean(academy.academyAdmissionEligible)
+      },
+      {
+        id:"school",
+        label:t("profile.pathMilestoneSchool"),
+        level:Number(academy.schoolConfirmationLevel || 10),
+        done:Boolean(academy.schoolConfirmed)
+      },
+      {
+        id:"graduation",
+        label:t("profile.pathMilestoneGraduation"),
+        level:Number(academy.graduationLevel || 50),
+        done:Boolean(academy.graduated)
+      }
+    ];
+    const firstIncompleteMilestone = academyMilestones.find(item => !item.done)?.id || null;
     const academyPhaseLabel = t(`profile.academyPhase.${academy.phase}`);
     const formativeSchoolHint = !academy.schoolSelectionUnlocked
       ? t("profile.schoolLockedUntilAdmission", { level:academy.academyAdmissionLevel })
@@ -9407,30 +9437,91 @@
             </div>
           </section>`;
     root.innerHTML = `
-      <section class="profile-account-progression ornate-subpanel">
-        <div class="profile-account-progression-heading">
-          <div><small>${t("profile.accountProgression")}</small><h3>${t("profile.accountLevel", { level:accountLevelProgress.level })}</h3></div>
-          <strong>${accountLevelProgress.xp} XP</strong>
+      <section class="profile-path-overview ornate-subpanel">
+        <div class="profile-section-heading profile-path-heading">
+          <div><small>${t("profile.pathOverview")}</small><h3>${t("profile.pathOverviewTitle")}</h3><p>${t("profile.pathOverviewIntro")}</p></div>
+          <span class="profile-path-level-seal"><small>${t("profile.pathAccount")}</small><strong>${t("profile.accountLevel", { level:accountLevelProgress.level })}</strong></span>
         </div>
-        <div class="profile-account-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(accountLevelProgress.progress * 100)}">
-          <span style="width:${Math.round(accountLevelProgress.progress * 100)}%"></span>
-        </div>
-        <div class="profile-account-progression-meta">
-          <span>${accountLevelProgress.xpToNextLevel > 0 ? t("profile.xpToNextLevel", { xp:accountLevelProgress.xpToNextLevel }) : t("profile.maxCurrentLevel")}</span>
-          <small>${accountProgressionSource}</small>
+        <div class="profile-path-branches">
+          <article class="profile-path-branch is-account">
+            <span class="profile-path-branch-icon" aria-hidden="true">✦</span>
+            <div><small>${t("profile.pathAccount")}</small><strong>${accountLevelProgress.xp} XP</strong><p>${t("profile.pathCanonical")}</p></div>
+          </article>
+          <article class="profile-path-branch is-academy">
+            <span class="profile-path-branch-icon" aria-hidden="true">⌂</span>
+            <div><small>${t("profile.pathAcademy")}</small><strong>${escapeHtml(academyPhaseLabel)}</strong><p>${academy.formativeSchoolId ? escapeHtml(schoolName(academy.formativeSchoolId)) : t("academy.schoolNone")}</p></div>
+          </article>
+          <article class="profile-path-branch is-tournament">
+            <span class="profile-path-branch-icon" aria-hidden="true">♜</span>
+            <div><small>${t("profile.pathTournament")}</small><strong>${activeTournament ? t("profile.pathTournamentActive") : academy.tournamentUnlocked ? t("profile.pathTournamentNone") : t("profile.pathTournamentLocked")}</strong><p>${t("profile.pathTournamentRecord", { won:Number(profile.tournamentsWon || 0), played:Number(profile.tournamentsPlayed || 0) })}</p></div>
+          </article>
+          <article class="profile-path-branch is-study">
+            <span class="profile-path-branch-icon" aria-hidden="true">⌘</span>
+            <div><small>${t("profile.pathStudy")}</small><strong>${t("profile.pathStudyPlanned")}</strong><p>${t("profile.pathStudyHint")}</p></div>
+          </article>
         </div>
       </section>
-      <section class="profile-account-progression profile-academy-progress ornate-subpanel">
-        <div class="profile-account-progression-heading">
-          <div><small>${t("profile.academyStatus")}</small><h3>${escapeHtml(academyPhaseLabel)}</h3></div>
-          <strong>${academy.formativeSchoolId ? escapeHtml(schoolName(academy.formativeSchoolId)) : "—"}</strong>
-        </div>
-        <div class="profile-account-progression-meta">
-          <span>${escapeHtml(formativeSchoolHint)}</span>
-          <small>${escapeHtml(t("profile.accountLevel", { level:academy.level }))}</small>
+
+      <div class="profile-path-primary-grid">
+        <section class="profile-account-progression ornate-subpanel">
+          <div class="profile-account-progression-heading">
+            <div><small>${t("profile.accountProgression")}</small><h3>${t("profile.accountLevel", { level:accountLevelProgress.level })}</h3></div>
+            <strong>${accountLevelProgress.xp} XP</strong>
+          </div>
+          <div class="profile-account-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(accountLevelProgress.progress * 100)}">
+            <span style="width:${Math.round(accountLevelProgress.progress * 100)}%"></span>
+          </div>
+          <div class="profile-account-progression-meta">
+            <span>${accountLevelProgress.xpToNextLevel > 0 ? t("profile.xpToNextLevel", { xp:accountLevelProgress.xpToNextLevel }) : t("profile.maxCurrentLevel")}</span>
+            <small>${accountProgressionSource}</small>
+          </div>
+        </section>
+
+        <section class="profile-account-progression profile-academy-progress ornate-subpanel">
+          <div class="profile-account-progression-heading">
+            <div><small>${t("profile.academyStatus")}</small><h3>${escapeHtml(academyPhaseLabel)}</h3></div>
+            <strong>${academy.formativeSchoolId ? escapeHtml(schoolName(academy.formativeSchoolId)) : "—"}</strong>
+          </div>
+          <div class="profile-account-progression-meta">
+            <span>${escapeHtml(formativeSchoolHint)}</span>
+            <small>${escapeHtml(t("profile.accountLevel", { level:academy.level }))}</small>
+          </div>
+          <button type="button" class="classic-stone-button ghost profile-path-inline-action" data-view-jump="academy">${t("profile.manageSchoolInAcademy")}</button>
+        </section>
+      </div>
+
+      <section class="profile-path-milestones ornate-subpanel" aria-labelledby="profilePathMilestonesTitle">
+        <div class="profile-section-heading"><div><h3 id="profilePathMilestonesTitle">${t("profile.pathMilestones")}</h3><p>${t("profile.pathAcademyHint")}</p></div></div>
+        <div class="profile-path-milestone-grid">
+          ${academyMilestones.map(item => {
+            const state = item.done ? "done" : item.id === firstIncompleteMilestone ? "current" : "locked";
+            const stateLabel = item.done ? t("profile.pathMilestoneDone") : state === "current" ? t("profile.pathMilestoneCurrent") : t("profile.pathMilestoneLocked");
+            return `<article class="profile-path-milestone is-${state}" data-path-milestone="${item.id}">
+              <span class="profile-path-milestone-mark" aria-hidden="true">${item.done ? "✓" : state === "current" ? "◆" : "◇"}</span>
+              <div><small>${escapeHtml(t("profile.pathMilestoneLevel", { level:item.level }))}</small><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(stateLabel)}</span></div>
+            </article>`;
+          }).join("")}
         </div>
       </section>
+
+      <section class="profile-path-tournament ornate-subpanel">
+        <div class="profile-section-heading">
+          <div><h3>${t("profile.pathTournament")}</h3><p>${activeTournament ? t("profile.pathTournamentActiveHint") : academy.tournamentUnlocked ? t("profile.pathTournamentReadyHint") : t("profile.pathTournamentUnlock")}</p></div>
+          <strong>${Number(profile.tournamentsWon || 0)}/${Number(profile.tournamentsPlayed || 0)}</strong>
+        </div>
+        ${activeTournament ? `<div class="profile-path-tournament-live">
+          <div><small>${t("profile.pathTournamentLeague", { league:t(`league.${activeTournamentLeague}`) })}</small><strong>${t("profile.pathTournamentMatch", { match:tournamentMatchNumber, total:tournamentMatchesTotal })}</strong></div>
+          <span>${t("profile.pathTournamentScore", { wins:Number(activeTournament.wins || 0), losses:Number(activeTournament.losses || 0), points:Number(activeTournament.points || 0) })}</span>
+          <button type="button" class="classic-stone-button" data-view-jump="tournament">${t("tournament.resume")}</button>
+        </div>` : `<div class="profile-path-tournament-empty">
+          <span>${academy.tournamentUnlocked ? t("profile.pathTournamentNone") : t("profile.pathTournamentLocked")}</span>
+          <small>${academy.tournamentUnlocked ? t("profile.pathTournamentRecord", { won:Number(profile.tournamentsWon || 0), played:Number(profile.tournamentsPlayed || 0) }) : t("profile.pathTournamentUnlock")}</small>
+          ${academy.tournamentUnlocked ? `<button type="button" class="classic-stone-button ghost" data-view-jump="tournament">${t("nav.tournament")}</button>` : ""}
+        </div>`}
+      </section>
+
       ${onlineCard}
+
       <section class="profile-customize-card ornate-subpanel">
         <div class="profile-section-heading"><div><h3>${t("profile.identityTitle")}</h3><p>${t("profile.identityIntro")}</p></div></div>
         <div class="profile-identity-editor">
@@ -9456,10 +9547,12 @@
           </div>
         </div>
       </section>
+
       <div class="profile-mode-grid">
         <article class="profile-mode-card"><span>${t("profile.singlePlayer")}</span><strong>${t("profile.record", { wins: single.wins || 0, losses: single.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: single.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(single.fastestWinMs)}</small></article>
         <article class="profile-mode-card"><span>${t("nav.multiplayer")}</span><strong>${t("profile.record", { wins: multi.wins || 0, losses: multi.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: multi.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(multi.fastestWinMs)}</small></article>
       </div>
+
       <section class="profile-fun-stats ornate-subpanel">
         <h3>${t("profile.stats")}</h3>
         <div class="profile-stat-grid">
@@ -9474,6 +9567,7 @@
           ${A.SCHOOLS.map(item => `<span><b>${schoolIconMarkup(item.id, "school-icon-svg profile-school-icon")}</b><small>${schoolName(item.id)}</small><strong>${Number(stats.cardsBySchool?.[item.id] || 0)}</strong></span>`).join("")}
         </div>
       </section>
+
       <section class="profile-trophies ornate-subpanel">
         <div class="profile-section-heading"><div><h3>${t("profile.trophies")}</h3><p>${t("profile.trophiesIntro")}</p></div><strong>${(profile.achievements || []).length}/${achievements.length}</strong></div>
         <div class="trophy-grid">
@@ -9487,6 +9581,7 @@
           }).join("")}
         </div>
       </section>
+
       <div class="profile-secondary-actions">
         <button class="classic-stone-button" type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>
         <button class="classic-stone-button" type="button" data-view-jump="diagnostics">${t("nav.options")}</button>
