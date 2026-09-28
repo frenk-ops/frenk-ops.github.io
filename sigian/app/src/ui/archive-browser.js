@@ -770,14 +770,22 @@
     const schoolCounts = grimoireSchoolCounts(grimoire, formulas);
     const profile = A.loadProfile?.() || {};
     const formativeSchoolId = profile.formativeSchoolId || null;
+    const academy = A.academyProgressionState
+      ? A.academyProgressionState(profile.accountProgression || { xp:0 }, profile)
+      : null;
+    const specializationAccessUnlocked = academy
+      ? academy.duelSpecializationUnlocked
+      : Boolean(formativeSchoolId);
+    const allSchoolSpecializationsUnlocked = Boolean(academy?.allSchoolSpecializationsUnlocked);
     const normalValidation = A.validateSigianGrimoire?.(grimoire, { specializationsEnabled:false }) || { ready:false };
     const specializedValidation = A.validateSigianGrimoire?.(grimoire, {
-      specializationsEnabled:true,
-      formativeSchoolId
+      specializationsEnabled:specializationAccessUnlocked,
+      formativeSchoolId,
+      allowAnySpecializationSchool:allSchoolSpecializationsUnlocked
     }) || { ready:false };
-    const specializationCandidates = !standard && formativeSchoolId
+    const specializationCandidates = !standard && specializationAccessUnlocked
       ? formulaItems.filter(formula =>
-          formula.school === formativeSchoolId
+          (allSchoolSpecializationsUnlocked || formula.school === formativeSchoolId)
           && String(formula.lifecycleState || "SEALED") === "SEALED"
         )
       : [];
@@ -824,7 +832,7 @@
               </div>`).join("")}
           </div>
         </section>`
-      : formativeSchoolId
+      : specializationAccessUnlocked
         ? `
           <section class="archive-grimoire-specialization">
             <div class="archive-block-heading">
@@ -847,7 +855,7 @@
                    </span>`}
             </div>
             <div class="archive-grimoire-specialization-row">
-              ${schoolLabelMarkup(formativeSchoolId)}
+              ${allSchoolSpecializationsUnlocked ? `<span class="archive-school-label">${escapeHtml(t("archive.anySchoolSpecialization"))}</span>` : schoolLabelMarkup(formativeSchoolId)}
               <select data-grimoire-specialization="${escapeHtml(grimoire.id)}">
                 <option value="">${escapeHtml(t("archive.chooseSpecializationFormula"))}</option>
                 ${specializationCandidates.map(formula => {
@@ -866,7 +874,7 @@
               <span class="archive-specialization-slot-glyph" aria-hidden="true">✦</span>
               <span class="archive-specialization-slot-copy"><strong>${escapeHtml(t("archive.specializationSlotEmpty"))}</strong></span>
             </div>
-            <p>${escapeHtml(t("archive.formativeSchoolMissing"))}</p>
+            <p>${escapeHtml(t(academy?.academyAdmissionEligible ? "archive.formativeSchoolMissing" : "archive.specializationAcademyLocked"))}</p>
           </section>`;
 
     return `
@@ -1254,8 +1262,17 @@
 
     root.querySelector("[data-grimoire-specialization]")?.addEventListener("change", event => {
       const grimoireId = event.currentTarget.dataset.grimoireSpecialization;
-      const formativeSchoolId = A.loadProfile?.()?.formativeSchoolId || null;
-      A.setSigianGrimoireSpecializationFormula?.(grimoireId, event.currentTarget.value, formativeSchoolId);
+      const profile = A.loadProfile?.() || {};
+      const formativeSchoolId = profile.formativeSchoolId || null;
+      const academy = A.academyProgressionState
+        ? A.academyProgressionState(profile.accountProgression || { xp:0 }, profile)
+        : null;
+      A.setSigianGrimoireSpecializationFormula?.(
+        grimoireId,
+        event.currentTarget.value,
+        formativeSchoolId,
+        { allowAnySpecializationSchool:Boolean(academy?.allSchoolSpecializationsUnlocked) }
+      );
       window.dispatchEvent(new CustomEvent("sigian:grimoireschange"));
       render(root, scope);
     });

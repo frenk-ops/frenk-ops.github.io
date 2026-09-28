@@ -138,7 +138,7 @@
 
   const tests = [
     {
-      name: "Profilo v4: XP canonico migra e sincronizza il livello derivato",
+      name: "Profilo v5: XP canonico migra e sincronizza il livello derivato",
       run() {
         const data = {
           "arcane-duels-profile-v013": JSON.stringify({
@@ -153,23 +153,55 @@
           removeItem:key => { delete data[key]; }
         };
         const migrated = A.loadProfile(storage);
-        assert(migrated.version === 4, `Versione profilo migrata: ${migrated.version}`);
+        assert(migrated.version === 5, `Versione profilo migrata: ${migrated.version}`);
         assert(migrated.accountProgression.xp === 400, "XP locale non preservato durante la migrazione");
-        assert(!Object.hasOwn(migrated.accountProgression, "level"), "Il livello legacy non deve restare persistito nel profilo v4");
+        assert(!Object.hasOwn(migrated.accountProgression, "level"), "Il livello legacy non deve restare persistito nel profilo v5");
         assert(A.normalizeAccountProgression(migrated.accountProgression).level === 3, "Il livello legacy non è stato ricalcolato dall'XP");
         A.syncProfileAccountProgression(migrated, { xp:100, level:999, games_played:2 }, storage);
         assert(migrated.accountProgression.xp === 100, "L'XP online autorevole non ha aggiornato la cache locale");
         assert(A.normalizeAccountProgression(migrated.accountProgression).level === 2, "Il livello sincronizzato non deriva dall'XP online");
         const persisted = JSON.parse(storage.getItem("arcane-duels-profile-v013"));
-        assert(persisted.version === 4 && persisted.accountProgression.xp === 100, "La progressione sincronizzata non è stata persistita");
+        assert(persisted.version === 5 && persisted.accountProgression.xp === 100, "La progressione sincronizzata non è stata persistita");
         assert(!Object.hasOwn(persisted.accountProgression, "level"), "Il profilo persistito non deve contenere il livello derivato");
+      }
+    },
+    {
+      name: "Accademia: Scuola e conferma rispettano i milestone derivati dall'XP",
+      run() {
+        const data = {};
+        const storage = {
+          getItem:key => data[key] ?? null,
+          setItem:(key,value) => { data[key] = String(value); },
+          removeItem:key => { delete data[key]; }
+        };
+        const profile = A.createDefaultProfile();
+        assert(A.academyProgressionState(profile.accountProgression, profile).phase === "candidate", "Il nuovo profilo deve iniziare come candidato.");
+        assert(A.setProfileFormativeSchool(profile, "fire", storage) === null, "La Scuola non deve essere selezionabile prima dell'ammissione.");
+
+        profile.accountProgression = A.accountProgressionState({ xp:A.accountXpForLevel(3) });
+        assert(A.setProfileFormativeSchool(profile, "fire", storage) === "fire", "Al milestone di ammissione la Scuola deve diventare selezionabile.");
+        let academy = A.academyProgressionState(profile.accountProgression, profile);
+        assert(academy.tournamentUnlocked && academy.duelSpecializationUnlocked, "Scuola scelta + ammissione devono sbloccare Torneo e Specializzazione Duello.");
+        assert(academy.schoolChangeAllowed, "La Scuola deve restare modificabile nella fase esplorativa.");
+
+        profile.accountProgression = A.accountProgressionState({ xp:A.accountXpForLevel(10) });
+        A.saveProfile(profile, storage);
+        academy = A.academyProgressionState(profile.accountProgression, profile);
+        assert(academy.schoolConfirmationRequired, "Al milestone 10 deve essere richiesta la conferma della Scuola.");
+        assert(A.setProfileFormativeSchool(profile, "water", storage) === "water", "Prima della conferma deve essere possibile l'ultimo cambio di Scuola.");
+        assert(A.confirmProfileFormativeSchool(profile, storage, "2026-09-28T12:00:00.000Z"), "La Scuola deve poter essere confermata dal milestone 10.");
+        assert(A.setProfileFormativeSchool(profile, "death", storage) === "water", "Dopo la conferma la Scuola formativa deve restare bloccata.");
+
+        profile.accountProgression = A.accountProgressionState({ xp:A.accountXpForLevel(50) });
+        academy = A.academyProgressionState(profile.accountProgression, profile);
+        assert(academy.phase === "graduated" && academy.allSchoolSpecializationsUnlocked, "Al milestone 50 un profilo confermato deve diventare Sigian diplomato con accesso alle cinque Specializzazioni.");
       }
     },
     {
       name: "Profilo giocatore: statistiche e sei trofei richiesti vengono persistiti e sbloccati",
       run() {
         const profile = A.createDefaultProfile();
-        assert(profile.version === 4, "Il profilo locale deve usare lo schema v4 con progressione account canonica.");
+        assert(profile.version === 5, "Il profilo locale deve usare lo schema v5 con progressione account canonica e identità Accademia.");
         assert(profile.formativeSchoolId === null, "La Scuola formativa non deve essere inventata per un profilo nuovo.");
         assert(profile.accountProgression?.xp === 0 && !Object.hasOwn(profile.accountProgression, "level"), "Un nuovo profilo deve persistere solo 0 XP, non il livello derivato.");
         assert(A.normalizeAccountProgression(profile.accountProgression).level === 1, "0 XP deve derivare nel livello 1.");
@@ -769,6 +801,8 @@
       run() {
         const storage = (() => { const data = {}; return { getItem:key => data[key] ?? null, setItem:(key,value) => { data[key] = String(value); }, removeItem:key => { delete data[key]; } }; })();
         const profile = A.createDefaultProfile();
+        profile.accountProgression = A.accountProgressionState({ xp:A.accountXpForLevel(3) });
+        assert(A.setProfileFormativeSchool(profile, "water", storage) === "water", "Il test deve rendere il profilo idoneo al Torneo tramite il gate Accademia.");
         const tournament = A.startTournament(profile, { seed: "resume-cup", specialization: "water" }, storage);
         const restored = A.loadTournament(storage);
         const restoredProfile = A.loadProfile(storage);

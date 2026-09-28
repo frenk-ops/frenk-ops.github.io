@@ -695,6 +695,28 @@
     return t(`schools.${id}`);
   }
 
+  function currentAcademyState() {
+    if (typeof A.academyProgressionState === "function") {
+      return A.academyProgressionState(profile?.accountProgression || { xp:0 }, profile || {});
+    }
+    return {
+      phase:"candidate",
+      academyAdmissionLevel:Number(A.ACCOUNT_MILESTONES?.academyAdmission || 3),
+      schoolConfirmationLevel:Number(A.ACCOUNT_MILESTONES?.schoolConfirmation || 10),
+      graduationLevel:Number(A.ACCOUNT_MILESTONES?.graduation || 50),
+      academyAdmissionEligible:false,
+      schoolSelectionUnlocked:false,
+      schoolChangeAllowed:false,
+      schoolConfirmationRequired:false,
+      schoolConfirmationAllowed:false,
+      tournamentUnlocked:false,
+      duelSpecializationUnlocked:false,
+      allSchoolSpecializationsUnlocked:false,
+      formativeSchoolId:null,
+      allowedSpecializationSchoolIds:[]
+    };
+  }
+
   function schoolIconMarkup(id, className = "school-icon-svg") {
     if (typeof A.schoolIconMarkup === "function") return A.schoolIconMarkup(id, className);
     return `<span class="${className} school-icon-fallback" aria-hidden="true">${escapeHtml(school(id).icon)}</span>`;
@@ -2744,13 +2766,23 @@
   function populateSpecializationSelect(select, fallback = "random", options = {}) {
     if (!select) return;
     const current = select.value;
-    const available = options.sigianOnly ? sigianSpecializationOptions() : (A.ASTRAL_SPECIALIZATIONS || []);
+    const source = options.sigianOnly ? sigianSpecializationOptions() : (A.ASTRAL_SPECIALIZATIONS || []);
+    const allowedSchoolIds = Array.isArray(options.schoolIds) && options.schoolIds.length
+      ? new Set(options.schoolIds.map(String))
+      : null;
+    const available = allowedSchoolIds
+      ? source.filter(item => allowedSchoolIds.has(String(item.talent || "")))
+      : source;
+    const allowRandom = options.allowRandom !== false;
     select.innerHTML = [
-      `<option value="random">${t("menu.randomSpecialization")}</option>`,
+      ...(allowRandom ? [`<option value="random">${t("menu.randomSpecialization")}</option>`] : []),
       ...available.map(item => `<option value="${item.id}">${t(`specialization.${item.id}`)}</option>`)
     ].join("");
-    const valid = current === "random" || available.some(item => item.id === current);
-    select.value = valid ? current : fallback;
+    const valid = (allowRandom && current === "random") || available.some(item => item.id === current);
+    const normalizedFallback = allowRandom && fallback === "random"
+      ? "random"
+      : (available.some(item => item.id === fallback) ? fallback : (available[0]?.id || ""));
+    select.value = valid ? current : normalizedFallback;
     syncSpecializationSelectIcon(select);
     if (!select.dataset.specializationIconBound) {
       select.dataset.specializationIconBound = "true";
@@ -2777,10 +2809,19 @@
     const id = selectedDuelGrimoireId();
     const grimoire = A.getSigianGrimoire?.(id);
     if (!grimoire) return { ready:false, blockers:[{ code:"grimoire-missing" }], grimoire:null };
+    const academy = currentAcademyState();
     const validation = A.validateSigianGrimoire?.(grimoire, {
       specializationsEnabled:Boolean(withSpecializations),
-      formativeSchoolId:profile?.formativeSchoolId
+      formativeSchoolId:profile?.formativeSchoolId,
+      allowAnySpecializationSchool:Boolean(academy.allSchoolSpecializationsUnlocked)
     }) || { ready:grimoire.kind === "STANDARD", blockers:[], grimoire };
+    if (withSpecializations && !academy.duelSpecializationUnlocked) {
+      return {
+        ...validation,
+        ready:false,
+        blockers:[...(validation.blockers || []), { code:"academy-specialization-locked" }]
+      };
+    }
     if (withSpecializations && grimoire.kind === "STANDARD" && !profile?.formativeSchoolId) {
       return {
         ...validation,
@@ -2871,7 +2912,11 @@
         root.classList.add("is-error", "is-standard");
         return;
       }
-      const specializationId = A.normalizeAstralSpecialization?.(formativeSchoolId, formativeSchoolId) || formativeSchoolId;
+      const academy = currentAcademyState();
+      const formativeSpecializationId = A.normalizeAstralSpecialization?.(formativeSchoolId, formativeSchoolId) || formativeSchoolId;
+      const specializationId = academy.allSchoolSpecializationsUnlocked
+        ? ($("#playerSpecializationSelect")?.value || formativeSpecializationId)
+        : formativeSpecializationId;
       const spec = A.getAstralSpecialization?.(specializationId, formativeSchoolId) || null;
       const formulaId = A.getSigianSpecializationFormulaId?.(specializationId, formativeSchoolId) || null;
       const card = formulaId ? allAstralCards().find(item => item.id === formulaId) || null : null;
@@ -2908,14 +2953,56 @@
   function renderTalentChoices() {
     const root = $("#talentChoices");
     const distribution = normalizeSpellbookMode($("#duelModeSelect")?.value);
-    const withSpecializations = $("#duelSpecializationsSelect")?.value === "on";
+    const academy = currentAcademyState();
+    const specializationToggle = $("#duelSpecializationsSelect");
+    if (specializationToggle) {
+      specializationToggle.disabled = !academy.duelSpecializationUnlocked;
+      if (!academy.duelSpecializationUnlocked) specializationToggle.value = "off";
+    }
+    const specializationHint = $("#duelSpecializationHint");
+    if (specializationHint) {
+      specializationHint.textContent = !academy.academyAdmissionEligible
+        ? t("menu.duelSpecializationLockedAdmission", { level:academy.academyAdmissionLevel })
+        : !academy.formativeSchoolId
+          ? t("menu.duelSpecializationLockedSchool")
+          : t("menu.duelSpecializationHint");
+    }
+    const withSpecializations = Boolean(academy.duelSpecializationUnlocked && specializationToggle?.value === "on");
     setupGrimoireOptions();
+    const selectedGrimoire = A.getSigianGrimoire?.(selectedDuelGrimoireId()) || null;
+    const standardGrimoire = selectedGrimoire?.kind === "STANDARD";
+    const formativeSpecializationId = A.normalizeAstralSpecialization?.(
+      academy.formativeSchoolId,
+      academy.formativeSchoolId
+    ) || academy.formativeSchoolId || "";
+    const playerSpecializationSelect = $("#playerSpecializationSelect");
+    if (playerSpecializationSelect && academy.allSchoolSpecializationsUnlocked && standardGrimoire) {
+      populateSpecializationSelect(playerSpecializationSelect, formativeSpecializationId, {
+        sigianOnly:true,
+        allowRandom:false,
+        schoolIds:academy.allowedSpecializationSchoolIds
+      });
+      if (!playerSpecializationSelect.dataset.duelPlayerSpecializationBound) {
+        playerSpecializationSelect.dataset.duelPlayerSpecializationBound = "true";
+        playerSpecializationSelect.addEventListener("change", renderTalentChoices);
+      }
+    }
     const grimoireValidation = updateSelectedGrimoireStatus(withSpecializations);
     root.innerHTML = "";
     updateDuelModeDescription();
     $("#talentChoiceHeading").textContent = t("menu.startDuel");
     $("#specializationPathSettings")?.classList.toggle("hidden", !withSpecializations);
+    $("#playerSpecializationLabel")?.classList.toggle(
+      "hidden",
+      !(withSpecializations && academy.allSchoolSpecializationsUnlocked && standardGrimoire)
+    );
     $("#enemySpecializationLabel")?.classList.toggle("hidden", !withSpecializations);
+    const pathHint = $("#specializationPathHint");
+    if (pathHint) {
+      pathHint.textContent = academy.allSchoolSpecializationsUnlocked && standardGrimoire
+        ? t("menu.specializationPathGraduateHint")
+        : (!standardGrimoire ? t("menu.specializationPathPersonalHint") : t("menu.specializationPathHint"));
+    }
     updateDuelSpecializationSummary(withSpecializations, grimoireValidation);
 
     const button = document.createElement("button");
@@ -2988,13 +3075,19 @@
   function startDuel(playerTalent, fromTournament, selectedSpecialization, requestedMode, seedOverride = null, enemySpecializationOverride = null) {
     forgeTestDuel = false;
     const setId = "astral-original";
+    const academy = currentAcademyState();
     const spellbookDistribution = fromTournament
       ? normalizeSpellbookMode(tournament?.spellbookDistribution)
       : normalizeSpellbookMode(requestedMode || $("#duelModeSelect")?.value);
     const withSpecializations = fromTournament
       ? Boolean(tournament?.specializationsEnabled)
-      : $("#duelSpecializationsSelect")?.value === "on";
+      : Boolean(academy.duelSpecializationUnlocked && $("#duelSpecializationsSelect")?.value === "on");
     const opponent = fromTournament ? tournament.opponents[tournament.currentMatch] : null;
+    const selectedGrimoireId = fromTournament
+      ? (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard")
+      : selectedDuelGrimoireId();
+    const selectedGrimoire = !fromTournament ? A.getSigianGrimoire?.(selectedGrimoireId) || null : null;
+    const personalGrimoire = !fromTournament && selectedGrimoireId !== (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard");
     const requestedSeed = $("#seedInput").value.trim();
     const seed = fromTournament
       ? `${tournament.seed}-match-${tournament.currentMatch + 1}`
@@ -3006,10 +3099,23 @@
       : normalizedPlayerName(t(`difficulty.${difficulty}`), t("ui.opponent"));
 
     const formativeSchoolId = String(profile?.formativeSchoolId || "").trim();
+    const formativeSpecializationId = A.normalizeAstralSpecialization?.(formativeSchoolId, formativeSchoolId)
+      || formativeSchoolId
+      || undefined;
+    const personalSlotRuntime = withSpecializations && personalGrimoire && selectedGrimoire?.specializationFormulaId
+      ? A.resolveSigianFormulaInstanceRuntime?.(selectedGrimoire.specializationFormulaId)
+      : null;
+    const personalSpecializationSchoolId = personalSlotRuntime?.card?.school || null;
+    const personalSpecializationId = personalSpecializationSchoolId
+      ? (A.normalizeAstralSpecialization?.(personalSpecializationSchoolId, personalSpecializationSchoolId) || personalSpecializationSchoolId)
+      : undefined;
+    const standardSpecializationChoice = academy.allSchoolSpecializationsUnlocked
+      ? ($("#playerSpecializationSelect")?.value || formativeSpecializationId)
+      : formativeSpecializationId;
     const playerSpecializationChoice = withSpecializations
       ? (fromTournament
         ? tournament?.specialization
-        : (A.normalizeAstralSpecialization?.(formativeSchoolId, formativeSchoolId) || formativeSchoolId || undefined))
+        : (personalGrimoire ? personalSpecializationId : standardSpecializationChoice))
       : undefined;
     const enemySpecializationChoice = withSpecializations
       ? (fromTournament
@@ -3032,7 +3138,7 @@
       : null;
     const effectivePlayerTalent = fromTournament
       ? (specializationRecord?.talent || playerTalent || "fire")
-      : (formativeSchoolId || playerTalent || specializationRecord?.talent || "fire");
+      : (specializationRecord?.talent || formativeSchoolId || playerTalent || "fire");
     const effectiveEnemyTalent = enemySpecializationRecord?.talent || opponent?.talent;
 
     tournamentMatch = Boolean(fromTournament);
@@ -3058,10 +3164,6 @@
         || A.getAstralAbilityLoadout?.(enemySpecialization, astralLeague, effectiveEnemyTalent || "water")
         || [])
       : [];
-    const selectedGrimoireId = fromTournament
-      ? (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard")
-      : selectedDuelGrimoireId();
-    const personalGrimoire = !fromTournament && selectedGrimoireId !== (A.SIGIAN_STANDARD_GRIMOIRE_ID || "standard");
     const standardSpecialization = withSpecializations && !personalGrimoire;
     const playerSpecializationFormulaId = standardSpecialization
       ? (fromTournament
@@ -3095,7 +3197,8 @@
           enemyAbilities:enemyAbilityIds,
           enemyGuaranteedFormulaId:enemySpecializationFormulaId,
           formativeSchoolId:profile?.formativeSchoolId,
-          specializationsEnabled:withSpecializations
+          specializationsEnabled:withSpecializations,
+          allowAnySpecializationSchool:Boolean(academy.allSchoolSpecializationsUnlocked)
         });
       } catch (error) {
         setMessage(error?.message || t("menu.grimoireNotReady"));
@@ -8787,9 +8890,28 @@
     const root = $("#tournamentContent");
     const newButton = $("#newTournamentBtn");
     const abandonButton = $("#abandonTournamentBtn");
+    const academy = currentAcademyState();
+    if (!academy.tournamentUnlocked) {
+      newButton?.classList.add("hidden");
+      abandonButton?.classList.add("hidden");
+      const requirement = !academy.academyAdmissionEligible
+        ? t("tournament.academyLockedAdmission", { level:academy.academyAdmissionLevel })
+        : t("tournament.academyLockedSchool");
+      root.innerHTML = `<div class="tournament-create tournament-create-redesigned classic-config-grid">
+        <div class="tournament-intro">
+          <strong>${escapeHtml(t("tournament.academyLockedTitle"))}</strong>
+          <span>${escapeHtml(requirement)}</span>
+        </div>
+      </div>`;
+      return;
+    }
+    const tournamentSpecializations = sigianSpecializationOptions().filter(item =>
+      academy.allSchoolSpecializationsUnlocked || item.talent === academy.formativeSchoolId
+    );
     const context = {
       tournament, t, school, schoolName, schoolIconMarkup, specializationIconMarkup, escapeHtml, abilityName, abilityDescription, spellbookModeLabel,
-      specializations: A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || A.ASTRAL_SPECIALIZATIONS,
+      specializations:tournamentSpecializations,
+      allowRandomSpecialization:Boolean(academy.allSchoolSpecializationsUnlocked),
       specialization: id => A.getAstralSpecialization?.(id),
       specializationFormula: id => {
         const formulaId = A.getSigianSpecializationFormulaId?.(id);
@@ -9028,6 +9150,15 @@
     const accountProgressionSource = accountProgression.source === "online-authoritative"
       ? t("profile.progressionOnline")
       : t("profile.progressionLocal");
+    const academy = currentAcademyState();
+    const academyPhaseLabel = t(`profile.academyPhase.${academy.phase}`);
+    const formativeSchoolHint = !academy.schoolSelectionUnlocked
+      ? t("profile.schoolLockedUntilAdmission", { level:academy.academyAdmissionLevel })
+      : academy.schoolConfirmationRequired
+        ? t("profile.schoolConfirmationRequired")
+        : academy.schoolConfirmed
+          ? t("profile.schoolConfirmedHint")
+          : t("profile.schoolExploratoryHint");
     const selectedAvatar = normalizeProfileAvatar(onlineProfile.avatar_url || localStorage.getItem("arcane.profileAvatar") || "");
     const avatarCards = profileAvatarChoices(selectedAvatar);
     let draftAvatar = selectedAvatar;
@@ -9061,20 +9192,31 @@
           <small>${accountProgressionSource}</small>
         </div>
       </section>
+      <section class="profile-account-progression profile-academy-progress ornate-subpanel">
+        <div class="profile-account-progression-heading">
+          <div><small>${t("profile.academyStatus")}</small><h3>${escapeHtml(academyPhaseLabel)}</h3></div>
+          <strong>${academy.formativeSchoolId ? escapeHtml(schoolName(academy.formativeSchoolId)) : "—"}</strong>
+        </div>
+        <div class="profile-account-progression-meta">
+          <span>${escapeHtml(formativeSchoolHint)}</span>
+          <small>${escapeHtml(t("profile.accountLevel", { level:academy.level }))}</small>
+        </div>
+      </section>
       ${onlineCard}
       <section class="profile-customize-card ornate-subpanel">
         <div class="profile-section-heading"><div><h3>${t("profile.identityTitle")}</h3><p>${t("profile.identityIntro")}</p></div></div>
         <div class="profile-identity-editor">
           <label><span>${t("profile.playerName")}</span><input id="profilePlayerNameInput" type="text" maxlength="24" autocomplete="nickname" value="${escapeHtml(storedName)}"></label>
           <label><span>${t("profile.formativeSchool")}</span>
-            <select id="profileFormativeSchoolSelect">
+            <select id="profileFormativeSchoolSelect" ${academy.schoolChangeAllowed ? "" : "disabled"}>
               <option value="">${t("profile.chooseFormativeSchool")}</option>
               ${A.SCHOOLS.map(item => `<option value="${item.id}" ${profile.formativeSchoolId === item.id ? "selected" : ""}>${escapeHtml(schoolName(item.id))}</option>`).join("")}
             </select>
-            <small>${t("profile.formativeSchoolHint")}</small>
+            <small>${escapeHtml(formativeSchoolHint)}</small>
           </label>
           ${online.configured && !online.error ? `<div class="profile-player-tag"><span>${t("profile.playerTag")}</span><strong>${onlineProfile.player_tag ? `#${escapeHtml(onlineProfile.player_tag)}` : "—"}</strong><small>${t("profile.playerTagHint")}</small></div>` : ""}
           <button id="saveProfileIdentityBtn" type="button" class="classic-stone-button">${t("profile.saveIdentity")}</button>
+          ${academy.schoolConfirmationRequired ? `<button id="confirmFormativeSchoolBtn" type="button" class="classic-stone-button">${t("profile.confirmFormativeSchool")}</button>` : ""}
         </div>
         <div class="profile-avatar-editor">
           <div class="profile-avatar-editor-copy"><strong>${t("profile.avatar")}</strong><small>${t("profile.avatarHint")}</small></div>
@@ -9143,9 +9285,16 @@
     $("#saveProfileIdentityBtn")?.addEventListener("click", async () => {
       const name = normalizedPlayerName($("#profilePlayerNameInput")?.value, t("ui.player"));
       profile.playerName = name;
+      const beforeSchoolId = profile.formativeSchoolId || null;
       const formativeSchoolId = String($("#profileFormativeSchoolSelect")?.value || "").trim();
-      profile.formativeSchoolId = A.SCHOOLS.some(item => item.id === formativeSchoolId) ? formativeSchoolId : null;
-      A.saveProfile(profile);
+      const validSchoolId = A.SCHOOLS.some(item => item.id === formativeSchoolId) ? formativeSchoolId : null;
+      const academyBeforeSave = currentAcademyState();
+      if (validSchoolId && academyBeforeSave.schoolChangeAllowed && typeof A.setProfileFormativeSchool === "function") {
+        A.setProfileFormativeSchool(profile, validSchoolId);
+      } else {
+        A.saveProfile(profile);
+      }
+      profile = A.loadProfile();
       localStorage.setItem("arcane.playerName", name);
       if (draftAvatar) localStorage.setItem("arcane.profileAvatar", draftAvatar);
       else localStorage.removeItem("arcane.profileAvatar");
@@ -9166,6 +9315,23 @@
       }
       setupGrimoireOptions();
       renderTalentChoices();
+      renderTournament();
+      if (beforeSchoolId !== (profile.formativeSchoolId || null)) {
+        window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
+      }
+      renderPlayerProfile();
+    });
+    $("#confirmFormativeSchoolBtn")?.addEventListener("click", () => {
+      const selectedSchoolId = String($("#profileFormativeSchoolSelect")?.value || "").trim();
+      if (!A.SCHOOLS.some(item => item.id === selectedSchoolId)) return;
+      if (typeof A.setProfileFormativeSchool === "function") {
+        A.setProfileFormativeSchool(profile, selectedSchoolId);
+      }
+      if (!A.confirmProfileFormativeSchool?.(profile)) return;
+      profile = A.loadProfile();
+      setupGrimoireOptions();
+      renderTalentChoices();
+      renderTournament();
       window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
       renderPlayerProfile();
     });

@@ -697,7 +697,8 @@
     const formativeSchoolId = String(options.formativeSchoolId || "").trim();
     const validation = A.validateSigianGrimoire?.(grimoire, {
       specializationsEnabled,
-      formativeSchoolId
+      formativeSchoolId,
+      allowAnySpecializationSchool:options.allowAnySpecializationSchool === true
     });
     if (!validation?.ready) throw grimoireSelectionError(validation);
 

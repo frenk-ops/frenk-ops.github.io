@@ -328,8 +328,9 @@
       });
 
       if (options.specializationsEnabled) {
+        const allowAnySpecializationSchool = options.allowAnySpecializationSchool === true;
         const formativeSchoolId = String(options.formativeSchoolId || "").trim();
-        if (!formativeSchoolId || !(grimoire.schoolIds || []).includes(formativeSchoolId)) {
+        if (!allowAnySpecializationSchool && (!formativeSchoolId || !(grimoire.schoolIds || []).includes(formativeSchoolId))) {
           blockers.push({ code:"formative-school-missing", schoolId:formativeSchoolId || null });
         }
         const specializationFormulaId = normalizeFormulaInstanceId(grimoire.specializationFormulaId);
@@ -343,7 +344,7 @@
           if (!entry.playable) {
             blockers.push({ code:entry.exists ? "specialization-formula-not-sealed" : "specialization-formula-missing-instance", formulaInstanceId:specializationFormulaId });
           }
-          if (formativeSchoolId && entry.school !== formativeSchoolId) {
+          if (!allowAnySpecializationSchool && formativeSchoolId && entry.school !== formativeSchoolId) {
             blockers.push({ code:"specialization-formula-school-mismatch", formulaInstanceId:specializationFormulaId, expectedSchoolId:formativeSchoolId, actualSchoolId:entry.school });
           }
         }
@@ -485,9 +486,10 @@
     });
   };
 
-  A.setSigianGrimoireSpecializationFormula = function setSigianGrimoireSpecializationFormula(id, formulaId, formativeSchoolId) {
+  A.setSigianGrimoireSpecializationFormula = function setSigianGrimoireSpecializationFormula(id, formulaId, formativeSchoolId, options = {}) {
     if (isStandardId(id)) return null;
     const schoolId = String(formativeSchoolId || "").trim();
+    const allowAnySpecializationSchool = options.allowAnySpecializationSchool === true;
     const normalizedFormulaId = normalizeFormulaInstanceId(formulaId);
     return mutate(state => {
       const grimoire = state.grimoires.find(item => item.id === String(id || ""));
@@ -497,9 +499,12 @@
         grimoire.updatedAt = nowIso();
         return clone(grimoire);
       }
-      if (!schoolId || !grimoire.schoolIds.includes(schoolId)) return null;
+      if (!allowAnySpecializationSchool && (!schoolId || !grimoire.schoolIds.includes(schoolId))) return null;
       if (!grimoire.formulaIds.includes(normalizedFormulaId)) return null;
-      if (formulaSchool(normalizedFormulaId) !== schoolId) return null;
+      const selectedSchoolId = formulaSchool(normalizedFormulaId);
+      if (allowAnySpecializationSchool) {
+        if (!selectedSchoolId || !grimoire.schoolIds.includes(selectedSchoolId)) return null;
+      } else if (selectedSchoolId !== schoolId) return null;
       grimoire.specializationFormulaId = normalizedFormulaId;
       grimoire.updatedAt = nowIso();
       return clone(grimoire);

@@ -136,9 +136,10 @@
 
   A.createDefaultProfile = function createDefaultProfile() {
     return {
-      version: 4,
+      version: 5,
       playerName: "",
       formativeSchoolId:null,
+      formativeSchoolConfirmedAt:null,
       accountProgression:A.accountProgressionState
         ? A.accountProgressionState({ xp:0 }, { source:"local" })
         : { xp:0, source:"local", synced_at:null },
@@ -239,11 +240,15 @@
     try {
       const base = A.createDefaultProfile();
       const stored = JSON.parse(target.getItem(PROFILE_KEY) || "{}");
+      const formativeSchoolId = normalizeFormativeSchool(stored.formativeSchoolId);
       const profile = {
         ...base,
         ...stored,
-        version: 4,
-        formativeSchoolId:normalizeFormativeSchool(stored.formativeSchoolId),
+        version: 5,
+        formativeSchoolId,
+        formativeSchoolConfirmedAt:formativeSchoolId && stored.formativeSchoolConfirmedAt
+          ? String(stored.formativeSchoolConfirmedAt)
+          : null,
         accountProgression:A.accountProgressionState
           ? A.accountProgressionState(stored.accountProgression || { xp:stored.xp || 0 }, {
               source:stored.accountProgression?.source || "local",
@@ -264,7 +269,9 @@
 
   A.saveProfile = function saveProfile(profile, storage) {
     const target = storage || A.getStorage();
-    profile.version = 4;
+    profile.version = 5;
+    profile.formativeSchoolId = normalizeFormativeSchool(profile.formativeSchoolId);
+    if (!profile.formativeSchoolId) profile.formativeSchoolConfirmedAt = null;
     if (A.accountProgressionState) {
       profile.accountProgression = A.accountProgressionState(profile.accountProgression || { xp:0 }, {
         source:profile.accountProgression?.source || "local",
@@ -288,13 +295,27 @@
       : reconciled;
   };
 
-  A.setProfileFormativeSchool = function setProfileFormativeSchool(profile, schoolId) {
+  A.setProfileFormativeSchool = function setProfileFormativeSchool(profile, schoolId, storage) {
     if (!profile) return null;
     const normalized = normalizeFormativeSchool(schoolId);
     if (!normalized) return null;
+    const academy = A.academyProgressionState
+      ? A.academyProgressionState(profile.accountProgression || { xp:0 }, profile)
+      : null;
+    if (academy && !academy.schoolChangeAllowed) return profile.formativeSchoolId || null;
+    if (profile.formativeSchoolId !== normalized) profile.formativeSchoolConfirmedAt = null;
     profile.formativeSchoolId = normalized;
-    A.saveProfile(profile);
+    A.saveProfile(profile, storage);
     return normalized;
+  };
+
+  A.confirmProfileFormativeSchool = function confirmProfileFormativeSchool(profile, storage, confirmedAt) {
+    if (!profile || !A.academyProgressionState) return false;
+    const academy = A.academyProgressionState(profile.accountProgression || { xp:0 }, profile);
+    if (!academy.schoolConfirmationAllowed) return false;
+    profile.formativeSchoolConfirmedAt = String(confirmedAt || new Date().toISOString());
+    A.saveProfile(profile, storage);
+    return true;
   };
 
 
@@ -423,7 +444,15 @@
   };
 
   A.startTournament = function startTournament(profile, options, storage) {
-    const tournament = A.createTournament(options);
+    const academy = A.academyProgressionState
+      ? A.academyProgressionState(profile?.accountProgression || { xp:0 }, profile || {})
+      : null;
+    if (academy && !academy.tournamentUnlocked) throw new Error("academy-tournament-locked");
+    const tournamentOptions = { ...(options || {}) };
+    if (academy && !academy.allSchoolSpecializationsUnlocked && academy.formativeSchoolId) {
+      tournamentOptions.specialization = SPECIALIZATION_BY_TALENT[academy.formativeSchoolId] || tournamentOptions.specialization;
+    }
+    const tournament = A.createTournament(tournamentOptions);
     profile.tournamentsPlayed += 1;
     A.saveProfile(profile, storage);
     A.saveTournament(tournament, storage);

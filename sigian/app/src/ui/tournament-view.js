@@ -44,7 +44,7 @@
   }
 
   function renderEmpty(context) {
-    const { t, specializations, specializationName } = context;
+    const { t, specializations, specializationName, allowRandomSpecialization = true } = context;
     return `<div class="tournament-create tournament-create-redesigned classic-config-grid">
       <div class="tournament-intro">
         <strong>${t("tournament.introTitle")}</strong>
@@ -86,7 +86,7 @@
         <div class="specialization-select-control">
           <span class="specialization-select-icon is-random" aria-hidden="true">🎲</span>
           <select id="tournamentTalentSelect">
-            <option value="random">${t("menu.randomSpecialization")}</option>
+            ${allowRandomSpecialization ? `<option value="random">${t("menu.randomSpecialization")}</option>` : ""}
             ${specializations.map(item => `<option value="${item.id}">${specializationName(item.id)}</option>`).join("")}
           </select>
         </div>
