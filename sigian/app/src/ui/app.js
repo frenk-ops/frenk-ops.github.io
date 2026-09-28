@@ -835,31 +835,31 @@
 
     const academyLocations = [
       {
-        id:"atrium", icon:"✉", title:t("academy.atrium.title"), description:t("academy.atrium.description"),
+        id:"atrium", icon:"✉", x:50, y:44, title:t("academy.atrium.title"), description:t("academy.atrium.description"),
         status:t("academy.available"), state:"available", action:t("academy.atrium.action"), letter:true,
         extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
         admissionLetter:Boolean(academy.academyAdmissionEligible)
       },
       {
-        id:"schools", icon:"✦", title:t("academy.schools.title"), description:t("academy.schools.description"),
+        id:"schools", icon:"✦", x:24, y:19, title:t("academy.schools.title"), description:t("academy.schools.description"),
         status:schoolAvailable ? t("academy.available") : t("academy.sealed"),
         state:schoolAvailable ? "available" : "sealed", action:schoolAction, schoolWing:true,
         disabled:!schoolAvailable, note:schoolNote
       },
       {
-        id:"library", icon:"⌘", title:t("academy.library.title"), description:t("academy.library.description"),
+        id:"library", icon:"⌘", x:76, y:24, title:t("academy.library.title"), description:t("academy.library.description"),
         status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
       },
       {
-        id:"forge", icon:"⚒", title:t("academy.forge.title"), description:t("academy.forge.description"),
+        id:"forge", icon:"⚒", x:21, y:65, title:t("academy.forge.title"), description:t("academy.forge.description"),
         status:t("academy.available"), state:"available", action:t("academy.forge.action"), target:"forge"
       },
       {
-        id:"trials", icon:"⚔", title:t("academy.trials.title"), description:t("academy.trials.description"),
+        id:"trials", icon:"⚔", x:48, y:87, title:t("academy.trials.title"), description:t("academy.trials.description"),
         status:t("academy.available"), state:"available", action:t("academy.trials.action"), target:"game"
       },
       {
-        id:"arena", icon:"♜", title:t("academy.arena.title"), description:t("academy.arena.description"),
+        id:"arena", icon:"♜", x:78, y:69, title:t("academy.arena.title"), description:t("academy.arena.description"),
         status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
         state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
         disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
@@ -868,6 +868,7 @@
 
     const locationHotspot = location => `
       <button class="academy-map-hotspot academy-map-hotspot-${escapeHtml(location.id)} is-${escapeHtml(location.state)} ${location.id === "atrium" ? "is-active" : ""}"
+        style="--academy-hotspot-x:${location.x}%;--academy-hotspot-y:${location.y}%;"
         type="button" data-academy-location="${escapeHtml(location.id)}" data-academy-state="${escapeHtml(location.state)}"
         aria-controls="academyMapDetail" aria-pressed="${location.id === "atrium" ? "true" : "false"}"
         aria-label="${escapeHtml(`${location.title} — ${location.status}`)}">
@@ -920,14 +921,14 @@
           <p>${t("academy.campus.hint")}</p>
         </header>
         <div class="academy-map-layout">
-          <div class="academy-map-scene" data-academy-campus aria-label="${escapeHtml(t("academy.campus.title"))}">
+          <div class="academy-map-scene" data-academy-campus data-academy-coordinate-space="portrait-v1" aria-label="${escapeHtml(t("academy.campus.title"))}">
             <div class="academy-map-art" aria-hidden="true"></div>
-            <svg class="academy-map-routes" viewBox="0 0 100 64" preserveAspectRatio="none" aria-hidden="true">
-              <path d="M50 32 C39 29 29 23 22 18"></path>
-              <path d="M52 30 C64 25 73 20 81 17"></path>
-              <path d="M46 36 C34 40 24 47 16 53"></path>
-              <path d="M53 38 C66 43 76 49 86 53"></path>
-              <path d="M49 40 C45 48 40 55 36 59"></path>
+            <svg class="academy-map-routes" viewBox="0 0 100 125" preserveAspectRatio="none" aria-hidden="true">
+              <path d="M50 44 C40 36 31 27 24 19"></path>
+              <path d="M52 43 C63 37 71 30 76 24"></path>
+              <path d="M47 50 C37 55 29 61 21 65"></path>
+              <path d="M53 51 C64 57 71 63 78 69"></path>
+              <path d="M50 54 C50 65 49 76 48 87"></path>
             </svg>
             <div class="academy-map-hotspots" role="group" aria-label="${escapeHtml(t("academy.campus.title"))}">
               ${academyLocations.map(locationHotspot).join("")}

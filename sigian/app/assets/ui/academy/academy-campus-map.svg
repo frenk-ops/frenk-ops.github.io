@@ -1,11 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1500" role="img" aria-labelledby="title desc">
   <title id="title">Mappa illustrata dell'Accademia SIGIAN</title>
-  <desc id="desc">Campus arcano con torre centrale, ala monumentale, osservatorio, forgia vulcanica, bastione delle prove e arena.</desc>
+  <desc id="desc">Composizione verticale mobile-first dell'Accademia con Ala delle Scuole, Biblioteca, Atrio, Forgia, Arena e Sala delle Prove.</desc>
   <defs>
     <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#eadcb8"/>
-      <stop offset=".5" stop-color="#cdb78b"/>
-      <stop offset="1" stop-color="#8c744f"/>
+      <stop offset=".48" stop-color="#ccb487"/>
+      <stop offset="1" stop-color="#887049"/>
+    </linearGradient>
+    <linearGradient id="meadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#758167"/>
+      <stop offset="1" stop-color="#4e5d49"/>
     </linearGradient>
     <radialGradient id="glow" cx=".5" cy=".5" r=".5">
       <stop offset="0" stop-color="#f5d98a" stop-opacity=".92"/>
@@ -32,40 +36,34 @@
       <feGaussianBlur stdDeviation="12"/>
     </filter>
     <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#2e241c" flood-opacity=".38"/>
+      <feDropShadow dx="0" dy="12" stdDeviation="11" flood-color="#2e241c" flood-opacity=".4"/>
     </filter>
   </defs>
 
-  <rect width="1200" height="760" rx="34" fill="url(#paper)"/>
-  <path d="M0 104C170 28 250 58 365 110S615 176 760 104 1050 18 1200 86V0H0Z" fill="#66785b" opacity=".34"/>
-  <path d="M0 620c132-54 252-60 372-16s208 42 333 2 297-52 495 8v146H0Z" fill="#4f5945" opacity=".38"/>
+  <rect width="1200" height="1500" rx="44" fill="url(#paper)"/>
+  <path d="M0 0h1200v310c-142-44-275-20-398 34-149 66-300 66-452 7C224 302 106 292 0 333Z" fill="url(#meadow)" opacity=".44"/>
+  <path d="M0 1130c147-67 292-72 430-17 133 53 262 45 391-7 135-54 261-48 379-4v398H0Z" fill="#465341" opacity=".48"/>
+  <path d="M0 720c147-41 282-37 405 14 132 55 264 54 396 1 137-55 270-60 399-14v256c-136-43-271-38-405 18-130 54-260 56-392 2C278 946 144 941 0 985Z" fill="#887c58" opacity=".2"/>
 
-  <g opacity=".34" fill="none" stroke="#6c593c" stroke-width="10" stroke-linecap="round">
-    <path d="M602 365C530 316 412 259 274 210"/>
-    <path d="M620 350C716 290 826 237 938 196"/>
-    <path d="M565 390C447 419 311 474 190 548"/>
-    <path d="M640 400C742 443 864 500 1009 553"/>
-    <path d="M596 430C548 514 505 581 435 647"/>
+  <!-- one canonical route network for the portrait coordinate space -->
+  <g opacity=".32" fill="none" stroke="#67543a" stroke-width="16" stroke-linecap="round">
+    <path d="M600 660C490 540 400 404 286 285"/>
+    <path d="M625 655C735 563 818 465 914 365"/>
+    <path d="M570 735C450 805 350 895 250 980"/>
+    <path d="M630 742C748 818 838 912 934 1035"/>
+    <path d="M600 770C592 944 590 1113 575 1300"/>
   </g>
-  <g opacity=".35" fill="#725c3d">
-    <circle cx="602" cy="365" r="10"/><circle cx="274" cy="210" r="7"/><circle cx="938" cy="196" r="7"/>
-    <circle cx="190" cy="548" r="7"/><circle cx="1009" cy="553" r="7"/><circle cx="435" cy="647" r="7"/>
-  </g>
-
-  <!-- Atrium tower -->
-  <g transform="translate(505 225)" filter="url(#shadow)">
-    <ellipse cx="100" cy="178" rx="130" ry="42" fill="#30291f" opacity=".3"/>
-    <circle cx="100" cy="86" r="112" fill="url(#glow)" opacity=".5"/>
-    <path d="M26 166h148l-12-102H38Z" fill="url(#stone)" stroke="#b7a47d" stroke-width="5"/>
-    <path d="M36 62 100 4l64 58Z" fill="url(#roof)" stroke="#bd9e6c" stroke-width="5"/>
-    <path d="M82 166v-45c0-24 36-24 36 0v45Z" fill="#181b21"/>
-    <circle cx="100" cy="74" r="18" fill="#d9bd68" stroke="#f6e6ad" stroke-width="4"/>
-    <path d="M100 56v36M82 74h36" stroke="#4d3c28" stroke-width="4"/>
-    <path d="M8 164h184l18 28H-10Z" fill="#5e4e3b" stroke="#9e8965" stroke-width="4"/>
+  <g opacity=".42" fill="#6d583b">
+    <circle cx="600" cy="660" r="12"/>
+    <circle cx="286" cy="285" r="9"/>
+    <circle cx="914" cy="365" r="9"/>
+    <circle cx="250" cy="980" r="9"/>
+    <circle cx="934" cy="1035" r="9"/>
+    <circle cx="575" cy="1300" r="9"/>
   </g>
 
   <!-- School wing -->
-  <g transform="translate(120 88)" filter="url(#shadow)">
+  <g transform="translate(120 120)" filter="url(#shadow)">
     <ellipse cx="165" cy="144" rx="170" ry="36" fill="#30291f" opacity=".25"/>
     <path d="M20 120h290v82H20Z" fill="url(#stone)" stroke="#b39d78" stroke-width="4"/>
     <path d="M8 118 72 58h186l64 60Z" fill="url(#roof)" stroke="#c1a875" stroke-width="4"/>
@@ -77,13 +75,11 @@
       <rect x="190" y="136" width="30" height="48" rx="7"/>
       <rect x="252" y="136" width="30" height="48" rx="7"/>
     </g>
-    <g stroke="#c95f44" stroke-width="8">
-      <path d="M56 28v64"/><path d="M274 28v64"/>
-    </g>
+    <g stroke="#c95f44" stroke-width="8"><path d="M56 28v64"/><path d="M274 28v64"/></g>
   </g>
 
   <!-- Library / observatory -->
-  <g transform="translate(848 74)" filter="url(#shadow)">
+  <g transform="translate(785 202)" filter="url(#shadow)">
     <ellipse cx="115" cy="158" rx="128" ry="34" fill="#30291f" opacity=".25"/>
     <path d="M38 112h154v94H38Z" fill="url(#stone)" stroke="#a9997b" stroke-width="4"/>
     <path d="M26 110h178L168 72H62Z" fill="url(#tealRoof)" stroke="#a9997b" stroke-width="4"/>
@@ -93,8 +89,20 @@
     <circle cx="115" cy="62" r="9" fill="#e1c86f"/>
   </g>
 
+  <!-- Atrium tower -->
+  <g transform="translate(500 500)" filter="url(#shadow)">
+    <ellipse cx="100" cy="178" rx="130" ry="42" fill="#30291f" opacity=".3"/>
+    <circle cx="100" cy="86" r="128" fill="url(#glow)" opacity=".58"/>
+    <path d="M26 166h148l-12-102H38Z" fill="url(#stone)" stroke="#b7a47d" stroke-width="5"/>
+    <path d="M36 62 100 4l64 58Z" fill="url(#roof)" stroke="#bd9e6c" stroke-width="5"/>
+    <path d="M82 166v-45c0-24 36-24 36 0v45Z" fill="#181b21"/>
+    <circle cx="100" cy="74" r="18" fill="#d9bd68" stroke="#f6e6ad" stroke-width="4"/>
+    <path d="M100 56v36M82 74h36" stroke="#4d3c28" stroke-width="4"/>
+    <path d="M8 164h184l18 28H-10Z" fill="#5e4e3b" stroke="#9e8965" stroke-width="4"/>
+  </g>
+
   <!-- Forge volcano -->
-  <g transform="translate(72 430)" filter="url(#shadow)">
+  <g transform="translate(122 840)" filter="url(#shadow)">
     <ellipse cx="128" cy="138" rx="150" ry="40" fill="#241d19" opacity=".3"/>
     <path d="m8 166 74-142 55 92 45-64 68 114Z" fill="#4c4139" stroke="#6f5d48" stroke-width="5"/>
     <path d="m62 80 20-56 24 40 15-12 16 64Z" fill="url(#lava)" opacity=".96"/>
@@ -105,17 +113,8 @@
     <path d="M42 10c-12-24 20-31 13-55M90 6c-10-22 17-28 11-49" fill="none" stroke="#6b5d55" stroke-width="14" stroke-linecap="round" opacity=".55" filter="url(#soft)"/>
   </g>
 
-  <!-- Trial bastion -->
-  <g transform="translate(340 548)" filter="url(#shadow)">
-    <ellipse cx="104" cy="105" rx="128" ry="34" fill="#30291f" opacity=".26"/>
-    <path d="M8 76h192v122H8Z" fill="url(#stone)" stroke="#a9997b" stroke-width="4"/>
-    <path d="M8 72h44V38h34v34h36V38h34v34h44v28H8Z" fill="#51483a" stroke="#a9997b" stroke-width="4"/>
-    <path d="M76 198v-66c0-30 56-30 56 0v66Z" fill="#171a1c"/>
-    <path d="m52 112 18 18m0-18-18 18m86-18 18 18m0-18-18 18" stroke="#d9c78f" stroke-width="5" stroke-linecap="round"/>
-  </g>
-
   <!-- Arena -->
-  <g transform="translate(908 438)" filter="url(#shadow)">
+  <g transform="translate(819 913)" filter="url(#shadow)">
     <ellipse cx="115" cy="122" rx="145" ry="94" fill="#4d4336" stroke="#b6a179" stroke-width="8"/>
     <ellipse cx="115" cy="122" rx="100" ry="58" fill="#b49a68" stroke="#6d5c42" stroke-width="8"/>
     <ellipse cx="115" cy="122" rx="58" ry="30" fill="#89714d"/>
@@ -126,14 +125,24 @@
     </g>
   </g>
 
-  <!-- Arcane details -->
-  <g fill="none" stroke="#e2c96e" stroke-width="3" opacity=".5">
-    <circle cx="605" cy="392" r="150" stroke-dasharray="7 12"/>
-    <circle cx="605" cy="392" r="176" stroke-dasharray="2 18"/>
-    <path d="m605 208 18 32 36 7-26 25 6 36-34-17-34 17 6-36-26-25 36-7Z"/>
+  <!-- Trial bastion -->
+  <g transform="translate(484 1195)" filter="url(#shadow)">
+    <ellipse cx="104" cy="105" rx="128" ry="34" fill="#30291f" opacity=".26"/>
+    <path d="M8 76h192v122H8Z" fill="url(#stone)" stroke="#a9997b" stroke-width="4"/>
+    <path d="M8 72h44V38h34v34h36V38h34v34h44v28H8Z" fill="#51483a" stroke="#a9997b" stroke-width="4"/>
+    <path d="M76 198v-66c0-30 56-30 56 0v66Z" fill="#171a1c"/>
+    <path d="m52 112 18 18m0-18-18 18m86-18 18 18m0-18-18 18" stroke="#d9c78f" stroke-width="5" stroke-linecap="round"/>
   </g>
-  <g fill="#f3de91" opacity=".55">
-    <circle cx="458" cy="342" r="4"/><circle cx="735" cy="315" r="4"/><circle cx="702" cy="492" r="5"/>
-    <circle cx="362" cy="474" r="3"/><circle cx="813" cy="417" r="3"/><circle cx="282" cy="350" r="4"/>
+
+  <!-- Arcane details -->
+  <g fill="none" stroke="#e2c96e" stroke-width="3" opacity=".52">
+    <circle cx="600" cy="675" r="178" stroke-dasharray="7 12"/>
+    <circle cx="600" cy="675" r="208" stroke-dasharray="2 18"/>
+    <path d="m600 452 20 36 40 8-29 28 7 40-38-19-38 19 7-40-29-28 40-8Z"/>
+  </g>
+  <g fill="#f3de91" opacity=".62">
+    <circle cx="404" cy="558" r="5"/><circle cx="792" cy="542" r="4"/><circle cx="708" cy="826" r="5"/>
+    <circle cx="352" cy="823" r="4"/><circle cx="856" cy="792" r="4"/><circle cx="520" cy="1040" r="4"/>
+    <circle cx="742" cy="1150" r="3"/><circle cx="390" cy="1160" r="3"/>
   </g>
 </svg>

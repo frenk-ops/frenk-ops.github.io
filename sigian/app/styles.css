@@ -19578,15 +19578,18 @@ button.sigian-full-constraint-slot {
 }
 .academy-map-layout {
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(250px,300px);
-  gap:14px;
-  align-items:stretch;
+  grid-template-columns:minmax(0,720px) minmax(270px,320px);
+  justify-content:center;
+  gap:18px;
+  align-items:start;
 }
 .academy-map-scene {
   position:relative;
   isolation:isolate;
+  width:100%;
+  min-width:0;
   min-height:0;
-  aspect-ratio:1200 / 760;
+  aspect-ratio:4 / 5;
   overflow:hidden;
   border:1px solid rgba(83,55,29,.38);
   border-radius:24px;
@@ -19594,12 +19597,15 @@ button.sigian-full-constraint-slot {
   box-shadow:inset 0 1px rgba(255,255,255,.56),0 14px 30px rgba(55,36,22,.18);
 }
 .academy-map-art {
+  --academy-map-artwork:url("assets/ui/academy/academy-campus-map.svg");
   position:absolute;
   inset:0;
   z-index:0;
-  background:url("assets/ui/academy/academy-campus-map.svg") center/cover no-repeat;
+  background-image:var(--academy-map-artwork);
+  background-position:center;
+  background-size:100% 100%;
+  background-repeat:no-repeat;
   filter:saturate(.94) contrast(1.02);
-  transform:scale(1.005);
 }
 .academy-map-scene::after {
   content:"";
@@ -19715,12 +19721,6 @@ button.sigian-full-constraint-slot {
 }
 .academy-map-hotspot.is-sealed .academy-map-hotspot-state { color:#aeb8bd; }
 .academy-map-hotspot.is-planned .academy-map-hotspot-state { color:#a9d9d4; }
-.academy-map-hotspot-atrium { --academy-hotspot-x:50.5%;--academy-hotspot-y:48%; }
-.academy-map-hotspot-schools { --academy-hotspot-x:22.5%;--academy-hotspot-y:24%; }
-.academy-map-hotspot-library { --academy-hotspot-x:80.5%;--academy-hotspot-y:22.5%; }
-.academy-map-hotspot-forge { --academy-hotspot-x:16.5%;--academy-hotspot-y:68%; }
-.academy-map-hotspot-trials { --academy-hotspot-x:37%;--academy-hotspot-y:82%; }
-.academy-map-hotspot-arena { --academy-hotspot-x:84%;--academy-hotspot-y:68%; }
 
 .academy-map-detail-panel {
   min-width:0;
@@ -19817,18 +19817,34 @@ button.sigian-full-constraint-slot {
   .academy-map-detail-card.is-active { animation:none;transition:none; }
 }
 @media (max-width:900px) {
-  .academy-map-layout { grid-template-columns:1fr; }
+  .academy-map-layout { grid-template-columns:minmax(0,640px); }
+  .academy-map-scene { justify-self:center; }
+  .academy-map-detail-panel {
+    width:min(100%,640px);
+    justify-self:center;
+  }
   .academy-map-detail-card { min-height:180px; }
 }
 @media (max-width:620px) {
+  .academy-campus-heading {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:6px;
+  }
+  .academy-campus-heading p {
+    max-width:none;
+    text-align:left;
+  }
+  .academy-map-layout {
+    gap:0;
+  }
   .academy-map-scene {
     width:100%;
-    aspect-ratio:1200 / 760;
+    aspect-ratio:4 / 5;
     border-radius:18px;
   }
   .academy-map-art {
     background-size:100% 100%;
-    transform:none;
   }
   .academy-map-hotspot {
     min-width:48px;
@@ -19855,12 +19871,14 @@ button.sigian-full-constraint-slot {
     text-align:center;
   }
   .academy-map-hotspot-state { display:none; }
-  .academy-map-hotspot-atrium { --academy-hotspot-x:51%;--academy-hotspot-y:45%; }
-  .academy-map-hotspot-schools { --academy-hotspot-x:23%;--academy-hotspot-y:25%; }
-  .academy-map-hotspot-library { --academy-hotspot-x:80%;--academy-hotspot-y:23%; }
-  .academy-map-hotspot-forge { --academy-hotspot-x:17%;--academy-hotspot-y:67%; }
-  .academy-map-hotspot-trials { --academy-hotspot-x:39%;--academy-hotspot-y:80%; }
-  .academy-map-hotspot-arena { --academy-hotspot-x:83%;--academy-hotspot-y:67%; }
+  .academy-map-detail-panel {
+    position:relative;
+    z-index:5;
+    width:calc(100% - 16px);
+    margin:-32px 8px 0;
+    border-radius:22px 22px 18px 18px;
+    box-shadow:0 -12px 28px rgba(48,33,22,.18),0 12px 24px rgba(55,36,22,.15);
+  }
   .academy-map-detail-card { min-height:190px;padding:15px; }
 }
 
