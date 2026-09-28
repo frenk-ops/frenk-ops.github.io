@@ -21230,3 +21230,38 @@ body.ui-classic .classic-topbar .classic-nav .classic-nav-primary.active .nav-ic
   }
 }
 
+
+
+/* ===== SIGIAN 0.61.41 — Academy mobile viewport containment ===== */
+@media (max-width:900px) {
+  body.ui-classic:has(#academyView.active) main {
+    padding-bottom:0 !important;
+  }
+
+  #academyView .academy-screen {
+    width:100%;
+    max-width:none;
+    padding-inline:0;
+    padding-bottom:calc(82px + env(safe-area-inset-bottom));
+  }
+
+  #academyView .academy-menu-stage,
+  #academyView .academy-page-shell,
+  #academyView #academyContent,
+  #academyView .academy-campus,
+  #academyView .academy-map-layout,
+  #academyView .academy-map-scene {
+    width:100%;
+    max-width:none !important;
+    margin-inline:0;
+  }
+
+  /* One bottom-nav reservation only: academy-screen owns it. */
+  #academyView .academy-page-shell {
+    padding-bottom:0 !important;
+  }
+
+  #academyView .academy-page-shell:has(.academy-school-wing.hidden) .academy-map-detail-panel {
+    margin-bottom:0;
+  }
+}
