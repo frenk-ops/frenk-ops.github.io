@@ -117,9 +117,9 @@
 
   function scopeToggleMarkup(scope) {
     return `
-      <div class="archive-scope-switch" role="tablist" aria-label="${escapeHtml(t("nav.more"))}">
-        <button type="button" data-archive-scope="inventory" class="${scope === "inventory" ? "active" : ""}" role="tab" aria-selected="${scope === "inventory"}">${escapeHtml(t("archive.inventory"))}</button>
+      <div class="archive-scope-switch sigian-ui-tabset archive-codex-scope" role="tablist" aria-label="${escapeHtml(t("nav.archive"))}">
         <button type="button" data-archive-scope="collection" class="${scope === "collection" ? "active" : ""}" role="tab" aria-selected="${scope === "collection"}">${escapeHtml(t("archive.collection"))}</button>
+        <button type="button" data-archive-scope="inventory" class="${scope === "inventory" ? "active" : ""}" role="tab" aria-selected="${scope === "inventory"}">${escapeHtml(t("archive.inventory"))}</button>
       </div>`;
   }
 
@@ -174,7 +174,7 @@
   function sectionTabsMarkup(state, scope, data, grimoires) {
     const counts = sectionCounts(scope, data, grimoires);
     return `
-      <nav class="archive-section-tabs" aria-label="Sezioni archivio">
+      <nav class="archive-section-tabs sigian-ui-tabset archive-codex-tabs" aria-label="Sezioni archivio">
         ${sectionIds(scope).map(id =>
           `<button type="button" data-archive-section="${id}" class="${state.section === id ? "active" : ""}">
             <span>${escapeHtml(sectionLabel(id, scope))}</span><small>${counts[id]}</small>
@@ -935,7 +935,7 @@
     const sigilCopies = sigils.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const constraintCopies = constraints.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     return `
-      <section class="archive-overview" aria-label="${escapeHtml(t("archive.inventory"))}">
+      <section class="archive-overview sigian-ui-panel archive-codex-overview" aria-label="${escapeHtml(t("archive.inventory"))}">
         <button type="button" data-archive-jump="formulas"><small>${escapeHtml(t("archive.formulas"))}</small><strong>${data.formulas.length}</strong><span>${escapeHtml(t("archive.formulasOwned"))}</span></button>
         <button type="button" data-archive-jump="recipes"><small>${escapeHtml(t("archive.recipes"))}</small><strong>${(data.recipes || []).length}</strong><span>${escapeHtml(t("archive.known"))}</span></button>
         <button type="button" data-archive-jump="sigils"><small>${escapeHtml(t("archive.sigils"))}</small><strong>${sigilCopies}</strong><span>${escapeHtml(t("archive.copies"))}</span></button>
@@ -1359,12 +1359,15 @@
     const intro = t(scope === "inventory" ? "archive.inventoryIntro" : "archive.collectionIntro");
 
     root.innerHTML = `
-      <div class="archive-browser ${state.detailOpen ? "detail-open" : ""}" data-archive-scope-root="${scope}">
-        <header class="archive-heading">
-          <div>
-            <span class="classic-menu-kicker">${title}</span>
-            <h2>${title}</h2>
-            <p>${intro}</p>
+      <div class="archive-browser archive-codex-screen ${state.detailOpen ? "detail-open" : ""}" data-archive-scope-root="${scope}">
+        <header class="archive-heading archive-codex-heading sigian-ui-section-header">
+          <div class="archive-codex-heading-main">
+            <span class="archive-codex-heading-icon" aria-hidden="true"><svg><use href="#sigian-nav-archive"></use></svg></span>
+            <div>
+              <span class="classic-menu-kicker">${escapeHtml(t("nav.archive"))}</span>
+              <h2>${title}</h2>
+              <p>${intro}</p>
+            </div>
           </div>
           ${scopeToggleMarkup(scope)}
         </header>
@@ -1372,15 +1375,15 @@
         ${scope === "inventory" ? inventoryOverviewMarkup(data, grimoires) : ""}
         ${sectionTabsMarkup(state, scope, data, grimoires)}
 
-        <section class="archive-filters">
+        <section class="archive-filters archive-codex-filters sigian-ui-panel">
           ${content.filters}
           <div class="archive-count">${content.count}</div>
         </section>
 
-        <div class="archive-layout ${state.section === "grimoires" ? "is-grimoires" : ""}">
-          <main class="archive-list-panel">${content.list}</main>
-          <aside class="archive-detail-panel" aria-label="${escapeHtml(t("archive.selectionDetail"))}" tabindex="-1">
-            <div class="archive-detail-sheet">
+        <div class="archive-layout archive-codex-layout ${state.section === "grimoires" ? "is-grimoires" : ""}">
+          <main class="archive-list-panel archive-codex-index">${content.list}</main>
+          <aside class="archive-detail-panel archive-codex-detail" aria-label="${escapeHtml(t("archive.selectionDetail"))}" tabindex="-1">
+            <div class="archive-detail-sheet archive-codex-inspector sigian-ui-codex sigian-ui-bottom-sheet">
               <button type="button" class="archive-detail-close" data-archive-detail-close aria-label="${escapeHtml(t("archive.closeDetails"))}">×</button>
               ${content.detail}
             </div>
