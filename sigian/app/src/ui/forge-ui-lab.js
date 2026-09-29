@@ -3,7 +3,7 @@
 
   const DEPTH_LAYERS = Object.freeze({
     surface: 0,
-    impressed: .08,
+    impressed: .02,
     art: .34,
     raised: .52,
     floating: .68,
@@ -407,6 +407,17 @@
     return A.getSigianForgeSigilOption?.(sigil.collectibleId, recipe?.school || "fire") || null;
   }
 
+  function sigilCycleOptions(recipe, current) {
+    const currentId = current?.collectibleId;
+    const seen = new Set();
+    return forgeSigilOptions(recipe).filter(option => {
+      if (!option?.id || seen.has(option.id)) return false;
+      const eligible = option.id === currentId || Number(option.projectedFreeQuantity || 0) > 0;
+      if (eligible) seen.add(option.id);
+      return eligible;
+    });
+  }
+
   function sigilName(recipe, sigil) {
     return sigilOption(recipe, sigil)?.displayName
       || sigilOption(recipe, sigil)?.canonicalName
@@ -555,7 +566,8 @@
     return '<div class="forge-lab-sigil-quick" role="group" aria-label="Controllo rapido Sigillo">' +
       '<span>' + escapeHtml(option?.atomic ? "Sigillo speciale" : ("Grado " + grade)) + '</span>' +
       '<button type="button" data-lab-sigil-advanced="' + slot + '" aria-label="Dettaglio Sigillo">✦</button>' +
-      '<button type="button" data-lab-quick-close aria-label="Chiudi controllo rapido">×</button>' +
+      '<button type="button" class="is-remove" data-lab-remove-sigil-direct="' + slot + '" aria-label="Rimuovi Sigillo">×</button>' +
+      '<button type="button" data-lab-quick-close aria-label="Chiudi controllo rapido">⌄</button>' +
     '</div>';
   }
 
@@ -575,12 +587,15 @@
         continue;
       }
       const option = sigilOption(recipe, sigil);
+      const canCycle = sigilCycleOptions(recipe, sigil).length > 1;
+      const cycleDisabled = canCycle
+        ? ""
+        : ' disabled aria-disabled="true" title="Nessun altro Sigillo disponibile"';
       const imprint = state.imprintSlotId === sigil.slotId ? " is-imprinting" : "";
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
         '<div class="forge-lab-sigil-row forge-lab-sigil-anchor' + imprint + breaking + '" data-lab-control-anchor="sigil" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
-          '<button type="button" class="forge-lab-sigil-remove" data-lab-remove-sigil-direct="' + escapeHtml(sigil.slotId) + '" aria-label="Rimuovi Sigillo">×</button>' +
-          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente">‹</button>' +
+          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente' + (canCycle ? "" : ": nessun altro Sigillo disponibile") + '"' + cycleDisabled + '>‹</button>' +
           '<button type="button" class="forge-lab-sigil-mark" data-lab-sigil="' + escapeHtml(sigil.slotId) + '">' +
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
             '<span class="forge-lab-sigil-emblem" aria-hidden="true">' +
@@ -592,7 +607,7 @@
               '<span class="forge-lab-chip-row">' + sigilIdentityMarkup(recipe, sigil) + '</span>' +
             '</span>' +
           '</button>' +
-          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo successivo">›</button>' +
+          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo successivo' + (canCycle ? "" : ": nessun altro Sigillo disponibile") + '"' + cycleDisabled + '>›</button>' +
           sigilQuickMarkup(recipe, sigil) +
         '</div>'
       );
@@ -636,6 +651,32 @@
     );
   }
 
+  function statEmblemMarkup(kind) {
+    if (kind === "attack") {
+      return (
+        '<span class="forge-lab-stat-emblem" aria-hidden="true">' +
+          '<svg viewBox="0 0 80 80" focusable="false">' +
+            '<g class="forge-lab-crossed-swords">' +
+              '<path d="M18 64 58 24 66 15 63 28 23 68Z"/>' +
+              '<path d="M62 64 22 24 14 15 17 28 57 68Z"/>' +
+              '<path d="m13 55 12 12M55 67l12-12"/>' +
+              '<path d="m12 68 8-8M60 60l8 8"/>' +
+            '</g>' +
+          '</svg>' +
+        '</span>'
+      );
+    }
+    return (
+      '<span class="forge-lab-stat-emblem" aria-hidden="true">' +
+        '<svg viewBox="0 0 80 80" focusable="false">' +
+          '<path class="forge-lab-heart-shell" d="M40 71C30 61 12 49 12 30 12 18 20 10 31 10c5 0 8 2 9 6 2-4 5-6 10-6 11 0 19 8 19 20 0 19-18 31-29 41Z"/>' +
+          '<path class="forge-lab-heart-face" d="M40 63C31 55 20 46 20 31c0-8 5-13 12-13 4 0 7 2 8 7 2-5 5-7 9-7 7 0 12 5 12 13 0 15-11 24-21 32Z"/>' +
+          '<path class="forge-lab-heart-glint" d="M27 24c-3 3-4 7-3 11"/>' +
+        '</svg>' +
+      '</span>'
+    );
+  }
+
   function cardMarkup(recipe) {
     const art = selectedArtCard(recipe);
     const name = recipe.presentation?.name || "Nuova Formula";
@@ -651,8 +692,8 @@
     return (
       '<div class="forge-lab-card-shell">' +
         '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" style="' + geometryStyle() + '">' +
-          '<div class="forge-lab-card-frame" data-lab-depth-layer="surface" aria-hidden="true"><span></span><i></i><i></i><i></i><i></i></div>' +
-          '<div class="forge-lab-card-aura" aria-hidden="true"><i></i><i></i><i></i></div>' +
+          '<div class="forge-lab-card-frame" data-lab-depth-layer="surface" aria-hidden="true"><span></span></div>' +
+          '<div class="forge-lab-card-aura" aria-hidden="true"><i></i></div>' +
           '<div class="forge-lab-control-anchor forge-lab-art-anchor" data-lab-control-anchor="art" data-lab-depth-layer="art">' +
             '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
             '<div class="forge-lab-art-layer" data-lab-art-visual aria-hidden="true">' +
@@ -678,8 +719,8 @@
           '<div class="forge-lab-control-anchor forge-lab-name-anchor" data-lab-control-anchor="name" data-lab-depth-layer="raised">' + nameplate + '</div>' +
           (recipe.type === "creature"
             ? '<div class="forge-lab-stats" data-lab-control-anchor="stats" data-lab-depth-layer="floating">' +
-                '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '"><span aria-hidden="true">⚔</span><strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
-                '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '"><span aria-hidden="true">♥</span><strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+                '<button type="button" class="forge-lab-stat attack" data-lab-control="attack" aria-label="Attacco ' + escapeHtml(stats.attack ?? 0) + '">' + statEmblemMarkup("attack") + '<strong>' + escapeHtml(stats.attack ?? 0) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
+                '<button type="button" class="forge-lab-stat health" data-lab-control="health" aria-label="Vita ' + escapeHtml(stats.health ?? 1) + '">' + statEmblemMarkup("health") + '<strong>' + escapeHtml(stats.health ?? 1) + '</strong><em class="forge-lab-control-feedback" aria-hidden="true"></em></button>' +
                 (["attack", "health"].includes(state.inlineControl) ? inlineControlMarkup(recipe) : "") +
               '</div>'
             : "") +
@@ -1022,9 +1063,9 @@
 
   function cycleSigil(recipe, slotId, delta) {
     const session = ensureSession();
-    const list = forgeSigilOptions(recipe);
     const current = recipe.sigils.find(item => item.slotId === slotId);
-    if (!session || !current || !list.length) return;
+    const list = sigilCycleOptions(recipe, current);
+    if (!session || !current || list.length < 2) return;
     const index = Math.max(0, list.findIndex(item => item.id === current.collectibleId));
     const next = list[(index + Number(delta) + list.length) % list.length];
     mutate(() => session.replaceCollectibleSigil(slotId, next.id));
@@ -1591,12 +1632,9 @@
     root.innerHTML =
       '<div class="forge-lab-layout">' +
         '<section class="forge-lab-stage school-' + escapeHtml(recipe.school) + ' ' + (state.atmosphere ? "" : "no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '">' +
-          '<div class="forge-lab-forge-core" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-cloud cloud-one" aria-hidden="true"></div>' +
-          '<div class="forge-lab-cloud cloud-two" aria-hidden="true"></div>' +
-          '<div class="forge-lab-wisps" aria-hidden="true"><i></i><i></i><i></i></div>' +
-          '<div class="forge-lab-arcane-filaments" aria-hidden="true"><i></i><i></i><i></i><i></i></div>' +
-          '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+          '<div class="forge-lab-arcane-filaments" aria-hidden="true"><i></i><i></i></div>' +
+          '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i></div>' +
           '<div class="forge-lab-card-stage">' + cardMarkup(recipe) + '</div>' +
           '<p class="forge-lab-gesture-hint">Tap su Costo/ATT/Vita per la ruota · tap Scuola per la successiva · ✥ apre tutte le Scuole · scorri Art e Scuola direttamente sulla Formula</p>' +
         '</section>' +
