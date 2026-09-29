@@ -21645,3 +21645,332 @@ body.ui-classic {
     line-height:1.08;
   }
 }
+
+
+/* ===== SIGIAN 0.61.44 — canonical Play hub ===== */
+.play-hub-screen {
+  position:relative;
+  min-height:calc(100vh - 78px);
+  min-height:calc(100dvh - 78px);
+  padding:clamp(28px,5vh,58px) clamp(18px,4vw,52px) calc(92px + env(safe-area-inset-bottom));
+  overflow:auto;
+  background:
+    linear-gradient(180deg,rgba(3,8,24,.34),rgba(2,7,21,.9)),
+    radial-gradient(circle at 50% 18%,rgba(226,175,65,.2),transparent 34%),
+    url("assets/ui/remastered/astral-battlefield-v1.png") center 42% / cover no-repeat,
+    var(--sigian-ui-night-deep);
+}
+.play-hub-screen::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(2,7,20,.72),transparent 22%,transparent 78%,rgba(2,7,20,.72)),
+    radial-gradient(circle at 50% 46%,transparent 42%,rgba(1,5,17,.54) 100%);
+}
+.play-hub-stage {
+  position:relative;
+  z-index:1;
+  width:min(1180px,100%);
+  min-height:min(720px,calc(100dvh - 170px));
+  margin:0 auto;
+  display:grid;
+  align-content:center;
+  gap:clamp(22px,4vh,40px);
+}
+.play-hub-header {
+  max-width:760px;
+  margin:0 auto;
+  text-align:center;
+  text-shadow:0 2px 14px rgba(0,0,0,.75);
+}
+.play-hub-kicker {
+  display:block;
+  margin-bottom:7px;
+  color:#e0bc62;
+  font:800 .72rem/1.1 Georgia,serif;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+}
+.play-hub-header h1 {
+  margin:0;
+  color:#f5dc8b;
+  font:800 clamp(2rem,4.2vw,3.6rem)/.98 Georgia,serif;
+  letter-spacing:.015em;
+}
+.play-hub-header p {
+  max-width:650px;
+  margin:12px auto 0;
+  color:#d7ddea;
+  font-size:clamp(.88rem,1.5vw,1.05rem);
+  line-height:1.45;
+}
+.play-hub-modes {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:clamp(14px,2vw,22px);
+}
+.play-hub-mode {
+  position:relative;
+  min-width:0;
+  min-height:230px;
+  display:grid;
+  grid-template-columns:74px minmax(0,1fr) auto;
+  grid-template-rows:1fr;
+  align-items:center;
+  gap:17px;
+  padding:24px 20px;
+  overflow:hidden;
+  border:1px solid rgba(225,185,77,.72);
+  border-radius:var(--sigian-ui-radius-lg);
+  background:
+    radial-gradient(circle at 16% 20%,rgba(68,88,151,.32),transparent 42%),
+    linear-gradient(155deg,rgba(12,28,62,.96),rgba(3,10,28,.94));
+  color:#f2e7c1;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:
+    0 18px 38px rgba(0,0,0,.38),
+    inset 0 0 0 1px rgba(255,229,143,.07),
+    inset 0 -26px 60px rgba(0,0,0,.18);
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.play-hub-mode::before {
+  content:"";
+  position:absolute;
+  inset:7px;
+  border:1px solid rgba(238,201,103,.18);
+  border-radius:calc(var(--sigian-ui-radius-lg) - 6px);
+  pointer-events:none;
+}
+.play-hub-mode[data-play-hub-mode="duel"] {
+  background:
+    radial-gradient(circle at 18% 22%,rgba(186,91,42,.3),transparent 44%),
+    linear-gradient(155deg,rgba(18,31,63,.97),rgba(6,11,28,.95));
+}
+.play-hub-mode[data-play-hub-mode="multiplayer"] {
+  background:
+    radial-gradient(circle at 18% 22%,rgba(68,119,190,.34),transparent 44%),
+    linear-gradient(155deg,rgba(13,31,68,.97),rgba(5,12,31,.95));
+}
+.play-hub-mode[data-play-hub-mode="tournament"] {
+  background:
+    radial-gradient(circle at 18% 22%,rgba(190,145,49,.34),transparent 44%),
+    linear-gradient(155deg,rgba(29,31,54,.97),rgba(8,11,27,.95));
+}
+.play-hub-mode:hover {
+  transform:translateY(-4px);
+  border-color:#f0ce70;
+  box-shadow:
+    0 24px 46px rgba(0,0,0,.48),
+    0 0 22px rgba(216,173,74,.15),
+    inset 0 0 0 1px rgba(255,231,151,.12);
+}
+.play-hub-mode:focus-visible {
+  outline:2px solid var(--sigian-shell-focus,var(--sigian-ui-gold-soft));
+  outline-offset:3px;
+}
+.play-hub-mode-icon {
+  width:70px;
+  height:70px;
+  display:grid;
+  place-items:center;
+  border:2px solid rgba(232,192,84,.78);
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 35%,rgba(61,80,137,.54),transparent 66%),
+    linear-gradient(180deg,#111f43,#050c20);
+  color:#f3d779;
+  box-shadow:
+    0 0 0 5px rgba(3,9,26,.65),
+    0 0 18px rgba(218,172,65,.18),
+    inset 0 0 0 1px rgba(255,232,157,.08);
+}
+.play-hub-mode-icon svg {
+  width:36px;
+  height:36px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.play-hub-mode-copy {
+  min-width:0;
+  display:grid;
+  align-content:center;
+  gap:6px;
+}
+.play-hub-mode-copy small {
+  color:#c3b27e;
+  font:800 .62rem/1.1 Georgia,serif;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.play-hub-mode-copy strong {
+  color:#fff0b2;
+  font:800 clamp(1.3rem,2.2vw,1.8rem)/1 Georgia,serif;
+}
+.play-hub-mode-copy > span {
+  color:#ccd5e3;
+  font-size:.84rem;
+  line-height:1.38;
+}
+.play-hub-mode-arrow {
+  align-self:center;
+  color:#e7c566;
+  font:400 2rem/1 Georgia,serif;
+  opacity:.86;
+  transform:translateX(0);
+  transition:transform .16s ease;
+}
+.play-hub-mode:hover .play-hub-mode-arrow {
+  transform:translateX(3px);
+}
+
+/* Shared segmented control for the three deep Play views. */
+.sigian-ui-tabset.play-mode-switch {
+  width:min(610px,calc(100% - 20px));
+  margin:8px auto 16px;
+  padding:4px;
+  gap:4px;
+  border:1px solid rgba(222,183,78,.54);
+  border-radius:999px;
+  background:rgba(3,10,28,.84);
+  box-shadow:inset 0 0 0 1px rgba(255,229,143,.05),0 6px 18px rgba(0,0,0,.18);
+}
+.sigian-ui-tab.play-mode-tab {
+  min-height:40px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#b9c4d5;
+  box-shadow:none;
+  text-shadow:none;
+  transition:background .14s ease,color .14s ease,box-shadow .14s ease;
+}
+.sigian-ui-tab.play-mode-tab:hover:not(.is-active),
+.sigian-ui-tab.play-mode-tab:focus-visible:not(.is-active) {
+  border:0;
+  background:rgba(36,55,94,.58);
+  color:#f0dfac;
+}
+.sigian-ui-tab.play-mode-tab.is-active {
+  border:0;
+  background:
+    radial-gradient(circle at 50% 0,rgba(207,161,61,.25),transparent 72%),
+    linear-gradient(180deg,#665328,#302512);
+  color:#fff0ad;
+  box-shadow:inset 0 0 0 1px rgba(239,204,111,.5),0 2px 8px rgba(0,0,0,.22);
+}
+.sigian-ui-tab.play-mode-tab:focus-visible {
+  outline:2px solid var(--sigian-shell-focus,var(--sigian-ui-gold-soft));
+  outline-offset:2px;
+}
+
+/* The global shell already carries the brand; deep Duel setup no longer needs a giant duplicate logo. */
+#gameView .classic-menu-logo {
+  display:none;
+}
+
+@media (max-width:900px) {
+  .play-hub-screen {
+    min-height:calc(100dvh - 58px);
+    padding:20px 14px calc(92px + env(safe-area-inset-bottom));
+    background-position:center top;
+  }
+  .play-hub-stage {
+    min-height:calc(100dvh - 170px);
+    align-content:start;
+    gap:18px;
+  }
+  .play-hub-header h1 {
+    font-size:clamp(1.75rem,8vw,2.45rem);
+  }
+  .play-hub-header p {
+    max-width:520px;
+    margin-top:8px;
+    font-size:.86rem;
+  }
+  .play-hub-modes {
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+  .play-hub-mode {
+    min-height:112px;
+    grid-template-columns:58px minmax(0,1fr) auto;
+    gap:13px;
+    padding:14px 15px;
+    border-radius:16px;
+  }
+  .play-hub-mode::before {
+    inset:5px;
+    border-radius:12px;
+  }
+  .play-hub-mode-icon {
+    width:54px;
+    height:54px;
+  }
+  .play-hub-mode-icon svg {
+    width:29px;
+    height:29px;
+  }
+  .play-hub-mode-copy {
+    gap:3px;
+  }
+  .play-hub-mode-copy small {
+    font-size:.54rem;
+  }
+  .play-hub-mode-copy strong {
+    font-size:1.22rem;
+  }
+  .play-hub-mode-copy > span {
+    font-size:.72rem;
+    line-height:1.3;
+  }
+  .play-hub-mode-arrow {
+    font-size:1.55rem;
+  }
+  .sigian-ui-tabset.play-mode-switch {
+    width:calc(100% - 12px);
+    margin:6px auto 12px;
+  }
+  .sigian-ui-tab.play-mode-tab {
+    min-height:42px;
+    padding:7px 5px;
+    font-size:.73rem;
+  }
+}
+
+@media (max-width:430px) {
+  .play-hub-screen {
+    padding-inline:10px;
+  }
+  .play-hub-header p {
+    display:none;
+  }
+  .play-hub-kicker {
+    margin-bottom:5px;
+    font-size:.62rem;
+  }
+  .play-hub-mode {
+    min-height:104px;
+    grid-template-columns:52px minmax(0,1fr) 12px;
+    padding:12px 12px;
+  }
+  .play-hub-mode-icon {
+    width:48px;
+    height:48px;
+  }
+  .play-hub-mode-icon svg {
+    width:26px;
+    height:26px;
+  }
+  .play-hub-mode-copy > span {
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+}

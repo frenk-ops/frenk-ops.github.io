@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.61.43-35f2d04";
+const BUILD_REVISION = "0.61.44-7a370f5";
 const SHELL_CACHE = `sigian-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `sigian-runtime-${BUILD_REVISION}`;
 
@@ -17,6 +17,7 @@ const APP_SHELL = [
   "./icons/apple-touch-icon.png",
   "./assets/ui/academy/academy-campus-map.webp",
   "./assets/ui/academy/academy-campus-map.svg",
+  "./assets/ui/remastered/astral-battlefield-v1.png",
   "./src/core/constants.js",
   "./src/core/rng.js",
   "./src/data/cards.js",

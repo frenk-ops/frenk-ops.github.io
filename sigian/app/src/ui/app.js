@@ -529,7 +529,7 @@
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const ACADEMY_SUMMONS_SEEN_KEY = "arcane.academy.summonsSeen.v1";
   const ACADEMY_ADMISSION_SEEN_KEY = "arcane.academy.admissionSeen.v1";
-  const RESTORABLE_VIEWS = new Set(["game", "academy", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
+  const RESTORABLE_VIEWS = new Set(["play", "game", "academy", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
   let academySchoolWingOpen = false;
 
   function rememberedView() {
@@ -537,9 +537,9 @@
       const requested = new URLSearchParams(window.location.search).get("view") || "";
       if (RESTORABLE_VIEWS.has(requested)) return requested;
       const value = sessionStorage.getItem(ACTIVE_VIEW_KEY) || "";
-      return RESTORABLE_VIEWS.has(value) ? value : "game";
+      return RESTORABLE_VIEWS.has(value) ? value : "play";
     } catch {
-      return "game";
+      return "play";
     }
   }
 
@@ -2766,7 +2766,7 @@
   }
 
   function switchView(name) {
-    name = RESTORABLE_VIEWS.has(name) ? name : "game";
+    name = RESTORABLE_VIEWS.has(name) ? name : "play";
     if (name !== "uiLab") A.ForgeUiLab?.suspendMotion?.();
     document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
     $(`#${name}View`)?.classList.add("active");

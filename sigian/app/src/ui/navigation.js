@@ -2,6 +2,7 @@
   "use strict";
 
   const VIEW_GROUPS = Object.freeze({
+    play:"play",
     game:"play",
     multiplayer:"play",
     tournament:"play",
