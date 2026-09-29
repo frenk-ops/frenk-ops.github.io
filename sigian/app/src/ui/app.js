@@ -9632,6 +9632,9 @@
         </div>
       </section>
 
+      <details class="profile-path-accordion profile-path-accordion-progression" open>
+        <summary><span>${t("profile.accountProgression")}</span><small>${t("profile.accountLevel", { level:accountLevelProgress.level })}</small></summary>
+        <div class="profile-path-accordion-body">
       <div class="profile-path-primary-grid">
         <section class="profile-account-progression ornate-subpanel">
           <div class="profile-account-progression-heading">
@@ -9673,7 +9676,12 @@
           }).join("")}
         </div>
       </section>
+        </div>
+      </details>
 
+      <details class="profile-path-accordion profile-path-accordion-tournament">
+        <summary><span>${t("profile.pathTournament")}</span><small>${Number(profile.tournamentsWon || 0)}/${Number(profile.tournamentsPlayed || 0)}</small></summary>
+        <div class="profile-path-accordion-body">
       <section class="profile-path-tournament ornate-subpanel">
         <div class="profile-section-heading">
           <div><h3>${t("profile.pathTournament")}</h3><p>${activeTournament ? t("profile.pathTournamentActiveHint") : academy.tournamentUnlocked ? t("profile.pathTournamentReadyHint") : t("profile.pathTournamentUnlock")}</p></div>
@@ -9689,7 +9697,12 @@
           ${academy.tournamentUnlocked ? `<button type="button" class="classic-stone-button ghost" data-view-jump="tournament">${t("nav.tournament")}</button>` : ""}
         </div>`}
       </section>
+        </div>
+      </details>
 
+      <details class="profile-path-accordion profile-path-accordion-identity">
+        <summary><span>${t("profile.identityTitle")}</span><small>${escapeHtml(storedName)}</small></summary>
+        <div class="profile-path-accordion-body">
       ${onlineCard}
 
       <section class="profile-customize-card ornate-subpanel">
@@ -9717,7 +9730,12 @@
           </div>
         </div>
       </section>
+        </div>
+      </details>
 
+      <details class="profile-path-accordion profile-path-accordion-stats">
+        <summary><span>${t("profile.stats")}</span><small>${Number(single.played || 0) + Number(multi.played || 0)}</small></summary>
+        <div class="profile-path-accordion-body">
       <div class="profile-mode-grid">
         <article class="profile-mode-card"><span>${t("profile.singlePlayer")}</span><strong>${t("profile.record", { wins: single.wins || 0, losses: single.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: single.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(single.fastestWinMs)}</small></article>
         <article class="profile-mode-card"><span>${t("nav.multiplayer")}</span><strong>${t("profile.record", { wins: multi.wins || 0, losses: multi.losses || 0 })}</strong><small>${t("profile.gamesPlayed", { value: multi.played || 0 })}</small><small>${t("profile.fastestWin")}: ${formatProfileDuration(multi.fastestWinMs)}</small></article>
@@ -9737,7 +9755,12 @@
           ${A.SCHOOLS.map(item => `<span><b>${schoolIconMarkup(item.id, "school-icon-svg profile-school-icon")}</b><small>${schoolName(item.id)}</small><strong>${Number(stats.cardsBySchool?.[item.id] || 0)}</strong></span>`).join("")}
         </div>
       </section>
+        </div>
+      </details>
 
+      <details class="profile-path-accordion profile-path-accordion-trophies">
+        <summary><span>${t("profile.trophies")}</span><small>${(profile.achievements || []).length}/${achievements.length}</small></summary>
+        <div class="profile-path-accordion-body">
       <section class="profile-trophies ornate-subpanel">
         <div class="profile-section-heading"><div><h3>${t("profile.trophies")}</h3><p>${t("profile.trophiesIntro")}</p></div><strong>${(profile.achievements || []).length}/${achievements.length}</strong></div>
         <div class="trophy-grid">
@@ -9751,6 +9774,8 @@
           }).join("")}
         </div>
       </section>
+        </div>
+      </details>
 
       <div class="profile-secondary-actions">
         <button class="classic-stone-button" type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>

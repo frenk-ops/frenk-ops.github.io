@@ -929,19 +929,19 @@
       </article>`;
   }
 
-  function inventoryOverviewMarkup(data, grimoires) {
+  function inventoryOverviewMarkup(data, grimoires, state) {
     const sigils = data.components.filter(item => item.kind === "sigil");
     const constraints = data.components.filter(item => item.kind === "constraint");
     const sigilCopies = sigils.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     const constraintCopies = constraints.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
     return `
       <section class="archive-overview sigian-ui-panel archive-codex-overview" aria-label="${escapeHtml(t("archive.inventory"))}">
-        <button type="button" data-archive-jump="formulas"><small>${escapeHtml(t("archive.formulas"))}</small><strong>${data.formulas.length}</strong><span>${escapeHtml(t("archive.formulasOwned"))}</span></button>
-        <button type="button" data-archive-jump="recipes"><small>${escapeHtml(t("archive.recipes"))}</small><strong>${(data.recipes || []).length}</strong><span>${escapeHtml(t("archive.known"))}</span></button>
-        <button type="button" data-archive-jump="sigils"><small>${escapeHtml(t("archive.sigils"))}</small><strong>${sigilCopies}</strong><span>${escapeHtml(t("archive.copies"))}</span></button>
-        <button type="button" data-archive-jump="constraints"><small>${escapeHtml(t("archive.constraints"))}</small><strong>${constraintCopies}</strong><span>${escapeHtml(t("archive.copies"))}</span></button>
-        <button type="button" data-archive-jump="grimoires"><small>${escapeHtml(t("archive.grimoires"))}</small><strong>${grimoires.length}</strong><span>${escapeHtml(t("archive.saved"))}</span></button>
-        <button type="button" data-archive-jump="cosmetics"><small>${escapeHtml(t("archive.cosmetics"))}</small><strong>${data.cosmetics.length}</strong><span>${escapeHtml(t("archive.ownedPlural"))}</span></button>
+        <button type="button" class="${state?.section === "formulas" ? "active" : ""}" data-archive-jump="formulas" ${state?.section === "formulas" ? 'aria-current="page"' : ""}><small>${escapeHtml(t("archive.formulas"))}</small><strong>${data.formulas.length}</strong><span>${escapeHtml(t("archive.formulasOwned"))}</span></button>
+        <button type="button" class="${state?.section === "recipes" ? "active" : ""}" data-archive-jump="recipes" ${state?.section === "recipes" ? 'aria-current="page"' : ""}><small>${escapeHtml(t("archive.recipes"))}</small><strong>${(data.recipes || []).length}</strong><span>${escapeHtml(t("archive.known"))}</span></button>
+        <button type="button" class="${state?.section === "sigils" ? "active" : ""}" data-archive-jump="sigils" ${state?.section === "sigils" ? 'aria-current="page"' : ""}><small>${escapeHtml(t("archive.sigils"))}</small><strong>${sigilCopies}</strong><span>${escapeHtml(t("archive.copies"))}</span></button>
+        <button type="button" class="${state?.section === "constraints" ? "active" : ""}" data-archive-jump="constraints" ${state?.section === "constraints" ? 'aria-current="page"' : ""}><small>${escapeHtml(t("archive.constraints"))}</small><strong>${constraintCopies}</strong><span>${escapeHtml(t("archive.copies"))}</span></button>
+        <button type="button" class="${state?.section === "grimoires" ? "active" : ""}" data-archive-jump="grimoires" ${state?.section === "grimoires" ? 'aria-current="page"' : ""}><small>${escapeHtml(t("archive.grimoires"))}</small><strong>${grimoires.length}</strong><span>${escapeHtml(t("archive.saved"))}</span></button>
+        <button type="button" class="${state?.section === "cosmetics" ? "active" : ""}" data-archive-jump="cosmetics" ${state?.section === "cosmetics" ? 'aria-current="page"' : ""}><small>${escapeHtml(t("archive.cosmetics"))}</small><strong>${data.cosmetics.length}</strong><span>${escapeHtml(t("archive.ownedPlural"))}</span></button>
       </section>`;
   }
 
@@ -1372,8 +1372,7 @@
           ${scopeToggleMarkup(scope)}
         </header>
 
-        ${scope === "inventory" ? inventoryOverviewMarkup(data, grimoires) : ""}
-        ${sectionTabsMarkup(state, scope, data, grimoires)}
+        ${scope === "inventory" ? inventoryOverviewMarkup(data, grimoires, state) : sectionTabsMarkup(state, scope, data, grimoires)}
 
         <section class="archive-filters archive-codex-filters sigian-ui-panel">
           ${content.filters}
