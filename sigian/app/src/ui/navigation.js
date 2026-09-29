@@ -12,9 +12,9 @@
     forge:"forge",
     uiLab:"forge",
     academy:"academy",
-    profile:"path",
-    rules:"path",
-    diagnostics:"path"
+    profile:"academy",
+    rules:"utility",
+    diagnostics:"utility"
   });
 
   function createNavigation(options = {}) {

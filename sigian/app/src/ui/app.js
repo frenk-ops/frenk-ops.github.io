@@ -847,9 +847,7 @@
     const academyLocations = [
       {
         id:"atrium", icon:"✉", x:50, y:43, title:t("academy.atrium.title"), mapLabel:t("academy.atrium.mapLabel"), description:t("academy.atrium.description"), info:t("academy.atrium.info"),
-        status:t("academy.available"), state:"available", action:t("academy.atrium.action"), letter:true,
-        extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
-        admissionLetter:Boolean(academy.academyAdmissionEligible)
+        status:t("academy.available"), state:"available", atriumBoard:true
       },
       {
         id:"schools", icon:"✦", x:22, y:17, title:t("academy.schools.title"), mapLabel:t("academy.schools.mapLabel"), description:t("academy.schools.description"), info:t("academy.schools.info"),
@@ -890,6 +888,34 @@
         <span class="academy-map-hotspot-state" aria-hidden="true">${location.state === "sealed" ? "◆" : location.state === "planned" ? "◇" : "•"}</span>
       </button>`;
 
+    const atriumBoardMarkup = () => `
+      <section class="academy-atrium-board" data-academy-atrium-board aria-labelledby="academyAtriumBoardTitle">
+        <header class="academy-atrium-board-heading">
+          <div>
+            <small>${escapeHtml(t("academy.board.kicker"))}</small>
+            <h4 id="academyAtriumBoardTitle">${escapeHtml(t("academy.board.title"))}</h4>
+          </div>
+          <p>${escapeHtml(t("academy.board.intro"))}</p>
+        </header>
+        <div class="academy-atrium-board-list">
+          <article class="academy-atrium-board-entry" data-academy-board-entry="summons">
+            <span class="academy-atrium-board-icon" aria-hidden="true">✉</span>
+            <div><small>${escapeHtml(t("academy.available"))}</small><strong>${escapeHtml(t("academy.summons.title"))}</strong></div>
+            <button class="classic-stone-button ghost" type="button" data-academy-summons-open>${escapeHtml(t("academy.board.summonsAction"))}</button>
+          </article>
+          ${academy.academyAdmissionEligible ? `
+            <article class="academy-atrium-board-entry" data-academy-board-entry="admission">
+              <span class="academy-atrium-board-icon" aria-hidden="true">◆</span>
+              <div><small>${escapeHtml(t("academy.available"))}</small><strong>${escapeHtml(t("academy.admission.title"))}</strong></div>
+              <button class="classic-stone-button ghost" type="button" data-academy-admission-open>${escapeHtml(t("academy.admission.reread"))}</button>
+            </article>` : ""}
+        </div>
+        <footer class="academy-atrium-record-link">
+          <div><small>${escapeHtml(t("profile.academyStatus"))}</small><strong>${escapeHtml(t("profile.title"))}</strong><span>${escapeHtml(t("academy.board.recordHint"))}</span></div>
+          <button class="classic-stone-button" type="button" data-academy-target="profile">${escapeHtml(t("academy.board.openRecord"))}</button>
+        </footer>
+      </section>`;
+
     const locationDetail = location => `
       <article class="academy-location academy-map-detail-card is-${escapeHtml(location.state)} ${location.id === "atrium" ? "is-active" : ""}"
         data-academy-map-detail="${escapeHtml(location.id)}" data-academy-state="${escapeHtml(location.state)}"
@@ -901,6 +927,7 @@
         </div>
         <p>${escapeHtml(location.description)}</p>
         ${location.note ? `<small class="academy-map-detail-note">${escapeHtml(location.note)}</small>` : ""}
+        ${location.atriumBoard ? atriumBoardMarkup() : ""}
         <div class="academy-map-detail-actions">
           ${location.action ? `<button class="classic-stone-button sigian-ui-action ${location.disabled ? "ghost" : ""}" type="button"
             ${location.target ? `data-academy-target="${escapeHtml(location.target)}"` : ""}
@@ -1083,7 +1110,7 @@
       academySchoolWingOpen = true;
       window.dispatchEvent(new CustomEvent("sigian:formative-school-change", { detail:{ schoolId:profile.formativeSchoolId } }));
     });
-    root.querySelector("[data-academy-summons-open]")?.addEventListener("click", openAcademySummons);
+    root.querySelectorAll("[data-academy-summons-open]").forEach(button => button.addEventListener("click", openAcademySummons));
     root.querySelectorAll("[data-academy-summons-close]").forEach(button => button.addEventListener("click", closeAcademySummons));
     const modal = root.querySelector("#academySummonsModal");
     modal?.addEventListener("click", event => {
@@ -1093,7 +1120,7 @@
       if (event.key === "Escape") closeAcademySummons();
     });
 
-    root.querySelector("[data-academy-admission-open]")?.addEventListener("click", openAcademyAdmission);
+    root.querySelectorAll("[data-academy-admission-open]").forEach(button => button.addEventListener("click", openAcademyAdmission));
     root.querySelectorAll("[data-academy-admission-close]").forEach(button => button.addEventListener("click", closeAcademyAdmission));
     root.querySelector("[data-academy-admission-school]")?.addEventListener("click", () => {
       closeAcademyAdmission();
