@@ -822,6 +822,11 @@
       kind:"raster-webp-candidate",
       ratio:"4:5"
     });
+    const buildLabel = String(
+      document.body?.dataset?.arcaneBuildLabel
+      || document.querySelector("[data-arcane-version]")?.textContent
+      || ""
+    ).trim();
     const schoolChoices = A.SCHOOLS.map(item => {
       const selected = academy.formativeSchoolId === item.id;
       const disabled = !academy.schoolChangeAllowed || selected;
@@ -841,31 +846,31 @@
 
     const academyLocations = [
       {
-        id:"atrium", icon:"✉", x:50, y:43, title:t("academy.atrium.title"), description:t("academy.atrium.description"), info:t("academy.atrium.info"),
+        id:"atrium", icon:"✉", x:50, y:43, title:t("academy.atrium.title"), mapLabel:t("academy.atrium.mapLabel"), description:t("academy.atrium.description"), info:t("academy.atrium.info"),
         status:t("academy.available"), state:"available", action:t("academy.atrium.action"), letter:true,
         extraAction:academy.academyAdmissionEligible ? t("academy.admission.reread") : "",
         admissionLetter:Boolean(academy.academyAdmissionEligible)
       },
       {
-        id:"schools", icon:"✦", x:22, y:17, title:t("academy.schools.title"), description:t("academy.schools.description"), info:t("academy.schools.info"),
+        id:"schools", icon:"✦", x:22, y:17, title:t("academy.schools.title"), mapLabel:t("academy.schools.mapLabel"), description:t("academy.schools.description"), info:t("academy.schools.info"),
         status:schoolAvailable ? t("academy.available") : t("academy.sealed"),
         state:schoolAvailable ? "available" : "sealed", action:schoolAction, schoolWing:true,
         disabled:!schoolAvailable, note:schoolNote
       },
       {
-        id:"library", icon:"⌘", x:80, y:19, title:t("academy.library.title"), description:t("academy.library.description"), info:t("academy.library.info"),
+        id:"library", icon:"⌘", x:80, y:19, title:t("academy.library.title"), mapLabel:t("academy.library.mapLabel"), description:t("academy.library.description"), info:t("academy.library.info"),
         status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
       },
       {
-        id:"forge", icon:"⚒", x:19, y:62, title:t("academy.forge.title"), description:t("academy.forge.description"), info:t("academy.forge.info"),
+        id:"forge", icon:"⚒", x:19, y:62, title:t("academy.forge.title"), mapLabel:t("academy.forge.mapLabel"), description:t("academy.forge.description"), info:t("academy.forge.info"),
         status:t("academy.available"), state:"available", action:t("academy.forge.action"), target:"forge"
       },
       {
-        id:"trials", icon:"⚔", x:49, y:80, title:t("academy.trials.title"), description:t("academy.trials.description"), info:t("academy.trials.info"),
+        id:"trials", icon:"⚔", x:49, y:80, title:t("academy.trials.title"), mapLabel:t("academy.trials.mapLabel"), description:t("academy.trials.description"), info:t("academy.trials.info"),
         status:t("academy.available"), state:"available", action:t("academy.trials.action"), target:"game"
       },
       {
-        id:"arena", icon:"♜", x:80, y:65, title:t("academy.arena.title"), description:t("academy.arena.description"), info:t("academy.arena.info"),
+        id:"arena", icon:"♜", x:80, y:65, title:t("academy.arena.title"), mapLabel:t("academy.arena.mapLabel"), description:t("academy.arena.description"), info:t("academy.arena.info"),
         status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
         state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
         disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
@@ -873,14 +878,15 @@
     ];
 
     const locationHotspot = location => `
-      <button class="academy-map-hotspot academy-map-hotspot-${escapeHtml(location.id)} is-${escapeHtml(location.state)} ${location.id === "atrium" ? "is-active" : ""}"
+      <button class="academy-map-hotspot sigian-ui-landmark academy-map-hotspot-${escapeHtml(location.id)} is-${escapeHtml(location.state)} ${location.id === "atrium" ? "is-active" : ""}"
         style="--academy-hotspot-x:${location.x}%;--academy-hotspot-y:${location.y}%;"
         type="button" data-academy-location="${escapeHtml(location.id)}" data-academy-state="${escapeHtml(location.state)}"
+        data-academy-map-label="${escapeHtml(location.mapLabel || location.title)}"
         aria-controls="academyMapDetail" aria-pressed="${location.id === "atrium" ? "true" : "false"}"
         aria-label="${escapeHtml(`${location.title} — ${location.status}`)}">
         <span class="academy-map-hotspot-pulse" aria-hidden="true"></span>
         <span class="academy-map-hotspot-glyph" aria-hidden="true">${location.icon}</span>
-        <span class="academy-map-hotspot-label">${escapeHtml(location.title)}</span>
+        <span class="academy-map-hotspot-label">${escapeHtml(location.mapLabel || location.title)}</span>
         <span class="academy-map-hotspot-state" aria-hidden="true">${location.state === "sealed" ? "◆" : location.state === "planned" ? "◇" : "•"}</span>
       </button>`;
 
@@ -891,17 +897,17 @@
         <div class="academy-map-detail-hero" style="--academy-detail-x:${location.x}%;--academy-detail-y:${location.y}%;" aria-hidden="true"></div>
         <div class="academy-map-detail-heading">
           <span class="academy-map-detail-icon" aria-hidden="true">${location.icon}</span>
-          <div><small>${escapeHtml(location.status)}</small><h3>${escapeHtml(location.title)}</h3></div>
+          <div><small class="sigian-ui-status">${escapeHtml(location.status)}</small><h3>${escapeHtml(location.title)}</h3></div>
         </div>
         <p>${escapeHtml(location.description)}</p>
         ${location.note ? `<small class="academy-map-detail-note">${escapeHtml(location.note)}</small>` : ""}
         <div class="academy-map-detail-actions">
-          ${location.action ? `<button class="classic-stone-button ${location.disabled ? "ghost" : ""}" type="button"
+          ${location.action ? `<button class="classic-stone-button sigian-ui-action ${location.disabled ? "ghost" : ""}" type="button"
             ${location.target ? `data-academy-target="${escapeHtml(location.target)}"` : ""}
             ${location.letter ? "data-academy-summons-open" : ""}
             ${location.schoolWing ? "data-academy-school-wing-open" : ""}
             ${location.disabled ? "disabled" : ""}>${escapeHtml(location.action)}</button>` : ""}
-          ${location.extraAction ? `<button class="classic-stone-button ghost academy-location-secondary-action" type="button"
+          ${location.extraAction ? `<button class="classic-stone-button sigian-ui-action ghost academy-location-secondary-action" type="button"
             ${location.admissionLetter ? "data-academy-admission-open" : ""}>${escapeHtml(location.extraAction)}</button>` : ""}
         </div>
         <div class="academy-map-path-summary" aria-label="${escapeHtml(t("academy.statusTitle"))}">
@@ -916,9 +922,12 @@
       </article>`;
 
     root.innerHTML = `
-      <header class="academy-mobile-titlebar" aria-label="${escapeHtml(t("nav.academy"))}">
+      <header class="academy-mobile-titlebar sigian-ui-section-header" aria-label="${escapeHtml(t("nav.academy"))}">
         <span class="academy-mobile-title-icon" aria-hidden="true"><svg><use href="#sigian-nav-academy"></use></svg></span>
-        <strong>${t("nav.academy")}</strong>
+        <span class="academy-mobile-title-copy">
+          <strong>${t("nav.academy")}</strong>
+          ${buildLabel ? `<small class="academy-mobile-build-label">SIGIAN · ${escapeHtml(buildLabel)}</small>` : ""}
+        </span>
       </header>
       <header class="academy-heading">
         <div>
@@ -953,7 +962,7 @@
               ${academyLocations.map(locationHotspot).join("")}
             </div>
           </div>
-          <aside id="academyMapDetail" class="academy-map-detail-panel" aria-live="polite">
+          <aside id="academyMapDetail" class="academy-map-detail-panel sigian-ui-codex sigian-ui-bottom-sheet" aria-live="polite">
             ${academyLocations.map(locationDetail).join("")}
           </aside>
         </div>

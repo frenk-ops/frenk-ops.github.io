@@ -21526,3 +21526,122 @@ body.ui-classic .classic-topbar .classic-nav .classic-nav-item.active {
     display:none;
   }
 }
+
+
+/* ===== SIGIAN 0.61.43 — reusable UI primitives + Academy landmark polish ===== */
+body.ui-classic {
+  --sigian-ui-night:#07142f;
+  --sigian-ui-night-deep:#030919;
+  --sigian-ui-gold:#d9ad4d;
+  --sigian-ui-gold-soft:#f2d77e;
+  --sigian-ui-parchment:#f2e2b7;
+  --sigian-ui-parchment-deep:#ddc58f;
+  --sigian-ui-copper:#9f6a2f;
+  --sigian-ui-radius-sm:8px;
+  --sigian-ui-radius-md:14px;
+  --sigian-ui-radius-lg:22px;
+  --sigian-ui-space-1:4px;
+  --sigian-ui-space-2:8px;
+  --sigian-ui-space-3:12px;
+  --sigian-ui-space-4:16px;
+  --sigian-ui-touch:44px;
+}
+
+/* Semantic hooks shared by current Academy UI and future Play/Archive/Forge/Path passes. */
+.sigian-ui-section-header {
+  color:var(--sigian-shell-gold-300,var(--sigian-ui-gold-soft));
+}
+.sigian-ui-codex {
+  --sigian-codex-surface:linear-gradient(180deg,var(--sigian-ui-parchment),var(--sigian-ui-parchment-deep));
+  --sigian-codex-border:rgba(191,145,49,.78);
+}
+.sigian-ui-bottom-sheet {
+  scroll-margin-bottom:calc(76px + env(safe-area-inset-bottom));
+}
+.sigian-ui-action {
+  min-height:var(--sigian-ui-touch);
+  touch-action:manipulation;
+}
+.sigian-ui-status {
+  display:block;
+  font-weight:900;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+.sigian-ui-landmark {
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* Keep version + build visible while visual verification is active. */
+@media (max-width:820px) {
+  .sigian-brand-lockup .app-version-badge {
+    display:block;
+    margin-top:2px;
+    font-size:.44rem;
+    line-height:1.05;
+    white-space:nowrap;
+  }
+}
+
+/* The Academy mobile header keeps a tiny build marker even where the global topbar is hidden. */
+.academy-mobile-title-copy {
+  display:grid;
+  justify-items:center;
+  gap:2px;
+  min-width:0;
+}
+.academy-mobile-build-label {
+  color:rgba(230,215,169,.72);
+  font:600 .48rem/1.05 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  letter-spacing:.045em;
+  text-transform:none;
+  white-space:nowrap;
+}
+
+/* Landmark plaques reserve real breathing room between the medallion and label. */
+#academyView .academy-map-hotspot {
+  min-width:124px;
+  max-width:166px;
+  padding-left:34px;
+}
+#academyView .academy-map-hotspot-label {
+  min-width:0;
+  overflow:visible;
+  text-wrap:balance;
+}
+#academyView .academy-map-hotspot-glyph {
+  left:-17px;
+}
+
+/* Full title remains in the codex; map labels are intentionally concise. */
+#academyView .academy-map-detail-heading .sigian-ui-status {
+  margin-bottom:2px;
+}
+
+@media (max-width:900px) {
+  #academyView .academy-map-hotspot {
+    min-width:112px;
+    max-width:144px;
+    padding:6px 10px 6px 31px;
+  }
+  #academyView .academy-map-hotspot-glyph {
+    left:-14px;
+  }
+  .academy-mobile-titlebar {
+    min-height:58px;
+    padding-block:7px;
+  }
+}
+
+@media (max-width:620px) {
+  #academyView .academy-map-hotspot {
+    min-width:106px;
+    max-width:138px;
+    padding-left:31px;
+  }
+  #academyView .academy-map-hotspot-label {
+    font-size:.6rem;
+    line-height:1.08;
+  }
+}
