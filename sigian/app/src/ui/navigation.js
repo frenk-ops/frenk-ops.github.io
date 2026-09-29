@@ -8,6 +8,7 @@
     tournament:"play",
     cards:"archive",
     inventory:"archive",
+    chronicles:"archive",
     forge:"forge",
     uiLab:"forge",
     academy:"academy",

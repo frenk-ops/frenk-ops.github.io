@@ -529,7 +529,7 @@
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const ACADEMY_SUMMONS_SEEN_KEY = "arcane.academy.summonsSeen.v1";
   const ACADEMY_ADMISSION_SEEN_KEY = "arcane.academy.admissionSeen.v1";
-  const RESTORABLE_VIEWS = new Set(["play", "game", "academy", "multiplayer", "tournament", "cards", "inventory", "forge", "uiLab", "profile", "rules", "diagnostics"]);
+  const RESTORABLE_VIEWS = new Set(["play", "game", "academy", "multiplayer", "tournament", "cards", "inventory", "chronicles", "forge", "uiLab", "profile", "rules", "diagnostics"]);
   let academySchoolWingOpen = false;
 
   function rememberedView() {
@@ -2790,6 +2790,7 @@
     if (name === "tournament") renderTournament();
     if (name === "cards") A.SigianArchiveBrowser?.render?.($("#cardsContent"), "collection");
     if (name === "inventory") A.SigianArchiveBrowser?.render?.($("#inventoryContent"), "inventory");
+    if (name === "chronicles") A.SigianArchiveBrowser?.render?.($("#chroniclesContent"), "chronicles");
     if (name === "forge") renderForgePage();
     if (name === "uiLab") {
       A.ForgeUiLab?.resetSession?.();
@@ -2811,8 +2812,9 @@
   });
 
   window.addEventListener("sigian:archive-scope-request", event => {
-    const scope = event.detail?.scope === "inventory" ? "inventory" : "collection";
-    switchView(scope === "inventory" ? "inventory" : "cards");
+    const requested = String(event.detail?.scope || "collection");
+    const scope = ["collection", "inventory", "chronicles"].includes(requested) ? requested : "collection";
+    switchView(scope === "inventory" ? "inventory" : scope === "chronicles" ? "chronicles" : "cards");
   });
 
   window.addEventListener("sigian:inventory-forge-request", event => {

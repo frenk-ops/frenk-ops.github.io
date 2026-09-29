@@ -24172,3 +24172,92 @@ body.ui-classic #forgeView .forge-lab-school-radial {
   }
 }
 
+
+
+/* ===== SIGIAN 0.61.53 — Biblioteca / Chronicles foundation ===== */
+.archive-chronicles-screen {
+  display:grid;
+  gap:16px;
+  min-width:0;
+}
+.chronicles-foundation {
+  display:grid;
+  gap:7px;
+  padding:16px 18px;
+}
+.chronicles-foundation h3,
+.chronicles-foundation p {
+  margin:0;
+}
+.chronicles-foundation p {
+  line-height:1.48;
+}
+.chronicles-category-grid {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:12px;
+  min-width:0;
+}
+.chronicles-category-card {
+  display:grid;
+  align-content:start;
+  gap:10px;
+  min-width:0;
+  padding:14px;
+}
+.chronicles-category-heading {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+.chronicles-category-heading > div {
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+.chronicles-category-heading h3,
+.chronicles-category-card p {
+  margin:0;
+}
+.chronicles-category-heading h3 {
+  overflow-wrap:anywhere;
+}
+.chronicles-category-heading small,
+.chronicles-category-state {
+  opacity:.76;
+}
+.chronicles-category-mark {
+  display:grid;
+  place-items:center;
+  flex:0 0 34px;
+  width:34px;
+  height:34px;
+  border:1px solid currentColor;
+  border-radius:50%;
+}
+.chronicles-category-card p {
+  line-height:1.42;
+}
+.chronicles-category-state {
+  margin-top:auto;
+  font-size:.78rem;
+  line-height:1.35;
+}
+
+@media (max-width:1180px) {
+  .chronicles-category-grid {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+
+@media (max-width:700px) {
+  .chronicles-category-grid {
+    grid-template-columns:1fr;
+    gap:9px;
+  }
+  .chronicles-foundation,
+  .chronicles-category-card {
+    padding:13px;
+  }
+}

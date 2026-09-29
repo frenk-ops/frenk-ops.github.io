@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.61.52-ed6c055";
+const BUILD_REVISION = "0.61.53-14b3ed6";
 const SHELL_CACHE = `sigian-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `sigian-runtime-${BUILD_REVISION}`;
 
@@ -66,7 +66,7 @@ const APP_SHELL = [
   "./src/ui/pause-menu.js",
   "./src/ui/tournament-view.js",
   "./src/ui/forge-ui-lab.js",
-  "./src/ui/archive-browser.js",
+  "./src/data/sigian-chronicles.js",\n  "./src/ui/archive-browser.js",
   "./src/ui/app.js"
 ];
 

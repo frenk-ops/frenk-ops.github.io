@@ -117,9 +117,10 @@
 
   function scopeToggleMarkup(scope) {
     return `
-      <div class="archive-scope-switch sigian-ui-tabset archive-codex-scope" role="tablist" aria-label="${escapeHtml(t("nav.archive"))}">
-        <button type="button" data-archive-scope="collection" class="${scope === "collection" ? "active" : ""}" role="tab" aria-selected="${scope === "collection"}">${escapeHtml(t("archive.collection"))}</button>
+      <div class="archive-scope-switch sigian-ui-tabset archive-codex-scope" role="tablist" aria-label="${escapeHtml(t("nav.library"))}">
+        <button type="button" data-archive-scope="collection" class="${scope === "collection" ? "active" : ""}" role="tab" aria-selected="${scope === "collection"}">${escapeHtml(t("archive.codex"))}</button>
         <button type="button" data-archive-scope="inventory" class="${scope === "inventory" ? "active" : ""}" role="tab" aria-selected="${scope === "inventory"}">${escapeHtml(t("archive.inventory"))}</button>
+        <button type="button" data-archive-scope="chronicles" class="${scope === "chronicles" ? "active" : ""}" role="tab" aria-selected="${scope === "chronicles"}">${escapeHtml(t("archive.chronicles"))}</button>
       </div>`;
   }
 
@@ -1053,11 +1054,7 @@
   }
 
   function bind(root, scope, data, state) {
-    root.querySelectorAll("[data-archive-scope]").forEach(button => button.addEventListener("click", () => {
-      const next = button.dataset.archiveScope;
-      if (next === scope) return;
-      window.dispatchEvent(new CustomEvent("sigian:archive-scope-request", { detail:{ scope:next } }));
-    }));
+    bindScopeNavigation(root, scope);
 
     root.querySelectorAll("[data-archive-section], [data-archive-jump]").forEach(button => button.addEventListener("click", () => {
       state.section = button.dataset.archiveSection || button.dataset.archiveJump;
@@ -1349,9 +1346,66 @@
     });
   }
 
+  function bindScopeNavigation(root, scope) {
+    root.querySelectorAll("[data-archive-scope]").forEach(button => button.addEventListener("click", () => {
+      const next = button.dataset.archiveScope;
+      if (next === scope) return;
+      window.dispatchEvent(new CustomEvent("sigian:archive-scope-request", { detail:{ scope:next } }));
+    }));
+  }
+
+  function chronicleCategoryMarkup(category) {
+    const entries = A.listSigianChronicleEntries?.(category.id) || [];
+    return `
+      <article class="chronicles-category-card sigian-ui-panel" data-chronicle-category="${escapeHtml(category.id)}">
+        <div class="chronicles-category-heading">
+          <span class="chronicles-category-mark" aria-hidden="true">◇</span>
+          <div>
+            <h3>${escapeHtml(t(category.titleKey))}</h3>
+            <small>${escapeHtml(t("chronicles.entries", { count:entries.length }))}</small>
+          </div>
+        </div>
+        <p>${escapeHtml(t(category.descriptionKey))}</p>
+        <span class="chronicles-category-state">${escapeHtml(entries.length ? t("chronicles.entries", { count:entries.length }) : t("chronicles.empty"))}</span>
+      </article>`;
+  }
+
+  function renderChronicles(root) {
+    const categories = A.listSigianChronicleCategories?.() || [];
+    root.innerHTML = `
+      <div class="archive-browser archive-codex-screen archive-chronicles-screen" data-archive-scope-root="chronicles">
+        <header class="archive-heading archive-codex-heading sigian-ui-section-header">
+          <div class="archive-codex-heading-main">
+            <span class="archive-codex-heading-icon" aria-hidden="true"><svg><use href="#sigian-nav-archive"></use></svg></span>
+            <div>
+              <span class="classic-menu-kicker">${escapeHtml(t("nav.library"))}</span>
+              <h2>${escapeHtml(t("archive.chronicles"))}</h2>
+              <p>${escapeHtml(t("archive.chroniclesIntro"))}</p>
+            </div>
+          </div>
+          ${scopeToggleMarkup("chronicles")}
+        </header>
+
+        <section class="chronicles-foundation sigian-ui-panel" aria-labelledby="chroniclesFoundationTitle">
+          <span class="classic-menu-kicker">${escapeHtml(t("archive.chronicles"))}</span>
+          <h3 id="chroniclesFoundationTitle">${escapeHtml(t("chronicles.foundationTitle"))}</h3>
+          <p>${escapeHtml(t("chronicles.foundationDescription"))}</p>
+        </section>
+
+        <section class="chronicles-category-grid" aria-label="${escapeHtml(t("archive.chronicles"))}">
+          ${categories.map(chronicleCategoryMarkup).join("")}
+        </section>
+      </div>`;
+    bindScopeNavigation(root, "chronicles");
+  }
+
   function render(root, scope = "collection") {
     if (!root) return;
     roots.set(scope, root);
+    if (scope === "chronicles") {
+      renderChronicles(root);
+      return;
+    }
     const data = A.buildSigianArchiveData?.(scope);
     if (!data) {
       root.innerHTML = `<div class="archive-empty">${escapeHtml(t("archive.catalogUnavailable"))}</div>`;
@@ -1367,7 +1421,7 @@
     if (!personalGrimoires.some(item => item.id === state.targetGrimoireId)) state.targetGrimoireId = personalGrimoires[0]?.id || null;
 
     const content = sectionContentMarkup(data, state, grimoires, personalGrimoires);
-    const title = t(scope === "inventory" ? "archive.inventory" : "archive.collection");
+    const title = t(scope === "inventory" ? "archive.inventory" : "archive.codex");
     const intro = t(scope === "inventory" ? "archive.inventoryIntro" : "archive.collectionIntro");
 
     root.innerHTML = `
@@ -1376,7 +1430,7 @@
           <div class="archive-codex-heading-main">
             <span class="archive-codex-heading-icon" aria-hidden="true"><svg><use href="#sigian-nav-archive"></use></svg></span>
             <div>
-              <span class="classic-menu-kicker">${escapeHtml(t("nav.archive"))}</span>
+              <span class="classic-menu-kicker">${escapeHtml(t("nav.library"))}</span>
               <h2>${title}</h2>
               <p>${intro}</p>
             </div>
