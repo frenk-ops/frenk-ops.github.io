@@ -22786,3 +22786,492 @@ body.ui-classic {
   }
 }
 
+/* ===== SIGIAN 0.61.47 — Path RPG career screen ===== */
+#profileView .path-game-screen {
+  min-height:100%;
+  background:
+    radial-gradient(circle at 18% 18%,rgba(77,108,164,.14),transparent 28%),
+    radial-gradient(circle at 82% 78%,rgba(190,132,43,.12),transparent 32%),
+    linear-gradient(180deg,#071227 0%,#09172c 46%,#070e1d 100%);
+}
+
+#profileView .path-game-stage {
+  width:min(1220px,calc(100vw - 40px));
+  max-width:none;
+  margin-inline:auto;
+  padding:18px 0 26px;
+}
+
+#profileView .path-career-frame {
+  width:100%;
+  max-width:none;
+  min-width:0;
+  margin:0;
+  padding:16px;
+  border:1px solid rgba(211,165,75,.50);
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 50% 0,rgba(203,151,63,.065),transparent 34%),
+    linear-gradient(180deg,rgba(7,19,40,.985),rgba(5,13,28,.995));
+  color:#e9d8aa;
+  box-shadow:0 24px 58px rgba(0,0,0,.36),inset 0 0 0 1px rgba(255,226,158,.045);
+}
+
+#profileView .path-career-heading {
+  display:flex;
+  align-items:center;
+  gap:13px;
+  margin:0 0 14px;
+  padding:13px 14px;
+  border:1px solid rgba(217,172,80,.37);
+  border-radius:14px;
+  background:
+    radial-gradient(circle at 10% 0,rgba(218,170,76,.11),transparent 36%),
+    linear-gradient(180deg,rgba(14,31,57,.97),rgba(8,19,38,.99));
+  box-shadow:0 10px 25px rgba(0,0,0,.22),inset 0 1px rgba(255,239,196,.05);
+}
+
+#profileView .path-career-heading-icon {
+  width:56px;
+  height:56px;
+  flex:0 0 56px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(232,190,94,.72);
+  border-radius:50%;
+  color:#f0c96a;
+  background:
+    radial-gradient(circle at 50% 34%,rgba(255,220,129,.15),transparent 48%),
+    #07152c;
+  box-shadow:0 0 0 4px rgba(221,173,73,.055),inset 0 0 18px rgba(219,166,66,.09);
+}
+
+#profileView .path-career-heading-icon svg {
+  width:30px;
+  height:30px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#profileView .path-career-heading-copy {
+  min-width:0;
+}
+
+#profileView .path-career-heading .classic-menu-kicker {
+  color:#d7aa52;
+  letter-spacing:.12em;
+}
+
+#profileView .path-career-heading h2 {
+  margin:.1rem 0 .25rem;
+  color:#f6dfa3;
+  text-align:left;
+  text-shadow:0 1px 14px rgba(221,168,61,.14);
+}
+
+#profileView .path-career-heading .unified-menu-intro {
+  max-width:760px;
+  margin:0;
+  color:#adbed4 !important;
+  text-align:left;
+}
+
+#profileView .path-career-content {
+  min-width:0;
+  display:grid;
+  gap:14px;
+}
+
+#profileView .profile-path-overview {
+  position:relative;
+  overflow:hidden;
+  gap:15px;
+  margin:0;
+  padding:16px;
+  border:1px solid rgba(224,180,91,.54);
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 86% 10%,rgba(232,183,82,.15),transparent 29%),
+    radial-gradient(circle at 16% 100%,rgba(73,112,173,.12),transparent 31%),
+    linear-gradient(145deg,#0d2442,#07172d 72%);
+  color:#e8d8ae;
+  box-shadow:0 14px 32px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,235,184,.045);
+}
+
+#profileView .profile-path-heading small {
+  color:#cba75e;
+}
+
+#profileView .profile-path-heading h3 {
+  color:#f5dda0;
+  text-shadow:0 1px 14px rgba(223,169,66,.13);
+}
+
+#profileView .profile-path-heading p {
+  color:#aebdd0;
+}
+
+#profileView .profile-path-level-seal {
+  min-width:132px;
+  border-color:rgba(231,187,93,.48);
+  background:
+    radial-gradient(circle at 50% 20%,rgba(244,203,112,.12),transparent 48%),
+    rgba(5,17,35,.78);
+  box-shadow:inset 0 0 18px rgba(224,171,70,.07);
+}
+
+#profileView .profile-path-level-seal small {
+  color:#baa477;
+}
+
+#profileView .profile-path-level-seal strong {
+  color:#ffe6a2;
+}
+
+#profileView .profile-path-branches {
+  position:relative;
+}
+
+#profileView .profile-path-branch {
+  position:relative;
+  z-index:1;
+  min-height:82px;
+  border-color:rgba(221,177,86,.28);
+  background:
+    radial-gradient(circle at 16% 0,rgba(225,178,81,.08),transparent 42%),
+    rgba(5,18,36,.82);
+  box-shadow:inset 0 1px rgba(255,236,183,.035),0 5px 14px rgba(0,0,0,.16);
+}
+
+#profileView .profile-path-branch-icon {
+  border-color:rgba(225,181,89,.54);
+  background:#0d2745;
+  color:#f0c86e;
+  box-shadow:inset 0 0 12px rgba(220,171,72,.08);
+}
+
+#profileView .profile-path-branch small {
+  color:#b9a277;
+}
+
+#profileView .profile-path-branch strong {
+  color:#f3dda7;
+}
+
+#profileView .profile-path-branch p {
+  color:#a7b5c6;
+}
+
+#profileView .profile-path-branch.is-account {
+  border-color:rgba(238,194,97,.48);
+}
+
+#profileView .profile-path-branch.is-study {
+  border-style:dashed;
+  opacity:.78;
+}
+
+#profileView .profile-account-progression,
+#profileView .profile-path-milestones,
+#profileView .profile-path-tournament,
+#profileView .profile-online-card,
+#profileView .profile-customize-card,
+#profileView .profile-fun-stats,
+#profileView .profile-trophies {
+  border:1px solid rgba(159,107,48,.44);
+  border-radius:14px;
+  background:
+    radial-gradient(circle at 90% 0,rgba(255,248,214,.46),transparent 35%),
+    linear-gradient(180deg,#efe0b7,#d8bd83);
+  color:#402c1e;
+  box-shadow:0 10px 24px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.34);
+}
+
+#profileView .profile-path-primary-grid {
+  gap:12px;
+}
+
+#profileView .profile-path-primary-grid > .profile-account-progression {
+  margin:0;
+}
+
+#profileView .profile-account-progression-heading h3,
+#profileView .profile-section-heading h3 {
+  color:#4b2e1a;
+}
+
+#profileView .profile-account-progression-heading > strong,
+#profileView .profile-section-heading > strong {
+  color:#744716;
+}
+
+#profileView .profile-account-progress-track {
+  height:12px;
+  border-color:rgba(91,58,28,.36);
+  background:#8e7659;
+  box-shadow:inset 0 2px 4px rgba(50,30,16,.24);
+}
+
+#profileView .profile-account-progress-track > span {
+  background:linear-gradient(90deg,#9b6421,#e2b955,#f0d17a);
+  box-shadow:0 0 12px rgba(207,151,53,.34);
+}
+
+#profileView .profile-path-milestones {
+  position:relative;
+  margin:0;
+}
+
+#profileView .profile-path-milestone-grid {
+  position:relative;
+}
+
+#profileView .profile-path-milestone {
+  position:relative;
+  z-index:1;
+  background:rgba(255,249,229,.62);
+  border-color:rgba(100,65,31,.24);
+}
+
+#profileView .profile-path-milestone-mark {
+  border-color:rgba(115,74,31,.32);
+  background:#e4c988;
+  color:#684418;
+  box-shadow:inset 0 1px rgba(255,255,255,.35);
+}
+
+#profileView .profile-path-milestone.is-current {
+  border-color:rgba(174,112,31,.65);
+  background:linear-gradient(180deg,rgba(255,242,196,.90),rgba(224,193,126,.76));
+  box-shadow:inset 0 0 0 1px rgba(199,142,48,.14),0 5px 13px rgba(92,57,20,.10);
+}
+
+#profileView .profile-path-milestone.is-current .profile-path-milestone-mark {
+  border-color:#a96f24;
+  background:#173552;
+  color:#ffe49b;
+  box-shadow:0 0 0 3px rgba(174,112,36,.10);
+}
+
+#profileView .profile-path-milestone.is-done {
+  border-color:rgba(90,112,58,.45);
+  background:linear-gradient(180deg,rgba(235,240,207,.86),rgba(203,214,167,.70));
+}
+
+#profileView .profile-path-tournament {
+  margin:0;
+}
+
+#profileView .profile-path-tournament-live,
+#profileView .profile-path-tournament-empty {
+  border-color:rgba(111,72,33,.26);
+  background:rgba(255,249,228,.64);
+}
+
+#profileView .profile-mode-card,
+#profileView .profile-stat-grid > div,
+#profileView .profile-school-stats span,
+#profileView .trophy-badge {
+  border-color:rgba(102,66,31,.26);
+  background:rgba(255,249,228,.58);
+  box-shadow:inset 0 1px rgba(255,255,255,.28);
+}
+
+#profileView .profile-mode-card > strong,
+#profileView .profile-stat-grid strong,
+#profileView .profile-school-stats b {
+  color:#5a371b;
+}
+
+#profileView .trophy-badge.earned {
+  border-color:rgba(172,118,34,.72);
+  background:linear-gradient(180deg,rgba(255,243,197,.78),rgba(223,192,126,.60));
+  box-shadow:inset 0 0 20px rgba(188,137,42,.12),0 5px 14px rgba(83,50,18,.08);
+}
+
+#profileView .trophy-icon {
+  background:linear-gradient(180deg,#1b3d5b,#0b243d);
+  border-color:#b78a34;
+  color:#ffe49a !important;
+  box-shadow:inset 0 0 12px rgba(232,188,87,.09);
+}
+
+#profileView .profile-secondary-actions button {
+  border:1px solid rgba(214,166,76,.52);
+  background:linear-gradient(180deg,#183652,#0c223b);
+  color:#f1d99d;
+  box-shadow:inset 0 1px rgba(255,236,182,.06);
+}
+
+@media (min-width:901px) {
+  #profileView .profile-path-branches::before {
+    content:"";
+    position:absolute;
+    z-index:0;
+    top:29px;
+    left:8%;
+    right:8%;
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(229,185,91,.32) 10%,rgba(229,185,91,.32) 90%,transparent);
+  }
+
+  #profileView .profile-path-milestone-grid::before {
+    content:"";
+    position:absolute;
+    z-index:0;
+    top:26px;
+    left:12%;
+    right:12%;
+    height:2px;
+    background:linear-gradient(90deg,rgba(91,113,61,.34),rgba(183,126,37,.36),rgba(92,67,41,.18));
+  }
+}
+
+@media (max-width:820px) {
+  #profileView .path-game-stage {
+    width:100%;
+    padding:0;
+  }
+
+  #profileView .path-career-frame {
+    border-left:0;
+    border-right:0;
+    border-radius:0;
+    padding:8px 8px calc(84px + env(safe-area-inset-bottom));
+  }
+
+  #profileView .path-career-heading {
+    gap:9px;
+    margin-bottom:9px;
+    padding:10px;
+    border-radius:12px;
+  }
+
+  #profileView .path-career-heading-icon {
+    width:44px;
+    height:44px;
+    flex-basis:44px;
+  }
+
+  #profileView .path-career-heading-icon svg {
+    width:24px;
+    height:24px;
+  }
+
+  #profileView .path-career-heading h2 {
+    font-size:clamp(1.28rem,6vw,1.6rem);
+  }
+
+  #profileView .path-career-heading .unified-menu-intro {
+    font-size:.72rem;
+    line-height:1.3;
+  }
+
+  #profileView .path-career-content {
+    gap:9px;
+  }
+
+  #profileView .profile-path-overview {
+    padding:11px;
+    border-radius:13px;
+  }
+
+  #profileView .profile-path-primary-grid {
+    gap:9px;
+  }
+
+  #profileView .profile-account-progression,
+  #profileView .profile-path-milestones,
+  #profileView .profile-path-tournament,
+  #profileView .profile-online-card,
+  #profileView .profile-customize-card,
+  #profileView .profile-fun-stats,
+  #profileView .profile-trophies {
+    border-radius:12px;
+  }
+
+  #profileView .profile-stat-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width:620px) {
+  #profileView .profile-path-heading {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:start;
+    gap:8px;
+  }
+
+  #profileView .profile-path-level-seal {
+    width:auto;
+    min-width:98px;
+    padding:8px 9px;
+    text-align:right;
+  }
+
+  #profileView .profile-path-branches {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+
+  #profileView .profile-path-branch {
+    min-height:68px;
+    grid-template-columns:30px minmax(0,1fr);
+    gap:6px;
+    padding:8px;
+  }
+
+  #profileView .profile-path-branch-icon {
+    width:30px;
+    height:30px;
+    font-size:.88rem;
+  }
+
+  #profileView .profile-path-branch small {
+    font-size:.56rem;
+  }
+
+  #profileView .profile-path-branch strong {
+    font-size:.78rem;
+  }
+
+  #profileView .profile-path-branch p {
+    display:none;
+  }
+
+  #profileView .profile-path-primary-grid {
+    grid-template-columns:1fr;
+    margin-bottom:0;
+  }
+
+  #profileView .profile-path-milestone-grid {
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width:480px) {
+  #profileView .path-career-heading {
+    padding:8px;
+  }
+
+  #profileView .path-career-heading .classic-menu-kicker {
+    font-size:.58rem;
+  }
+
+  #profileView .path-career-heading .unified-menu-intro {
+    display:none;
+  }
+
+  #profileView .profile-path-heading h3 {
+    font-size:1.12rem;
+  }
+
+  #profileView .profile-path-level-seal strong {
+    font-size:.88rem;
+  }
+}
+
