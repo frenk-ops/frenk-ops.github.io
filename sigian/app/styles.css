@@ -23955,3 +23955,220 @@ body.ui-classic .classic-topbar .classic-nav .classic-nav-primary .nav-label {
   line-height:1.35;
 }
 
+/* ===== SIGIAN 0.61.50 — global game-feel interaction layer ===== */
+body.ui-classic {
+  --sigian-motion-fast:100ms;
+  --sigian-motion-ui:160ms;
+  --sigian-motion-panel:190ms;
+  --sigian-motion-ease:cubic-bezier(.2,.75,.2,1);
+  --sigian-motion-ease-press:cubic-bezier(.25,.65,.25,1);
+  --sigian-focus-ring:#f2cf70;
+}
+
+/* Shared timing: preserve each control's visual identity while making response cadence coherent. */
+body.ui-classic .classic-topbar .classic-nav .tab,
+body.ui-classic .mobile-bottom-nav .mobile-nav-item,
+body.ui-classic .play-mode-tab,
+body.ui-classic .classic-stone-button,
+body.ui-classic .archive-browser [data-archive-scope],
+body.ui-classic .archive-browser [data-archive-section],
+body.ui-classic .archive-browser [data-archive-jump],
+body.ui-classic .archive-formula-index-row,
+body.ui-classic .archive-component-identity,
+body.ui-classic .archive-cosmetic-tile,
+body.ui-classic .archive-grimoire-tile,
+body.ui-classic #forgeView button,
+body.ui-classic #profileView .profile-path-accordion > summary,
+body.ui-classic #academyView .academy-map-hotspot,
+body.ui-classic .play-deep-screen button {
+  transition-property:transform,filter,opacity,color,background-color,border-color,box-shadow;
+  transition-duration:var(--sigian-motion-ui);
+  transition-timing-function:var(--sigian-motion-ease);
+}
+
+/* Keyboard focus is a first-class game state, never inferred from animation alone. */
+body.ui-classic .classic-topbar .classic-nav .tab:focus-visible,
+body.ui-classic .mobile-bottom-nav .mobile-nav-item:focus-visible,
+body.ui-classic .play-mode-tab:focus-visible,
+body.ui-classic .classic-stone-button:focus-visible,
+body.ui-classic .archive-browser button:focus-visible,
+body.ui-classic .archive-browser [role="button"]:focus-visible,
+body.ui-classic #forgeView button:focus-visible,
+body.ui-classic #profileView .profile-path-accordion > summary:focus-visible,
+body.ui-classic #academyView .academy-map-hotspot:focus-visible,
+body.ui-classic .play-deep-screen button:focus-visible {
+  outline:2px solid var(--sigian-focus-ring);
+  outline-offset:3px;
+}
+
+/* Press feedback is short and geometry-safe for known controls. */
+body.ui-classic .classic-topbar .classic-nav .tab:active,
+body.ui-classic .play-mode-tab:active,
+body.ui-classic .classic-stone-button:active,
+body.ui-classic .archive-browser [data-archive-scope]:active,
+body.ui-classic .archive-browser [data-archive-section]:active,
+body.ui-classic .archive-browser [data-archive-jump]:active,
+body.ui-classic .archive-formula-index-row:active,
+body.ui-classic .archive-component-identity:active,
+body.ui-classic .archive-cosmetic-tile:active,
+body.ui-classic .archive-grimoire-tile:active,
+body.ui-classic .play-deep-screen button:active {
+  transform:translateY(1px) scale(.99);
+}
+
+body.ui-classic .mobile-bottom-nav .mobile-nav-item:not(.mobile-nav-primary):active {
+  transform:translateY(1px) scale(.985);
+}
+
+body.ui-classic .mobile-bottom-nav .mobile-nav-primary:active {
+  transform:translateY(-5px) scale(.985);
+}
+
+body.ui-classic #academyView .academy-map-hotspot:active {
+  transform:translate(-50%,-50%) scale(1.015);
+}
+
+body.ui-classic #forgeView button:not(:disabled):not(.is-disabled):active {
+  filter:brightness(.9);
+}
+
+body.ui-classic #profileView .profile-path-accordion > summary:active {
+  background:rgba(91,91,77,.38);
+}
+
+/* Selected/current states remain explicit even with motion disabled. */
+body.ui-classic .mobile-bottom-nav .mobile-nav-item.active,
+body.ui-classic .play-mode-tab.is-active,
+body.ui-classic .archive-browser [aria-current="page"],
+body.ui-classic .archive-browser [aria-selected="true"],
+body.ui-classic #forgeView .is-selected,
+body.ui-classic #academyView .academy-map-hotspot[aria-pressed="true"] {
+  filter:brightness(1.06);
+}
+
+/* Disabled state is semantic and visual; no interaction depends on opacity alone. */
+body.ui-classic button:disabled,
+body.ui-classic button[aria-disabled="true"],
+body.ui-classic button.is-disabled {
+  cursor:not-allowed;
+  opacity:.56;
+  filter:saturate(.52) brightness(.78);
+}
+
+@media (hover:hover) and (pointer:fine) {
+  body.ui-classic .mobile-bottom-nav .mobile-nav-item:hover:not(:disabled),
+  body.ui-classic .classic-stone-button:hover:not(:disabled),
+  body.ui-classic .archive-browser [data-archive-scope]:hover:not(:disabled),
+  body.ui-classic .archive-browser [data-archive-section]:hover:not(:disabled),
+  body.ui-classic .archive-browser [data-archive-jump]:hover:not(:disabled),
+  body.ui-classic .archive-formula-index-row:hover,
+  body.ui-classic .archive-component-identity:hover:not(:disabled),
+  body.ui-classic .archive-cosmetic-tile:hover:not(:disabled),
+  body.ui-classic .archive-grimoire-tile:hover:not(:disabled),
+  body.ui-classic #forgeView button:hover:not(:disabled):not(.is-disabled),
+  body.ui-classic .play-deep-screen button:hover:not(:disabled) {
+    filter:brightness(1.06);
+  }
+}
+
+/* Disclosure/panel feedback: compact and state-preserving. */
+@keyframes sigian-panel-in {
+  from { opacity:.55; transform:translateY(-3px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+@keyframes sigian-overlay-in {
+  from { opacity:0; }
+  to { opacity:1; }
+}
+
+@keyframes sigian-overlay-out {
+  from { opacity:1; }
+  to { opacity:0; }
+}
+
+@keyframes sigian-sheet-in {
+  from { opacity:.72; transform:scale(.985); }
+  to { opacity:1; transform:scale(1); }
+}
+
+@keyframes sigian-sheet-out {
+  from { opacity:1; transform:scale(1); }
+  to { opacity:.45; transform:scale(.985); }
+}
+
+body.ui-classic #profileView .profile-path-accordion[open] > .profile-path-accordion-body,
+body.ui-classic .play-multiplayer-panel .multiplayer-action-accordion[open] > :not(summary) {
+  animation:sigian-panel-in var(--sigian-motion-panel) var(--sigian-motion-ease) both;
+}
+
+body.ui-classic #academyView .academy-map-detail-card.is-active {
+  animation-duration:var(--sigian-motion-panel);
+  animation-timing-function:var(--sigian-motion-ease);
+}
+
+body.ui-classic #forgeView .forge-lab-modal-layer {
+  animation:sigian-overlay-in var(--sigian-motion-ui) var(--sigian-motion-ease) both;
+}
+
+body.ui-classic #forgeView .forge-lab-modal {
+  animation:sigian-sheet-in var(--sigian-motion-panel) var(--sigian-motion-ease) both;
+}
+
+body.ui-classic #forgeView .forge-lab-sigil-quick,
+body.ui-classic #forgeView .forge-lab-school-radial {
+  animation:sigian-panel-in var(--sigian-motion-ui) var(--sigian-motion-ease) both;
+}
+
+@media (max-width:980px) {
+  body.ui-classic .archive-browser.detail-open .archive-detail-panel {
+    animation:sigian-overlay-in var(--sigian-motion-ui) var(--sigian-motion-ease) both;
+  }
+
+  body.ui-classic .archive-browser.detail-open .archive-detail-sheet {
+    animation:sigian-sheet-in var(--sigian-motion-panel) var(--sigian-motion-ease) both;
+  }
+
+  body.ui-classic .archive-browser.detail-open .archive-detail-panel.is-closing {
+    animation:sigian-overlay-out var(--sigian-motion-fast) ease-in both;
+    pointer-events:none;
+  }
+
+  body.ui-classic .archive-browser.detail-open .archive-detail-panel.is-closing .archive-detail-sheet {
+    animation:sigian-sheet-out var(--sigian-motion-fast) ease-in both;
+  }
+}
+
+/* Accessibility override for the whole 0.61.50 interaction layer. */
+@media (prefers-reduced-motion:reduce) {
+  body.ui-classic .classic-topbar .classic-nav .tab,
+  body.ui-classic .mobile-bottom-nav .mobile-nav-item,
+  body.ui-classic .play-mode-tab,
+  body.ui-classic .classic-stone-button,
+  body.ui-classic .archive-browser [data-archive-scope],
+  body.ui-classic .archive-browser [data-archive-section],
+  body.ui-classic .archive-browser [data-archive-jump],
+  body.ui-classic .archive-formula-index-row,
+  body.ui-classic .archive-component-identity,
+  body.ui-classic .archive-cosmetic-tile,
+  body.ui-classic .archive-grimoire-tile,
+  body.ui-classic .archive-browser.detail-open .archive-detail-panel,
+  body.ui-classic .archive-browser.detail-open .archive-detail-sheet,
+  body.ui-classic #forgeView button,
+  body.ui-classic #forgeView .forge-lab-modal-layer,
+  body.ui-classic #forgeView .forge-lab-modal,
+  body.ui-classic #forgeView .forge-lab-sigil-quick,
+  body.ui-classic #forgeView .forge-lab-school-radial,
+  body.ui-classic #profileView .profile-path-accordion > summary,
+  body.ui-classic #profileView .profile-path-accordion[open] > .profile-path-accordion-body,
+  body.ui-classic #academyView .academy-map-hotspot,
+  body.ui-classic #academyView .academy-map-detail-card.is-active,
+  body.ui-classic .play-deep-screen button,
+  body.ui-classic .play-multiplayer-panel .multiplayer-action-accordion[open] > :not(summary) {
+    animation:none !important;
+    transition-duration:.01ms !important;
+    transition-delay:0ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+

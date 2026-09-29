@@ -1036,8 +1036,20 @@
   }
 
   function closeDetail(state, root, scope) {
-    state.detailOpen = false;
-    render(root, scope);
+    const panel = root.querySelector(".archive-detail-panel");
+    const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    const mobileSheet = window.matchMedia?.("(max-width:980px)")?.matches;
+    if (!state.detailOpen || !panel || reducedMotion || !mobileSheet) {
+      state.detailOpen = false;
+      render(root, scope);
+      return;
+    }
+    if (panel.classList.contains("is-closing")) return;
+    panel.classList.add("is-closing");
+    window.setTimeout(() => {
+      state.detailOpen = false;
+      render(root, scope);
+    }, 105);
   }
 
   function bind(root, scope, data, state) {
