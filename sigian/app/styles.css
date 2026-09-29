@@ -23275,3 +23275,410 @@ body.ui-classic {
   }
 }
 
+/* ===== SIGIAN 0.61.48 — deep Play modes + Academy desktop fill ===== */
+.play-deep-screen {
+  position:relative;
+  min-height:calc(100vh - 78px);
+  min-height:calc(100dvh - 78px);
+  padding:14px 18px calc(32px + env(safe-area-inset-bottom));
+  background:
+    linear-gradient(180deg,rgba(3,10,27,.34),rgba(2,7,18,.90)),
+    radial-gradient(circle at 50% 18%,rgba(56,82,143,.24),transparent 34%),
+    url("assets/ui/remastered/astral-battlefield-v1.png") center 42% / cover no-repeat,
+    #030817;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+
+.play-deep-screen::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(2,7,18,.72),transparent 22% 78%,rgba(2,7,18,.72)),
+    radial-gradient(circle at 50% 50%,transparent 38%,rgba(1,4,12,.42) 100%);
+}
+
+.play-deep-stage {
+  position:relative;
+  z-index:1;
+  width:min(1380px,100%) !important;
+  max-width:none !important;
+  margin-inline:auto;
+}
+
+#gameView .play-deep-stage {
+  grid-template-columns:minmax(0,980px);
+  align-items:start;
+}
+
+.play-mode-panel {
+  position:relative;
+  width:100%;
+  min-width:0;
+  margin:0 auto;
+  padding:16px !important;
+  border:1px solid rgba(224,182,82,.66) !important;
+  border-radius:18px !important;
+  background:
+    radial-gradient(circle at 50% 0,rgba(216,157,54,.08),transparent 34%),
+    linear-gradient(180deg,rgba(8,20,44,.975),rgba(3,9,24,.985)) !important;
+  color:#dce3ed !important;
+  box-shadow:
+    0 24px 58px rgba(0,0,0,.44),
+    inset 0 0 0 1px rgba(255,234,166,.055),
+    inset 0 0 46px rgba(53,77,133,.08) !important;
+}
+
+.play-mode-panel::before {
+  content:"";
+  position:absolute;
+  inset:6px;
+  border:1px solid rgba(235,198,104,.12);
+  border-radius:13px;
+  pointer-events:none;
+}
+
+.play-mode-panel > * {
+  z-index:1;
+}
+
+.play-deep-heading {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  margin:0 0 13px;
+  padding:11px 12px;
+  border:1px solid rgba(219,176,78,.30);
+  border-radius:13px;
+  background:
+    radial-gradient(circle at 12% 0,rgba(222,159,54,.12),transparent 42%),
+    linear-gradient(180deg,rgba(17,35,64,.92),rgba(8,20,39,.95));
+  box-shadow:inset 0 1px rgba(255,236,183,.045);
+}
+
+.play-deep-heading > div {
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+
+.play-deep-heading-icon {
+  width:52px;
+  height:52px;
+  flex:0 0 52px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(233,189,91,.76);
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 32%,rgba(255,213,119,.14),transparent 56%),
+    #07152d;
+  color:#f0cb6b;
+  box-shadow:0 0 0 4px rgba(220,164,62,.055),inset 0 0 17px rgba(225,157,49,.08);
+}
+
+.play-deep-heading-icon svg {
+  width:29px;
+  height:29px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.play-mode-panel .play-deep-heading .classic-menu-kicker {
+  color:#cfa54a;
+  font-size:.64rem;
+  letter-spacing:.12em;
+}
+
+.play-mode-panel .play-deep-heading h2 {
+  margin:0;
+  color:#f6dda0 !important;
+  font:800 clamp(1.45rem,2.2vw,2rem)/1 Georgia,serif;
+  text-align:left !important;
+  text-shadow:0 1px 14px rgba(219,153,44,.12);
+}
+
+.play-mode-panel .play-deep-heading p,
+.play-mode-panel .multiplayer-intro {
+  max-width:820px;
+  margin:1px 0 0;
+  color:#aebcd0 !important;
+  text-align:left !important;
+  font-size:.8rem;
+  line-height:1.35;
+}
+
+/* Duel setup: retain all canonical controls, but stage them as game equipment panels. */
+.play-duel-panel .classic-config-essential {
+  gap:10px;
+}
+
+.play-duel-panel .classic-config-essential label,
+.play-duel-panel .classic-advanced-settings,
+.play-duel-panel .duel-specialization-summary {
+  border:1px solid rgba(153,111,52,.38);
+  border-radius:11px;
+  background:
+    linear-gradient(180deg,rgba(249,238,202,.96),rgba(218,195,147,.92));
+  color:#49321f;
+  box-shadow:inset 0 1px rgba(255,255,255,.38),0 5px 12px rgba(0,0,0,.10);
+}
+
+.play-duel-panel .classic-config-essential label {
+  padding:10px 11px;
+}
+
+.play-duel-panel .classic-config-essential label > span,
+.play-duel-panel .classic-advanced-settings label > span,
+.play-duel-panel .specialization-path-settings-heading strong {
+  color:#55371f;
+}
+
+.play-duel-panel .classic-config-essential label > small,
+.play-duel-panel .specialization-path-settings-heading small {
+  color:#74593f;
+}
+
+.play-duel-panel .classic-config-essential select,
+.play-duel-panel .classic-advanced-grid input,
+.play-duel-panel .classic-advanced-grid select {
+  border:1px solid rgba(112,76,39,.38);
+  border-radius:8px;
+  background:rgba(255,249,226,.92);
+  color:#2e2118;
+  box-shadow:inset 0 1px 3px rgba(66,43,23,.10);
+}
+
+.play-duel-panel .classic-advanced-settings {
+  margin-top:11px;
+  overflow:hidden;
+}
+
+.play-duel-panel .classic-advanced-settings > summary {
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:9px 11px;
+  color:#56381f;
+}
+
+.play-duel-panel .classic-advanced-grid {
+  padding:10px;
+  border-top:1px solid rgba(112,76,39,.18);
+}
+
+.play-duel-panel .specialization-path-settings {
+  background:rgba(255,250,232,.55);
+}
+
+.play-duel-panel #talentChoices {
+  margin-top:12px;
+}
+
+.play-duel-panel #talentChoices .talent {
+  min-height:66px;
+  border:1px solid rgba(234,190,86,.78);
+  border-radius:11px;
+  background:
+    radial-gradient(circle at 50% 0,rgba(222,168,67,.16),transparent 60%),
+    linear-gradient(180deg,#203650,#0b1c33);
+  color:#fff0b5;
+  box-shadow:0 5px 0 rgba(2,7,16,.72),inset 0 1px rgba(255,236,180,.08);
+  text-shadow:0 1px 2px rgba(0,0,0,.65);
+}
+
+.play-duel-panel #talentChoices .talent:hover:not(:disabled),
+.play-duel-panel #talentChoices .talent:focus-visible:not(:disabled) {
+  border-color:#f2ce72;
+  background:linear-gradient(180deg,#2a4562,#10243e);
+  transform:translateY(-1px);
+}
+
+/* Multiplayer: outer lobby becomes a game surface, inner operational widgets remain familiar. */
+.play-multiplayer-panel {
+  max-width:1180px;
+}
+
+.play-multiplayer-panel .multiplayer-server-state {
+  border-color:rgba(219,177,78,.28);
+  background:rgba(12,29,52,.82);
+  color:#dce5ef;
+}
+
+.play-multiplayer-panel .multiplayer-server-state small,
+.play-multiplayer-panel .multiplayer-server-state strong {
+  color:inherit;
+}
+
+.play-multiplayer-panel .multiplayer-identity,
+.play-multiplayer-panel .multiplayer-mode-switcher,
+.play-multiplayer-panel .multiplayer-entry-panel,
+.play-multiplayer-panel .multiplayer-room-status {
+  border-color:rgba(210,163,69,.30);
+}
+
+.play-multiplayer-panel .multiplayer-mode-tab {
+  background:linear-gradient(180deg,rgba(25,44,72,.90),rgba(9,22,42,.94));
+  color:#cfd9e7;
+}
+
+.play-multiplayer-panel .multiplayer-mode-tab.is-active {
+  border-color:#dfb85c;
+  background:
+    radial-gradient(circle at 20% 0,rgba(218,164,61,.16),transparent 55%),
+    linear-gradient(180deg,rgba(63,62,55,.96),rgba(29,31,34,.96));
+  color:#fff0b4;
+}
+
+.play-multiplayer-panel .multiplayer-action-accordion,
+.play-multiplayer-panel .ranked-panel,
+.play-multiplayer-panel .multiplayer-room-status {
+  box-shadow:0 8px 22px rgba(0,0,0,.16);
+}
+
+/* Tournament: dark game frame with an inner parchment competition folio. */
+.play-tournament-stage {
+  display:grid;
+  gap:10px;
+}
+
+.play-tournament-panel {
+  max-width:1180px !important;
+}
+
+.play-tournament-panel #tournamentContent {
+  min-width:0;
+  padding:14px;
+  border:1px solid rgba(135,91,39,.46);
+  border-radius:13px;
+  background:
+    radial-gradient(circle at 85% 0,rgba(255,255,255,.50),transparent 34%),
+    linear-gradient(180deg,rgba(248,237,200,.98),rgba(220,198,151,.96));
+  color:#49321f;
+  box-shadow:inset 0 1px rgba(255,255,255,.46),0 8px 18px rgba(0,0,0,.14);
+}
+
+#tournamentView .classic-tournament-actions {
+  position:relative;
+  z-index:1;
+  width:min(1180px,100%);
+  margin:0 auto;
+  padding:9px;
+  border:1px solid rgba(219,176,77,.30);
+  border-radius:12px;
+  background:rgba(4,13,29,.84);
+  box-shadow:0 8px 20px rgba(0,0,0,.18);
+}
+
+#tournamentView .classic-tournament-actions .classic-stone-button {
+  min-height:44px;
+  border-color:rgba(227,182,82,.55);
+  background:linear-gradient(180deg,#233a55,#0c1d34);
+  color:#f2ddb0;
+}
+
+#tournamentView .classic-tournament-actions .classic-stone-button:not(.danger):hover,
+#tournamentView .classic-tournament-actions .classic-stone-button:not(.danger):focus-visible {
+  border-color:#efc968;
+  color:#fff0b5;
+}
+
+/* Desktop Academy: use the whole framed width and keep map/detail bottoms aligned. */
+@media (min-width:901px) {
+  #academyView .academy-menu-stage {
+    width:min(1260px,calc(100vw - 28px));
+  }
+
+  #academyView .academy-map-layout {
+    grid-template-columns:minmax(0,760px) minmax(320px,1fr);
+    justify-content:stretch;
+    align-items:stretch;
+  }
+
+  #academyView .academy-map-detail-panel {
+    position:relative;
+    top:auto;
+    align-self:stretch;
+    height:auto;
+    min-height:0;
+    max-height:none;
+  }
+}
+
+@media (max-width:900px) {
+  .play-deep-screen {
+    min-height:calc(100dvh - 58px);
+    padding:8px 8px calc(92px + env(safe-area-inset-bottom));
+    background-position:center top;
+  }
+
+  .play-deep-stage {
+    width:100% !important;
+  }
+
+  .play-mode-panel {
+    padding:9px !important;
+    border-radius:14px !important;
+  }
+
+  .play-deep-heading {
+    gap:9px;
+    margin-bottom:9px;
+    padding:9px;
+  }
+
+  .play-deep-heading-icon {
+    width:44px;
+    height:44px;
+    flex-basis:44px;
+  }
+
+  .play-deep-heading-icon svg {
+    width:24px;
+    height:24px;
+  }
+
+  .play-mode-panel .play-deep-heading h2 {
+    font-size:1.35rem;
+  }
+
+  .play-mode-panel .play-deep-heading p {
+    font-size:.7rem;
+  }
+
+  .play-duel-panel .classic-config-essential label {
+    padding:9px;
+  }
+
+  .play-tournament-panel #tournamentContent {
+    padding:9px;
+  }
+
+  #tournamentView .classic-tournament-actions {
+    width:100%;
+  }
+}
+
+@media (max-width:430px) {
+  .play-mode-panel .play-deep-heading p {
+    display:none;
+  }
+
+  .play-deep-heading {
+    padding:8px;
+  }
+
+  .play-deep-heading-icon {
+    width:40px;
+    height:40px;
+    flex-basis:40px;
+  }
+}
+
