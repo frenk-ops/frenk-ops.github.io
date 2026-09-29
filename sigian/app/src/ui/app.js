@@ -815,7 +815,7 @@
         : academy.formativeSchoolId
           ? t(`profile.academyPhase.${academy.phase}`)
           : t("profile.chooseFormativeSchool");
-    const arenaAvailable = Boolean(academy.tournamentUnlocked);
+    const tournamentAvailable = Boolean(academy.tournamentUnlocked);
     const academyArtwork = Object.freeze({
       src:"assets/ui/academy/academy-campus-map.webp",
       fallback:"assets/ui/academy/academy-campus-map.svg",
@@ -859,7 +859,7 @@
       },
       {
         id:"library", icon:"⌘", x:80, y:19, title:t("academy.library.title"), mapLabel:t("academy.library.mapLabel"), description:t("academy.library.description"), info:t("academy.library.info"),
-        status:t("academy.planned"), state:"planned", action:t("academy.planned"), disabled:true
+        status:t("academy.available"), state:"available", action:t("academy.library.action"), target:"cards"
       },
       {
         id:"forge", icon:"⚒", x:19, y:62, title:t("academy.forge.title"), mapLabel:t("academy.forge.mapLabel"), description:t("academy.forge.description"), info:t("academy.forge.info"),
@@ -871,9 +871,9 @@
       },
       {
         id:"arena", icon:"♜", x:80, y:65, title:t("academy.arena.title"), mapLabel:t("academy.arena.mapLabel"), description:t("academy.arena.description"), info:t("academy.arena.info"),
-        status:arenaAvailable ? t("academy.available") : t("academy.sealed"),
-        state:arenaAvailable ? "available" : "sealed", action:t("academy.arena.action"), target:"tournament",
-        disabled:!arenaAvailable, note:arenaAvailable ? "" : t("academy.arena.locked")
+        status:t("academy.available"), state:"available", action:t("academy.arena.multiplayerAction"), target:"multiplayer",
+        extraNavAction:t("academy.arena.tournamentAction"), extraNavTarget:"tournament", extraNavDisabled:!tournamentAvailable,
+        note:tournamentAvailable ? "" : t("academy.arena.tournamentLocked")
       }
     ];
 
@@ -907,6 +907,8 @@
             ${location.letter ? "data-academy-summons-open" : ""}
             ${location.schoolWing ? "data-academy-school-wing-open" : ""}
             ${location.disabled ? "disabled" : ""}>${escapeHtml(location.action)}</button>` : ""}
+          ${location.extraNavAction ? `<button class="classic-stone-button sigian-ui-action ghost academy-location-secondary-action" type="button"
+            data-academy-target="${escapeHtml(location.extraNavTarget || "")}" ${location.extraNavDisabled ? "disabled" : ""}>${escapeHtml(location.extraNavAction)}</button>` : ""}
           ${location.extraAction ? `<button class="classic-stone-button sigian-ui-action ghost academy-location-secondary-action" type="button"
             ${location.admissionLetter ? "data-academy-admission-open" : ""}>${escapeHtml(location.extraAction)}</button>` : ""}
         </div>
