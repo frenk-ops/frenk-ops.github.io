@@ -1694,6 +1694,7 @@
         assert(JSON.stringify(A.getAstralAbilityLoadout("battlemage", "advanced")) === JSON.stringify([1,23,30]), "BattleMage Advanced errato");
         assert(JSON.stringify(A.getAstralAbilityLoadout("battlemage", "major")) === JSON.stringify([6,1,23,30]), "BattleMage Major errato");
         assert(A.ASTRAL_SPECIALIZATIONS.length === 5, `Specializzazioni storiche attive inattese: ${A.ASTRAL_SPECIALIZATIONS.length}`);
+        assert(JSON.stringify(A.SCHOOL_ORDER) === JSON.stringify(["fire","water","air","nature","death"]), `Ordine Scuole globale errato: ${JSON.stringify(A.SCHOOL_ORDER)}`);
         assert(!A.ASTRAL_SPECIALIZATIONS.some(item => item.id === "wizard"), "Wizard non deve avere loadout");
       }
     },

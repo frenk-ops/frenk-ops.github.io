@@ -1,6 +1,8 @@
 (function (A) {
   "use strict";
 
+  const SCHOOL_ORDER = Object.freeze(["fire", "water", "air", "nature", "death"]);
+
   function environmentArt(slotId, altKey) {
     return Object.freeze({
       slotId,
@@ -20,6 +22,9 @@
       subtitleKey:options.subtitleKey,
       specializationKey:options.specializationKey,
       summaryKey:options.summaryKey,
+      doctrineKey:options.doctrineKey,
+      sigilPracticeKey:options.sigilPracticeKey,
+      formulaExpressionKey:options.formulaExpressionKey,
       identityKey:options.identityKey,
       visualKey:options.visualKey,
       environmentKey:options.environmentKey,
@@ -29,22 +34,8 @@
     });
   }
 
-  const schoolEntries = Object.freeze([
-    schoolEntry({
-      id:"school-umiria",
-      formativeSchoolId:"water",
-      dominantElementId:"water",
-      titleKey:"chronicles.school.umiria.title",
-      subtitleKey:"chronicles.school.umiria.subtitle",
-      specializationKey:"chronicles.school.umiria.specialization",
-      summaryKey:"chronicles.school.umiria.summary",
-      identityKey:"chronicles.school.umiria.identity",
-      visualKey:"chronicles.school.umiria.visual",
-      environmentKey:"chronicles.school.umiria.environment",
-      environmentSlotId:"school-umiria-environment",
-      environmentAltKey:"chronicles.school.umiria.environmentAlt"
-    }),
-    schoolEntry({
+  const schoolEntryByFormativeId = Object.freeze({
+    fire:schoolEntry({
       id:"school-pyrax",
       formativeSchoolId:"fire",
       dominantElementId:"fire",
@@ -52,13 +43,33 @@
       subtitleKey:"chronicles.school.pyrax.subtitle",
       specializationKey:"chronicles.school.pyrax.specialization",
       summaryKey:"chronicles.school.pyrax.summary",
+      doctrineKey:"chronicles.school.pyrax.doctrine",
+      sigilPracticeKey:"chronicles.school.pyrax.sigilPractice",
+      formulaExpressionKey:"chronicles.school.pyrax.formulaExpression",
       identityKey:"chronicles.school.pyrax.identity",
       visualKey:"chronicles.school.pyrax.visual",
       environmentKey:"chronicles.school.pyrax.environment",
       environmentSlotId:"school-pyrax-environment",
       environmentAltKey:"chronicles.school.pyrax.environmentAlt"
     }),
-    schoolEntry({
+    water:schoolEntry({
+      id:"school-umiria",
+      formativeSchoolId:"water",
+      dominantElementId:"water",
+      titleKey:"chronicles.school.umiria.title",
+      subtitleKey:"chronicles.school.umiria.subtitle",
+      specializationKey:"chronicles.school.umiria.specialization",
+      summaryKey:"chronicles.school.umiria.summary",
+      doctrineKey:"chronicles.school.umiria.doctrine",
+      sigilPracticeKey:"chronicles.school.umiria.sigilPractice",
+      formulaExpressionKey:"chronicles.school.umiria.formulaExpression",
+      identityKey:"chronicles.school.umiria.identity",
+      visualKey:"chronicles.school.umiria.visual",
+      environmentKey:"chronicles.school.umiria.environment",
+      environmentSlotId:"school-umiria-environment",
+      environmentAltKey:"chronicles.school.umiria.environmentAlt"
+    }),
+    air:schoolEntry({
       id:"school-vailis",
       formativeSchoolId:"air",
       dominantElementId:"air",
@@ -66,13 +77,16 @@
       subtitleKey:"chronicles.school.vailis.subtitle",
       specializationKey:"chronicles.school.vailis.specialization",
       summaryKey:"chronicles.school.vailis.summary",
+      doctrineKey:"chronicles.school.vailis.doctrine",
+      sigilPracticeKey:"chronicles.school.vailis.sigilPractice",
+      formulaExpressionKey:"chronicles.school.vailis.formulaExpression",
       identityKey:"chronicles.school.vailis.identity",
       visualKey:"chronicles.school.vailis.visual",
       environmentKey:"chronicles.school.vailis.environment",
       environmentSlotId:"school-vailis-environment",
       environmentAltKey:"chronicles.school.vailis.environmentAlt"
     }),
-    schoolEntry({
+    nature:schoolEntry({
       id:"school-gairon",
       formativeSchoolId:"nature",
       dominantElementId:"earth",
@@ -80,13 +94,16 @@
       subtitleKey:"chronicles.school.gairon.subtitle",
       specializationKey:"chronicles.school.gairon.specialization",
       summaryKey:"chronicles.school.gairon.summary",
+      doctrineKey:"chronicles.school.gairon.doctrine",
+      sigilPracticeKey:"chronicles.school.gairon.sigilPractice",
+      formulaExpressionKey:"chronicles.school.gairon.formulaExpression",
       identityKey:"chronicles.school.gairon.identity",
       visualKey:"chronicles.school.gairon.visual",
       environmentKey:"chronicles.school.gairon.environment",
       environmentSlotId:"school-gairon-environment",
       environmentAltKey:"chronicles.school.gairon.environmentAlt"
     }),
-    schoolEntry({
+    death:schoolEntry({
       id:"school-nekiria",
       formativeSchoolId:"death",
       dominantElementId:"death",
@@ -94,13 +111,18 @@
       subtitleKey:"chronicles.school.nekiria.subtitle",
       specializationKey:"chronicles.school.nekiria.specialization",
       summaryKey:"chronicles.school.nekiria.summary",
+      doctrineKey:"chronicles.school.nekiria.doctrine",
+      sigilPracticeKey:"chronicles.school.nekiria.sigilPractice",
+      formulaExpressionKey:"chronicles.school.nekiria.formulaExpression",
       identityKey:"chronicles.school.nekiria.identity",
       visualKey:"chronicles.school.nekiria.visual",
       environmentKey:"chronicles.school.nekiria.environment",
       environmentSlotId:"school-nekiria-environment",
       environmentAltKey:"chronicles.school.nekiria.environmentAlt"
     })
-  ]);
+  });
+
+  const schoolEntries = Object.freeze(SCHOOL_ORDER.map(id => schoolEntryByFormativeId[id]));
 
   const entries = Object.freeze(Object.fromEntries(
     schoolEntries.map(entry => [entry.id, entry])
@@ -116,6 +138,7 @@
 
   const chronicles = Object.freeze({
     schemaVersion:1,
+    schoolOrder:SCHOOL_ORDER,
     categories,
     entries
   });
@@ -139,11 +162,11 @@
   }
 
   function getSchoolEntryByFormativeId(schoolId) {
-    const requested = String(schoolId || "").trim();
-    return schoolEntries.find(entry => entry.formativeSchoolId === requested) || null;
+    return schoolEntryByFormativeId[String(schoolId || "").trim()] || null;
   }
 
   A.SIGIAN_CHRONICLES = chronicles;
+  A.SIGIAN_CHRONICLE_SCHOOL_ORDER = SCHOOL_ORDER;
   A.listSigianChronicleCategories = listCategories;
   A.listSigianChronicleEntries = listEntries;
   A.getSigianChronicleEntry = getEntry;
@@ -152,6 +175,7 @@
 
   if (typeof module !== "undefined" && module.exports) {
     module.exports = {
+      SCHOOL_ORDER,
       chronicles,
       listCategories,
       listEntries,

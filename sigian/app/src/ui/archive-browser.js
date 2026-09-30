@@ -1484,6 +1484,20 @@
           ${chronicleEntryArtMarkup(entry)}
           <div class="chronicles-entry-copy">
             <p class="chronicles-entry-summary">${escapeHtml(t(entry.summaryKey))}</p>
+            <div class="chronicles-entry-narrative">
+              <section>
+                <h4>${escapeHtml(t("chronicles.entry.doctrine"))}</h4>
+                <p>${escapeHtml(t(entry.doctrineKey))}</p>
+              </section>
+              <section>
+                <h4>${escapeHtml(t("chronicles.entry.sigilPractice"))}</h4>
+                <p>${escapeHtml(t(entry.sigilPracticeKey))}</p>
+              </section>
+              <section class="chronicles-entry-gameplay">
+                <h4>${escapeHtml(t("chronicles.entry.formulaExpression"))}</h4>
+                <p>${escapeHtml(t(entry.formulaExpressionKey))}</p>
+              </section>
+            </div>
             <dl>
               <div><dt>${escapeHtml(t("chronicles.entry.specialization"))}</dt><dd>${escapeHtml(t(entry.specializationKey))}</dd></div>
               <div><dt>${escapeHtml(t("chronicles.entry.identity"))}</dt><dd>${escapeHtml(t(entry.identityKey))}</dd></div>
@@ -1507,6 +1521,7 @@
           </div>
         </div>
         <p>${escapeHtml(t(category.descriptionKey))}</p>
+        ${category.id === "schools" && entries.length ? `<p class="chronicles-school-design-note">${escapeHtml(t("chronicles.schoolDesignNote"))}</p>` : ""}
         ${entries.length
           ? `<div class="chronicles-entry-list">${entries.map(chronicleEntryMarkup).join("")}</div>`
           : `<span class="chronicles-category-state">${escapeHtml(t("chronicles.empty"))}</span>`}

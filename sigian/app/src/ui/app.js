@@ -3244,15 +3244,30 @@
     icon.innerHTML = specializationIconMarkup(choice);
   }
 
-  function sigianSpecializationOptions() {
+  function rawSigianSpecializationOptions() {
     const canonical = A.SIGIAN_TOURNAMENT_SPECIALIZATIONS || [];
     return canonical.length ? canonical : (A.ASTRAL_SPECIALIZATIONS || []);
+  }
+
+  function orderedSpecializationOptions(source = []) {
+    const schoolOrder = A.SCHOOL_ORDER || (A.SCHOOLS || []).map(item => item.id);
+    const order = new Map(schoolOrder.map((schoolId, index) => [schoolId, index]));
+    return [...source].sort((left, right) =>
+      (order.get(String(left?.talent || left?.school || "")) ?? Number.MAX_SAFE_INTEGER)
+      - (order.get(String(right?.talent || right?.school || "")) ?? Number.MAX_SAFE_INTEGER)
+    );
+  }
+
+  function sigianSpecializationOptions() {
+    return orderedSpecializationOptions(rawSigianSpecializationOptions());
   }
 
   function populateSpecializationSelect(select, fallback = "random", options = {}) {
     if (!select) return;
     const current = select.value;
-    const source = options.sigianOnly ? sigianSpecializationOptions() : (A.ASTRAL_SPECIALIZATIONS || []);
+    const source = options.sigianOnly
+      ? sigianSpecializationOptions()
+      : orderedSpecializationOptions(A.ASTRAL_SPECIALIZATIONS || []);
     const allowedSchoolIds = Array.isArray(options.schoolIds) && options.schoolIds.length
       ? new Set(options.schoolIds.map(String))
       : null;
@@ -3277,7 +3292,8 @@
   }
 
   function resolveSpecializationChoice(choice, seed, side, fallback = "battlemage") {
-    const available = sigianSpecializationOptions();
+    // Preserve the historical seeded random pool order; only player-facing lists are canonically sorted.
+    const available = rawSigianSpecializationOptions();
     if (choice && choice !== "random") {
       return available.some(item => item.id === choice) ? choice : fallback;
     }

@@ -25462,3 +25462,60 @@ body.ui-classic .classic-topbar .classic-nav {
     display:none;
   }
 }
+
+
+/* ===== SIGIAN 0.61.60 — canonical School order + richer Chronicles ===== */
+.chronicles-school-design-note {
+  margin:10px 0 0 !important;
+  padding:9px 11px;
+  border-left:2px solid rgba(221,180,78,.58);
+  background:rgba(212,170,71,.07);
+  color:#cdbf98 !important;
+  font-size:.72rem;
+  line-height:1.42;
+}
+.chronicles-entry-narrative {
+  display:grid;
+  gap:10px;
+  margin:0 0 12px;
+}
+.chronicles-entry-narrative section {
+  padding:9px 10px;
+  border:1px solid rgba(211,174,79,.14);
+  border-radius:10px;
+  background:rgba(4,12,28,.42);
+}
+.chronicles-entry-narrative h4 {
+  margin:0 0 5px;
+  color:#ddb85f;
+  font-size:.66rem;
+  font-weight:900;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.chronicles-entry-narrative p {
+  margin:0 !important;
+  color:#cbd4e2 !important;
+  font-size:.75rem;
+  line-height:1.5;
+}
+.chronicles-entry-gameplay {
+  border-color:rgba(218,173,71,.28) !important;
+  background:linear-gradient(135deg,rgba(103,68,18,.18),rgba(4,12,28,.52)) !important;
+}
+@media (min-width:1100px) {
+  .chronicles-entry-card[open] {
+    grid-column:1 / -1;
+  }
+  .chronicles-entry-card[open] .chronicles-entry-content {
+    grid-template-columns:minmax(210px,.62fr) minmax(0,1.38fr);
+  }
+}
+@media (max-width:820px) {
+  .chronicles-school-design-note {
+    font-size:.68rem;
+  }
+  .chronicles-entry-narrative p {
+    font-size:.72rem;
+  }
+}
