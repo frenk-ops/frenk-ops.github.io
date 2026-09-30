@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const COMPONENT_DESIGN_SCHEMA_VERSION = 1;
+  const COMPONENT_DESIGN_SCHEMA_VERSION = 2;
   const CURRENT_SCHOOL_ORDER = Object.freeze(["fire", "water", "air", "nature", "death"]);
   const ADHERENCE_LEVELS = Object.freeze(["core", "compatible", "exotic", "dissonant"]);
   const ADHERENCE_LABELS = Object.freeze({
@@ -11,6 +11,12 @@
     dissonant:"Dissonante"
   });
   const ADHERENCE_VALUE = Object.freeze({ core:3, compatible:2, exotic:1, dissonant:0 });
+  const ADHERENCE_SCORE_BANDS = Object.freeze({
+    core:Object.freeze({ min:75, max:100 }),
+    compatible:Object.freeze({ min:50, max:74.999 }),
+    exotic:Object.freeze({ min:25, max:49.999 }),
+    dissonant:Object.freeze({ min:0, max:24.999 })
+  });
   const PRIMARY_TAG_WEIGHT = 0.7;
   const SECONDARY_TAG_WEIGHT = 0.3;
   const ADHERENCE_RARITY = Object.freeze({ core:0, compatible:0.35, exotic:1.25, dissonant:2.2 });
@@ -359,6 +365,49 @@
     return primaryValue * PRIMARY_TAG_WEIGHT + secondaryAverage * SECONDARY_TAG_WEIGHT;
   }
 
+  function adherenceScore100(rawScore) {
+    if (!Number.isFinite(Number(rawScore))) return null;
+    return round(clamp(Number(rawScore), 0, 3) / 3 * 100);
+  }
+
+  function adherenceFromScore100(score) {
+    const numeric = Number(score);
+    if (numeric >= ADHERENCE_SCORE_BANDS.core.min) return "core";
+    if (numeric >= ADHERENCE_SCORE_BANDS.compatible.min) return "compatible";
+    if (numeric >= ADHERENCE_SCORE_BANDS.exotic.min) return "exotic";
+    return "dissonant";
+  }
+
+  function calibrateScoreToReviewedBand(score, level) {
+    const band = ADHERENCE_SCORE_BANDS[normalizeAdherence(level)];
+    const fallback = (band.min + band.max) / 2;
+    const numeric = Number.isFinite(Number(score)) ? Number(score) : fallback;
+    return round(clamp(numeric, band.min, band.max));
+  }
+
+  function grammarEvidence(tags, primaryTag, school) {
+    const primaryRaw = TAG_SCHOOL_VALUES[primaryTag]?.[school];
+    if (!Number.isFinite(primaryRaw)) return null;
+    const secondaryRawValues = tags
+      .filter(tag => tag !== primaryTag)
+      .map(tag => TAG_SCHOOL_VALUES[tag]?.[school])
+      .filter(value => Number.isFinite(value));
+    const secondaryRaw = secondaryRawValues.length
+      ? secondaryRawValues.reduce((sum, value) => sum + value, 0) / secondaryRawValues.length
+      : null;
+    const weightedRaw = weightedSchoolScore(tags, primaryTag, school);
+    return {
+      primaryRaw:round(primaryRaw),
+      secondaryRaw:secondaryRaw == null ? null : round(secondaryRaw),
+      weightedRaw:round(weightedRaw),
+      primaryScore100:adherenceScore100(primaryRaw),
+      secondaryScore100:secondaryRaw == null ? null : adherenceScore100(secondaryRaw),
+      automaticScore100:adherenceScore100(weightedRaw),
+      primaryWeight:secondaryRawValues.length ? PRIMARY_TAG_WEIGHT : 1,
+      secondaryWeight:secondaryRawValues.length ? SECONDARY_TAG_WEIGHT : 0
+    };
+  }
+
   function deriveAdherence(definition, tags, options = {}) {
     const schools = schoolOrder();
     const primaryTag = primaryTagFor(definition, tags, options);
@@ -369,6 +418,7 @@
     const bySchool = {};
     const evidence = {};
     schools.forEach(school => {
+      const grammar = grammarEvidence(tags, primaryTag, school);
       if (overrides[school]) {
         bySchool[school] = normalizeAdherence(overrides[school]);
         const source = optionOverrides[school]
@@ -378,21 +428,35 @@
             : reviewed[school]
               ? "canonical-review"
               : "override";
-        evidence[school] = { source, score:ADHERENCE_VALUE[bySchool[school]], primaryTag };
+        const score100 = calibrateScoreToReviewedBand(grammar?.automaticScore100, bySchool[school]);
+        evidence[school] = {
+          source,
+          score:ADHERENCE_VALUE[bySchool[school]],
+          score100,
+          automaticScore100:grammar?.automaticScore100 ?? null,
+          reviewAdjustment:grammar?.automaticScore100 == null ? null : round(score100 - grammar.automaticScore100),
+          primaryTag,
+          grammar
+        };
         return;
       }
-      const score = weightedSchoolScore(tags, primaryTag, school);
+      const score = grammar?.weightedRaw;
       if (!Number.isFinite(score)) {
         bySchool[school] = null;
-        evidence[school] = { source:"unclassified", score:null, primaryTag };
+        evidence[school] = { source:"unclassified", score:null, score100:null, automaticScore100:null, primaryTag, grammar:null };
         return;
       }
-      bySchool[school] = scoreToAdherence(score);
+      const score100 = grammar.automaticScore100;
+      bySchool[school] = adherenceFromScore100(score100);
       evidence[school] = {
         source:tags.length > 1 ? "weighted-grammar" : "grammar",
         score:round(score),
+        score100,
+        automaticScore100:score100,
+        reviewAdjustment:0,
         primaryTag,
-        primaryWeight:tags.length > 1 ? PRIMARY_TAG_WEIGHT : 1
+        primaryWeight:grammar.primaryWeight,
+        grammar
       };
     });
     return { bySchool, evidence, primaryTag };
@@ -564,6 +628,8 @@
       semanticTags:tags,
       primaryTag:adherence.primaryTag,
       adherence:adherence.bySchool,
+      adherenceScores:Object.fromEntries(Object.entries(adherence.evidence).map(([school, item]) => [school, item?.score100 ?? null])),
+      adherenceAutomaticScores:Object.fromEntries(Object.entries(adherence.evidence).map(([school, item]) => [school, item?.automaticScore100 ?? null])),
       adherenceEvidence:adherence.evidence,
       gradeProfile:clone(gradeProfile),
       versatility:deriveVersatility(tags),
@@ -646,7 +712,9 @@
       referenceSchool,
       referenceSchoolAlignment:referenceSchool == null ? "not-applicable" : compatibility.schools.includes(referenceSchool) ? "included" : "cross-school",
       adherence:includedAdherence,
+      adherenceScore:Object.fromEntries(compatibility.schools.map(school => [school, profile.adherenceScores?.[school] ?? null])),
       adherenceMatrix:clone(profile.adherence),
+      adherenceScoreMatrix:clone(profile.adherenceScores || {}),
       grade:requestedGrade,
       intensity,
       arcaneWeight:round(arcaneWeight.value),
@@ -718,6 +786,7 @@
   A.SIGIAN_COMPONENT_ADHERENCE_LEVELS = ADHERENCE_LEVELS;
   A.SIGIAN_COMPONENT_PRIMARY_TAG_WEIGHT = PRIMARY_TAG_WEIGHT;
   A.SIGIAN_COMPONENT_ADHERENCE_LABELS = ADHERENCE_LABELS;
+  A.SIGIAN_COMPONENT_ADHERENCE_SCORE_BANDS = ADHERENCE_SCORE_BANDS;
   A.SIGIAN_COMPONENT_RARITY_TIERS = RARITY_TIERS;
   A.SIGIAN_COMPONENT_SEMANTIC_TAGS = TAGS_BY_ID;
   A.SIGIAN_COMPONENT_REVIEWED_ADHERENCE = REVIEWED_ADHERENCE_BY_ID;
