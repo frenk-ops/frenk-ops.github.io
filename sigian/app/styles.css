@@ -20370,9 +20370,6 @@ button.sigian-full-constraint-slot {
   }
 }
 @media (max-width:620px) {
-  body:has(#academyView.active) .classic-topbar {
-    display:none;
-  }
   body:has(#academyView.active) .shell {
     width:100%;
     padding-top:env(safe-area-inset-top);
@@ -24888,12 +24885,9 @@ body.ui-classic .classic-topbar .classic-nav {
   z-index:1;
 }
 
-/* Academy is a normal menu destination: keep the global shell visible and
-   retire the older local mobile/tablet titlebar to avoid duplicate chrome. */
+/* Academy is a normal menu destination: retire the old local titlebar and
+   let the same global shell rules own every menu screen. */
 @media (max-width:900px) {
-  body.ui-classic:has(#academyView.active) .classic-topbar {
-    display:grid !important;
-  }
   body.ui-classic:has(#academyView.active) .academy-mobile-titlebar {
     display:none !important;
   }
@@ -25166,3 +25160,48 @@ body.ui-classic .classic-topbar .classic-nav {
     z-index:9;
   }
 }
+
+/* ===== SIGIAN 0.61.57 — fixed mobile menu header refinement ===== */
+@media (max-width:820px) {
+  body.ui-classic {
+    --sigian-mobile-menu-header-height:50px;
+  }
+
+  body.ui-classic:not(:has(#battlePanel:not(.hidden))) .classic-topbar {
+    position:fixed !important;
+    top:0;
+    left:0;
+    right:0;
+    width:100%;
+    height:calc(var(--sigian-mobile-menu-header-height) + env(safe-area-inset-top));
+    min-height:calc(var(--sigian-mobile-menu-header-height) + env(safe-area-inset-top));
+    max-height:calc(var(--sigian-mobile-menu-header-height) + env(safe-area-inset-top));
+    grid-template-columns:minmax(112px,1fr) 44px;
+    align-items:center;
+    gap:6px;
+    margin:0;
+    padding:calc(env(safe-area-inset-top) + 3px) 8px 3px;
+    z-index:140;
+  }
+
+  body.ui-classic:not(:has(#battlePanel:not(.hidden))) main {
+    padding-top:calc(var(--sigian-mobile-menu-header-height) + env(safe-area-inset-top)) !important;
+  }
+
+  body.ui-classic:not(:has(#battlePanel:not(.hidden))) .sigian-shell-section-title {
+    top:auto !important;
+    bottom:3px;
+    left:50%;
+    z-index:2;
+    max-width:min(42vw,180px);
+    transform:translateX(-50%);
+    font-size:.66rem;
+    line-height:1;
+  }
+
+  body.ui-classic:not(:has(#battlePanel:not(.hidden))) .sigian-brand-lockup,
+  body.ui-classic:not(:has(#battlePanel:not(.hidden))) .sigian-shell-utilities {
+    align-self:center;
+  }
+}
+
