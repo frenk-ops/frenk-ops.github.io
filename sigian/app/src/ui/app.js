@@ -516,6 +516,10 @@
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
   let forgeSession = null;
   let forgeInventoryPreviewCardId = null;
+  let forgeActiveArea = (() => {
+    try { return new URLSearchParams(window.location.search).get("forgeArea") === "ritual" ? "ritual" : "workbench"; }
+    catch { return "workbench"; }
+  })();
   let forgeSelectedSigilSlotId = null;
   let forgeCardEditorSection = null;
   let forgeTargetCost = "auto";
@@ -2818,12 +2822,18 @@
     if (name === "cards") A.SigianArchiveBrowser?.render?.($("#cardsContent"), "collection");
     if (name === "inventory") A.SigianArchiveBrowser?.render?.($("#inventoryContent"), "inventory");
     if (name === "chronicles") A.SigianArchiveBrowser?.render?.($("#chroniclesContent"), "chronicles");
-    if (name === "forge") renderForgePage();
+    if (name === "forge") {
+      renderForgePage();
+      bindForgeAreaNavigation();
+    }
     if (name === "uiLab") {
       A.ForgeUiLab?.resetSession?.();
       A.ForgeUiLab?.render?.($("#forgeUiLabContent"));
       const backButton = $("#forgeLabBackBtn");
-      if (backButton) backButton.onclick = () => switchView("forge");
+      if (backButton) backButton.onclick = () => {
+        forgeActiveArea = "workbench";
+        switchView("forge");
+      };
     }
     if (name === "profile") {
       renderPlayerProfile();
@@ -2852,6 +2862,7 @@
     const recipe = catalog?.byId?.[cardId];
     if (!recipe) return;
     forgeInventoryPreviewCardId = cardId;
+    forgeActiveArea = "workbench";
     forgeSelectedSigilSlotId = null;
     forgeReclaimRequest = null;
     forgeSession = A.createSigianForgeSession?.({ draft:{ recipe } }) || null;
@@ -7198,6 +7209,35 @@
         </div>
       `;
     }).join("");
+  }
+
+  function setForgeArea(area, options = {}) {
+    const next = area === "ritual" ? "ritual" : "workbench";
+    forgeActiveArea = next;
+    const forgeView = $("#forgeView");
+    if (!forgeView) return next;
+    forgeView.querySelectorAll("[data-forge-area]").forEach(button => {
+      const active = button.dataset.forgeArea === next;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-selected", active ? "true" : "false");
+      button.setAttribute("tabindex", active ? "0" : "-1");
+      if (active && options.focus) button.focus();
+    });
+    forgeView.querySelectorAll("[data-forge-area-panel]").forEach(panel => {
+      const active = panel.dataset.forgeAreaPanel === next;
+      panel.hidden = !active;
+      panel.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+    return next;
+  }
+
+  function bindForgeAreaNavigation() {
+    const forgeView = $("#forgeView");
+    if (!forgeView) return;
+    forgeView.querySelectorAll("[data-forge-area]").forEach(button => {
+      button.onclick = () => setForgeArea(button.dataset.forgeArea, { focus:true });
+    });
+    setForgeArea(forgeActiveArea);
   }
 
   function renderForgePage() {
