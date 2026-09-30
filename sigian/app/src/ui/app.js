@@ -516,10 +516,13 @@
   const collectionState = { school: "all", type: "all", level: "all", search: "" };
   let forgeSession = null;
   let forgeInventoryPreviewCardId = null;
-  let forgeActiveArea = (() => {
-    try { return new URLSearchParams(window.location.search).get("forgeArea") === "ritual" ? "ritual" : "workbench"; }
-    catch { return "workbench"; }
+  let forgeDeepLinkArea = (() => {
+    try {
+      const requested = new URLSearchParams(window.location.search).get("forgeArea");
+      return requested === "ritual" || requested === "workbench" ? requested : null;
+    } catch { return null; }
   })();
+  let forgeActiveArea = forgeDeepLinkArea || "hub";
   let forgeSelectedSigilSlotId = null;
   let forgeCardEditorSection = null;
   let forgeTargetCost = "auto";
@@ -865,7 +868,8 @@
       },
       {
         id:"forge", icon:"⚒", x:19, y:62, title:t("academy.forge.title"), mapLabel:t("academy.forge.mapLabel"), description:t("academy.forge.description"), info:t("academy.forge.info"),
-        status:t("academy.available"), state:"available", action:t("academy.forge.action"), target:"forge"
+        status:t("academy.available"), state:"available", action:t("forge.area.workbench"), target:"forge", forgeArea:"workbench",
+        extraNavAction:t("forge.area.ritual"), extraNavTarget:"forge", extraForgeArea:"ritual"
       },
       {
         id:"trials", icon:"⚔", x:49, y:80, title:t("academy.trials.title"), mapLabel:t("academy.trials.mapLabel"), description:t("academy.trials.description"), info:t("academy.trials.info"),
@@ -935,11 +939,12 @@
         <div class="academy-map-detail-actions">
           ${location.action ? `<button class="classic-stone-button sigian-ui-action ${location.disabled ? "ghost" : ""}" type="button"
             ${location.target ? `data-academy-target="${escapeHtml(location.target)}"` : ""}
+            ${location.forgeArea ? `data-academy-forge-area="${escapeHtml(location.forgeArea)}"` : ""}
             ${location.letter ? "data-academy-summons-open" : ""}
             ${location.schoolWing ? "data-academy-school-wing-open" : ""}
             ${location.disabled ? "disabled" : ""}>${escapeHtml(location.action)}</button>` : ""}
           ${location.extraNavAction ? `<button class="classic-stone-button sigian-ui-action ghost academy-location-secondary-action" type="button"
-            data-academy-target="${escapeHtml(location.extraNavTarget || "")}" ${location.extraNavDisabled ? "disabled" : ""}>${escapeHtml(location.extraNavAction)}</button>` : ""}
+            data-academy-target="${escapeHtml(location.extraNavTarget || "")}" ${location.extraForgeArea ? `data-academy-forge-area="${escapeHtml(location.extraForgeArea)}"` : ""} ${location.extraNavDisabled ? "disabled" : ""}>${escapeHtml(location.extraNavAction)}</button>` : ""}
           ${location.extraAction ? `<button class="classic-stone-button sigian-ui-action ghost academy-location-secondary-action" type="button"
             ${location.admissionLetter ? "data-academy-admission-open" : ""}>${escapeHtml(location.extraAction)}</button>` : ""}
         </div>
@@ -1078,6 +1083,11 @@
       button.addEventListener("click", () => {
         if (button.disabled) return;
         const target = String(button.dataset.academyTarget || "");
+        const forgeArea = String(button.dataset.academyForgeArea || "");
+        if (target === "forge" && (forgeArea === "workbench" || forgeArea === "ritual")) {
+          switchView("forge", { forgeArea });
+          return;
+        }
         if (RESTORABLE_VIEWS.has(target)) switchView(target);
       });
     });
@@ -2798,8 +2808,20 @@
     heartbeat();
   }
 
-  function switchView(name) {
+  function switchView(name, options = {}) {
     name = RESTORABLE_VIEWS.has(name) ? name : "play";
+    if (name === "forge") {
+      const requestedForgeArea = String(options?.forgeArea || "");
+      if (requestedForgeArea === "workbench" || requestedForgeArea === "ritual") {
+        forgeActiveArea = requestedForgeArea;
+        forgeDeepLinkArea = null;
+      } else if (forgeDeepLinkArea) {
+        forgeActiveArea = forgeDeepLinkArea;
+        forgeDeepLinkArea = null;
+      } else {
+        forgeActiveArea = "hub";
+      }
+    }
     if (name !== "forge") A.MenuSheetLock?.unlock?.("forge-card-editor");
     if (!["cards", "inventory", "chronicles"].includes(name)) {
       A.MenuSheetLock?.unlock?.("archive-detail-collection");
@@ -2839,8 +2861,7 @@
       A.ForgeUiLab?.render?.($("#forgeUiLabContent"));
       const backButton = $("#forgeLabBackBtn");
       if (backButton) backButton.onclick = () => {
-        forgeActiveArea = "workbench";
-        switchView("forge");
+        switchView("forge", { forgeArea:"workbench" });
       };
     }
     if (name === "profile") {
@@ -2870,11 +2891,10 @@
     const recipe = catalog?.byId?.[cardId];
     if (!recipe) return;
     forgeInventoryPreviewCardId = cardId;
-    forgeActiveArea = "workbench";
     forgeSelectedSigilSlotId = null;
     forgeReclaimRequest = null;
     forgeSession = A.createSigianForgeSession?.({ draft:{ recipe } }) || null;
-    switchView("forge");
+    switchView("forge", { forgeArea:"workbench" });
   });
 
   function ensureAudio() {
@@ -3841,7 +3861,8 @@
       clearRemoteSession();
     }
     restartDuel();
-    switchView(returnToForge ? "forge" : (online ? "multiplayer" : "game"));
+    if (returnToForge) switchView("forge", { forgeArea:"workbench" });
+    else switchView(online ? "multiplayer" : "game");
     if (online) renderRemoteLobby(null);
     if (returnToForge) renderForgePage();
   }
@@ -7356,19 +7377,33 @@
   }
 
   function setForgeArea(area, options = {}) {
-    const next = area === "ritual" ? "ritual" : "workbench";
+    const next = area === "ritual" ? "ritual" : area === "workbench" ? "workbench" : "hub";
     forgeActiveArea = next;
     const forgeView = $("#forgeView");
     if (!forgeView) return next;
+
+    const hub = forgeView.querySelector("[data-forge-area-hub]");
+    const shell = forgeView.querySelector("[data-forge-area-shell]");
+    const inHub = next === "hub";
+    if (hub) {
+      hub.hidden = !inHub;
+      hub.setAttribute("aria-hidden", inHub ? "false" : "true");
+    }
+    if (shell) {
+      shell.hidden = inHub;
+      shell.setAttribute("aria-hidden", inHub ? "true" : "false");
+    }
+    forgeView.classList.toggle("forge-hub-active", inHub);
+
     forgeView.querySelectorAll("[data-forge-area]").forEach(button => {
-      const active = button.dataset.forgeArea === next;
+      const active = !inHub && button.dataset.forgeArea === next;
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-selected", active ? "true" : "false");
       button.setAttribute("tabindex", active ? "0" : "-1");
       if (active && options.focus) button.focus();
     });
     forgeView.querySelectorAll("[data-forge-area-panel]").forEach(panel => {
-      const active = panel.dataset.forgeAreaPanel === next;
+      const active = !inHub && panel.dataset.forgeAreaPanel === next;
       panel.hidden = !active;
       panel.setAttribute("aria-hidden", active ? "false" : "true");
     });
@@ -7378,6 +7413,9 @@
   function bindForgeAreaNavigation() {
     const forgeView = $("#forgeView");
     if (!forgeView) return;
+    forgeView.querySelectorAll("[data-forge-enter-area]").forEach(button => {
+      button.onclick = () => setForgeArea(button.dataset.forgeEnterArea, { focus:true });
+    });
     forgeView.querySelectorAll("[data-forge-area]").forEach(button => {
       button.onclick = () => setForgeArea(button.dataset.forgeArea, { focus:true });
     });

@@ -119,8 +119,8 @@
   function scopeToggleMarkup(scope) {
     return `
       <div class="archive-scope-switch sigian-ui-tabset archive-codex-scope" role="tablist" aria-label="${escapeHtml(t("nav.library"))}">
-        <button type="button" data-archive-scope="collection" class="${scope === "collection" ? "active" : ""}" role="tab" aria-selected="${scope === "collection"}">${escapeHtml(t("archive.codex"))}</button>
         <button type="button" data-archive-scope="inventory" class="${scope === "inventory" ? "active" : ""}" role="tab" aria-selected="${scope === "inventory"}">${escapeHtml(t("archive.inventory"))}</button>
+        <button type="button" data-archive-scope="collection" class="${scope === "collection" ? "active" : ""}" role="tab" aria-selected="${scope === "collection"}">${escapeHtml(t("archive.codex"))}</button>
         <button type="button" data-archive-scope="chronicles" class="${scope === "chronicles" ? "active" : ""}" role="tab" aria-selected="${scope === "chronicles"}">${escapeHtml(t("archive.chronicles"))}</button>
         <button type="button" data-archive-scope="guide" role="tab" aria-selected="false">${escapeHtml(t("nav.howToPlay"))}</button>
       </div>`;
