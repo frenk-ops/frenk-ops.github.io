@@ -1,0 +1,193 @@
+/* Lab-only design tools live outside the physical Formula. */
+.forge-lab-designer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid #687c98;
+  background: #101b2c;
+  color: #e4edf8;
+  font: 14px/1.4 system-ui, sans-serif;
+}
+.forge-lab-designer-toolbar button,
+.forge-lab-designer-panel button,
+.forge-lab-designer-import {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #7b90ae;
+  border-radius: 6px;
+  color: #eef5ff;
+  background: #23334b;
+  font: 600 14px/1.3 system-ui, sans-serif;
+  cursor: pointer;
+}
+.forge-lab-designer-panel button:disabled { opacity: .4; cursor: not-allowed; }
+.forge-lab-designer-toolbar button:focus-visible,
+.forge-lab-designer-panel :is(button, input, select, textarea):focus-visible {
+  outline: 3px solid #81ceff;
+  outline-offset: 2px;
+}
+.forge-lab-designer-panel {
+  padding: 16px;
+  border: 1px solid #687c98;
+  border-radius: 10px;
+  background: #101b2c;
+  color: #e4edf8;
+  font: 14px/1.5 system-ui, sans-serif;
+  min-width: 0;
+  align-self: start;
+}
+.forge-lab-designer-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.forge-lab-designer-controls label { display: grid; gap: 4px; min-width: 0; }
+.forge-lab-designer-controls .is-wide { grid-column: 1 / -1; }
+.forge-lab-designer-controls :is(input, select) {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #8090a7;
+  border-radius: 4px;
+  padding: 6px;
+  background: #07111f;
+  color: #eef5ff;
+  font: 16px system-ui, sans-serif;
+}
+.forge-lab-designer-controls input:disabled { opacity: .4; cursor: not-allowed; }
+.forge-lab-designer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.forge-lab-designer-import { display: flex; align-items: center; }
+.forge-lab-designer-import input { width: 180px; max-width: 100%; font-size: 12px; }
+.forge-lab-designer-json { margin-top: 16px; }
+.forge-lab-designer-json textarea { width: 100%; height: 180px; margin: 10px 0; color: #eef5ff; background: #07111f; font: 13px monospace; }
+.is-designing .forge-lab-layout { align-items: start; }
+.is-designing .forge-lab-designer-toolbar { position: sticky; top: 60px; z-index: 130; }
+.is-designing .forge-lab-stage { order: 0; }
+.forge-lab-designer-inspector { order: 1; min-width: 0; }
+.forge-lab-designer-inspector > summary { padding: 12px; color: #eef5ff; background: #23334b; border: 1px solid #81ceff; font: 600 14px system-ui, sans-serif; cursor: pointer; min-height: 44px; }
+.is-designing .forge-lab-stage { overflow: visible; }
+.is-designing:not([data-design-viewport="forge"]) .forge-lab-stage { margin-inline: auto; min-height: 0; padding: 28px 0 56px; }
+.is-designing[data-design-viewport="mobile"] .forge-lab-stage { width: min(390px, 100%); }
+.is-designing[data-design-viewport="desktop"] .forge-lab-stage { width: min(600px, 100%); }
+.is-designing[data-design-viewport="game"] .forge-lab-stage { width: 390px; max-width: none; zoom: .6; }
+.is-designing[data-design-viewport="game"] .forge-lab-card { width: min(310px, 100%); }
+.is-designing[data-design-viewport="game"] [data-design-resize] { width: 74px; height: 74px; right: -34px; bottom: -34px; }
+.is-designing:not([data-design-viewport="forge"]) .forge-lab-stage .forge-lab-card-stage { width: 100%; min-height: 0; padding: 28px 34px 65px; }
+.is-designing[data-design-viewport="mobile"] .forge-lab-card { width: min(310px, 100%); }
+.is-designing[data-design-projection="flat"] .forge-lab-card { transform: none !important; --lab-tilt-x: 0deg !important; --lab-tilt-y: 0deg !important; --lab-tilt-z: 0deg !important; }
+.is-designing .forge-lab-card * { animation-play-state: paused !important; }
+.is-designing .forge-lab-school-light i { animation-play-state: paused; }
+.is-designing .forge-lab-card { touch-action: none; }
+.is-designing .forge-lab-card button { cursor: move; touch-action: none; }
+.is-designing .forge-lab-gesture-hint { visibility: hidden; }
+.is-designing .forge-lab-card[data-lab-formula-state] .forge-lab-nameplate::after {
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 26% 16%;
+  width: auto;
+  height: auto;
+  z-index: 5;
+  opacity: 1;
+  transform: none;
+  clip-path: none;
+  border: 1px dashed #376ea1;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+.forge-lab-designer-overlay { position: absolute; inset: 0; z-index: 90; pointer-events: none; }
+.forge-lab-designer-center { position: absolute; left: 50%; top: 7%; bottom: 12%; border-left: 1px dashed #96cfff40; }
+[data-design-box] { position: absolute; border: 2px solid #77ceff; outline: 1px solid #06111f; box-sizing: border-box; }
+[data-design-box][hidden] { display: none; }
+[data-design-box] > span { position: absolute; top: -22px; left: 0; padding: 2px 5px; color: white; background: #0c2740; font: 11px system-ui, sans-serif; white-space: nowrap; }
+[data-design-resize] { position: absolute; right: -20px; bottom: -20px; width: 44px; height: 44px; border: 2px solid #77ceff; border-radius: 5px; background: #112f4c; color: white; pointer-events: auto; touch-action: none; font: 700 24px system-ui, sans-serif; cursor: nwse-resize; }
+.forge-lab-card[data-lab-design-preset="sealed"] {
+  --lab-z-art: 0px !important;
+  --lab-z-raised: 0px !important;
+  --lab-z-floating: 0px !important;
+  --lab-z-impressed: 0px !important;
+}
+.forge-lab-card[data-lab-design-preset="sealed"] :is(.forge-lab-art-arrow, .forge-lab-cycle, .forge-lab-school-picker-toggle) { visibility: hidden; }
+/* One mobile-first geometry, in both the editor and live Lab. All dimensions
+   below are logical pixels at 310px card width, scaled by the same card unit. */
+.forge-lab-card[data-lab-design-geometry] .forge-lab-cost-anchor { width: calc(72 * var(--lab-design-unit)) !important; height: calc(72 * var(--lab-design-unit)) !important; }
+.forge-lab-card[data-lab-design-geometry] :is(.forge-lab-cost,.forge-lab-school) { width: calc(72 * var(--lab-design-unit)) !important; height: calc(72 * var(--lab-design-unit)) !important; min-width: 0 !important; min-height: 0 !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-school-anchor { height: calc(72 * var(--lab-design-unit)) !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-school-icon { width: calc(29 * var(--lab-design-unit)); height: calc(29 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-cost small { font-size: calc(7.5 * var(--lab-design-unit)); margin-top: calc(7 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-cost strong { font-size: calc(28 * var(--lab-design-unit)); margin-top: calc(-9 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-type { min-height: calc(40 * var(--lab-design-unit)); padding: calc(8 * var(--lab-design-unit)) calc(31 * var(--lab-design-unit)); font-size: calc(10 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-stat { width: calc(58 * var(--lab-design-unit)) !important; height: calc(58 * var(--lab-design-unit)) !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-stat-emblem { inset: calc(-14 * var(--lab-design-unit)) !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-stat strong { font-size: calc(21 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-stat.health strong { font-size: calc(27.5 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-stats { left: 4% !important; right: 4% !important; bottom: 2% !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-constraint-bank { width: calc(58 * var(--lab-design-unit)) !important; height: calc(58 * var(--lab-design-unit)) !important; grid-auto-columns: calc(58 * var(--lab-design-unit)) !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-constraint-socket { width: calc(58 * var(--lab-design-unit)) !important; height: calc(58 * var(--lab-design-unit)) !important; min-height: 0 !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-constraint-well { width: calc(28 * var(--lab-design-unit)); height: calc(28 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-constraint-orb { width: calc(24 * var(--lab-design-unit)); height: calc(24 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-art-arrow { top: 23.5%; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-art-arrow.is-prev { left: -34px !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-art-arrow.is-next { right: -34px !important; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-sigils,
+.forge-lab-card[data-lab-design-geometry] .forge-lab-sigil-row { pointer-events: none; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-sigil-row { transform-style: preserve-3d; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-sigil-row :is(button,[role="button"]) { pointer-events: auto; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-sigil-quick { transform: translateX(-50%) translateZ(2px); pointer-events: auto; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-nameplate { height: calc(48 * var(--lab-design-unit)); min-height: calc(48 * var(--lab-design-unit)); padding: calc(12 * var(--lab-design-unit)) 16%; background-image: url("assets/ui/forge-lab/unstable/name-ribbon-magic-v1.webp"); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-nameplate span,
+.forge-lab-card[data-lab-design-geometry] .forge-lab-name-editing input { color: #fff1d0; font-size: calc(14.5 * var(--lab-design-unit)); text-shadow: 0 1px 2px #100923; }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-nameplate.is-long span { font-size: calc(12.5 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-nameplate.is-very-long span { font-size: calc(10.5 * var(--lab-design-unit)); }
+.forge-lab-card[data-lab-design-geometry] .forge-lab-art-layer img { will-change: auto; }
+.forge-lab-card[data-lab-art-frame="soft"] .forge-lab-art-layer,
+.forge-lab-card[data-lab-art-frame="runic"] .forge-lab-art-layer {
+  /* Only the narrow perimeter dissolves; the broad interior remains opaque. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 86%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 86%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  mask-mode: alpha;
+}
+.forge-lab-card[data-lab-art-frame="soft"] .forge-lab-art-layer img,
+.forge-lab-card[data-lab-art-frame="runic"] .forge-lab-art-layer img { opacity: 1; mix-blend-mode: normal; filter: none; }
+.forge-lab-card[data-lab-art-adjusted="true"]:is([data-lab-art-frame="soft"],[data-lab-art-frame="runic"]) .forge-lab-art-layer img {
+  /* A moved/reduced image must not expose a hard rectangular film edge. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 86%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 86%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  mask-mode: alpha;
+}
+.forge-lab-card[data-lab-art-frame="soft"] .forge-lab-art-layer img.is-error,
+.forge-lab-card[data-lab-art-frame="runic"] .forge-lab-art-layer img.is-error { opacity: 0; }
+.forge-lab-card[data-lab-art-frame="soft"] .forge-lab-art-layer::before,
+.forge-lab-card[data-lab-art-frame="runic"] .forge-lab-art-layer::before,
+.forge-lab-card[data-lab-art-frame="soft"] .forge-lab-art-layer::after { background: none; box-shadow: none; }
+.forge-lab-art-layer:has(img:not(.is-error)) .forge-lab-art-fallback { display: none; }
+
+/* Structural pigment follows School, below Art/text, without recoloring artwork. */
+.forge-lab-card[data-lab-design-geometry] .forge-lab-card-frame::after {
+  display: block;
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 0;
+  box-shadow: none;
+  opacity: .32;
+  background: linear-gradient(90deg, var(--lab-fusion-color), transparent 24%, transparent 76%, var(--lab-fusion-color)), linear-gradient(0deg, var(--lab-fusion-color), transparent 20%);
+  mix-blend-mode: multiply;
+  -webkit-mask: url("assets/ui/forge-lab/unstable/parchment-base.webp") center / 100% 100% no-repeat;
+  mask: url("assets/ui/forge-lab/unstable/parchment-base.webp") center / 100% 100% no-repeat;
+}
+.forge-lab-card[data-lab-art-frame="runic"] .forge-lab-art-layer::after { background: transparent url("assets/ui/forge-lab/unstable/evocation-rune-frame-v1.webp") center / 100% 100% no-repeat; opacity: .65; mix-blend-mode: normal; }
+@media (max-width: 980px) {
+  .is-designing .forge-lab-layout { grid-template-columns: 1fr; }
+  .forge-lab-designer-inspector { position: fixed; z-index: 120; bottom: calc(86px + env(safe-area-inset-bottom)); left: 8px; right: 8px; }
+  .forge-lab-designer-panel { margin-top: 0; max-height: 42dvh; overflow: auto; overscroll-behavior: contain; }
+}
+@media (min-width: 981px) {
+  .forge-lab-designer-inspector > summary { display: none; }
+  .forge-lab-designer-panel { max-height: calc(100dvh - 170px); overflow: auto; overscroll-behavior: contain; }
+}

@@ -1,0 +1,419 @@
+// User-approved presentation from sigian-formula-design-v2 (7).json.
+(function(A){ A.ForgeLabApprovedDesign={
+  "version": 2,
+  "kind": "sigian-formula-presentation",
+  "baseRevision": "0318007",
+  "coordinates": "card-percent",
+  "pose": {
+    "tiltX": 6,
+    "tiltY": 0,
+    "tiltZ": 0,
+    "depth": 92
+  },
+  "presets": {
+    "unstable": {
+      "elements": {
+        "paper": {
+          "x": -0.3039747668850806,
+          "y": 0.6118052492859544,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "name": {
+          "x": 0.6267522996471774,
+          "y": 3.4804871261760755,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "nameText": {
+          "x": -0.03760553175403226,
+          "y": 0.0007941133232526881,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "cost": {
+          "x": -1.153406943044355,
+          "y": -0.9701866231938843,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": -5,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "type": {
+          "x": 0.19633631552419353,
+          "y": 0.001827773227486559,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "school": {
+          "x": 0.5000354397681459,
+          "y": -3.4941905031922045,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 5,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "schoolIcon": {
+          "x": 0.0005709740423387097,
+          "y": -0.27262369791666663,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "attack": {
+          "x": 0.08694556451612905,
+          "y": -2.281743531586021,
+          "scaleX": 107.54535814980773,
+          "scaleY": 107.27114881251964,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "attackText": {
+          "x": -0.005532541582661291,
+          "y": 0.3258096018145161,
+          "scaleX": 97.82967490969713,
+          "scaleY": 104.19102528480133,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "health": {
+          "x": 0.035045992943548376,
+          "y": -2.322171118951613,
+          "scaleX": 93.41730342003108,
+          "scaleY": 97.01889955986832,
+          "rotation": 3.5,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "healthText": {
+          "x": -0.5641420425907258,
+          "y": -0.1996177755376344,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "sigil1": {
+          "x": 0.3223640688004032,
+          "y": 1.1787266885080645,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "sigil2": {
+          "x": -0.3042504095262097,
+          "y": 3.340578797043011,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "sigil3": {
+          "x": -0.6417748235887096,
+          "y": 5.230962281586021,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "socket": {
+          "x": 0.08436633694556452,
+          "y": -0.7749364709341398,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "art": {
+          "x": -0.7099253398118981,
+          "y": 1.3486466677137325,
+          "scaleX": 89.50508075199309,
+          "scaleY": 116.50933653943477,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        }
+      },
+      "art": {
+        "frame": "soft",
+        "zoom": 100,
+        "imageX": 37,
+        "imageY": 0
+      }
+    },
+    "sealed": {
+      "elements": {
+        "paper": {
+          "x": 0.21758807122167756,
+          "y": 0.22610095106820355,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "art": {
+          "x": -0.14658281880040314,
+          "y": 2.198742282006049,
+          "scaleX": 95.02222024839777,
+          "scaleY": 124.7958843408473,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "name": {
+          "x": 0.23769121063539478,
+          "y": 4.88694707551641,
+          "scaleX": 107.75823152337186,
+          "scaleY": 118.21237532307396,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "nameText": {
+          "x": 0.2145153982056771,
+          "y": -0.06486831717411318,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "cost": {
+          "x": -3.8822552438056785,
+          "y": -3.4098532168713613,
+          "scaleX": 111.00014971939687,
+          "scaleY": 113.75900961718214,
+          "rotation": -5,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "type": {
+          "x": 0.10929166924997104,
+          "y": -3.450521880783257,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "school": {
+          "x": 1.9386270757828354,
+          "y": -6.111845617998036,
+          "scaleX": 108.6858984200725,
+          "scaleY": 113.01597537320464,
+          "rotation": 5,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "schoolIcon": {
+          "x": 0.0005709740423387097,
+          "y": -0.27262369791666663,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "attack": {
+          "x": -2.7525318616506693,
+          "y": 1.9121039948895353,
+          "scaleX": 107.54535814980773,
+          "scaleY": 107.27114881251964,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "attackText": {
+          "x": -0.005532541582661291,
+          "y": 0.3258096018145161,
+          "scaleX": 97.82967490969713,
+          "scaleY": 104.19102528480133,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "health": {
+          "x": 0.8544943880953569,
+          "y": 1.5173548194266946,
+          "scaleX": 97.1583193121548,
+          "scaleY": 100.02774080063998,
+          "rotation": 3.5,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "healthText": {
+          "x": -0.5641420425907258,
+          "y": -0.1996177755376344,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "sigil1": {
+          "x": 0.3223640688004032,
+          "y": 1.1787266885080645,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "sigil2": {
+          "x": -0.3042504095262097,
+          "y": 3.340578797043011,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "sigil3": {
+          "x": -0.6417748235887096,
+          "y": 5.230962281586021,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        },
+        "socket": {
+          "x": 0.08436633694556452,
+          "y": -0.7749364709341398,
+          "scaleX": 100,
+          "scaleY": 100,
+          "rotation": 0,
+          "depth": 0,
+          "opacity": 100,
+          "fontSize": null,
+          "color": null,
+          "glow": 0
+        }
+      },
+      "art": {
+        "frame": "soft",
+        "zoom": 100,
+        "imageX": 0,
+        "imageY": 0
+      }
+    }
+  }
+}; })(window.Arcane=window.Arcane||{});

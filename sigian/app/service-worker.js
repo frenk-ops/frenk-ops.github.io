@@ -1,6 +1,6 @@
 "use strict";
 
-const BUILD_REVISION = "0.61.57-80f0b00";
+const BUILD_REVISION = "0.61.57-ad9c6f3";
 const SHELL_CACHE = `sigian-shell-${BUILD_REVISION}`;
 const RUNTIME_CACHE = `sigian-runtime-${BUILD_REVISION}`;
 
@@ -10,6 +10,7 @@ const APP_SHELL = [
   "./styles.css",
   "./pwa.css",
   "./forge-ui-lab.css",
+  "./forge-lab-designer.css",
   "./pwa-install-v2.js",
   "./manifest.json",
   "./icons/icon-192.png",
@@ -66,7 +67,10 @@ const APP_SHELL = [
   "./src/ui/pause-menu.js",
   "./src/ui/tournament-view.js",
   "./src/ui/forge-ui-lab.js",
-  "./src/data/sigian-chronicles.js",\n  "./src/ui/archive-browser.js",
+  "./src/ui/forge-lab-designer.js",
+  "./src/ui/forge-lab-approved-design.js",
+  "./src/data/sigian-chronicles.js",
+  "./src/ui/archive-browser.js",
   "./src/ui/app.js"
 ];
 

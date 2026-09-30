@@ -25,9 +25,9 @@
     modal: null,
     imprintSlotId: null,
     breakSlotId: null,
-    tiltX: 18,
-    tiltY: -6,
-    tiltZ: -2,
+    tiltX: 6,
+    tiltY: 0,
+    tiltZ: 0,
     depth: 92,
     atmosphere: true,
     motionEnabled: false,
@@ -348,6 +348,7 @@
   }
 
   const motionController = createMotionController();
+  let motionBeforeDesign = null;
 
   const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, char => ({
     "&": "&amp;",
@@ -588,18 +589,17 @@
       }
       const option = sigilOption(recipe, sigil);
       const canCycle = sigilCycleOptions(recipe, sigil).length > 1;
-      const cycleDisabled = canCycle
-        ? ""
-        : ' disabled aria-disabled="true" title="Nessun altro Sigillo disponibile"';
       const imprint = state.imprintSlotId === sigil.slotId ? " is-imprinting" : "";
+      const cycleReason = imprint ? "Impressione in corso" : canCycle ? "" : "Nessun altro Sigillo disponibile";
+      const cycleDisabled = cycleReason ? ' disabled aria-disabled="true" title="' + cycleReason + '"' : "";
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
         '<div class="forge-lab-sigil-row forge-lab-sigil-anchor' + imprint + breaking + '" data-lab-control-anchor="sigil" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
-          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente' + (canCycle ? "" : ": nessun altro Sigillo disponibile") + '"' + cycleDisabled + '>‹</button>' +
+          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="-1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo precedente' + (cycleReason ? ": " + cycleReason : "") + '"' + cycleDisabled + '>‹</button>' +
           '<button type="button" class="forge-lab-sigil-mark" data-lab-sigil="' + escapeHtml(sigil.slotId) + '">' +
             '<span class="forge-lab-sigil-burn" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
             '<span class="forge-lab-sigil-emblem" aria-hidden="true">' +
-              '<span class="forge-lab-sigil-runes"><i>ᚨ</i><i>ᚱ</i><i>ᚲ</i><i>ᚾ</i><i>ᛟ</i><i>ᛉ</i></span>' +
+              '<span class="forge-lab-sigil-runes"></span>' +
               '<span class="forge-lab-sigil-glyph">' + escapeHtml(sigilGlyph(recipe, sigil)) + '</span>' +
             '</span>' +
             '<span class="forge-lab-sigil-copy">' +
@@ -607,7 +607,7 @@
               '<span class="forge-lab-chip-row">' + sigilIdentityMarkup(recipe, sigil) + '</span>' +
             '</span>' +
           '</button>' +
-          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo successivo' + (canCycle ? "" : ": nessun altro Sigillo disponibile") + '"' + cycleDisabled + '>›</button>' +
+          '<button type="button" class="forge-lab-cycle" data-lab-sigil-step="1" data-lab-slot="' + escapeHtml(sigil.slotId) + '" aria-label="Sigillo successivo' + (cycleReason ? ": " + cycleReason : "") + '"' + cycleDisabled + '>›</button>' +
           sigilQuickMarkup(recipe, sigil) +
         '</div>'
       );
@@ -652,29 +652,7 @@
   }
 
   function statEmblemMarkup(kind) {
-    if (kind === "attack") {
-      return (
-        '<span class="forge-lab-stat-emblem" aria-hidden="true">' +
-          '<svg viewBox="0 0 80 80" focusable="false">' +
-            '<g class="forge-lab-crossed-swords">' +
-              '<path d="M18 64 58 24 66 15 63 28 23 68Z"/>' +
-              '<path d="M62 64 22 24 14 15 17 28 57 68Z"/>' +
-              '<path d="m13 55 12 12M55 67l12-12"/>' +
-              '<path d="m12 68 8-8M60 60l8 8"/>' +
-            '</g>' +
-          '</svg>' +
-        '</span>'
-      );
-    }
-    return (
-      '<span class="forge-lab-stat-emblem" aria-hidden="true">' +
-        '<svg viewBox="0 0 80 80" focusable="false">' +
-          '<path class="forge-lab-heart-shell" d="M40 71C30 61 12 49 12 30 12 18 20 10 31 10c5 0 8 2 9 6 2-4 5-6 10-6 11 0 19 8 19 20 0 19-18 31-29 41Z"/>' +
-          '<path class="forge-lab-heart-face" d="M40 63C31 55 20 46 20 31c0-8 5-13 12-13 4 0 7 2 8 7 2-5 5-7 9-7 7 0 12 5 12 13 0 15-11 24-21 32Z"/>' +
-          '<path class="forge-lab-heart-glint" d="M27 24c-3 3-4 7-3 11"/>' +
-        '</svg>' +
-      '</span>'
-    );
+    return '<span class="forge-lab-stat-emblem is-' + escapeHtml(kind) + '" aria-hidden="true"></span>';
   }
 
   function cardMarkup(recipe) {
@@ -691,13 +669,14 @@
 
     return (
       '<div class="forge-lab-card-shell">' +
-        '<article class="forge-lab-card school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" style="' + geometryStyle() + '">' +
+        '<article class="forge-lab-card is-unstable school-' + escapeHtml(recipe.school) + ' type-' + escapeHtml(recipe.type) + (state.atmosphere ? "" : " no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" data-lab-formula-state="unstable" style="' + geometryStyle() + '">' +
           '<div class="forge-lab-card-frame" data-lab-depth-layer="surface" aria-hidden="true"><span></span></div>' +
           '<div class="forge-lab-card-aura" aria-hidden="true"><i></i></div>' +
           '<div class="forge-lab-control-anchor forge-lab-art-anchor" data-lab-control-anchor="art" data-lab-depth-layer="art">' +
             '<button type="button" class="forge-lab-art-arrow is-prev" data-lab-art-step="-1" aria-label="Illustrazione precedente">‹</button>' +
             '<div class="forge-lab-art-layer" data-lab-art-visual aria-hidden="true">' +
-              (art ? '<img src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' : '<span class="forge-lab-art-fallback">✦</span>') +
+              '<span class="forge-lab-art-fallback" aria-hidden="true">✦</span>' +
+              (art ? '<img data-lab-art-image src="' + escapeHtml(artUrl(art)) + '" alt="' + escapeHtml(cardDisplayName(art)) + '">' : '') +
             '</div>' +
             '<button type="button" class="forge-lab-art-hit" data-lab-art-main aria-label="Scegli o scorri illustrazione"></button>' +
             '<button type="button" class="forge-lab-art-arrow is-next" data-lab-art-step="1" aria-label="Illustrazione successiva">›</button>' +
@@ -993,7 +972,7 @@
             '<label>Rotazione <output data-lab-output="tiltZ">' + state.tiltZ + '°</output><input type="range" min="-5" max="4" step="1" value="' + state.tiltZ + '" data-lab-tuning="tiltZ"></label>' +
             '<label>Separazione elementi <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="100" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
           '</div>' +
-          '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Nubi, brace e aura rituale</label>' +
+          '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Bagliori della Scuola</label>' +
           '<label class="forge-lab-motion-toggle"><input type="checkbox" data-lab-motion ' + (state.motionEnabled ? "checked" : "") + '> Movimento carta</label>' +
           '<p class="forge-lab-motion-status" data-lab-motion-status aria-live="polite">' + escapeHtml(motionStatusText()) + '</p>' +
           '<fieldset class="forge-lab-constraint-preview-controls"><legend>Socket Vincolo · preview Lab</legend>' +
@@ -1449,6 +1428,10 @@
     if (!session) return;
 
     root.querySelectorAll("[data-lab-art-step]").forEach(button => button.addEventListener("click", () => cycleArt(recipe, button.dataset.labArtStep)));
+    const artImage = root.querySelector("[data-lab-art-image]");
+    const revealArtFallback = () => artImage?.classList.add("is-error");
+    artImage?.addEventListener("error", revealArtFallback, { once:true });
+    if (artImage?.complete && !artImage.naturalWidth) revealArtFallback();
     root.querySelectorAll("[data-lab-sigil-step]").forEach(button => button.addEventListener("click", () => cycleSigil(recipe, button.dataset.labSlot, button.dataset.labSigilStep)));
 
     root.querySelectorAll("[data-lab-add-empty]").forEach(button => button.addEventListener("click", () => {
@@ -1631,10 +1614,8 @@
 
     root.innerHTML =
       '<div class="forge-lab-layout">' +
-        '<section class="forge-lab-stage school-' + escapeHtml(recipe.school) + ' ' + (state.atmosphere ? "" : "no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '">' +
-          '<div class="forge-lab-cloud cloud-one" aria-hidden="true"></div>' +
-          '<div class="forge-lab-arcane-filaments" aria-hidden="true"><i></i><i></i></div>' +
-          '<div class="forge-lab-embers" aria-hidden="true"><i></i><i></i><i></i></div>' +
+        '<section class="forge-lab-stage school-' + escapeHtml(recipe.school) + ' ' + (state.atmosphere ? "" : "no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" data-lab-formula-state="unstable">' +
+          '<div class="forge-lab-school-light" aria-hidden="true"><i></i><i></i></div>' +
           '<div class="forge-lab-card-stage">' + cardMarkup(recipe) + '</div>' +
           '<p class="forge-lab-gesture-hint">Tap su Costo/ATT/Vita per la ruota · tap Scuola per la successiva · ✥ apre tutte le Scuole · scorri Art e Scuola direttamente sulla Formula</p>' +
         '</section>' +
@@ -1644,6 +1625,30 @@
 
     applyGeometry(root);
     bind(root, recipe);
+    A.ForgeLabDesigner?.mount(root, {
+      pose: { tiltX:state.tiltX, tiltY:state.tiltY, tiltZ:state.tiltZ, depth:state.depth },
+      onPose(pose) { Object.assign(state, pose); applyGeometry(root); },
+      constraintPreview: state.constraintPreview,
+      onConstraintPreview(mode) { state.constraintPreview = mode; render(root); },
+      onModeChange(active) {
+        if (active) {
+          motionBeforeDesign = { enabled:state.motionEnabled, sensorStatus:state.motionSensorStatus };
+          state.modal = null;
+          state.inlineControl = null;
+          state.nameEditing = false;
+          motionController.setEnabled(false);
+        }
+        else {
+          state.constraintPreview = "canonical";
+          if (motionBeforeDesign) {
+            state.motionEnabled = motionBeforeDesign.enabled;
+            state.motionSensorStatus = motionBeforeDesign.sensorStatus;
+            motionBeforeDesign = null;
+          }
+        }
+        render(root);
+      }
+    });
   }
 
   function refreshFromPersistedDraft() {
@@ -1654,7 +1659,7 @@
   A.ForgeUiLab = Object.freeze({
     render,
     refreshFromPersistedDraft,
-    suspendMotion: () => motionController.suspend(),
+    suspendMotion: () => { motionController.suspend(); A.ForgeLabDesigner?.suspend(); },
     resetSession() {
       state.session = null;
     }
