@@ -56,34 +56,33 @@
   });
 
   const TAG_SCHOOL_VALUES = Object.freeze({
-    "direct-damage":      Object.freeze({ fire:3, water:1, air:3, nature:1, death:2 }),
-    "targeted-damage":    Object.freeze({ fire:2.5, water:1.5, air:3, nature:1.5, death:2 }),
-    "area-damage":        Object.freeze({ fire:3, water:1.5, air:2.5, nature:1.5, death:2 }),
-    "healing":            Object.freeze({ fire:1, water:2, air:1.5, nature:3, death:1.5 }),
-    "regeneration":       Object.freeze({ fire:1, water:2, air:1.5, nature:3, death:2 }),
-    "protection":         Object.freeze({ fire:1.5, water:2.5, air:1.5, nature:3, death:1.5 }),
-    "power-growth":       Object.freeze({ fire:3, water:2, air:2.5, nature:3, death:2 }),
-    "power-control":      Object.freeze({ fire:1.5, water:3, air:2, nature:1.5, death:2.5 }),
-    "debuff":             Object.freeze({ fire:1.5, water:3, air:2, nature:1.5, death:2.5 }),
-    "amplification":      Object.freeze({ fire:3, water:1.5, air:2.5, nature:2.5, death:2 }),
-    "combat-scaling":     Object.freeze({ fire:2.5, water:1.5, air:2.5, nature:2.5, death:2 }),
-    "death-resource":     Object.freeze({ fire:1, water:1.5, air:1, nature:1.5, death:3 }),
-    "drain":              Object.freeze({ fire:1.5, water:2, air:1.5, nature:1.5, death:3 }),
-    "rebirth":            Object.freeze({ fire:2, water:1.5, air:1.5, nature:2, death:3 }),
-    "behavior-control":   Object.freeze({ fire:1, water:2.5, air:3, nature:1, death:2 }),
-    "hard-removal":       Object.freeze({ fire:2, water:2, air:2.5, nature:1.5, death:3 }),
-    "reactive-punish":    Object.freeze({ fire:2, water:2, air:2, nature:2.5, death:2.5 }),
-    "state-control":      Object.freeze({ fire:1, water:3, air:2, nature:1.5, death:2 }),
-    "self-risk":          Object.freeze({ fire:3, water:1, air:2, nature:1, death:2.5 }),
-    "self-resource-loss": Object.freeze({ fire:2, water:1.5, air:1.5, nature:1.5, death:3 }),
-    "conditional-risk":   Object.freeze({ fire:2.5, water:2, air:2, nature:1.5, death:2.5 }),
-    "friendly-fire":      Object.freeze({ fire:3, water:1, air:2, nature:1, death:2 }),
+    "direct-damage":      Object.freeze({ fire:3, water:1, air:3, nature:0.5, death:2 }),
+    "targeted-damage":    Object.freeze({ fire:3, water:1.25, air:3, nature:0.5, death:2 }),
+    "area-damage":        Object.freeze({ fire:3, water:1.25, air:2, nature:0.5, death:2 }),
+    "healing":            Object.freeze({ fire:1, water:2, air:1, nature:3, death:1 }),
+    "regeneration":       Object.freeze({ fire:1, water:2, air:1, nature:3, death:2 }),
+    "protection":         Object.freeze({ fire:1, water:3, air:1, nature:3, death:1 }),
+    "power-growth":       Object.freeze({ fire:3, water:2, air:2, nature:3, death:2 }),
+    "power-control":      Object.freeze({ fire:1, water:3, air:2, nature:0.5, death:2 }),
+    "debuff":             Object.freeze({ fire:1, water:3, air:2, nature:0.5, death:2 }),
+    "amplification":      Object.freeze({ fire:3, water:2, air:2, nature:2, death:1 }),
+    "combat-scaling":     Object.freeze({ fire:3, water:2, air:2, nature:3, death:2 }),
+    "death-resource":     Object.freeze({ fire:0.5, water:1, air:0.5, nature:1, death:3 }),
+    "drain":              Object.freeze({ fire:1, water:1, air:1, nature:1, death:3 }),
+    "rebirth":            Object.freeze({ fire:2, water:1, air:1, nature:2, death:3 }),
+    "behavior-control":   Object.freeze({ fire:1, water:2, air:3, nature:0.5, death:1 }),
+    "hard-removal":       Object.freeze({ fire:2, water:2, air:1, nature:0.5, death:3 }),
+    "reactive-punish":    Object.freeze({ fire:2, water:2.5, air:1.5, nature:2.5, death:2 }),
+    "state-control":      Object.freeze({ fire:1.5, water:3, air:2, nature:1, death:2 }),
+    "self-risk":          Object.freeze({ fire:3, water:1, air:2, nature:0.5, death:2 }),
+    "self-resource-loss": Object.freeze({ fire:2, water:2, air:1, nature:0.5, death:3 }),
+    "conditional-risk":   Object.freeze({ fire:2, water:3, air:2, nature:1, death:2 }),
+    "friendly-fire":      Object.freeze({ fire:3, water:0.5, air:2, nature:0.5, death:2 }),
     "forge-manipulation": Object.freeze({ fire:3, water:1.5, air:2, nature:2, death:1.5 }),
-    "movement":           Object.freeze({ fire:1.5, water:1.5, air:3, nature:1, death:1.5 }),
-    "tempo":              Object.freeze({ fire:2, water:2, air:3, nature:1, death:1.5 }),
-    "extra-action":       Object.freeze({ fire:2, water:1.5, air:3, nature:1, death:1.5 })
+    "movement":           Object.freeze({ fire:1, water:1, air:3, nature:0.5, death:1 }),
+    "tempo":              Object.freeze({ fire:2, water:2, air:3, nature:1, death:1 }),
+    "extra-action":       Object.freeze({ fire:2, water:1.5, air:3, nature:1, death:1 })
   });
-
   const TAG_VERSATILITY = Object.freeze({
     "direct-damage":0.95,
     "targeted-damage":0.9,
@@ -225,15 +224,71 @@
     "v2-constraint-limit-school":"state-control"
   });
 
-  const ADHERENCE_OVERRIDES_BY_ID = Object.freeze({
-    // Explicit design anchor agreed for Danno Incantatore. Terra remains derived
-    // from the general grammar until its case is reviewed explicitly.
-    "v2-damage-hero":Object.freeze({
-      fire:"core",
-      air:"core",
-      death:"compatible",
-      water:"exotic"
-    })
+  const REVIEWED_ADHERENCE_BY_ID = Object.freeze({
+    "v2-damage-hero":Object.freeze({ fire:"core", water:"exotic", air:"core", nature:"dissonant", death:"compatible" }),
+    "v2-damage-creature":Object.freeze({ fire:"core", water:"exotic", air:"core", nature:"dissonant", death:"compatible" }),
+    "v2-abbattimento":Object.freeze({ fire:"compatible", water:"exotic", air:"core", nature:"dissonant", death:"compatible" }),
+    "v2-damage-power-minor-hero":Object.freeze({ fire:"core", water:"exotic", air:"core", nature:"dissonant", death:"compatible" }),
+    "v2-damage-power-hero":Object.freeze({ fire:"core", water:"exotic", air:"core", nature:"dissonant", death:"compatible" }),
+    "v2-damage-power-major-hero":Object.freeze({ fire:"core", water:"exotic", air:"core", nature:"dissonant", death:"compatible" }),
+    "v2-wave":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-wave-power-minor":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-wave-power":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-wave-power-major":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-tide":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-tide-power-minor":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-tide-power":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-tide-power-major":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-tide-power-reduced":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-heal-hero":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-heal-power-minor-hero":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-heal-power-hero":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-heal-power-major-hero":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-regeneration":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"compatible" }),
+    "v2-recurring-heal-hero":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-recovery":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-recurring-recovery":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-full-recovery":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-infusion-school":Object.freeze({ fire:"core", water:"compatible", air:"compatible", nature:"core", death:"compatible" }),
+    "v2-subtraction-school":Object.freeze({ fire:"exotic", water:"core", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-subtraction-all":Object.freeze({ fire:"exotic", water:"core", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-channeling-school":Object.freeze({ fire:"core", water:"compatible", air:"compatible", nature:"core", death:"exotic" }),
+    "v2-channeling-all":Object.freeze({ fire:"core", water:"compatible", air:"compatible", nature:"core", death:"exotic" }),
+    "v2-enemy-erosion-school":Object.freeze({ fire:"exotic", water:"core", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-enemy-erosion-all":Object.freeze({ fire:"exotic", water:"core", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-necromantic-resonance":Object.freeze({ fire:"dissonant", water:"exotic", air:"dissonant", nature:"exotic", death:"core" }),
+    "v2-vital-resonance":Object.freeze({ fire:"dissonant", water:"exotic", air:"dissonant", nature:"compatible", death:"core" }),
+    "v2-vampirism":Object.freeze({ fire:"exotic", water:"exotic", air:"exotic", nature:"exotic", death:"core" }),
+    "v2-life-drain":Object.freeze({ fire:"exotic", water:"exotic", air:"exotic", nature:"exotic", death:"core" }),
+    "v2-domination":Object.freeze({ fire:"exotic", water:"compatible", air:"core", nature:"dissonant", death:"exotic" }),
+    "v2-rebirth":Object.freeze({ fire:"compatible", water:"exotic", air:"exotic", nature:"compatible", death:"core" }),
+    "v2-eternal-rebirth":Object.freeze({ fire:"compatible", water:"exotic", air:"exotic", nature:"compatible", death:"core" }),
+    "v2-arcane-armor":Object.freeze({ fire:"exotic", water:"core", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-destruction":Object.freeze({ fire:"compatible", water:"compatible", air:"exotic", nature:"dissonant", death:"core" }),
+    "v2-uprooting":Object.freeze({ fire:"compatible", water:"compatible", air:"core", nature:"dissonant", death:"core" }),
+    "v2-justice":Object.freeze({ fire:"exotic", water:"core", air:"compatible", nature:"compatible", death:"compatible" }),
+    "v2-soul-harvest":Object.freeze({ fire:"exotic", water:"exotic", air:"dissonant", nature:"dissonant", death:"core" }),
+    "v2-arcane-attack-school":Object.freeze({ fire:"core", water:"compatible", air:"compatible", nature:"core", death:"compatible" }),
+    "v2-protection-hero":Object.freeze({ fire:"exotic", water:"core", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-allied-amplification":Object.freeze({ fire:"core", water:"compatible", air:"compatible", nature:"compatible", death:"exotic" }),
+    "v2-spell-amplification-flat":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"exotic", death:"exotic" }),
+    "v2-spell-amplification-powerful":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"exotic", death:"exotic" }),
+    "v2-total-assault":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"exotic", death:"exotic" }),
+    "v2-retaliation":Object.freeze({ fire:"compatible", water:"compatible", air:"exotic", nature:"core", death:"compatible" }),
+    "v2-heal-creature":Object.freeze({ fire:"exotic", water:"compatible", air:"exotic", nature:"core", death:"exotic" }),
+    "v2-infusion-all":Object.freeze({ fire:"core", water:"compatible", air:"compatible", nature:"core", death:"compatible" }),
+    "v2-annihilation":Object.freeze({ fire:"compatible", water:"exotic", air:"exotic", nature:"dissonant", death:"core" }),
+    "v2-constraint-erosion-school":Object.freeze({ fire:"compatible", water:"compatible", air:"exotic", nature:"dissonant", death:"core" }),
+    "v2-constraint-threshold-school":Object.freeze({ fire:"compatible", water:"core", air:"compatible", nature:"exotic", death:"compatible" }),
+    "v2-constraint-limit-school":Object.freeze({ fire:"compatible", water:"core", air:"compatible", nature:"exotic", death:"compatible" }),
+    "v2-constraint-tribute-school":Object.freeze({ fire:"compatible", water:"compatible", air:"exotic", nature:"dissonant", death:"core" }),
+    "v2-constraint-tribute-all":Object.freeze({ fire:"compatible", water:"compatible", air:"exotic", nature:"dissonant", death:"core" }),
+    "v2-constraint-friendly-fire":Object.freeze({ fire:"core", water:"dissonant", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-constraint-friendly-fire-limit":Object.freeze({ fire:"core", water:"compatible", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-constraint-backlash":Object.freeze({ fire:"core", water:"exotic", air:"compatible", nature:"dissonant", death:"compatible" }),
+    "v2-constraint-scarcity-school":Object.freeze({ fire:"compatible", water:"core", air:"compatible", nature:"exotic", death:"compatible" }),
+    "v2-constraint-weakness-school":Object.freeze({ fire:"compatible", water:"core", air:"compatible", nature:"exotic", death:"compatible" }),
+    "v2-constraint-overpower-school":Object.freeze({ fire:"compatible", water:"core", air:"compatible", nature:"exotic", death:"compatible" })
   });
 
   function clone(value) {
@@ -307,17 +362,23 @@
   function deriveAdherence(definition, tags, options = {}) {
     const schools = schoolOrder();
     const primaryTag = primaryTagFor(definition, tags, options);
-    const overrides = {
-      ...(ADHERENCE_OVERRIDES_BY_ID[definition?.id] || {}),
-      ...(definition?.adherence || {}),
-      ...(options.adherence || {})
-    };
+    const reviewed = REVIEWED_ADHERENCE_BY_ID[definition?.id] || {};
+    const definitionOverrides = definition?.adherence || {};
+    const optionOverrides = options.adherence || {};
+    const overrides = { ...reviewed, ...definitionOverrides, ...optionOverrides };
     const bySchool = {};
     const evidence = {};
     schools.forEach(school => {
       if (overrides[school]) {
         bySchool[school] = normalizeAdherence(overrides[school]);
-        evidence[school] = { source:"override", score:ADHERENCE_VALUE[bySchool[school]], primaryTag };
+        const source = optionOverrides[school]
+          ? "manual-override"
+          : definitionOverrides[school]
+            ? "definition-override"
+            : reviewed[school]
+              ? "canonical-review"
+              : "override";
+        evidence[school] = { source, score:ADHERENCE_VALUE[bySchool[school]], primaryTag };
         return;
       }
       const score = weightedSchoolScore(tags, primaryTag, school);
@@ -450,24 +511,26 @@
     return RARITY_TIERS.find(tier => score < tier.max) || RARITY_TIERS[RARITY_TIERS.length - 1];
   }
 
-  function rarityBreakdown({ compatibility, adherenceBySchool, grade, intensityPercentile, arcaneWeight, craftingWeight, versatility, exceptionality }) {
+  function rarityBreakdown({ compatibility, adherenceBySchool, referenceSchool, grade, intensityPercentile, arcaneWeight, craftingWeight, versatility, exceptionality }) {
     const selected = compatibility.schools.map(school => normalizeAdherence(adherenceBySchool[school]));
     const adherencePoints = selected.map(level => ADHERENCE_RARITY[level]);
     const averageAdherence = adherencePoints.reduce((sum, value) => sum + value, 0) / adherencePoints.length;
     const worstAdherence = Math.max(...adherencePoints);
     const adherence = averageAdherence + 0.25 * worstAdherence;
     const compatibilityPoints = COMPATIBILITY_RARITY[compatibility.mode] ?? 0;
+    const referenceSchoolPoints = referenceSchool && !compatibility.schools.includes(referenceSchool) ? 0.35 : 0;
     const gradePoints = grade == null ? 0.12 : Math.max(0, Number(grade) - 1) * 0.22;
     const intensityPoints = clamp(intensityPercentile || 0, 0, 1) * 0.22;
     const arcanePoints = Math.min(0.72, Math.log2(1 + Math.max(0, Number(arcaneWeight) || 0)) * 0.28);
     const craftingPoints = Math.max(0, Math.log2(Math.max(1, Number(craftingWeight) || 1))) * 0.13;
     const versatilityPoints = clamp(versatility?.score ?? versatility ?? 0, 0, 1) * 0.28;
     const exceptionalPoints = Math.max(0, Number(exceptionality) || 0);
-    const total = round(adherence + compatibilityPoints + gradePoints + intensityPoints + arcanePoints + craftingPoints + versatilityPoints + exceptionalPoints);
+    const total = round(adherence + compatibilityPoints + referenceSchoolPoints + gradePoints + intensityPoints + arcanePoints + craftingPoints + versatilityPoints + exceptionalPoints);
     return {
       total,
       adherence:round(adherence),
       compatibility:round(compatibilityPoints),
+      referenceSchool:round(referenceSchoolPoints),
       grade:round(gradePoints),
       intensity:round(intensityPoints),
       arcaneWeight:round(arcanePoints),
@@ -497,6 +560,7 @@
       family:definition.name,
       summary:definition.summary || "",
       schoolReference:/<Scuola>/i.test(String(definition.name || "")),
+      requiresReferenceSchool:/<Scuola>/i.test(String(definition.name || "")),
       semanticTags:tags,
       primaryTag:adherence.primaryTag,
       adherence:adherence.bySchool,
@@ -547,6 +611,12 @@
     const compatibility = options.compatibility
       ? compatibilityForSchools(options.compatibility.schools || options.compatibility)
       : compatibilityForSchools(options.compatibilitySchools || [schoolOrder()[0]]);
+    const referenceSchool = profile.requiresReferenceSchool || profile.schoolReference
+      ? String(options.referenceSchool || "").trim()
+      : null;
+    if ((profile.requiresReferenceSchool || profile.schoolReference) && !schoolOrder().includes(referenceSchool)) {
+      throw new Error(`Scuola di riferimento richiesta per ${profile.id}: ${referenceSchool || "-"}.`);
+    }
     const includedAdherence = Object.fromEntries(compatibility.schools.map(school => [school, profile.adherence[school]]));
     if (Object.values(includedAdherence).some(value => !value)) {
       throw new Error(`Aderenza incompleta per ${profile.id} / ${compatibility.schools.join(",")}.`);
@@ -558,6 +628,7 @@
     const rarity = rarityBreakdown({
       compatibility,
       adherenceBySchool:profile.adherence,
+      referenceSchool,
       grade:requestedGrade,
       intensityPercentile,
       arcaneWeight:arcaneWeight.value,
@@ -572,6 +643,8 @@
       family:profile.family,
       kind:profile.kind,
       compatibility,
+      referenceSchool,
+      referenceSchoolAlignment:referenceSchool == null ? "not-applicable" : compatibility.schools.includes(referenceSchool) ? "included" : "cross-school",
       adherence:includedAdherence,
       adherenceMatrix:clone(profile.adherence),
       grade:requestedGrade,
@@ -599,17 +672,25 @@
     const grades = options.grade === undefined
       ? profile.gradeProfile.grades
       : profile.gradeProfile.grades.filter(entry => entry.grade === options.grade);
+    const referenceSchools = profile.requiresReferenceSchool || profile.schoolReference
+      ? options.referenceSchool
+        ? [String(options.referenceSchool)]
+        : (options.referenceSchools || schoolOrder())
+      : [null];
     const output = [];
     grades.forEach(entry => {
       const intensities = options.intensity === undefined ? (entry.intensities?.length ? entry.intensities : [null]) : [options.intensity];
       intensities.forEach(intensity => {
-        compatibilities.forEach(compatibility => {
-          output.push(calculateVariant(profile, {
-            ...options,
-            grade:entry.grade,
-            intensity,
-            compatibility
-          }));
+        referenceSchools.forEach(referenceSchool => {
+          compatibilities.forEach(compatibility => {
+            output.push(calculateVariant(profile, {
+              ...options,
+              grade:entry.grade,
+              intensity,
+              referenceSchool,
+              compatibility
+            }));
+          });
         });
       });
     });
@@ -639,6 +720,7 @@
   A.SIGIAN_COMPONENT_ADHERENCE_LABELS = ADHERENCE_LABELS;
   A.SIGIAN_COMPONENT_RARITY_TIERS = RARITY_TIERS;
   A.SIGIAN_COMPONENT_SEMANTIC_TAGS = TAGS_BY_ID;
+  A.SIGIAN_COMPONENT_REVIEWED_ADHERENCE = REVIEWED_ADHERENCE_BY_ID;
   A.listSigianComponentCompatibilities = enumerateCompatibilities;
   A.getSigianComponentFamilyProfile = buildFamilyProfile;
   A.calculateSigianComponentVariant = calculateVariant;
