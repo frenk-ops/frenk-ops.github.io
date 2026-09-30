@@ -2800,6 +2800,14 @@
 
   function switchView(name) {
     name = RESTORABLE_VIEWS.has(name) ? name : "play";
+    if (name !== "forge") A.MenuSheetLock?.unlock?.("forge-card-editor");
+    if (!["cards", "inventory", "chronicles"].includes(name)) {
+      A.MenuSheetLock?.unlock?.("archive-detail-collection");
+      A.MenuSheetLock?.unlock?.("archive-detail-inventory");
+    }
+    if (!["cards", "inventory", "chronicles", "forge"].includes(name)) {
+      A.MenuSheetLock?.unlock?.("element-inspector");
+    }
     if (name !== "uiLab") A.ForgeUiLab?.suspendMotion?.();
     document.querySelectorAll(".view").forEach(view => view.classList.remove("active"));
     $(`#${name}View`)?.classList.add("active");
@@ -2850,8 +2858,8 @@
 
   window.addEventListener("sigian:archive-scope-request", event => {
     const requested = String(event.detail?.scope || "collection");
-    const scope = ["collection", "inventory", "chronicles"].includes(requested) ? requested : "collection";
-    switchView(scope === "inventory" ? "inventory" : scope === "chronicles" ? "chronicles" : "cards");
+    const scope = ["collection", "inventory", "chronicles", "guide"].includes(requested) ? requested : "collection";
+    switchView(scope === "inventory" ? "inventory" : scope === "chronicles" ? "chronicles" : scope === "guide" ? "rules" : "cards");
   });
 
   window.addEventListener("sigian:inventory-forge-request", event => {
@@ -5956,7 +5964,7 @@
         );
         if (!detail) return;
         window.dispatchEvent(new CustomEvent("sigian:card-element-inspect", {
-          detail:{ ...detail, cardId:card.id, surface:options.surface || "generic" }
+          detail:{ ...detail, cardId:card.id, surface:options.surface || "generic", sourceElement:target }
         }));
       };
       article.addEventListener("click", event => {
@@ -5988,6 +5996,74 @@
     }
   });
 
+  let sigianElementInspectorReturnFocus = null;
+
+  function closeSigianElementInspector(root) {
+    if (!root) return;
+    root.classList.remove("open");
+    root.setAttribute("aria-hidden", "true");
+    A.MenuSheetLock?.unlock?.("element-inspector");
+    const returnFocus = sigianElementInspectorReturnFocus;
+    sigianElementInspectorReturnFocus = null;
+    window.requestAnimationFrame?.(() => {
+      if (returnFocus?.isConnected) returnFocus.focus?.({ preventScroll:true });
+    });
+  }
+
+  function bindSigianElementInspectorDrag(root) {
+    const panel = root?.querySelector(".sigian-element-inspector-panel");
+    const handle = root?.querySelector("[data-sigian-element-drag]");
+    if (!panel || !handle) return;
+    let pointerId = null;
+    let startY = 0;
+    let lastY = 0;
+
+    const reset = () => {
+      panel.style.removeProperty("transform");
+      panel.style.removeProperty("transition");
+      handle.classList.remove("is-dragging");
+      pointerId = null;
+    };
+    const finish = event => {
+      if (pointerId === null || (event.pointerId != null && event.pointerId !== pointerId)) return;
+      const delta = Math.max(0, lastY - startY);
+      try { handle.releasePointerCapture?.(pointerId); } catch {}
+      if (delta >= 72) {
+        closeSigianElementInspector(root);
+        reset();
+        return;
+      }
+      panel.style.transition = "transform 150ms ease";
+      panel.style.transform = "translateY(0)";
+      window.setTimeout(reset, 170);
+    };
+
+    handle.addEventListener("pointerdown", event => {
+      if (!window.matchMedia?.("(max-width:980px)")?.matches) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      pointerId = event.pointerId;
+      startY = lastY = event.clientY;
+      handle.classList.add("is-dragging");
+      panel.style.transition = "none";
+      try { handle.setPointerCapture?.(pointerId); } catch {}
+      event.preventDefault();
+    });
+    handle.addEventListener("pointermove", event => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      lastY = event.clientY;
+      panel.style.transform = `translateY(${Math.min(180, Math.max(0, lastY - startY))}px)`;
+      event.preventDefault();
+    });
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
+    handle.addEventListener("keydown", event => {
+      if (!window.matchMedia?.("(max-width:980px)")?.matches) return;
+      if (event.key !== "Enter" && event.key !== " " && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      closeSigianElementInspector(root);
+    });
+  }
+
   function ensureSigianElementInspector() {
     let root = document.querySelector("#sigianElementInspector");
     if (root) return root;
@@ -5997,6 +6073,7 @@
     root.setAttribute("aria-hidden", "true");
     root.innerHTML = `
       <section class="sigian-element-inspector-panel" role="dialog" aria-modal="true" aria-labelledby="sigianElementInspectorTitle">
+        <button type="button" class="sigian-element-inspector-drag-handle" data-sigian-element-drag aria-label="Chiudi trascinando verso il basso"><span aria-hidden="true"></span></button>
         <button type="button" class="sigian-element-inspector-close" data-sigian-element-close aria-label="Chiudi">×</button>
         <small class="sigian-element-inspector-kind"></small>
         <h3 id="sigianElementInspectorTitle"></h3>
@@ -6006,16 +6083,19 @@
     document.body.appendChild(root);
     root.addEventListener("click", event => {
       if (event.target === root || event.target.closest?.("[data-sigian-element-close]")) {
-        root.classList.remove("open");
-        root.setAttribute("aria-hidden", "true");
+        closeSigianElementInspector(root);
       }
     });
+    bindSigianElementInspectorDrag(root);
     return root;
   }
 
   function showSigianElementInspector(detail) {
     if (!detail) return;
     const root = ensureSigianElementInspector();
+    sigianElementInspectorReturnFocus = detail.sourceElement?.isConnected
+      ? detail.sourceElement
+      : (document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null);
     const kind = root.querySelector(".sigian-element-inspector-kind");
     const title = root.querySelector("#sigianElementInspectorTitle");
     const body = root.querySelector(".sigian-element-inspector-body");
@@ -6037,6 +6117,7 @@
     }
     root.classList.add("open");
     root.setAttribute("aria-hidden", "false");
+    if (window.matchMedia?.("(max-width:980px)")?.matches) A.MenuSheetLock?.lock?.("element-inspector");
     root.querySelector("[data-sigian-element-close]")?.focus?.({ preventScroll:true });
   }
 
@@ -6050,8 +6131,7 @@
     if (!root) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    root.classList.remove("open");
-    root.setAttribute("aria-hidden", "true");
+    closeSigianElementInspector(root);
   });
 
 
@@ -6789,6 +6869,69 @@
     </div>`;
   }
 
+  function syncForgeEditorSheetLock() {
+    const mobile = window.matchMedia?.("(max-width:820px)")?.matches;
+    const forgeActive = $("#forgeView")?.classList.contains("active");
+    const shouldLock = Boolean(mobile && forgeActive && forgeCardEditorSection && !forgeInventoryPreviewCardId);
+    if (shouldLock) A.MenuSheetLock?.lock?.("forge-card-editor");
+    else A.MenuSheetLock?.unlock?.("forge-card-editor");
+  }
+
+  function bindForgeEditorSheetGesture(root) {
+    const sheet = root?.querySelector(".forge-card-editor");
+    const handle = sheet?.querySelector("[data-forge-sheet-drag]");
+    if (!sheet || !handle || !window.matchMedia?.("(max-width:820px)")?.matches) return;
+    let pointerId = null;
+    let startY = 0;
+    let lastY = 0;
+
+    const reset = () => {
+      sheet.style.removeProperty("transform");
+      sheet.style.removeProperty("transition");
+      handle.classList.remove("is-dragging");
+      pointerId = null;
+    };
+    const finish = event => {
+      if (pointerId === null || (event.pointerId != null && event.pointerId !== pointerId)) return;
+      const delta = Math.max(0, lastY - startY);
+      try { handle.releasePointerCapture?.(pointerId); } catch {}
+      if (delta >= 72) {
+        forgeCardEditorSection = null;
+        A.MenuSheetLock?.unlock?.("forge-card-editor");
+        renderForgePage();
+        return;
+      }
+      sheet.style.transition = "transform 150ms ease";
+      sheet.style.transform = "translateY(0)";
+      window.setTimeout(reset, 170);
+    };
+
+    handle.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      pointerId = event.pointerId;
+      startY = lastY = event.clientY;
+      handle.classList.add("is-dragging");
+      sheet.style.transition = "none";
+      handle.setPointerCapture?.(pointerId);
+      event.preventDefault();
+    });
+    handle.addEventListener("pointermove", event => {
+      if (pointerId === null || event.pointerId !== pointerId) return;
+      lastY = event.clientY;
+      sheet.style.transform = `translateY(${Math.min(180, Math.max(0, lastY - startY))}px)`;
+      event.preventDefault();
+    });
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
+    handle.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " " && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      forgeCardEditorSection = null;
+      A.MenuSheetLock?.unlock?.("forge-card-editor");
+      renderForgePage();
+    });
+  }
+
   function forgeCardEditorMarkup(recipe, analysis, activeSigils, atSigilLimit) {
     if (!forgeCardEditorSection) return "";
     if (recipe.type !== "creature" && (forgeCardEditorSection === "attack" || forgeCardEditorSection === "health")) {
@@ -6808,7 +6951,8 @@
       constraint:t("sigian.constraint.global")
     };
     const complex = section === "sigils" || section === "constraint" || section === "art";
-    const header = `<div class="forge-card-editor-heading">
+    const header = `<button type="button" class="forge-sheet-drag-handle" data-forge-sheet-drag aria-label="Chiudi trascinando verso il basso"><span aria-hidden="true"></span></button>
+    <div class="forge-card-editor-heading">
       <strong>${escapeHtml(titleMap[section] || section)}</strong>
       <button type="button" class="forge-card-editor-close" data-forge-card-editor-close aria-label="Chiudi">×</button>
     </div>`;
@@ -7308,6 +7452,9 @@
       ${!inventoryReadOnly && forgeCardEditorSection ? `<button type="button" class="forge-mobile-sheet-backdrop" data-forge-card-editor-close aria-label="Chiudi editor"></button>` : ""}
       ${!inventoryReadOnly ? forgeReclaimDialogMarkup(recipe, snapshot.draft.transaction) : ""}
       ${!inventoryReadOnly ? forgeCraftSuggestionDialogMarkup() : ""}`;
+
+    syncForgeEditorSheetLock();
+    bindForgeEditorSheetGesture(root);
 
     const previewStage = $("#forgePreviewStage");
     const preview = A.SigianCardRenderer?.buildFull?.(forgePreviewCard(recipe, analysis), {
@@ -9848,10 +9995,7 @@
         </div>
       </details>
 
-      <div class="profile-secondary-actions">
-        <button class="classic-stone-button" type="button" data-view-jump="rules">${t("nav.howToPlay")}</button>
-        <button class="classic-stone-button" type="button" data-view-jump="diagnostics">${t("nav.options")}</button>
-      </div>`;
+      `;
     root.querySelectorAll("[data-profile-avatar]").forEach(button => {
       button.addEventListener("click", () => {
         draftAvatar = normalizeProfileAvatar(button.dataset.profileAvatar || "");

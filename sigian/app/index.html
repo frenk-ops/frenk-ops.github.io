@@ -8,7 +8,7 @@
   <meta name="arcane-multiplayer-api" content="https://arcane-duels-multiplayer.onrender.com">
   <meta name="arcane-supabase-url" content="https://upycjzhaajobqftltcpv.supabase.co">
   <meta name="arcane-supabase-key" content="sb_publishable_ea1bL9TeUz5n3VGC6xPuvg_BjJK790V">
-  <meta name="arcane-app-version" content="0.61.55">
+  <meta name="arcane-app-version" content="0.61.56">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Sigian">
@@ -16,17 +16,17 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <title>SIGIAN — Arcane Sigils</title>
-  <link rel="stylesheet" href="styles.css?v=0.61.55-e1a1da5">
-  <link rel="stylesheet" href="pwa.css?v=0.61.55-e1a1da5">
-  <link rel="stylesheet" href="forge-ui-lab.css?v=0.61.55-e1a1da5">
+  <link rel="stylesheet" href="styles.css?v=0.61.56-46ce83e">
+  <link rel="stylesheet" href="pwa.css?v=0.61.56-46ce83e">
+  <link rel="stylesheet" href="forge-ui-lab.css?v=0.61.56-46ce83e">
 </head>
-<body class="pages-static-profile" data-arcane-build-label="v0.61.55 · build e1a1da5">
+<body class="pages-static-profile" data-arcane-build-label="v0.61.56 · build 46ce83e">
   <svg class="sigian-nav-sprite" aria-hidden="true" focusable="false">
     <symbol id="sigian-nav-academy" viewBox="0 0 24 24">
-      <path d="M3.5 20.5h17M5 20V10h3V6h2v4h4V6h2v4h3v10M8 10V7l1-2 1 2v3M14 10V7l1-2 1 2v3M10.5 20v-5h3v5M7 13h2M15 13h2"/>
+      <path d="M3 20.5h18M4.5 20V9.5h3V6.8L9 4l1.5 2.8v2.7h3V5.6L15 2.8l1.5 2.8v3.9h3V20M7.5 20v-5h3v5M13.5 20v-6h3v6M5.5 12h2M16.5 12h2M10.5 11h3"/>
     </symbol>
     <symbol id="sigian-nav-archive" viewBox="0 0 24 24">
-      <path d="M3.5 5.5c2.8-.8 5.6-.5 8.5 1.4v12c-2.9-1.9-5.7-2.2-8.5-1.4zM20.5 5.5c-2.8-.8-5.6-.5-8.5 1.4v12c2.9-1.9 5.7-2.2 8.5-1.4zM12 6.9v12"/>
+      <text x="12" y="17" text-anchor="middle" fill="currentColor" stroke="none" font-size="17" font-family="Georgia, serif">⌘</text>
     </symbol>
     <symbol id="sigian-nav-play" viewBox="0 0 24 24">
       <path d="m9 7 8 5-8 5z"/>
@@ -41,7 +41,7 @@
       <path d="M12 12.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/>
     </symbol>
     <symbol id="sigian-shell-settings" viewBox="0 0 24 24">
-      <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7ZM12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M5.9 5.9l1.4 1.4M16.7 16.7l1.4 1.4M18.1 5.9l-1.4 1.4M7.3 16.7l-1.4 1.4"/>
+      <path d="M9.5 3.8 10.2 2h3.6l.7 1.8 1.8.8 1.8-.8 2.5 2.5-.8 1.8.8 1.8 1.8.7v3.6l-1.8.7-.8 1.8.8 1.8-2.5 2.5-1.8-.8-1.8.8-.7 1.8h-3.6l-.7-1.8-1.8-.8-1.8.8-2.5-2.5.8-1.8-.8-1.8-1.8-.7v-3.6l1.8-.7.8-1.8-.8-1.8 2.5-2.5 1.8.8zM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2z"/>
     </symbol>
     <symbol id="sigian-play-duel" viewBox="0 0 24 24">
       <path d="M5 4.5 19.5 19M19 4.5 4.5 19M6.5 3l2.5 2.5M17.5 3 15 5.5M3 17.5 5.5 20M21 17.5 18.5 20"/>
@@ -60,9 +60,10 @@
         <span class="sigian-brand-copy">
           <span class="classic-brand-main">SIGIAN</span>
           <span class="classic-brand-sub">Arcane Sigils</span>
-          <small class="app-version-badge" data-arcane-version>v0.61.55 · build e1a1da5</small>
+          <small class="app-version-badge" data-arcane-version>v0.61.56 · build 46ce83e</small>
         </span>
       </div>
+      <div class="sigian-shell-section-title" data-shell-section-title aria-live="polite">Gioca</div>
       <nav class="tabs classic-nav" data-player-navigation aria-label="Sezioni">
         <button class="tab classic-nav-item" data-view="academy" data-nav-group="academy" type="button">
           <span class="nav-icon-frame" aria-hidden="true"><svg class="nav-icon"><use href="#sigian-nav-academy"></use></svg></span>
@@ -76,15 +77,16 @@
           <span class="nav-icon-frame" aria-hidden="true"><svg class="nav-icon"><use href="#sigian-nav-play"></use></svg></span>
           <span class="nav-label" data-i18n="nav.play">Gioca</span>
         </button>
+        <button class="tab classic-nav-item" data-view="profile" data-nav-group="profile" type="button">
+          <span class="nav-icon-frame" aria-hidden="true"><svg class="nav-icon"><use href="#sigian-nav-path"></use></svg></span>
+          <span class="nav-label" data-i18n="nav.profile">Registro</span>
+        </button>
         <button class="tab classic-nav-item" data-view="forge" data-nav-group="forge" type="button">
           <span class="nav-icon-frame" aria-hidden="true"><svg class="nav-icon"><use href="#sigian-nav-forge"></use></svg></span>
           <span class="nav-label" data-i18n="nav.forge">Forgia</span>
         </button>
       </nav>
-      <div class="sigian-shell-utilities" aria-label="Registro e impostazioni">
-        <button class="sigian-shell-utility" type="button" data-shell-utility data-view-jump="profile" data-shell-target="profile" aria-label="Registro Accademico" title="Registro Accademico">
-          <svg class="sigian-shell-utility-icon" aria-hidden="true"><use href="#sigian-shell-profile"></use></svg>
-        </button>
+      <div class="sigian-shell-utilities" aria-label="Impostazioni">
         <button class="sigian-shell-utility" type="button" data-shell-utility data-view-jump="diagnostics" data-shell-target="diagnostics" aria-label="Opzioni" title="Opzioni">
           <svg class="sigian-shell-utility-icon" aria-hidden="true"><use href="#sigian-shell-settings"></use></svg>
         </button>
@@ -106,6 +108,10 @@
       <button class="mobile-nav-item mobile-nav-primary tab active" data-view="play" data-nav-group="play" type="button">
         <span class="mobile-nav-icon-frame" aria-hidden="true"><svg class="mobile-nav-icon"><use href="#sigian-nav-play"></use></svg></span>
         <span class="mobile-nav-label" data-i18n="nav.play">Gioca</span>
+      </button>
+      <button class="mobile-nav-item tab" data-view="profile" data-nav-group="profile" type="button">
+        <span class="mobile-nav-icon-frame" aria-hidden="true"><svg class="mobile-nav-icon"><use href="#sigian-nav-path"></use></svg></span>
+        <span class="mobile-nav-label" data-i18n="nav.profile">Registro</span>
       </button>
       <button class="mobile-nav-item tab" data-view="forge" data-nav-group="forge" type="button">
         <span class="mobile-nav-icon-frame" aria-hidden="true"><svg class="mobile-nav-icon"><use href="#sigian-nav-forge"></use></svg></span>
@@ -405,12 +411,12 @@
       <section id="multiplayerView" class="view">
         <section class="multiplayer-screen classic-menu-screen play-deep-screen play-multiplayer-screen">
           <div class="multiplayer-stage play-deep-stage">
-            <div class="multiplayer-panel parchment-panel classic-menu-config play-mode-panel play-multiplayer-panel">
           <nav class="play-mode-switch sigian-ui-tabset" data-play-mode-navigation aria-label="Modalità di gioco">
             <button class="play-mode-tab sigian-ui-tab" type="button" data-mode-view="game" data-i18n="nav.duel">Duello</button>
             <button class="play-mode-tab sigian-ui-tab multiplayer-nav hidden is-active" type="button" data-mode-view="multiplayer" data-i18n="nav.multiplayer">Multiplayer</button>
             <button class="play-mode-tab sigian-ui-tab" type="button" data-mode-view="tournament" data-i18n="nav.tournament">Torneo</button>
           </nav>
+            <div class="multiplayer-panel parchment-panel classic-menu-config play-mode-panel play-multiplayer-panel">
               <header class="play-deep-heading">
                 <span class="play-deep-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#sigian-play-multiplayer"></use></svg></span>
                 <div><span class="classic-menu-kicker" data-i18n="nav.multiplayer">Multiplayer</span><h2 data-i18n="online.title">Partita online</h2><p class="multiplayer-intro" data-i18n="online.intro">Crea una stanza privata oppure entra con il codice ricevuto da un altro giocatore.</p></div>
@@ -733,12 +739,12 @@
       <section id="tournamentView" class="view classic-tournament-view">
         <section class="classic-menu-screen unified-menu-screen play-deep-screen play-tournament-screen">
           <div class="unified-menu-stage play-deep-stage play-tournament-stage">
-          <div class="classic-tournament-board parchment-panel unified-menu-panel classic-menu-config play-mode-panel play-tournament-panel">
           <nav class="play-mode-switch sigian-ui-tabset" data-play-mode-navigation aria-label="Modalità di gioco">
             <button class="play-mode-tab sigian-ui-tab" type="button" data-mode-view="game" data-i18n="nav.duel">Duello</button>
             <button class="play-mode-tab sigian-ui-tab multiplayer-nav hidden" type="button" data-mode-view="multiplayer" data-i18n="nav.multiplayer">Multiplayer</button>
             <button class="play-mode-tab sigian-ui-tab is-active" type="button" data-mode-view="tournament" data-i18n="nav.tournament">Torneo</button>
           </nav>
+          <div class="classic-tournament-board parchment-panel unified-menu-panel classic-menu-config play-mode-panel play-tournament-panel">
             <header class="play-deep-heading">
               <span class="play-deep-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#sigian-play-tournament"></use></svg></span>
               <div><span class="classic-menu-kicker" data-i18n="nav.tournament">Torneo</span><h2 data-i18n="tournament.title">Torneo Sigian</h2></div>
@@ -907,8 +913,26 @@
         </div>
       </section>
 
-      <section id="rulesView" class="view">
-        <section class="classic-menu-screen unified-menu-screen"><div class="unified-menu-stage"><section class="parchment-panel unified-menu-panel classic-menu-config rules player-help-page"><span class="classic-menu-kicker" data-i18n="nav.howToPlay">Come si gioca</span><h2 data-i18n="help.title">Come si gioca</h2><div id="rulesetContent"></div></section></div></section>
+      <section id="rulesView" class="view archive-view">
+        <section class="classic-menu-screen unified-menu-screen archive-game-screen">
+          <div class="unified-menu-stage archive-menu-stage archive-game-stage">
+            <div class="parchment-panel unified-menu-panel classic-menu-config collection-page-shell archive-page-shell archive-codex-frame library-guide-page">
+              <header class="archive-heading archive-codex-heading sigian-ui-section-header library-guide-heading">
+                <div class="archive-codex-heading-main">
+                  <span class="archive-codex-heading-icon" aria-hidden="true"><svg><use href="#sigian-nav-archive"></use></svg></span>
+                  <div><span class="classic-menu-kicker" data-i18n="nav.library">Biblioteca</span><h2 data-i18n="help.title">Come si gioca</h2></div>
+                </div>
+              </header>
+              <nav class="archive-scope-switch sigian-ui-tabset archive-codex-scope library-guide-scope" role="tablist" aria-label="Biblioteca">
+                <button type="button" data-view-jump="cards" role="tab" aria-selected="false" data-i18n="archive.codex">Codex</button>
+                <button type="button" data-view-jump="inventory" role="tab" aria-selected="false" data-i18n="archive.inventory">Inventario</button>
+                <button type="button" data-view-jump="chronicles" role="tab" aria-selected="false" data-i18n="archive.chronicles">Cronache</button>
+                <button type="button" data-view-jump="rules" class="active" role="tab" aria-selected="true" data-i18n="nav.howToPlay">Come si gioca</button>
+              </nav>
+              <section class="rules player-help-page library-guide-content"><div id="rulesetContent"></div></section>
+            </div>
+          </div>
+        </section>
       </section>
 
       <section id="diagnosticsView" class="view">
@@ -933,7 +957,7 @@
               <input id="optionsBgmVolume" type="range" min="0" max="100" value="12">
             </label>
           </div>
-          <p class="app-version-info">Sigian <span data-arcane-version>v0.61.55 · build e1a1da5</span></p>
+          <p class="app-version-info">Sigian <span data-arcane-version>v0.61.56 · build 46ce83e</span></p>
           <div class="options-actions"><button id="resetPreferencesBtn" class="classic-stone-button ghost" data-i18n="options.resetPreferences">Ripristina preferenze</button><button id="resetProfileBtn" class="classic-stone-button ghost danger" data-i18n="options.resetProgress">Azzera progressi e tornei</button></div>
           <details class="advanced-diagnostics dev-only hidden">
             <summary>Strumenti tecnici e diagnostica</summary>
@@ -989,71 +1013,71 @@
     </div>
   </div>
 
-  <script src="src/core/constants.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/rng.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/data/cards.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/data/original-cards.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/i18n/en.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/i18n/it.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/i18n/ui-labels.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/i18n/index.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/card-schema.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-foundation.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-registry.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-content-catalog.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-progression-model.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/account-progression.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/academy-progression.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-collectible-catalog.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-recipe.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-crafting.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-forge.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-compiler.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/data/astral-ai-card-metadata.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/original-rules.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/generator.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/astral-abilities-re.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/astral-spellbook-re.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/passives.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/effects.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/astral-card-effects-re.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/data/sigian-base-recipes.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/data/sigian-base-canonical.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-description-composer.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-inventory.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-component-instances.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-formula-instances.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-formula-compositions.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-recipebook.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-forge-commit.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-grimoires.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/data/sigian-formulas.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-runtime.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/game-engine.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/multiplayer-protocol.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/account/online-account.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/multiplayer/remote-room-client.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/ai.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/astral-ai-re.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-calibration.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-atomic.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-fit.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-oracle.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-candidate.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-hybrid.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-stress.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-value-production.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/sigian-forge-math.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/core/tournament.js?v=0.61.55-e1a1da5"></script>
-  <script src="tests/golden-replay-fixtures.js?v=0.61.55-e1a1da5"></script>
-  <script src="tests/test-suite.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/ui/navigation.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/ui/pause-menu.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/ui/tournament-view.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/ui/forge-ui-lab.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/data/sigian-chronicles.js?v=0.61.55-e1a1da5"></script>\n  <script src="src/ui/archive-browser.js?v=0.61.55-e1a1da5"></script>
-  <script src="src/ui/app.js?v=0.61.55-e1a1da5"></script>
-  <script src="pwa-install-v2.js?v=0.61.55-e1a1da5"></script>
+  <script src="src/core/constants.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/rng.js?v=0.61.56-46ce83e"></script>
+  <script src="src/data/cards.js?v=0.61.56-46ce83e"></script>
+  <script src="src/data/original-cards.js?v=0.61.56-46ce83e"></script>
+  <script src="src/i18n/en.js?v=0.61.56-46ce83e"></script>
+  <script src="src/i18n/it.js?v=0.61.56-46ce83e"></script>
+  <script src="src/i18n/ui-labels.js?v=0.61.56-46ce83e"></script>
+  <script src="src/i18n/index.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/card-schema.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-foundation.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-registry.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-content-catalog.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-progression-model.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/account-progression.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/academy-progression.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-collectible-catalog.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-recipe.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-crafting.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-forge.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-compiler.js?v=0.61.56-46ce83e"></script>
+  <script src="src/data/astral-ai-card-metadata.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/original-rules.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/generator.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/astral-abilities-re.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/astral-spellbook-re.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/passives.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/effects.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/astral-card-effects-re.js?v=0.61.56-46ce83e"></script>
+  <script src="src/data/sigian-base-recipes.js?v=0.61.56-46ce83e"></script>
+  <script src="src/data/sigian-base-canonical.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-description-composer.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-inventory.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-component-instances.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-formula-instances.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-formula-compositions.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-recipebook.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-forge-commit.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-grimoires.js?v=0.61.56-46ce83e"></script>
+  <script src="src/data/sigian-formulas.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-runtime.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/game-engine.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/multiplayer-protocol.js?v=0.61.56-46ce83e"></script>
+  <script src="src/account/online-account.js?v=0.61.56-46ce83e"></script>
+  <script src="src/multiplayer/remote-room-client.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/ai.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/astral-ai-re.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-calibration.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-atomic.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-fit.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-oracle.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-candidate.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-hybrid.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-stress.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-value-production.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/sigian-forge-math.js?v=0.61.56-46ce83e"></script>
+  <script src="src/core/tournament.js?v=0.61.56-46ce83e"></script>
+  <script src="tests/golden-replay-fixtures.js?v=0.61.56-46ce83e"></script>
+  <script src="tests/test-suite.js?v=0.61.56-46ce83e"></script>
+  <script src="src/ui/navigation.js?v=0.61.56-46ce83e"></script>
+  <script src="src/ui/pause-menu.js?v=0.61.56-46ce83e"></script>
+  <script src="src/ui/tournament-view.js?v=0.61.56-46ce83e"></script>
+  <script src="src/ui/forge-ui-lab.js?v=0.61.56-46ce83e"></script>
+  <script src="src/data/sigian-chronicles.js?v=0.61.56-46ce83e"></script>\n  <script src="src/ui/archive-browser.js?v=0.61.56-46ce83e"></script>
+  <script src="src/ui/app.js?v=0.61.56-46ce83e"></script>
+  <script src="pwa-install-v2.js?v=0.61.56-46ce83e"></script>
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -1061,7 +1085,7 @@
           const battle = document.querySelector("#battlePanel");
           return Boolean(battle && !battle.classList.contains("hidden"));
         };
-        navigator.serviceWorker.register("./service-worker.js?v=0.61.55-e1a1da5", { updateViaCache: "none" })
+        navigator.serviceWorker.register("./service-worker.js?v=0.61.56-46ce83e", { updateViaCache: "none" })
           .then(registration => {
             const checkForUpdate = () => {
               if (duelIsActive()) return;

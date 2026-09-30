@@ -12,9 +12,44 @@
     forge:"forge",
     uiLab:"forge",
     academy:"academy",
-    profile:"academy",
-    rules:"utility",
+    profile:"profile",
+    rules:"archive",
     diagnostics:"utility"
+  });
+
+  const sheetLockOwners = new Set();
+  let sheetLockScrollY = null;
+
+  function applySheetLock() {
+    const shouldLock = sheetLockOwners.size > 0;
+    if (shouldLock && sheetLockScrollY === null) {
+      sheetLockScrollY = Math.max(0, window.scrollY || document.documentElement.scrollTop || 0);
+      document.body.style.setProperty("--sigian-sheet-scroll-offset", `-${sheetLockScrollY}px`);
+      document.body.classList.add("sigian-sheet-open");
+      return;
+    }
+    if (!shouldLock && sheetLockScrollY !== null) {
+      const restoreY = sheetLockScrollY;
+      sheetLockScrollY = null;
+      document.body.classList.remove("sigian-sheet-open");
+      document.body.style.removeProperty("--sigian-sheet-scroll-offset");
+      requestAnimationFrame(() => window.scrollTo(0, restoreY));
+    }
+  }
+
+  const menuSheetLock = Object.freeze({
+    lock(owner) {
+      const key = String(owner || "sheet");
+      sheetLockOwners.add(key);
+      applySheetLock();
+    },
+    unlock(owner) {
+      sheetLockOwners.delete(String(owner || "sheet"));
+      applySheetLock();
+    },
+    isLocked() {
+      return sheetLockOwners.size > 0;
+    }
   });
 
   function createNavigation(options = {}) {
@@ -46,6 +81,7 @@
       developerMode,
       setActive(viewName) {
         const group = VIEW_GROUPS[viewName] || null;
+        const titleNode = document.querySelector("[data-shell-section-title]");
         tabs.forEach(tab => {
           const active = tab.dataset.view === viewName
             || Boolean(group && tab.dataset.navGroup === group);
@@ -64,9 +100,17 @@
           if (active) control.setAttribute("aria-current", "page");
           else control.removeAttribute("aria-current");
         });
+        if (titleNode) {
+          const primary = tabs.find(tab => tab.dataset.navGroup === group) || tabs.find(tab => tab.dataset.view === viewName);
+          const label = primary?.querySelector(".nav-label, .mobile-nav-label")?.textContent?.trim()
+            || (viewName === "diagnostics" ? document.querySelector('[data-shell-target="diagnostics"]')?.getAttribute("aria-label") : "")
+            || "";
+          titleNode.textContent = label;
+        }
       }
     });
   }
 
+  A.MenuSheetLock = menuSheetLock;
   A.UINavigation = Object.freeze({ create: createNavigation });
 })(window.Arcane = window.Arcane || {});

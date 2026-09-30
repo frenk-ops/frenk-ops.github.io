@@ -61,6 +61,7 @@
         selectedGrimoireId:null,
         targetGrimoireId:null,
         detailOpen:false,
+        returnFocus:null,
         formula:{ search:"", school:"all", type:"all", level:"all", sigil:"all", constraint:"all", page:1 },
         recipe:{ search:"", origin:"all", school:"all" },
         sigil:{ search:"", family:null, grade:"all", affinity:"all", school:"all" },
@@ -121,6 +122,7 @@
         <button type="button" data-archive-scope="collection" class="${scope === "collection" ? "active" : ""}" role="tab" aria-selected="${scope === "collection"}">${escapeHtml(t("archive.codex"))}</button>
         <button type="button" data-archive-scope="inventory" class="${scope === "inventory" ? "active" : ""}" role="tab" aria-selected="${scope === "inventory"}">${escapeHtml(t("archive.inventory"))}</button>
         <button type="button" data-archive-scope="chronicles" class="${scope === "chronicles" ? "active" : ""}" role="tab" aria-selected="${scope === "chronicles"}">${escapeHtml(t("archive.chronicles"))}</button>
+        <button type="button" data-archive-scope="guide" role="tab" aria-selected="false">${escapeHtml(t("nav.howToPlay"))}</button>
       </div>`;
   }
 
@@ -1036,21 +1038,108 @@
     return state.cosmetic;
   }
 
+  function archiveLockOwner(scope) {
+    return `archive-detail-${scope}`;
+  }
+
+  function rememberArchiveDetailTrigger(state, node) {
+    if (!state || !node) return;
+    const attributes = ["data-archive-item", "data-archive-recipe", "data-archive-component-group", "data-grimoire-select"];
+    const attribute = attributes.find(name => node.hasAttribute?.(name));
+    const value = attribute ? node.getAttribute(attribute) : "";
+    if (attribute && value) state.returnFocus = { attribute, value };
+  }
+
+  function restoreArchiveDetailFocus(state, root) {
+    const token = state?.returnFocus;
+    let target = null;
+    if (token?.attribute && token?.value) {
+      target = Array.from(root.querySelectorAll(`[${token.attribute}]`))
+        .find(node => node.getAttribute(token.attribute) === token.value) || null;
+    }
+    target ||= root.querySelector("[data-archive-section].active, [data-archive-jump].active, [data-archive-search]");
+    target?.focus?.({ preventScroll:true });
+  }
+
+  function syncArchiveDetailLock(state, scope) {
+    const mobile = window.matchMedia?.("(max-width:980px)")?.matches;
+    if (state?.detailOpen && mobile) A.MenuSheetLock?.lock?.(archiveLockOwner(scope));
+    else A.MenuSheetLock?.unlock?.(archiveLockOwner(scope));
+  }
+
+  function bindArchiveDetailDrag(root, state, scope) {
+    const handle = root.querySelector("[data-archive-detail-drag]");
+    const sheet = root.querySelector(".archive-detail-sheet");
+    if (!handle || !sheet || !window.matchMedia?.("(max-width:980px)")?.matches) return;
+    let pointerId = null;
+    let startY = 0;
+    let lastY = 0;
+    let dragging = false;
+
+    const reset = () => {
+      sheet.style.removeProperty("transform");
+      sheet.style.removeProperty("transition");
+      handle.classList.remove("is-dragging");
+      dragging = false;
+      pointerId = null;
+    };
+    const finish = event => {
+      if (pointerId === null || (event.pointerId != null && event.pointerId !== pointerId)) return;
+      const delta = Math.max(0, lastY - startY);
+      try { handle.releasePointerCapture?.(pointerId); } catch {}
+      if (delta >= 72) {
+        handle.classList.remove("is-dragging");
+        closeDetail(state, root, scope);
+        return;
+      }
+      sheet.style.transition = "transform 150ms ease";
+      sheet.style.transform = "translateY(0)";
+      window.setTimeout(reset, 170);
+    };
+
+    handle.addEventListener("pointerdown", event => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      pointerId = event.pointerId;
+      startY = lastY = event.clientY;
+      dragging = true;
+      handle.classList.add("is-dragging");
+      sheet.style.transition = "none";
+      handle.setPointerCapture?.(pointerId);
+      event.preventDefault();
+    });
+    handle.addEventListener("pointermove", event => {
+      if (!dragging || event.pointerId !== pointerId) return;
+      lastY = event.clientY;
+      const delta = Math.max(0, lastY - startY);
+      sheet.style.transform = `translateY(${Math.min(delta, 180)}px)`;
+      event.preventDefault();
+    });
+    handle.addEventListener("pointerup", finish);
+    handle.addEventListener("pointercancel", finish);
+    handle.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " " && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      closeDetail(state, root, scope);
+    });
+  }
+
   function closeDetail(state, root, scope) {
     const panel = root.querySelector(".archive-detail-panel");
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     const mobileSheet = window.matchMedia?.("(max-width:980px)")?.matches;
-    if (!state.detailOpen || !panel || reducedMotion || !mobileSheet) {
+    const finalize = () => {
       state.detailOpen = false;
+      syncArchiveDetailLock(state, scope);
       render(root, scope);
+      restoreArchiveDetailFocus(state, root);
+    };
+    if (!state.detailOpen || !panel || reducedMotion || !mobileSheet) {
+      finalize();
       return;
     }
     if (panel.classList.contains("is-closing")) return;
     panel.classList.add("is-closing");
-    window.setTimeout(() => {
-      state.detailOpen = false;
-      render(root, scope);
-    }, 105);
+    window.setTimeout(finalize, 105);
   }
 
   function bind(root, scope, data, state) {
@@ -1118,6 +1207,7 @@
     root.querySelectorAll("[data-archive-item]").forEach(item => {
       item.addEventListener("click", event => {
         if (event.target.closest?.("[data-sigian-inspect]")) return;
+        rememberArchiveDetailTrigger(state, item);
         state.selectedId = item.dataset.archiveItem;
         state.selectedComponentId = null;
         state.detailOpen = true;
@@ -1127,6 +1217,7 @@
         if (event.key !== "Enter" && event.key !== " ") return;
         if (event.target.closest?.("[data-sigian-inspect]")) return;
         event.preventDefault();
+        rememberArchiveDetailTrigger(state, item);
         state.selectedId = item.dataset.archiveItem;
         state.selectedComponentId = null;
         state.detailOpen = true;
@@ -1145,6 +1236,7 @@
 
     root.querySelectorAll("[data-archive-recipe]").forEach(item => {
       const open = () => {
+        rememberArchiveDetailTrigger(state, item);
         state.selectedId = item.dataset.archiveRecipe;
         state.selectedComponentId = null;
         state.detailOpen = true;
@@ -1171,6 +1263,7 @@
     }));
 
     root.querySelectorAll("[data-archive-component-group]").forEach(button => button.addEventListener("click", () => {
+      rememberArchiveDetailTrigger(state, button);
       state.selectedId = button.dataset.archiveComponentGroup;
       state.detailOpen = true;
       render(root, scope);
@@ -1195,6 +1288,7 @@
     }));
 
     root.querySelector("[data-archive-detail-close]")?.addEventListener("click", () => closeDetail(state, root, scope));
+    bindArchiveDetailDrag(root, state, scope);
 
     const detailPanel = root.querySelector(".archive-detail-panel");
     detailPanel?.addEventListener("click", event => {
@@ -1253,6 +1347,7 @@
     }));
 
     root.querySelectorAll("[data-grimoire-select]").forEach(button => button.addEventListener("click", () => {
+      rememberArchiveDetailTrigger(state, button);
       state.selectedGrimoireId = button.dataset.grimoireSelect;
       state.targetGrimoireId = button.dataset.grimoireSelect;
       state.detailOpen = true;
@@ -1350,6 +1445,9 @@
     root.querySelectorAll("[data-archive-scope]").forEach(button => button.addEventListener("click", () => {
       const next = button.dataset.archiveScope;
       if (next === scope) return;
+      const state = states.get(scope);
+      if (state) state.detailOpen = false;
+      A.MenuSheetLock?.unlock?.(archiveLockOwner(scope));
       window.dispatchEvent(new CustomEvent("sigian:archive-scope-request", { detail:{ scope:next } }));
     }));
   }
@@ -1383,8 +1481,8 @@
               <p>${escapeHtml(t("archive.chroniclesIntro"))}</p>
             </div>
           </div>
-          ${scopeToggleMarkup("chronicles")}
         </header>
+        ${scopeToggleMarkup("chronicles")}
 
         <section class="chronicles-foundation sigian-ui-panel" aria-labelledby="chroniclesFoundationTitle">
           <span class="classic-menu-kicker">${escapeHtml(t("archive.chronicles"))}</span>
@@ -1435,8 +1533,8 @@
               <p>${intro}</p>
             </div>
           </div>
-          ${scopeToggleMarkup(scope)}
         </header>
+        ${scopeToggleMarkup(scope)}
 
         ${scope === "inventory" ? inventoryOverviewMarkup(data, grimoires, state) : sectionTabsMarkup(state, scope, data, grimoires)}
 
@@ -1449,6 +1547,7 @@
           <main class="archive-list-panel archive-codex-index">${content.list}</main>
           <aside class="archive-detail-panel archive-codex-detail" aria-label="${escapeHtml(t("archive.selectionDetail"))}" tabindex="-1">
             <div class="archive-detail-sheet archive-codex-inspector sigian-ui-codex sigian-ui-bottom-sheet">
+              <button type="button" class="archive-detail-drag-handle" data-archive-detail-drag aria-label="${escapeHtml(t("archive.closeDetails"))}"><span aria-hidden="true"></span></button>
               <button type="button" class="archive-detail-close" data-archive-detail-close aria-label="${escapeHtml(t("archive.closeDetails"))}">×</button>
               ${content.detail}
             </div>
@@ -1457,6 +1556,7 @@
       </div>`;
 
     mountFormulaFullCards(root, data);
+    syncArchiveDetailLock(state, scope);
     bind(root, scope, data, state);
     if (state.detailOpen && window.matchMedia?.("(max-width:980px)")?.matches) {
       window.requestAnimationFrame?.(() => root.querySelector("[data-archive-detail-close]")?.focus?.({ preventScroll:true }));
