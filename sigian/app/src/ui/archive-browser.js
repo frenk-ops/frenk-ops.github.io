@@ -1468,6 +1468,18 @@
       </div>`;
   }
 
+  function chronicleFormulaRefsMarkup(entry) {
+    const ids = Array.isArray(entry?.representativeFormulaIds) ? entry.representativeFormulaIds : [];
+    if (!ids.length) return "";
+    return `
+      <div class="chronicles-formula-evidence" data-chronicle-formula-evidence="${escapeHtml(entry.id)}">
+        <h5>${escapeHtml(t("chronicles.entry.representativeFormulas"))}</h5>
+        <div class="chronicles-formula-chips">
+          ${ids.map(id => `<span class="chronicles-formula-chip" data-chronicle-formula-id="${escapeHtml(id)}">${escapeHtml(t(`cards.${id}.name`))}</span>`).join("")}
+        </div>
+      </div>`;
+  }
+
   function chronicleEntryMarkup(entry) {
     const schoolId = String(entry.formativeSchoolId || "");
     return `
@@ -1496,6 +1508,19 @@
               <section class="chronicles-entry-gameplay">
                 <h4>${escapeHtml(t("chronicles.entry.formulaExpression"))}</h4>
                 <p>${escapeHtml(t(entry.formulaExpressionKey))}</p>
+              </section>
+              <section class="chronicles-entry-legacy">
+                <h4>${escapeHtml(t("chronicles.entry.legacyProfile"))}</h4>
+                <p>${escapeHtml(t(entry.legacyProfileKey))}</p>
+                ${chronicleFormulaRefsMarkup(entry)}
+              </section>
+              <section class="chronicles-entry-signature">
+                <h4>${escapeHtml(t("chronicles.entry.sigianSignature"))}</h4>
+                <p>${escapeHtml(t(entry.sigianSignatureKey))}</p>
+              </section>
+              <section class="chronicles-entry-boundary">
+                <h4>${escapeHtml(t("chronicles.entry.boundary"))}</h4>
+                <p>${escapeHtml(t(entry.boundaryKey))}</p>
               </section>
             </div>
             <dl>
