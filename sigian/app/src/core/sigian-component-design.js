@@ -11,6 +11,8 @@
     dissonant:"Dissonante"
   });
   const ADHERENCE_VALUE = Object.freeze({ core:3, compatible:2, exotic:1, dissonant:0 });
+  const PRIMARY_TAG_WEIGHT = 0.7;
+  const SECONDARY_TAG_WEIGHT = 0.3;
   const ADHERENCE_RARITY = Object.freeze({ core:0, compatible:0.35, exotic:1.25, dissonant:2.2 });
   const COMPATIBILITY_BY_SIZE = Object.freeze({ 1:"mono", 2:"dual", 3:"triple" });
   const COMPATIBILITY_RARITY = Object.freeze({ mono:0, dual:0.12, triple:0.55, universal:1.25 });
@@ -217,6 +219,12 @@
     "v2-constraint-overpower-school":["conditional-risk","self-risk"]
   });
 
+  const PRIMARY_TAG_OVERRIDES_BY_ID = Object.freeze({
+    // Soglia/Limite are state-control gates first and conditional risks second.
+    "v2-constraint-threshold-school":"state-control",
+    "v2-constraint-limit-school":"state-control"
+  });
+
   const ADHERENCE_OVERRIDES_BY_ID = Object.freeze({
     // Explicit design anchor agreed for Danno Incantatore. Terra remains derived
     // from the general grammar until its case is reviewed explicitly.
@@ -275,8 +283,30 @@
     return tags;
   }
 
+  function primaryTagFor(definition, tags, options = {}) {
+    const explicit = options.primaryTag || definition?.primaryTag || PRIMARY_TAG_OVERRIDES_BY_ID[definition?.id] || tags[0];
+    const primaryTag = String(explicit || "");
+    if (!tags.includes(primaryTag)) {
+      throw new Error(`Tag primario ${primaryTag || "-"} non presente nella classificazione di ${definition?.id || definition?.name || "nuovo componente"}.`);
+    }
+    return primaryTag;
+  }
+
+  function weightedSchoolScore(tags, primaryTag, school) {
+    const primaryValue = TAG_SCHOOL_VALUES[primaryTag]?.[school];
+    if (!Number.isFinite(primaryValue)) return null;
+    const secondaryValues = tags
+      .filter(tag => tag !== primaryTag)
+      .map(tag => TAG_SCHOOL_VALUES[tag]?.[school])
+      .filter(value => Number.isFinite(value));
+    if (!secondaryValues.length) return primaryValue;
+    const secondaryAverage = secondaryValues.reduce((sum, value) => sum + value, 0) / secondaryValues.length;
+    return primaryValue * PRIMARY_TAG_WEIGHT + secondaryAverage * SECONDARY_TAG_WEIGHT;
+  }
+
   function deriveAdherence(definition, tags, options = {}) {
     const schools = schoolOrder();
+    const primaryTag = primaryTagFor(definition, tags, options);
     const overrides = {
       ...(ADHERENCE_OVERRIDES_BY_ID[definition?.id] || {}),
       ...(definition?.adherence || {}),
@@ -287,22 +317,24 @@
     schools.forEach(school => {
       if (overrides[school]) {
         bySchool[school] = normalizeAdherence(overrides[school]);
-        evidence[school] = { source:"override", score:ADHERENCE_VALUE[bySchool[school]] };
+        evidence[school] = { source:"override", score:ADHERENCE_VALUE[bySchool[school]], primaryTag };
         return;
       }
-      const values = tags
-        .map(tag => TAG_SCHOOL_VALUES[tag]?.[school])
-        .filter(value => Number.isFinite(value));
-      if (!values.length) {
+      const score = weightedSchoolScore(tags, primaryTag, school);
+      if (!Number.isFinite(score)) {
         bySchool[school] = null;
-        evidence[school] = { source:"unclassified", score:null };
+        evidence[school] = { source:"unclassified", score:null, primaryTag };
         return;
       }
-      const score = values.reduce((sum, value) => sum + value, 0) / values.length;
       bySchool[school] = scoreToAdherence(score);
-      evidence[school] = { source:"grammar", score:round(score) };
+      evidence[school] = {
+        source:tags.length > 1 ? "weighted-grammar" : "grammar",
+        score:round(score),
+        primaryTag,
+        primaryWeight:tags.length > 1 ? PRIMARY_TAG_WEIGHT : 1
+      };
     });
-    return { bySchool, evidence };
+    return { bySchool, evidence, primaryTag };
   }
 
   function parseGradeProfile(definition) {
@@ -466,6 +498,7 @@
       summary:definition.summary || "",
       schoolReference:/<Scuola>/i.test(String(definition.name || "")),
       semanticTags:tags,
+      primaryTag:adherence.primaryTag,
       adherence:adherence.bySchool,
       adherenceEvidence:adherence.evidence,
       gradeProfile:clone(gradeProfile),
@@ -602,6 +635,7 @@
 
   A.SIGIAN_COMPONENT_DESIGN_SCHEMA_VERSION = COMPONENT_DESIGN_SCHEMA_VERSION;
   A.SIGIAN_COMPONENT_ADHERENCE_LEVELS = ADHERENCE_LEVELS;
+  A.SIGIAN_COMPONENT_PRIMARY_TAG_WEIGHT = PRIMARY_TAG_WEIGHT;
   A.SIGIAN_COMPONENT_ADHERENCE_LABELS = ADHERENCE_LABELS;
   A.SIGIAN_COMPONENT_RARITY_TIERS = RARITY_TIERS;
   A.SIGIAN_COMPONENT_SEMANTIC_TAGS = TAGS_BY_ID;
