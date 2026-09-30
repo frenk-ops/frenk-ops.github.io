@@ -1452,10 +1452,53 @@
     }));
   }
 
+  function chronicleEntryArtMarkup(entry) {
+    const art = entry?.media?.environmentArt;
+    if (!art) return "";
+    if (art.src) {
+      return `
+        <figure class="chronicles-entry-art" data-chronicle-art-slot="${escapeHtml(art.slotId || entry.id)}">
+          <img src="${escapeHtml(art.src)}" alt="${escapeHtml(t(art.altKey))}" loading="lazy" decoding="async">
+        </figure>`;
+    }
+    return `
+      <div class="chronicles-entry-art chronicles-entry-art-placeholder" data-chronicle-art-slot="${escapeHtml(art.slotId || entry.id)}" aria-label="${escapeHtml(t(art.altKey))}">
+        <span aria-hidden="true">◇</span>
+        <small>${escapeHtml(t("chronicles.environmentArtPending"))}</small>
+      </div>`;
+  }
+
+  function chronicleEntryMarkup(entry) {
+    const schoolId = String(entry.formativeSchoolId || "");
+    return `
+      <details class="chronicles-entry-card" data-chronicle-entry="${escapeHtml(entry.id)}" data-chronicle-school="${escapeHtml(schoolId)}">
+        <summary>
+          <span class="chronicles-entry-school-icon" aria-hidden="true">${schoolIconMarkup(schoolId, "school-icon-svg chronicles-school-icon")}</span>
+          <span class="chronicles-entry-heading">
+            <strong>${escapeHtml(t(entry.titleKey))}</strong>
+            <small>${escapeHtml(t(entry.subtitleKey))}</small>
+          </span>
+          <span class="chronicles-entry-chevron" aria-hidden="true">›</span>
+        </summary>
+        <div class="chronicles-entry-content">
+          ${chronicleEntryArtMarkup(entry)}
+          <div class="chronicles-entry-copy">
+            <p class="chronicles-entry-summary">${escapeHtml(t(entry.summaryKey))}</p>
+            <dl>
+              <div><dt>${escapeHtml(t("chronicles.entry.specialization"))}</dt><dd>${escapeHtml(t(entry.specializationKey))}</dd></div>
+              <div><dt>${escapeHtml(t("chronicles.entry.identity"))}</dt><dd>${escapeHtml(t(entry.identityKey))}</dd></div>
+              <div><dt>${escapeHtml(t("chronicles.entry.visual"))}</dt><dd>${escapeHtml(t(entry.visualKey))}</dd></div>
+              <div><dt>${escapeHtml(t("chronicles.entry.environment"))}</dt><dd>${escapeHtml(t(entry.environmentKey))}</dd></div>
+            </dl>
+          </div>
+        </div>
+      </details>`;
+  }
+
   function chronicleCategoryMarkup(category) {
     const entries = A.listSigianChronicleEntries?.(category.id) || [];
     return `
-      <article class="chronicles-category-card sigian-ui-panel" data-chronicle-category="${escapeHtml(category.id)}">
+      <article class="chronicles-category-card sigian-ui-panel ${entries.length ? "has-entries" : "is-empty"}" data-chronicle-category="${escapeHtml(category.id)}">
         <div class="chronicles-category-heading">
           <span class="chronicles-category-mark" aria-hidden="true">◇</span>
           <div>
@@ -1464,10 +1507,11 @@
           </div>
         </div>
         <p>${escapeHtml(t(category.descriptionKey))}</p>
-        <span class="chronicles-category-state">${escapeHtml(entries.length ? t("chronicles.entries", { count:entries.length }) : t("chronicles.empty"))}</span>
+        ${entries.length
+          ? `<div class="chronicles-entry-list">${entries.map(chronicleEntryMarkup).join("")}</div>`
+          : `<span class="chronicles-category-state">${escapeHtml(t("chronicles.empty"))}</span>`}
       </article>`;
   }
-
   function renderChronicles(root) {
     const categories = A.listSigianChronicleCategories?.() || [];
     root.innerHTML = `

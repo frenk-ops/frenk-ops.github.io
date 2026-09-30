@@ -809,8 +809,16 @@
     const academy = currentAcademyState();
     const level = Number(academy.level || A.normalizeAccountProgression?.(profile.accountProgression || { xp:0 })?.level || 1);
     const phaseLabel = t(`profile.academyPhase.${academy.phase}`);
+    const academySchoolLore = schoolId => A.getSigianSchoolChronicle?.(schoolId) || null;
+    const academySchoolDisplayName = schoolId => {
+      const lore = academySchoolLore(schoolId);
+      if (!lore) return schoolName(schoolId);
+      const title = t(lore.titleKey);
+      const subtitle = t(lore.subtitleKey);
+      return subtitle ? `${title} — ${subtitle}` : title;
+    };
     const schoolLabel = academy.formativeSchoolId
-      ? t("academy.school", { school:schoolName(academy.formativeSchoolId) })
+      ? t("academy.school", { school:academySchoolDisplayName(academy.formativeSchoolId) })
       : t("academy.schoolNone");
 
     const schoolAvailable = Boolean(academy.schoolSelectionUnlocked);
@@ -835,6 +843,7 @@
       || ""
     ).trim();
     const schoolChoices = A.SCHOOLS.map(item => {
+      const lore = academySchoolLore(item.id);
       const selected = academy.formativeSchoolId === item.id;
       const disabled = !academy.schoolChangeAllowed || selected;
       const stateLabel = selected
@@ -842,11 +851,21 @@
         : academy.schoolChangeAllowed
           ? t("academy.schools.select")
           : t("academy.sealed");
+      const title = lore ? t(lore.titleKey) : schoolName(item.id);
+      const tradition = lore ? t(lore.subtitleKey) : schoolName(item.id);
+      const summary = lore ? t(lore.summaryKey) : "";
       return `
         <button class="academy-school-choice ${selected ? "is-selected" : ""}" type="button"
-          data-academy-school-choice="${escapeHtml(item.id)}" ${disabled ? "disabled" : ""} aria-pressed="${selected ? "true" : "false"}">
+          data-academy-school-choice="${escapeHtml(item.id)}"
+          data-academy-school-lore-entry="${escapeHtml(lore?.id || "")}"
+          ${disabled ? "disabled" : ""} aria-pressed="${selected ? "true" : "false"}">
           <span class="academy-school-choice-icon" aria-hidden="true">${schoolIconMarkup(item.id, "school-icon-svg academy-school-icon")}</span>
-          <span class="academy-school-choice-copy"><strong>${escapeHtml(schoolName(item.id))}</strong><small>${escapeHtml(stateLabel)}</small></span>
+          <span class="academy-school-choice-copy">
+            <strong>${escapeHtml(title)}</strong>
+            <span class="academy-school-choice-tradition">${escapeHtml(tradition)}</span>
+            ${summary ? `<small class="academy-school-choice-summary">${escapeHtml(summary)}</small>` : ""}
+            <small class="academy-school-choice-state">${escapeHtml(stateLabel)}</small>
+          </span>
           <span class="academy-school-choice-mark" aria-hidden="true">${selected ? "✓" : "›"}</span>
         </button>`;
     }).join("");
@@ -1020,7 +1039,7 @@
         </div>
         ${academy.schoolConfirmationRequired && academy.formativeSchoolId ? `
           <div class="academy-school-confirmation">
-            <div><strong>${t("academy.schools.confirmTitle")}</strong><p>${t("academy.schools.confirmText", { school:schoolName(academy.formativeSchoolId) })}</p></div>
+            <div><strong>${t("academy.schools.confirmTitle")}</strong><p>${t("academy.schools.confirmText", { school:academySchoolDisplayName(academy.formativeSchoolId) })}</p></div>
             <button class="classic-stone-button" type="button" data-academy-school-confirm>${t("academy.schools.confirmAction")}</button>
           </div>` : ""}
         ${academy.schoolConfirmed ? `<p class="academy-school-locked-note">${t("profile.schoolConfirmedHint")}</p>` : ""}
