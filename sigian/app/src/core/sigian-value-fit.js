@@ -330,6 +330,7 @@
       standardizedCoefficients:coefficients,
       rawIntercept,
       rawWeights,
+      normalization:{ means:{ ...stats.means }, stds:{ ...stats.stds } },
       predict
     };
   }
@@ -452,6 +453,31 @@
       model
     };
   }
+
+  A.serializeSigianValueTargetRidge = function serializeSigianValueTargetRidge(model) {
+    const data = JSON.parse(JSON.stringify({ schemaVersion:model.schemaVersion, lambda:model.lambda,
+      featureNames:model.featureNames, standardizedCoefficients:model.standardizedCoefficients,
+      rawIntercept:model.rawIntercept, rawWeights:model.rawWeights, normalization:model.normalization }));
+    A.restoreSigianValueTargetRidge(data);
+    return data;
+  };
+
+  A.restoreSigianValueTargetRidge = function restoreSigianValueTargetRidge(input) {
+    const data = JSON.parse(JSON.stringify(input));
+    const names = data?.featureNames;
+    const coefficients = data?.standardizedCoefficients;
+    const stats = data?.normalization;
+    if (data?.schemaVersion !== FIT_SCHEMA_VERSION || !Array.isArray(names) || names[0] !== "bias"
+      || names.some(name => typeof name !== "string") || new Set(names).size !== names.length
+      || !Array.isArray(coefficients) || coefficients.length !== names.length || coefficients.some(value => !Number.isFinite(value))
+      || !Number.isFinite(data.lambda) || data.lambda < 0 || !Number.isFinite(data.rawIntercept)
+      || !stats || names.some(name => !Number.isFinite(stats.means?.[name]) || !Number.isFinite(stats.stds?.[name]) || stats.stds[name] <= 0)
+      || stats.means.bias !== 0 || stats.stds.bias !== 1) throw new Error("Modello ridge statico non valido.");
+    return { ...data, predict(sample) {
+      const row = rowForSample(sample, names, stats);
+      return row.reduce((sum, value, index) => sum + value * coefficients[index], 0);
+    } };
+  };
 
   A.SIGIAN_VALUE_FIT_SCHEMA_VERSION = FIT_SCHEMA_VERSION;
   A.sigianCalibrationRawFeatures = rawFeatures;

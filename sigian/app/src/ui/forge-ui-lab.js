@@ -1717,6 +1717,8 @@
 
   function render(target) {
     const root = target || document.getElementById("forgeUiLabContent");
+    if (root && A.ensureForgeModelForView && !A.ensureForgeModelForView(root, () => render(root),
+      () => document.getElementById("uiLabView")?.classList.contains("active"))) return;
     const session = ensureSession();
     if (!root || !session) return;
     const recipe = currentSnapshot().draft.recipe;

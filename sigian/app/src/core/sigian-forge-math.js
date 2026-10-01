@@ -16,6 +16,7 @@
   }
 
   function buildCore() {
+    if (A.SIGIAN_FORGE_STATIC_RUNTIME) return A.getPreparedSigianForgeMathCore();
     if (cachedCore) return cachedCore;
     if (cachedError) throw cachedError;
 
@@ -148,7 +149,7 @@
         evaluator:core.evaluator.evaluator,
         unit:core.evaluator.calibrationUnit,
         oracleQuantile:core.candidate.oracleQuantile,
-        baseSetSamples:core.samples.length
+        baseSetSamples:core.sampleCount ?? core.samples.length
       }
     };
   };

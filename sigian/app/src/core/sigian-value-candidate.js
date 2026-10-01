@@ -64,6 +64,12 @@
     return result;
   }
 
+  function capFromAnchors(anchors, slope, levelInput) {
+    const level = Math.max(1, Math.trunc(finite(levelInput, 1)));
+    if (level <= anchors.length) return anchors[level - 1];
+    return anchors[anchors.length - 1] + slope * (level - anchors.length);
+  }
+
   function buildCapCandidate(samples, model, options = {}) {
     const maxObservedLevel = Math.max(...samples.map(sample => Math.trunc(finite(sample.printedLevel, 1))));
     const quantileValue = Number.isFinite(Number(options.levelQuantile)) ? Number(options.levelQuantile) : 0.75;
@@ -92,9 +98,7 @@
     const continuationSlope = Math.max(minimumStep, median(recentDeltas) || minimumStep || 1);
 
     function capForLevel(levelInput) {
-      const level = Math.max(1, Math.trunc(finite(levelInput, 1)));
-      if (level <= monotoneAnchors.length) return monotoneAnchors[level - 1];
-      return monotoneAnchors[monotoneAnchors.length - 1] + continuationSlope * (level - monotoneAnchors.length);
+      return capFromAnchors(monotoneAnchors, continuationSlope, levelInput);
     }
 
     return {
@@ -138,6 +142,17 @@
   A.SIGIAN_ORACLE_TARGET_QUANTILE = ORACLE_QUANTILE;
 
   A.buildSigianOracleTargetSamples = attachOracleTargets;
+
+  A.restoreSigianCapCandidate = function restoreSigianCapCandidate(input) {
+    const data = clone(input);
+    if (data?.schemaVersion !== CANDIDATE_SCHEMA_VERSION || !Array.isArray(data.anchors) || !data.anchors.length
+      || data.anchors.some((value, index) => !Number.isFinite(value) || value < 0 || (index > 0 && value < data.anchors[index - 1]))
+      || !Number.isInteger(data.observedMaxLevel) || data.observedMaxLevel !== data.anchors.length
+      || !Number.isFinite(data.continuationSlope) || data.continuationSlope <= 0
+      || !Number.isFinite(data.levelQuantile) || data.levelQuantile < 0 || data.levelQuantile > 1
+      || !Number.isFinite(data.minimumStep) || data.minimumStep < 0) throw new Error("Curva costo statica non valida.");
+    return { ...data, capForLevel(level) { return capFromAnchors(data.anchors, data.continuationSlope, level); } };
+  };
 
   A.fitSigianOracleStrengthCandidate = function fitSigianOracleStrengthCandidate(samples, options = {}) {
     const fit = A.fitSigianValueTargetCandidate(samples, {

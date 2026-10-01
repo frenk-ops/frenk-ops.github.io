@@ -6,6 +6,20 @@
   const t = (key, vars) => A.i18n?.t(key, vars) ?? key;
   const APP_VERSION = String(document.querySelector('meta[name="arcane-app-version"]')?.content || "").trim();
   A.APP_VERSION = APP_VERSION;
+  const DOCUMENT_REVISION = document.currentScript?.src ? new URL(document.currentScript.src).searchParams.get("v") : null;
+  if ("serviceWorker" in navigator && DOCUMENT_REVISION) {
+    const reportRevision = () => navigator.serviceWorker.controller?.postMessage({
+      type: "ARCANE_CLIENT_REVISION", revision: DOCUMENT_REVISION
+    });
+    navigator.serviceWorker.addEventListener("controllerchange", reportRevision);
+    navigator.serviceWorker.addEventListener("message", event => {
+      if (event.data?.type === "ARCANE_SW_ACTIVATED") reportRevision();
+    });
+    window.addEventListener("pageshow", reportRevision);
+    window.addEventListener("focus", reportRevision);
+    navigator.serviceWorker.ready.then(reportRevision).catch(() => {});
+    reportRevision();
+  }
   const localizedCard = card => A.i18n?.card(card) || { name: card?.name || "", description: card?.text || "" };
   const cardName = card => localizedCard(card).name;
   const cardText = card => localizedCard(card).description;
@@ -533,6 +547,8 @@
   let forgeCraftSuggestionRequest = null;
   let forgeVerticalCraftingOpen = false;
   let forgeHorizontalCraftingOpen = false;
+  const forgeCraftingPageSize = 8;
+  const forgeCraftingPages = { verticalFusion:0, verticalSplit:0, horizontalFusion:0, horizontalSplit:0 };
   const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
   const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
   const ACADEMY_SUMMONS_SEEN_KEY = "arcane.academy.summonsSeen.v1";
@@ -6764,6 +6780,24 @@
     return id;
   }
 
+  function forgeCraftingPage(items, key) {
+    const last = Math.max(0, Math.ceil(items.length / forgeCraftingPageSize) - 1);
+    const page = Math.max(0, Math.min(last, forgeCraftingPages[key] || 0));
+    forgeCraftingPages[key] = page;
+    return items.slice(page * forgeCraftingPageSize, (page + 1) * forgeCraftingPageSize);
+  }
+
+  function forgeCraftingPager(items, key) {
+    if (!items.length) return "";
+    const page = forgeCraftingPages[key];
+    const last = Math.max(0, Math.ceil(items.length / forgeCraftingPageSize) - 1);
+    return `<nav class="forge-crafting-pager" aria-label="Pagine ${key.endsWith('Fusion') ? 'fusioni' : 'scissioni'}">
+      <button type="button" class="classic-stone-button ghost" data-forge-crafting-page="${key}" data-page="${page - 1}" ${page === 0 ? 'disabled' : ''} aria-label="Pagina precedente">←</button>
+      <span role="status">${page * forgeCraftingPageSize + 1}–${Math.min(items.length, (page + 1) * forgeCraftingPageSize)} / ${items.length} · ${page + 1}/${last + 1}</span>
+      <button type="button" class="classic-stone-button ghost" data-forge-crafting-page="${key}" data-page="${page + 1}" ${page === last ? 'disabled' : ''} aria-label="Pagina successiva">→</button>
+    </nav>`;
+  }
+
   function forgeVerticalCraftingMarkup(recipe, transaction) {
     if (!forgeVerticalCraftingOpen) return `<details class="forge-vertical-crafting" data-forge-vertical-crafting><summary><span><strong>${escapeHtml(t("forge.vertical.title"))}</strong><small>${escapeHtml(t("forge.vertical.subtitle"))}</small></span><b>＋</b></summary></details>`;
     const options = A.listSigianVerticalCraftingOptions?.(transaction, {
@@ -6787,7 +6821,7 @@
         </div>`
       : "";
 
-    const fusionRows = options.fusions.map(option => {
+    const fusionRows = forgeCraftingPage(options.fusions, 'verticalFusion').map(option => {
       const source = forgeVerticalCraftingIdentity(option.inputInventoryId);
       const output = forgeVerticalCraftingIdentity(option.outputInventoryId);
       return `<article class="forge-vertical-option ${option.affinityNarrowed ? "is-narrowed" : ""}">
@@ -6802,7 +6836,7 @@
       </article>`;
     }).join("");
 
-    const splitRows = options.splits.map(option => {
+    const splitRows = forgeCraftingPage(options.splits, 'verticalSplit').map(option => {
       const source = forgeVerticalCraftingIdentity(option.inputInventoryId);
       const output = forgeVerticalCraftingIdentity(option.outputInventoryId);
       return `<article class="forge-vertical-option">
@@ -6826,10 +6860,12 @@
         ${staged}
         <section>
           <h4>${escapeHtml(t("forge.vertical.availableFusions"))}</h4>
+          ${forgeCraftingPager(options.fusions, 'verticalFusion')}
           <div class="forge-vertical-options">${fusionRows || `<p class="forge-empty-note">${escapeHtml(t("forge.vertical.noFusion"))}</p>`}</div>
         </section>
         <section>
           <h4>${escapeHtml(t("forge.vertical.availableSplits"))}</h4>
+          ${forgeCraftingPager(options.splits, 'verticalSplit')}
           <div class="forge-vertical-options">${splitRows || `<p class="forge-empty-note">${escapeHtml(t("forge.vertical.noSplit"))}</p>`}</div>
         </section>
       </div>
@@ -6858,7 +6894,7 @@
         </div>`
       : "";
 
-    const fusionRows = options.fusions.map(option => {
+    const fusionRows = forgeCraftingPage(options.fusions, 'horizontalFusion').map(option => {
       const left = A.getSigianCollectibleSigil?.(option.leftCollectibleId);
       const right = A.getSigianCollectibleSigil?.(option.rightCollectibleId);
       const target = A.getSigianCollectibleSigil?.(option.targetCollectibleId);
@@ -6872,7 +6908,7 @@
       </article>`;
     }).join("");
 
-    const splitRows = options.splits.map(option => {
+    const splitRows = forgeCraftingPage(options.splits, 'horizontalSplit').map(option => {
       const source = A.getSigianCollectibleSigil?.(option.collectibleId);
       const wave = A.getSigianCollectibleSigil?.(option.outputs?.wave);
       const damage = A.getSigianCollectibleSigil?.(option.outputs?.damage);
@@ -6896,10 +6932,12 @@
         ${staged}
         <section>
           <h4>${escapeHtml(t("forge.horizontal.availableFusions"))}</h4>
+          ${forgeCraftingPager(options.fusions, 'horizontalFusion')}
           <div class="forge-vertical-options">${fusionRows || `<p class="forge-empty-note">${escapeHtml(t("forge.horizontal.noFusion"))}</p>`}</div>
         </section>
         <section>
           <h4>${escapeHtml(t("forge.horizontal.availableSplits"))}</h4>
+          ${forgeCraftingPager(options.splits, 'horizontalSplit')}
           <div class="forge-vertical-options">${splitRows || `<p class="forge-empty-note">${escapeHtml(t("forge.horizontal.noSplit"))}</p>`}</div>
         </section>
       </div>
@@ -7482,6 +7520,13 @@
   function renderForgePage() {
     if (forgeActiveArea !== "workbench") return;
     const root = $("#forgeContent");
+    if (root && A.ensureForgeModelForView && !A.ensureForgeModelForView(root, renderForgePage,
+      () => forgeActiveArea === "workbench" && $("#forgeView")?.classList.contains("active"))) {
+      for (const id of ["forgeNewBtn", "forgeUndoBtn", "forgeRedoBtn", "forgeTryBtn", "forgeSealBtn", "forgeUiLabBtn"]) {
+        const button = document.getElementById(id); if (button) button.disabled = true;
+      }
+      return;
+    }
     const session = ensureForgeSession();
     if (!root || !session) return;
 
@@ -7534,7 +7579,7 @@
           ${forgeQuickBalanceMarkup(recipe, analysis)}
         </section>
 
-        <aside class="forge-panel forge-context-workspace ${inventoryReadOnly ? "is-inventory" : ""} ornate-subpanel">
+        <aside class="forge-panel forge-context-workspace ${inventoryReadOnly ? "is-inventory" : !forgeCardEditorSection ? "is-support" : ""} ornate-subpanel">
           <div class="forge-panel-heading">
             <span class="forge-panel-step">III</span>
             <h3>${escapeHtml(rightTitle)}</h3>
@@ -7845,6 +7890,15 @@
       renderForgePage();
     }));
 
+    root.querySelectorAll("[data-forge-crafting-page]").forEach(button => button.addEventListener("click", () => {
+      const key = button.dataset.forgeCraftingPage;
+      if (!Object.hasOwn(forgeCraftingPages, key)) return;
+      forgeCraftingPages[key] = Math.max(0, Number(button.dataset.page) || 0);
+      renderForgePage();
+      const pager = root.querySelector(`[data-forge-crafting-page="${key}"]`)?.closest('nav');
+      pager?.scrollIntoView({ block:'nearest', behavior:'instant' });
+      pager?.querySelector(`[data-forge-crafting-page="${key}"]:not(:disabled)`)?.focus({ preventScroll:true });
+    }));
     root.querySelectorAll("[data-forge-vertical-crafting]").forEach(details => {
       details.addEventListener("toggle", () => {
         if (forgeVerticalCraftingOpen === details.open) return;
@@ -11234,6 +11288,8 @@
   renderCollectionPanels();
   const presentAcademySummons = shouldAutoPresentAcademySummons();
   switchView(presentAcademySummons ? "academy" : rememberedView());
+  // Load a small versioned asset, not Oracle simulations or calibration work.
+  if (A.SIGIAN_FORGE_STATIC_RUNTIME) A.prepareSigianForgeMath?.().catch(() => {});
   if (presentAcademySummons) openAcademySummons();
   let restoredRemoteRoom = false;
   try {
