@@ -723,7 +723,7 @@
       && Number(definitionOrProfile.schemaVersion) === COMPONENT_DESIGN_SCHEMA_VERSION
       && definitionOrProfile.gradeProfile
       && definitionOrProfile.adherence
-      ? clone(definitionOrProfile)
+      ? definitionOrProfile
       : buildFamilyProfile(definitionOrProfile, options);
     return enumerateCompatibilities().map(compatibility => ({
       compatibility,
@@ -976,7 +976,7 @@
       && Number(definitionOrId.schemaVersion) === COMPONENT_DESIGN_SCHEMA_VERSION
       && definitionOrId.gradeProfile
       && definitionOrId.adherence
-      ? clone(definitionOrId)
+      ? definitionOrId
       : buildFamilyProfile(definitionOrId, options);
     const gradeProfile = profile.gradeProfile;
     const requestedGrade = options.grade === undefined
@@ -1024,6 +1024,21 @@
       exceptionality:profile.exceptionality
     });
     const tier = rarityTier(rarity.total);
+    if (options.auditLightweight === true) {
+      return {
+        familyId:profile.id,
+        family:profile.family,
+        kind:profile.kind,
+        compatibility,
+        compatibilityStatus:compatibilityDomainStatus.status,
+        compatibilityStatusReasons:[...compatibilityDomainStatus.reasons],
+        referencePower,
+        referencePowerAlignment:referencePower == null ? "not-applicable" : compatibility.schools.includes(referencePower) ? "included" : "cross-school",
+        grade:requestedGrade,
+        intensity,
+        rarity:{ id:tier.id, label:tier.label, score:rarity.total }
+      };
+    }
     return {
       schemaVersion:COMPONENT_DESIGN_SCHEMA_VERSION,
       familyId:profile.id,
@@ -1069,7 +1084,12 @@
   }
 
   function generateVariants(definitionOrId, options = {}) {
-    const profile = buildFamilyProfile(definitionOrId, options);
+    const profile = definitionOrId
+      && Number(definitionOrId.schemaVersion) === COMPONENT_DESIGN_SCHEMA_VERSION
+      && definitionOrId.gradeProfile
+      && definitionOrId.adherence
+      ? definitionOrId
+      : buildFamilyProfile(definitionOrId, options);
     const requestedCompatibilities = options.compatibilities
       ? options.compatibilities.map(item => compatibilityForSchools(item?.schools || item))
       : compatibilityDomain(profile, options).map(item => item.compatibility);
@@ -1111,6 +1131,380 @@
     if (typeof A.listSigianCanonicalV2 !== "function") throw new Error("Catalogo canonico v2 non disponibile.");
     return A.listSigianCanonicalV2({ status:options.status || "approved" })
       .map(definition => buildFamilyProfile(definition, options));
+  }
+
+  function gradeIntensityPairsForProfile(profile) {
+    return profile.gradeProfile.grades.flatMap(entry => {
+      const intensities = entry.intensities?.length ? entry.intensities : [null];
+      return intensities.map(intensity => ({ grade:entry.grade, intensity }));
+    });
+  }
+
+  function compatibilityKey(compatibility) {
+    return compatibility.schools.join("+");
+  }
+
+  function concreteVariantKey(variant) {
+    return [
+      variant.familyId,
+      "g=" + String(variant.grade),
+      "i=" + String(variant.intensity),
+      "p=" + String(variant.referencePower),
+      "c=" + compatibilityKey(variant.compatibility)
+    ].join("|");
+  }
+
+  function modeCounts(items) {
+    const counts = { mono:0, dual:0, triple:0, universal:0 };
+    items.forEach(item => {
+      const compatibility = item.compatibility || item;
+      if (counts[compatibility.mode] !== undefined) counts[compatibility.mode] += 1;
+    });
+    return counts;
+  }
+
+  function concreteVariantCoordinate(profile, pair, referencePower, domainEntry) {
+    return {
+      familyId:profile.id,
+      grade:pair.grade,
+      intensity:pair.intensity,
+      referencePower,
+      compatibility:domainEntry.compatibility,
+      compatibilityStatus:domainEntry.status,
+      referencePowerAlignment:referencePower == null
+        ? "not-applicable"
+        : domainEntry.compatibility.schools.includes(referencePower)
+          ? "included"
+          : "cross-school"
+    };
+  }
+
+  function enumerateConcreteVariantCoordinates(profile, domainEntries, gradeIntensityPairs, referencePowers) {
+    const output = [];
+    gradeIntensityPairs.forEach(pair => {
+      referencePowers.forEach(referencePower => {
+        domainEntries.forEach(domainEntry => {
+          output.push(concreteVariantCoordinate(profile, pair, referencePower, domainEntry));
+        });
+      });
+    });
+    return output;
+  }
+
+  function combinatorialAudit(options = {}) {
+    const profiles = options.profiles || canonicalCatalog(options);
+    const schools = schoolOrder();
+    const theoreticalCompatibilities = enumerateCompatibilities();
+    const expectedModes = modeCounts(theoreticalCompatibilities);
+    const allAnomalies = [];
+
+    const families = profiles.map(profile => {
+      const theoreticalDomain = compatibilityDomain(profile);
+      const legalDomain = theoreticalDomain.filter(item => item.legal);
+      const excludedDomain = theoreticalDomain.filter(item => !item.legal);
+      const gradeIntensityPairs = gradeIntensityPairsForProfile(profile);
+      const requiresReferencePower = profile.requiresReferencePower || profile.requiresReferenceSchool || profile.powerReference || profile.schoolReference;
+      const referencePowers = requiresReferencePower ? schools : [null];
+      const variantMultiplier = gradeIntensityPairs.length * referencePowers.length;
+      const familyAnomalies = [];
+
+      const pushAnomaly = (category, reason, details = {}) => {
+        const anomaly = { category, familyId:profile.id, family:familyDisplayName(profile, null), reason, ...details };
+        familyAnomalies.push(anomaly);
+        allAnomalies.push(anomaly);
+      };
+
+      if (theoreticalDomain.length !== theoreticalCompatibilities.length) {
+        pushAnomaly("theoretical-domain-size", "Il Dominio di Compatibilità non contiene tutte le combinazioni teoriche.", {
+          expected:theoreticalCompatibilities.length,
+          actual:theoreticalDomain.length
+        });
+      }
+
+      const theoreticalModes = modeCounts(theoreticalDomain);
+      Object.keys(expectedModes).forEach(mode => {
+        if (theoreticalModes[mode] !== expectedModes[mode]) {
+          pushAnomaly("theoretical-mode-coverage", "Copertura teorica incompleta per " + mode + ".", {
+            mode,
+            expected:expectedModes[mode],
+            actual:theoreticalModes[mode]
+          });
+        }
+      });
+
+      if (!legalDomain.length) {
+        pushAnomaly("empty-legal-domain", "La Famiglia non possiede alcuna Compatibilità legalmente generabile.");
+      }
+      if (!gradeIntensityPairs.length) {
+        pushAnomaly("empty-grade-intensity-domain", "La Famiglia non possiede configurazioni Grado/Intensità auditabili.");
+      }
+
+      legalDomain.forEach(item => {
+        if (COMPATIBILITY_MODE_ORDER[item.compatibility.mode] > COMPATIBILITY_MODE_ORDER[profile.maxCompatibilityMode]) {
+          pushAnomaly("max-mode-leak", "Una Compatibilità oltre maxCompatibilityMode risulta legalmente ammessa.", {
+            compatibility:compatibilityDisplayLabel(item.compatibility),
+            maxCompatibilityMode:profile.maxCompatibilityMode
+          });
+        }
+        const forbiddenSchools = item.compatibility.schools.filter(school => profile.admissibility[school] === "forbidden");
+        if (forbiddenSchools.length) {
+          pushAnomaly("forbidden-school-leak", "Una Compatibilità con Scuola forbidden risulta legalmente ammessa.", {
+            compatibility:compatibilityDisplayLabel(item.compatibility),
+            schools:forbiddenSchools
+          });
+        }
+      });
+
+      const legalCoordinates = enumerateConcreteVariantCoordinates(profile, legalDomain, gradeIntensityPairs, referencePowers);
+      const diagnosticCoordinates = enumerateConcreteVariantCoordinates(profile, theoreticalDomain, gradeIntensityPairs, referencePowers);
+      const expectedLegalConcrete = legalDomain.length * variantMultiplier;
+      const expectedTheoreticalConcrete = theoreticalDomain.length * variantMultiplier;
+
+      if (legalCoordinates.length !== expectedLegalConcrete) {
+        pushAnomaly("legal-enumeration-count", "L'enumerazione concreta legale non coincide con lo spazio atteso.", {
+          expected:expectedLegalConcrete,
+          actual:legalCoordinates.length
+        });
+      }
+      if (diagnosticCoordinates.length !== expectedTheoreticalConcrete) {
+        pushAnomaly("diagnostic-enumeration-count", "L'enumerazione diagnostica non coincide con l'intero spazio teorico.", {
+          expected:expectedTheoreticalConcrete,
+          actual:diagnosticCoordinates.length
+        });
+      }
+
+      if (legalCoordinates.some(variant => variant.compatibilityStatus === "forbidden")) {
+        pushAnomaly("forbidden-enumerated-as-legal", "Lo spazio concreto legale contiene almeno una variante forbidden.");
+      }
+
+      const legalKeys = legalCoordinates.map(concreteVariantKey);
+      if (new Set(legalKeys).size !== legalKeys.length) {
+        pushAnomaly("duplicate-legal-variant", "L'enumerazione legale contiene varianti concrete duplicate.");
+      }
+      const diagnosticKeys = diagnosticCoordinates.map(concreteVariantKey);
+      if (new Set(diagnosticKeys).size !== diagnosticKeys.length) {
+        pushAnomaly("duplicate-diagnostic-variant", "Il dominio diagnostico contiene varianti concrete duplicate.");
+      }
+
+      let alignedReferencePowerVariants = 0;
+      let crossSchoolReferencePowerVariants = 0;
+      legalCoordinates.forEach(variant => {
+        if (variant.referencePowerAlignment === "included") alignedReferencePowerVariants += 1;
+        if (variant.referencePowerAlignment === "cross-school") crossSchoolReferencePowerVariants += 1;
+      });
+
+      let runtimeSamplesChecked = 0;
+      const representativePair = gradeIntensityPairs[0] || null;
+      if (representativePair) {
+        legalDomain.forEach(domainEntry => {
+          referencePowers.forEach(referencePower => {
+            try {
+              const variant = calculateVariant(profile, {
+                grade:representativePair.grade,
+                intensity:representativePair.intensity,
+                referencePower,
+                compatibility:domainEntry.compatibility,
+                auditLightweight:true
+              });
+              runtimeSamplesChecked += 1;
+              if (variant.compatibilityStatus !== domainEntry.status) {
+                pushAnomaly("compatibility-status-mismatch", "Lo status runtime non coincide con il Dominio di Compatibilità.", {
+                  compatibility:compatibilityDisplayLabel(domainEntry.compatibility),
+                  referencePower,
+                  expected:domainEntry.status,
+                  actual:variant.compatibilityStatus
+                });
+              }
+              const expectedAlignment = referencePower == null
+                ? "not-applicable"
+                : domainEntry.compatibility.schools.includes(referencePower)
+                  ? "included"
+                  : "cross-school";
+              if (variant.referencePowerAlignment !== expectedAlignment) {
+                pushAnomaly("reference-power-alignment", "L'allineamento del Potere di riferimento non coincide con la Compatibilità.", {
+                  compatibility:compatibilityDisplayLabel(domainEntry.compatibility),
+                  referencePower,
+                  expected:expectedAlignment,
+                  actual:variant.referencePowerAlignment
+                });
+              }
+              if (!Number.isFinite(Number(variant.rarity?.score))) {
+                pushAnomaly("rarity-not-finite", "Il campione runtime legale non possiede uno score Rarità numerico.", {
+                  compatibility:compatibilityDisplayLabel(domainEntry.compatibility),
+                  referencePower
+                });
+              }
+            } catch (error) {
+              pushAnomaly("legal-runtime-error", "Una Compatibilità legale fallisce nel calcolatore runtime.", {
+                compatibility:compatibilityDisplayLabel(domainEntry.compatibility),
+                referencePower,
+                error:String(error?.message || error)
+              });
+            }
+          });
+        });
+
+        excludedDomain.forEach(domainEntry => {
+          const referencePower = referencePowers[0];
+          let rejected = false;
+          try {
+            calculateVariant(profile, {
+              grade:representativePair.grade,
+              intensity:representativePair.intensity,
+              referencePower,
+              compatibility:domainEntry.compatibility,
+              auditLightweight:true
+            });
+          } catch (_) {
+            rejected = true;
+          }
+          if (!rejected) {
+            pushAnomaly("excluded-runtime-accepted", "Una Compatibilità esclusa viene accettata dal calcolatore senza opt-in diagnostico.", {
+              compatibility:compatibilityDisplayLabel(domainEntry.compatibility),
+              reasons:[...domainEntry.reasons]
+            });
+          }
+          try {
+            const diagnosticVariant = calculateVariant(profile, {
+              grade:representativePair.grade,
+              intensity:representativePair.intensity,
+              referencePower,
+              compatibility:domainEntry.compatibility,
+              allowForbiddenCompatibility:true,
+              auditLightweight:true
+            });
+            runtimeSamplesChecked += 1;
+            if (diagnosticVariant.compatibilityStatus !== "forbidden") {
+              pushAnomaly("excluded-diagnostic-status", "Una Compatibilità esclusa non resta forbidden in modalità diagnostica.", {
+                compatibility:compatibilityDisplayLabel(domainEntry.compatibility),
+                actual:diagnosticVariant.compatibilityStatus
+              });
+            }
+          } catch (error) {
+            pushAnomaly("excluded-diagnostic-error", "Una Compatibilità esclusa non è ispezionabile in modalità diagnostica.", {
+              compatibility:compatibilityDisplayLabel(domainEntry.compatibility),
+              error:String(error?.message || error)
+            });
+          }
+        });
+      }
+
+      const legalModes = modeCounts(legalDomain);
+      const excludedModes = modeCounts(excludedDomain);
+      const standardDomain = legalDomain.filter(item => item.status === "standard");
+      const exceptionalDomain = legalDomain.filter(item => item.status === "exceptional");
+      const excludedKeySet = new Set(excludedDomain.map(item => compatibilityKey(item.compatibility)));
+
+      return {
+        familyId:profile.id,
+        family:familyDisplayName(profile, null),
+        kind:profile.kind,
+        maxCompatibilityMode:profile.maxCompatibilityMode,
+        requiresReferencePower:Boolean(requiresReferencePower),
+        gradeIntensityConfigurations:gradeIntensityPairs.length,
+        referencePowerChoices:referencePowers.length,
+        compatibilityDomain:{
+          theoretical:theoreticalDomain.length,
+          legal:legalDomain.length,
+          standard:standardDomain.length,
+          exceptional:exceptionalDomain.length,
+          excluded:excludedDomain.length,
+          modes:{
+            theoretical:theoreticalModes,
+            legal:legalModes,
+            excluded:excludedModes
+          },
+          legalCompatibilities:legalDomain.map(item => ({
+            label:compatibilityDisplayLabel(item.compatibility),
+            mode:item.compatibility.mode,
+            schools:[...item.compatibility.schools],
+            status:item.status
+          })),
+          excludedCompatibilities:excludedDomain.map(item => ({
+            label:compatibilityDisplayLabel(item.compatibility),
+            mode:item.compatibility.mode,
+            schools:[...item.compatibility.schools],
+            status:item.status,
+            reasons:[...item.reasons]
+          }))
+        },
+        concreteVariants:{
+          theoretical:expectedTheoreticalConcrete,
+          legal:expectedLegalConcrete,
+          standard:standardDomain.length * variantMultiplier,
+          exceptional:exceptionalDomain.length * variantMultiplier,
+          excluded:excludedDomain.length * variantMultiplier,
+          enumeratedChecked:legalCoordinates.length,
+          diagnosticEnumerated:diagnosticCoordinates.length,
+          runtimeSamplesChecked,
+          legalVariantKeys:options.includeVariantKeys === true ? legalKeys : undefined,
+          excludedVariantKeys:options.includeVariantKeys === true
+            ? diagnosticCoordinates.filter(variant => excludedKeySet.has(compatibilityKey(variant.compatibility))).map(concreteVariantKey)
+            : undefined
+        },
+        referencePower:{
+          applicable:Boolean(requiresReferencePower),
+          aligned:alignedReferencePowerVariants,
+          crossSchool:crossSchoolReferencePowerVariants
+        },
+        anomalies:familyAnomalies
+      };
+    });
+
+    const aggregateModes = key => families.reduce((acc, family) => {
+      Object.keys(acc).forEach(mode => {
+        acc[mode] += family.compatibilityDomain.modes[key][mode];
+      });
+      return acc;
+    }, { mono:0, dual:0, triple:0, universal:0 });
+
+    const summary = {
+      familyCount:families.length,
+      referencePowerFamilies:families.filter(item => item.requiresReferencePower).length,
+      compatibilitySets:{
+        theoretical:families.reduce((sum, item) => sum + item.compatibilityDomain.theoretical, 0),
+        legal:families.reduce((sum, item) => sum + item.compatibilityDomain.legal, 0),
+        standard:families.reduce((sum, item) => sum + item.compatibilityDomain.standard, 0),
+        exceptional:families.reduce((sum, item) => sum + item.compatibilityDomain.exceptional, 0),
+        excluded:families.reduce((sum, item) => sum + item.compatibilityDomain.excluded, 0)
+      },
+      compatibilityModes:{
+        theoretical:aggregateModes("theoretical"),
+        legal:aggregateModes("legal"),
+        excluded:aggregateModes("excluded")
+      },
+      concreteVariants:{
+        theoretical:families.reduce((sum, item) => sum + item.concreteVariants.theoretical, 0),
+        legal:families.reduce((sum, item) => sum + item.concreteVariants.legal, 0),
+        standard:families.reduce((sum, item) => sum + item.concreteVariants.standard, 0),
+        exceptional:families.reduce((sum, item) => sum + item.concreteVariants.exceptional, 0),
+        excluded:families.reduce((sum, item) => sum + item.concreteVariants.excluded, 0),
+        runtimeSamplesChecked:families.reduce((sum, item) => sum + item.concreteVariants.runtimeSamplesChecked, 0)
+      },
+      referencePowerVariants:{
+        aligned:families.reduce((sum, item) => sum + item.referencePower.aligned, 0),
+        crossSchool:families.reduce((sum, item) => sum + item.referencePower.crossSchool, 0)
+      },
+      anomalyCount:allAnomalies.length,
+      familiesWithAnomalies:families.filter(item => item.anomalies.length).length
+    };
+
+    return {
+      schemaVersion:COMPONENT_DESIGN_SCHEMA_VERSION,
+      generatedAt:new Date().toISOString(),
+      policy:{
+        theoreticalCompatibilityModes:{ ...expectedModes },
+        forbiddenGeneration:"excluded-by-default",
+        diagnosticForbiddenGeneration:"explicit-only",
+        concreteEnumeration:"exhaustive-coordinate-space",
+        runtimeValidation:"compatibility-by-reference-power representative grade/intensity",
+        referencePower:"audited-as-separate-axis",
+        mutationsApplied:false
+      },
+      summary,
+      anomalies:allAnomalies,
+      families
+    };
   }
 
   function componentDesignAudit(options = {}) {
@@ -1373,6 +1767,7 @@
   A.calculateSigianComponentVariant = calculateVariant;
   A.generateSigianComponentVariants = generateVariants;
   A.buildSigianCanonicalComponentDesignCatalog = canonicalCatalog;
+  A.buildSigianComponentCombinatorialAudit = combinatorialAudit;
   A.buildSigianComponentDesignAudit = componentDesignAudit;
   A.deriveSigianComponentCompatibilityOnDissolution = compatibilityOnDissolution;
 })(window.Arcane = window.Arcane || {});
