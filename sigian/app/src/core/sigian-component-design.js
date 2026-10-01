@@ -58,7 +58,12 @@
     forbiddenCandidateConfidence:0.85,
     widthReviewDissonantSchools:2
   });
-  const ADHERENCE_RARITY = Object.freeze({ core:0, compatible:0.35, exotic:1.25, dissonant:2.2 });
+  const RARITY_V2_CALIBRATION = Object.freeze({
+    adherenceScale:2.5,
+    adherenceExponent:1.75,
+    exceptionalBase:0.45,
+    exceptionalAdditional:0.15
+  });
   const COMPATIBILITY_BY_SIZE = Object.freeze({ 1:"mono", 2:"dual", 3:"triple" });
   const COMPATIBILITY_RARITY = Object.freeze({ mono:0, dual:0.12, triple:0.55, universal:1.25 });
   const RARITY_TIERS = Object.freeze([
@@ -846,13 +851,32 @@
     return RARITY_TIERS.find(tier => score < tier.max) || RARITY_TIERS[RARITY_TIERS.length - 1];
   }
 
-  function rarityBreakdown({ compatibility, adherenceBySchool, referencePower, referenceSchool, grade, intensityPercentile, arcaneWeight, craftingWeight, versatility, exceptionality }) {
+  function continuousAdherenceRarity(score100) {
+    const score = Number(score100);
+    if (!Number.isFinite(score)) throw new Error("Score Aderenza 0-100 mancante per il calcolo Rarità v2.");
+    const distance = 1 - clamp(score, 0, 100) / 100;
+    return RARITY_V2_CALIBRATION.adherenceScale * (distance ** RARITY_V2_CALIBRATION.adherenceExponent);
+  }
+
+  function exceptionalAdmissibilityRarity(states) {
+    const exceptionalCount = states.filter(state => state === "exceptional").length;
+    if (!exceptionalCount) return 0;
+    return RARITY_V2_CALIBRATION.exceptionalBase
+      + Math.max(0, exceptionalCount - 1) * RARITY_V2_CALIBRATION.exceptionalAdditional;
+  }
+
+  function rarityBreakdown({ compatibility, adherenceScoresBySchool, admissibilityBySchool, referencePower, referenceSchool, grade, intensityPercentile, arcaneWeight, craftingWeight, versatility, exceptionality }) {
     const resolvedReferencePower = referencePower ?? referenceSchool ?? null;
-    const selected = compatibility.schools.map(school => normalizeAdherence(adherenceBySchool[school]));
-    const adherencePoints = selected.map(level => ADHERENCE_RARITY[level]);
+    const selectedScores = compatibility.schools.map(school => Number(adherenceScoresBySchool?.[school]));
+    if (selectedScores.some(score => !Number.isFinite(score))) {
+      throw new Error(`Score Aderenza incompleto per la Rarità v2 / ${compatibility.schools.join(",")}.`);
+    }
+    const adherencePoints = selectedScores.map(continuousAdherenceRarity);
     const averageAdherence = adherencePoints.reduce((sum, value) => sum + value, 0) / adherencePoints.length;
     const worstAdherence = Math.max(...adherencePoints);
     const adherence = averageAdherence + 0.25 * worstAdherence;
+    const selectedAdmissibility = compatibility.schools.map(school => normalizeAdmissibility(admissibilityBySchool?.[school] || "standard"));
+    const admissibilityPoints = exceptionalAdmissibilityRarity(selectedAdmissibility);
     const compatibilityPoints = COMPATIBILITY_RARITY[compatibility.mode] ?? 0;
     const referencePowerPoints = resolvedReferencePower && !compatibility.schools.includes(resolvedReferencePower) ? 0.35 : 0;
     const gradePoints = grade == null ? 0.12 : Math.max(0, Number(grade) - 1) * 0.22;
@@ -861,10 +885,19 @@
     const craftingPoints = Math.max(0, Math.log2(Math.max(1, Number(craftingWeight) || 1))) * 0.13;
     const versatilityPoints = clamp(versatility?.score ?? versatility ?? 0, 0, 1) * 0.28;
     const exceptionalPoints = Math.max(0, Number(exceptionality) || 0);
-    const total = round(adherence + compatibilityPoints + referencePowerPoints + gradePoints + intensityPoints + arcanePoints + craftingPoints + versatilityPoints + exceptionalPoints);
+    const total = round(adherence + admissibilityPoints + compatibilityPoints + referencePowerPoints + gradePoints + intensityPoints + arcanePoints + craftingPoints + versatilityPoints + exceptionalPoints);
     return {
+      model:"continuous-v2",
       total,
       adherence:round(adherence),
+      adherenceAverage:round(averageAdherence),
+      adherenceWorst:round(worstAdherence),
+      adherenceScores:Object.fromEntries(compatibility.schools.map((school, index) => [school, selectedScores[index]])),
+      adherencePoints:Object.fromEntries(compatibility.schools.map((school, index) => [school, round(adherencePoints[index])])),
+      admissibility:round(admissibilityPoints),
+      admissibilityStates:Object.fromEntries(compatibility.schools.map((school, index) => [school, selectedAdmissibility[index]])),
+      exceptionalSchools:compatibility.schools.filter((school, index) => selectedAdmissibility[index] === "exceptional"),
+      forbiddenSchools:compatibility.schools.filter((school, index) => selectedAdmissibility[index] === "forbidden"),
       compatibility:round(compatibilityPoints),
       referencePower:round(referencePowerPoints),
       referenceSchool:round(referencePowerPoints),
@@ -980,7 +1013,8 @@
     const arcaneWeight = resolveArcaneWeight(profile, requestedGrade, intensityPercentile, options);
     const rarity = rarityBreakdown({
       compatibility,
-      adherenceBySchool:profile.adherence,
+      adherenceScoresBySchool:profile.adherenceScores,
+      admissibilityBySchool:profile.admissibility,
       referencePower,
       grade:requestedGrade,
       intensityPercentile,
@@ -1036,9 +1070,13 @@
 
   function generateVariants(definitionOrId, options = {}) {
     const profile = buildFamilyProfile(definitionOrId, options);
-    const compatibilities = options.compatibilities || compatibilityDomain(profile, options)
-      .filter(item => item.legal || options.includeForbiddenCompatibilities === true)
-      .map(item => item.compatibility);
+    const requestedCompatibilities = options.compatibilities
+      ? options.compatibilities.map(item => compatibilityForSchools(item?.schools || item))
+      : compatibilityDomain(profile, options).map(item => item.compatibility);
+    const compatibilities = requestedCompatibilities.filter(compatibility => {
+      const domainStatus = classifyCompatibilityForProfile(profile, compatibility);
+      return domainStatus.legal || options.includeForbiddenCompatibilities === true;
+    });
     const grades = options.grade === undefined
       ? profile.gradeProfile.grades
       : profile.gradeProfile.grades.filter(entry => entry.grade === options.grade);
@@ -1323,6 +1361,7 @@
   A.SIGIAN_COMPONENT_PRIMARY_TAG_WEIGHT = PRIMARY_TAG_WEIGHT;
   A.SIGIAN_COMPONENT_CONFIDENCE_WEIGHTS = CONFIDENCE_WEIGHTS;
   A.SIGIAN_COMPONENT_CONFIDENCE_THRESHOLDS = CONFIDENCE_THRESHOLDS;
+  A.SIGIAN_COMPONENT_RARITY_V2_CALIBRATION = RARITY_V2_CALIBRATION;
   A.SIGIAN_COMPONENT_ADHERENCE_LABELS = ADHERENCE_LABELS;
   A.SIGIAN_COMPONENT_ADHERENCE_SCORE_BANDS = ADHERENCE_SCORE_BANDS;
   A.SIGIAN_COMPONENT_RARITY_TIERS = RARITY_TIERS;
