@@ -154,7 +154,7 @@
 
     const affinity = A.evaluateSigianCraftAffinityFusion(left.affinity, right.affinity);
     if (!affinity.compatible) {
-      throw new Error("Fusione verticale: le Affinità non hanno Scuole compatibili in comune.");
+      throw new Error("Fusione verticale: le Compatibilità non hanno Scuole compatibili in comune.");
     }
 
     const output = {
@@ -180,7 +180,7 @@
     if (grade <= 1) throw new Error("Scomposizione verticale: il Grado I non può essere scomposto.");
 
     const affinity = normalizeAffinity(component.affinity);
-    if (!affinity) throw new Error("Scomposizione verticale: Affinità non valida.");
+    if (!affinity) throw new Error("Scomposizione verticale: Compatibilità non valida.");
 
     const lower = {
       ...clone(component),
@@ -336,7 +336,7 @@
 
     const affinity = A.evaluateSigianCraftAffinityFusion(left.affinity, right.affinity);
     if (!affinity.compatible) {
-      throw new Error("Fusione orizzontale: le Affinità non hanno Scuole compatibili in comune.");
+      throw new Error("Fusione orizzontale: le Compatibilità non hanno Scuole compatibili in comune.");
     }
 
     const template = recipe.leftDefinitionId === componentDefinitionId(left) ? left : right;
@@ -376,7 +376,7 @@
       throw new Error("Scomposizione orizzontale: firma meccanica risolta mancante o incompatibile.");
     }
     const affinity = normalizeAffinity(component.affinity);
-    if (!affinity) throw new Error("Scomposizione orizzontale: Affinità non valida.");
+    if (!affinity) throw new Error("Scomposizione orizzontale: Compatibilità non valida.");
 
     const left = canonicalHorizontalSplitOutput(component, recipe.leftDefinitionId, affinity);
     const right = canonicalHorizontalSplitOutput(component, recipe.rightDefinitionId, affinity);

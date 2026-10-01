@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const COMPONENT_DESIGN_SCHEMA_VERSION = 2;
+  const COMPONENT_DESIGN_SCHEMA_VERSION = 3;
   const CURRENT_SCHOOL_ORDER = Object.freeze(["fire", "water", "air", "nature", "death"]);
   const ADHERENCE_LEVELS = Object.freeze(["core", "compatible", "exotic", "dissonant"]);
   const ADHERENCE_LABELS = Object.freeze({
@@ -11,6 +11,28 @@
     dissonant:"Dissonante"
   });
   const ADHERENCE_VALUE = Object.freeze({ core:3, compatible:2, exotic:1, dissonant:0 });
+  const ADMISSIBILITY_LEVELS = Object.freeze(["standard", "exceptional", "forbidden"]);
+  const ADMISSIBILITY_FROM_ADHERENCE = Object.freeze({
+    core:"standard",
+    compatible:"standard",
+    exotic:"standard",
+    dissonant:"exceptional"
+  });
+  const COMPATIBILITY_MODE_ORDER = Object.freeze({ mono:1, dual:2, triple:3, universal:4 });
+  const SCHOOL_DISPLAY_NAMES = Object.freeze({
+    fire:"Pyrax",
+    water:"Umiria",
+    air:"Vailis",
+    nature:"Gairon",
+    death:"Nekiria"
+  });
+  const POWER_DISPLAY_NAMES = Object.freeze({
+    fire:"Fuoco",
+    water:"Acqua",
+    air:"Aria",
+    nature:"Terra",
+    death:"Morte"
+  });
   const ADHERENCE_SCORE_BANDS = Object.freeze({
     core:Object.freeze({ min:75, max:100 }),
     compatible:Object.freeze({ min:50, max:74.999 }),
@@ -326,6 +348,34 @@
     return id;
   }
 
+  function normalizeAdmissibility(value) {
+    const id = String(value || "").toLowerCase();
+    if (!ADMISSIBILITY_LEVELS.includes(id)) throw new Error(`Ammissibilità non valida: ${value}.`);
+    return id;
+  }
+
+  function normalizeMaxCompatibilityMode(value) {
+    const id = String(value || "universal").toLowerCase();
+    if (!COMPATIBILITY_MODE_ORDER[id]) throw new Error(`Ampiezza Compatibilità non valida: ${value}.`);
+    return id;
+  }
+
+  function schoolDisplayName(id) {
+    return SCHOOL_DISPLAY_NAMES[String(id || "")] || String(id || "");
+  }
+
+  function powerDisplayName(id) {
+    return POWER_DISPLAY_NAMES[String(id || "")] || String(id || "");
+  }
+
+  function compatibilityDisplayLabel(compatibility) {
+    const modeLabel = compatibility.mode === "universal"
+      ? "Universale"
+      : compatibility.mode.charAt(0).toUpperCase() + compatibility.mode.slice(1);
+    if (compatibility.mode === "universal") return modeLabel;
+    return modeLabel + " " + compatibility.schools.map(schoolDisplayName).join("/");
+  }
+
   function scoreToAdherence(score) {
     const numeric = Number(score);
     if (numeric >= 2.55) return "core";
@@ -462,6 +512,75 @@
     return { bySchool, evidence, primaryTag };
   }
 
+  function deriveAdmissibility(definition, adherenceBySchool, options = {}) {
+    const definitionOverrides = definition?.admissibility || {};
+    const optionOverrides = options.admissibility || {};
+    const bySchool = {};
+    const evidence = {};
+    schoolOrder().forEach(school => {
+      const explicit = optionOverrides[school] ?? definitionOverrides[school];
+      if (explicit != null) {
+        bySchool[school] = normalizeAdmissibility(explicit);
+        evidence[school] = {
+          source:optionOverrides[school] != null ? "manual-override" : "definition-override",
+          adherence:adherenceBySchool[school]
+        };
+        return;
+      }
+      const adherence = normalizeAdherence(adherenceBySchool[school]);
+      bySchool[school] = ADMISSIBILITY_FROM_ADHERENCE[adherence];
+      evidence[school] = { source:"adherence-default", adherence };
+    });
+    const maxCompatibilityMode = normalizeMaxCompatibilityMode(
+      options.maxCompatibilityMode ?? definition?.maxCompatibilityMode ?? "universal"
+    );
+    return { bySchool, evidence, maxCompatibilityMode };
+  }
+
+  function classifyCompatibilityForProfile(profile, compatibility) {
+    const maxMode = normalizeMaxCompatibilityMode(profile.maxCompatibilityMode || "universal");
+    const reasons = [];
+    if (COMPATIBILITY_MODE_ORDER[compatibility.mode] > COMPATIBILITY_MODE_ORDER[maxMode]) {
+      reasons.push("max-compatibility-mode");
+    }
+    const schoolStates = Object.fromEntries(
+      compatibility.schools.map(school => [school, normalizeAdmissibility(profile.admissibility?.[school] || "standard")])
+    );
+    if (Object.values(schoolStates).includes("forbidden")) reasons.push("forbidden-school");
+    const status = reasons.length
+      ? "forbidden"
+      : Object.values(schoolStates).includes("exceptional")
+        ? "exceptional"
+        : "standard";
+    return {
+      status,
+      legal:status !== "forbidden",
+      schoolStates,
+      maxCompatibilityMode:maxMode,
+      reasons
+    };
+  }
+
+  function compatibilityDomain(definitionOrProfile, options = {}) {
+    const profile = definitionOrProfile
+      && Number(definitionOrProfile.schemaVersion) === COMPONENT_DESIGN_SCHEMA_VERSION
+      && definitionOrProfile.gradeProfile
+      && definitionOrProfile.adherence
+      ? clone(definitionOrProfile)
+      : buildFamilyProfile(definitionOrProfile, options);
+    return enumerateCompatibilities().map(compatibility => ({
+      compatibility,
+      ...classifyCompatibilityForProfile(profile, compatibility)
+    }));
+  }
+
+  function familyDisplayName(profile, referencePower) {
+    const label = referencePower ? powerDisplayName(referencePower) : "<Potere>";
+    return String(profile.family || "")
+      .replace(/<Scuola>/gi, label)
+      .replace(/<Potere>/gi, label);
+  }
+
   function parseGradeProfile(definition) {
     const raw = String(definition?.grades || "").trim();
     const normalized = raw.replace(/\s+/g, " ");
@@ -575,26 +694,28 @@
     return RARITY_TIERS.find(tier => score < tier.max) || RARITY_TIERS[RARITY_TIERS.length - 1];
   }
 
-  function rarityBreakdown({ compatibility, adherenceBySchool, referenceSchool, grade, intensityPercentile, arcaneWeight, craftingWeight, versatility, exceptionality }) {
+  function rarityBreakdown({ compatibility, adherenceBySchool, referencePower, referenceSchool, grade, intensityPercentile, arcaneWeight, craftingWeight, versatility, exceptionality }) {
+    const resolvedReferencePower = referencePower ?? referenceSchool ?? null;
     const selected = compatibility.schools.map(school => normalizeAdherence(adherenceBySchool[school]));
     const adherencePoints = selected.map(level => ADHERENCE_RARITY[level]);
     const averageAdherence = adherencePoints.reduce((sum, value) => sum + value, 0) / adherencePoints.length;
     const worstAdherence = Math.max(...adherencePoints);
     const adherence = averageAdherence + 0.25 * worstAdherence;
     const compatibilityPoints = COMPATIBILITY_RARITY[compatibility.mode] ?? 0;
-    const referenceSchoolPoints = referenceSchool && !compatibility.schools.includes(referenceSchool) ? 0.35 : 0;
+    const referencePowerPoints = resolvedReferencePower && !compatibility.schools.includes(resolvedReferencePower) ? 0.35 : 0;
     const gradePoints = grade == null ? 0.12 : Math.max(0, Number(grade) - 1) * 0.22;
     const intensityPoints = clamp(intensityPercentile || 0, 0, 1) * 0.22;
     const arcanePoints = Math.min(0.72, Math.log2(1 + Math.max(0, Number(arcaneWeight) || 0)) * 0.28);
     const craftingPoints = Math.max(0, Math.log2(Math.max(1, Number(craftingWeight) || 1))) * 0.13;
     const versatilityPoints = clamp(versatility?.score ?? versatility ?? 0, 0, 1) * 0.28;
     const exceptionalPoints = Math.max(0, Number(exceptionality) || 0);
-    const total = round(adherence + compatibilityPoints + referenceSchoolPoints + gradePoints + intensityPoints + arcanePoints + craftingPoints + versatilityPoints + exceptionalPoints);
+    const total = round(adherence + compatibilityPoints + referencePowerPoints + gradePoints + intensityPoints + arcanePoints + craftingPoints + versatilityPoints + exceptionalPoints);
     return {
       total,
       adherence:round(adherence),
       compatibility:round(compatibilityPoints),
-      referenceSchool:round(referenceSchoolPoints),
+      referencePower:round(referencePowerPoints),
+      referenceSchool:round(referencePowerPoints),
       grade:round(gradePoints),
       intensity:round(intensityPoints),
       arcaneWeight:round(arcanePoints),
@@ -613,6 +734,7 @@
     if (!definition.kind) throw new Error(`Il componente ${definition.id} richiede kind.`);
     const tags = semanticTags(definition, options);
     const adherence = deriveAdherence(definition, tags, options);
+    const admissibility = deriveAdmissibility(definition, adherence.bySchool, options);
     const gradeProfile = options.gradeProfile || parseGradeProfile(definition);
     if (gradeProfile.status === "unsupported" && !options.allowUnsupportedGradeProfile) {
       throw new Error(`Scala Gradi non riconosciuta per ${definition.id}: ${definition.grades || "-"}.`);
@@ -623,14 +745,19 @@
       kind:definition.kind,
       family:definition.name,
       summary:definition.summary || "",
-      schoolReference:/<Scuola>/i.test(String(definition.name || "")),
-      requiresReferenceSchool:/<Scuola>/i.test(String(definition.name || "")),
+      powerReference:/<(Scuola|Potere)>/i.test(String(definition.name || "")),
+      requiresReferencePower:/<(Scuola|Potere)>/i.test(String(definition.name || "")),
+      schoolReference:/<(Scuola|Potere)>/i.test(String(definition.name || "")),
+      requiresReferenceSchool:/<(Scuola|Potere)>/i.test(String(definition.name || "")),
       semanticTags:tags,
       primaryTag:adherence.primaryTag,
       adherence:adherence.bySchool,
       adherenceScores:Object.fromEntries(Object.entries(adherence.evidence).map(([school, item]) => [school, item?.score100 ?? null])),
       adherenceAutomaticScores:Object.fromEntries(Object.entries(adherence.evidence).map(([school, item]) => [school, item?.automaticScore100 ?? null])),
       adherenceEvidence:adherence.evidence,
+      admissibility:admissibility.bySchool,
+      admissibilityEvidence:admissibility.evidence,
+      maxCompatibilityMode:admissibility.maxCompatibilityMode,
       gradeProfile:clone(gradeProfile),
       versatility:deriveVersatility(tags),
       exceptionality:deriveExceptional(tags),
@@ -677,11 +804,16 @@
     const compatibility = options.compatibility
       ? compatibilityForSchools(options.compatibility.schools || options.compatibility)
       : compatibilityForSchools(options.compatibilitySchools || [schoolOrder()[0]]);
-    const referenceSchool = profile.requiresReferenceSchool || profile.schoolReference
-      ? String(options.referenceSchool || "").trim()
+    const requiresReferencePower = profile.requiresReferencePower || profile.requiresReferenceSchool || profile.powerReference || profile.schoolReference;
+    const referencePower = requiresReferencePower
+      ? String(options.referencePower ?? options.referenceSchool ?? "").trim()
       : null;
-    if ((profile.requiresReferenceSchool || profile.schoolReference) && !schoolOrder().includes(referenceSchool)) {
-      throw new Error(`Scuola di riferimento richiesta per ${profile.id}: ${referenceSchool || "-"}.`);
+    if (requiresReferencePower && !schoolOrder().includes(referencePower)) {
+      throw new Error(`Potere di riferimento richiesto per ${profile.id}: ${referencePower || "-"}.`);
+    }
+    const compatibilityDomainStatus = classifyCompatibilityForProfile(profile, compatibility);
+    if (!compatibilityDomainStatus.legal && options.allowForbiddenCompatibility !== true) {
+      throw new Error(`Compatibilità vietata per ${profile.id}: ${compatibility.schools.join(",")} (${compatibilityDomainStatus.reasons.join(",")}).`);
     }
     const includedAdherence = Object.fromEntries(compatibility.schools.map(school => [school, profile.adherence[school]]));
     if (Object.values(includedAdherence).some(value => !value)) {
@@ -694,7 +826,7 @@
     const rarity = rarityBreakdown({
       compatibility,
       adherenceBySchool:profile.adherence,
-      referenceSchool,
+      referencePower,
       grade:requestedGrade,
       intensityPercentile,
       arcaneWeight:arcaneWeight.value,
@@ -709,8 +841,18 @@
       family:profile.family,
       kind:profile.kind,
       compatibility,
-      referenceSchool,
-      referenceSchoolAlignment:referenceSchool == null ? "not-applicable" : compatibility.schools.includes(referenceSchool) ? "included" : "cross-school",
+      compatibilityLabel:compatibilityDisplayLabel(compatibility),
+      compatibilityStatus:compatibilityDomainStatus.status,
+      compatibilityStatusReasons:[...compatibilityDomainStatus.reasons],
+      admissibility:Object.fromEntries(compatibility.schools.map(school => [school, profile.admissibility[school]])),
+      admissibilityMatrix:clone(profile.admissibility),
+      maxCompatibilityMode:profile.maxCompatibilityMode,
+      referencePower,
+      referencePowerLabel:referencePower == null ? null : powerDisplayName(referencePower),
+      referencePowerAlignment:referencePower == null ? "not-applicable" : compatibility.schools.includes(referencePower) ? "included" : "cross-school",
+      referenceSchool:referencePower,
+      referenceSchoolAlignment:referencePower == null ? "not-applicable" : compatibility.schools.includes(referencePower) ? "included" : "cross-school",
+      familyDisplayName:familyDisplayName(profile, referencePower),
       adherence:includedAdherence,
       adherenceScore:Object.fromEntries(compatibility.schools.map(school => [school, profile.adherenceScores?.[school] ?? null])),
       adherenceMatrix:clone(profile.adherence),
@@ -729,6 +871,7 @@
         provisional:true,
         breakdown:rarity
       },
+      powerReference:profile.powerReference,
       schoolReference:profile.schoolReference,
       semanticTags:[...profile.semanticTags]
     };
@@ -736,27 +879,31 @@
 
   function generateVariants(definitionOrId, options = {}) {
     const profile = buildFamilyProfile(definitionOrId, options);
-    const compatibilities = options.compatibilities || enumerateCompatibilities();
+    const compatibilities = options.compatibilities || compatibilityDomain(profile, options)
+      .filter(item => item.legal || options.includeForbiddenCompatibilities === true)
+      .map(item => item.compatibility);
     const grades = options.grade === undefined
       ? profile.gradeProfile.grades
       : profile.gradeProfile.grades.filter(entry => entry.grade === options.grade);
-    const referenceSchools = profile.requiresReferenceSchool || profile.schoolReference
-      ? options.referenceSchool
-        ? [String(options.referenceSchool)]
-        : (options.referenceSchools || schoolOrder())
+    const requiresReferencePower = profile.requiresReferencePower || profile.requiresReferenceSchool || profile.powerReference || profile.schoolReference;
+    const referencePowers = requiresReferencePower
+      ? (options.referencePower ?? options.referenceSchool)
+        ? [String(options.referencePower ?? options.referenceSchool)]
+        : (options.referencePowers || options.referenceSchools || schoolOrder())
       : [null];
     const output = [];
     grades.forEach(entry => {
       const intensities = options.intensity === undefined ? (entry.intensities?.length ? entry.intensities : [null]) : [options.intensity];
       intensities.forEach(intensity => {
-        referenceSchools.forEach(referenceSchool => {
+        referencePowers.forEach(referencePower => {
           compatibilities.forEach(compatibility => {
             output.push(calculateVariant(profile, {
               ...options,
               grade:entry.grade,
               intensity,
-              referenceSchool,
-              compatibility
+              referencePower,
+              compatibility,
+              allowForbiddenCompatibility:options.includeForbiddenCompatibilities === true
             }));
           });
         });
@@ -784,6 +931,10 @@
 
   A.SIGIAN_COMPONENT_DESIGN_SCHEMA_VERSION = COMPONENT_DESIGN_SCHEMA_VERSION;
   A.SIGIAN_COMPONENT_ADHERENCE_LEVELS = ADHERENCE_LEVELS;
+  A.SIGIAN_COMPONENT_ADMISSIBILITY_LEVELS = ADMISSIBILITY_LEVELS;
+  A.SIGIAN_COMPONENT_ADMISSIBILITY_FROM_ADHERENCE = ADMISSIBILITY_FROM_ADHERENCE;
+  A.SIGIAN_COMPONENT_SCHOOL_DISPLAY_NAMES = SCHOOL_DISPLAY_NAMES;
+  A.SIGIAN_COMPONENT_POWER_DISPLAY_NAMES = POWER_DISPLAY_NAMES;
   A.SIGIAN_COMPONENT_PRIMARY_TAG_WEIGHT = PRIMARY_TAG_WEIGHT;
   A.SIGIAN_COMPONENT_ADHERENCE_LABELS = ADHERENCE_LABELS;
   A.SIGIAN_COMPONENT_ADHERENCE_SCORE_BANDS = ADHERENCE_SCORE_BANDS;
@@ -791,6 +942,7 @@
   A.SIGIAN_COMPONENT_SEMANTIC_TAGS = TAGS_BY_ID;
   A.SIGIAN_COMPONENT_REVIEWED_ADHERENCE = REVIEWED_ADHERENCE_BY_ID;
   A.listSigianComponentCompatibilities = enumerateCompatibilities;
+  A.listSigianComponentCompatibilityDomain = compatibilityDomain;
   A.getSigianComponentFamilyProfile = buildFamilyProfile;
   A.calculateSigianComponentVariant = calculateVariant;
   A.generateSigianComponentVariants = generateVariants;

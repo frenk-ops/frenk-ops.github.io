@@ -9,6 +9,13 @@
     nature: { name:"Terra", icon:"🍃", color:"#6f9b4d" },
     death:  { name:"Morte", icon:"💀", color:"#8d6aad" }
   });
+  const COMPATIBILITY_SCHOOL_NAMES = Object.freeze({
+    fire:"Pyrax",
+    water:"Umiria",
+    air:"Vailis",
+    nature:"Gairon",
+    death:"Nekiria"
+  });
   const AFFINITY_MODES = Object.freeze({
     mono: { id:"mono", label:"Mono", size:1 },
     dual: { id:"dual", label:"Dual", size:2 },
@@ -53,7 +60,7 @@
     if (!component?.definitionId) return "";
     const definition = A.getSigianCanonicalV2?.(component.definitionId);
     if (!definition) return "";
-    const schoolBound = /<Scuola>/.test(String(definition.name || ""));
+    const schoolBound = /<(Scuola|Potere)>/.test(String(definition.name || ""));
     const gradeLess = /senza Gradi/i.test(String(definition.grades || ""));
     const specialOneGrade = /speciale\s*·\s*1 Grado/i.test(String(definition.grades || ""));
     const school = schoolBound ? String(component.school || component.effectSchool || "fire") : "neutral";
@@ -127,7 +134,7 @@
     const definition = definitionId ? A.getSigianCanonicalV2?.(definitionId) : null;
     if (!collectible || !definition || definition.status !== "approved") return null;
 
-    const schoolBound = /<Scuola>/.test(String(definition.name || ""));
+    const schoolBound = /<(Scuola|Potere)>/.test(String(definition.name || ""));
     const effectSchool = schoolBound
       ? String(collectible.schoolReference || formulaSchool || "fire")
       : "neutral";
@@ -168,6 +175,10 @@
 
   function schoolName(id) {
     return SCHOOL_META[id]?.name || String(id || "");
+  }
+
+  function compatibilitySchoolName(id) {
+    return A.SIGIAN_COMPONENT_SCHOOL_DISPLAY_NAMES?.[id] || COMPATIBILITY_SCHOOL_NAMES[id] || schoolName(id);
   }
 
   function schoolIcon(id) {
@@ -224,7 +235,7 @@
     const source = affinity || { mode:"mono", schools:["fire"] };
     const mode = AFFINITY_MODES[source.mode] || AFFINITY_MODES.mono;
     if (source.mode === "universal") return `${mode.label} · ✦`;
-    return `${mode.label} · ${(source.schools || []).map(id => `${schoolIcon(id)} ${schoolName(id)}`).join(" / ")}`;
+    return `${mode.label} · ${(source.schools || []).map(id => `${schoolIcon(id)} ${compatibilitySchoolName(id)}`).join(" / ")}`;
   }
 
   function affinityCssVars(affinity) {
@@ -239,7 +250,9 @@
   }
 
   function replaceSchoolToken(text, school) {
-    return String(text || "").replaceAll("<Scuola>", schoolName(school));
+    return String(text || "")
+      .replaceAll("<Scuola>", schoolName(school))
+      .replaceAll("<Potere>", schoolName(school));
   }
 
   function expandCanonicalEntries() {
@@ -249,7 +262,7 @@
     ];
     const out = [];
     source.forEach(entry => {
-      const schools = /<Scuola>/.test(entry.name) ? SCHOOL_ORDER : [null];
+      const schools = /<(Scuola|Potere)>/.test(entry.name) ? SCHOOL_ORDER : [null];
       const grades = gradeNumbers(entry.grades);
       schools.forEach(effectSchool => {
         grades.forEach(grade => {

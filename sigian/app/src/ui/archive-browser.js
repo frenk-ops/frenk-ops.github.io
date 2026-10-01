@@ -34,6 +34,14 @@
     return `<span class="archive-school-label">${schoolIconMarkup(id)}${showName ? `<span>${escapeHtml(schoolName(id))}</span>` : ""}</span>`;
   }
 
+  function compatibilitySchoolName(id) {
+    return A.SIGIAN_COMPONENT_SCHOOL_DISPLAY_NAMES?.[id] || schoolName(id);
+  }
+
+  function compatibilitySchoolLabelMarkup(id) {
+    return `<span class="archive-school-label">${schoolIconMarkup(id)}<span>${escapeHtml(compatibilitySchoolName(id))}</span></span>`;
+  }
+
   const SECTION_LABEL_KEYS = Object.freeze({
     formulas:{ inventory:"archive.formulas", collection:"archive.originalFormulas" },
     recipes:{ inventory:"archive.recipes", collection:"archive.recipes" },
@@ -88,6 +96,13 @@
     const schools = A.SIGIAN_AFFINITY_SCHOOL_ORDER || A.SCHOOLS?.map(item => item.id) || [];
     const options = includeAll ? [{ id:"all", label:t("archive.all") }] : [];
     schools.forEach(id => options.push({ id, label:schoolName(id) }));
+    return options;
+  }
+
+  function compatibilitySchoolOptions(includeAll = true) {
+    const schools = A.SIGIAN_AFFINITY_SCHOOL_ORDER || A.SCHOOLS?.map(item => item.id) || [];
+    const options = includeAll ? [{ id:"all", label:t("archive.all") }] : [];
+    schools.forEach(id => options.push({ id, label:compatibilitySchoolName(id) }));
     return options;
   }
 
@@ -362,7 +377,7 @@
             { id:"triple", label:"Triple" },
             { id:"universal", label:"Universale" }
           ])}
-          ${selectMarkup("school", t("archive.compatibleWith"), bucket.school, schoolOptions())}
+          ${selectMarkup("school", t("archive.compatibleWith"), bucket.school, compatibilitySchoolOptions())}
           ${selectMarkup("rarity", t("archive.rarity"), "pending", [{ id:"pending", label:t("archive.pending") }], "disabled")}
         </div>
       </details>`;
@@ -597,7 +612,7 @@
   function affinitySchoolsMarkup(affinity) {
     const schools = affinity?.schools || [];
     if (!schools.length) return `<span class="archive-affinity-school is-neutral">${escapeHtml(t("archive.neutral"))}</span>`;
-    return schools.map(id => `<span class="archive-affinity-school">${schoolLabelMarkup(id)}</span>`).join("");
+    return schools.map(id => `<span class="archive-affinity-school">${compatibilitySchoolLabelMarkup(id)}</span>`).join("");
   }
 
   function componentIdentityTileMarkup(group, scope, selected) {
@@ -606,7 +621,7 @@
     const gradeText = gradeCount
       ? `${gradeCount} ${t("archive.grades")}`
       : t("archive.noGrades");
-    const schoolText = group.effectSchools.length ? `${group.effectSchools.length} ${t("archive.schools")}` : t("archive.neutral");
+    const schoolText = group.effectSchools.length ? `${group.effectSchools.length} ${t("archive.referencePowers")}` : t("archive.neutral");
     return `
       <button type="button" class="archive-component-identity ${selected ? "active" : ""}" data-archive-component-group="${escapeHtml(group.id)}">
         <span class="archive-component-symbol" aria-hidden="true">${group.kind === "constraint" ? "◇" : "✦"}</span>
@@ -676,7 +691,7 @@
         ${scope === "inventory" ? componentAssignmentsMarkup(group, formulas) : ""}\n        <p>${escapeHtml(group.summary)}</p>
         <section class="archive-variant-section">
           <div class="archive-block-heading">
-            <strong>${escapeHtml(t("archive.schools"))}</strong>
+            <strong>${escapeHtml(t("archive.referencePowers"))}</strong>
             <small>${escapeHtml(t("archive.identitySchoolHint"))}</small>
           </div>
           <div class="archive-variant-chip-row">${schoolListMarkup(group.effectSchools)}</div>
