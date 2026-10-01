@@ -113,6 +113,8 @@
 .forge-lab-card[data-lab-design-geometry] .forge-lab-cost-anchor { width: calc(72 * var(--lab-design-unit)) !important; height: calc(72 * var(--lab-design-unit)) !important; }
 .forge-lab-card[data-lab-design-geometry] :is(.forge-lab-cost,.forge-lab-school) { width: calc(72 * var(--lab-design-unit)) !important; height: calc(72 * var(--lab-design-unit)) !important; min-width: 0 !important; min-height: 0 !important; }
 .forge-lab-card[data-lab-design-geometry] .forge-lab-school-anchor { height: calc(72 * var(--lab-design-unit)) !important; }
+.forge-lab-card[data-lab-design-geometry][data-lab-formula-state="unstable"] .forge-lab-school-picker-toggle { right:calc(3% - 22px); top:-22px; transform:none; }
+.forge-lab-school-status { position:absolute; right:0; top:100%; width:min(260px,75vw); z-index:80; margin:8px 0 0; padding:12px; color:#fff1d0; background:#17212f; border:1px solid #a89061; border-radius:8px; pointer-events:none; transform:translateZ(var(--lab-z-control-local)); font:14px/1.4 system-ui,sans-serif; }
 .forge-lab-card[data-lab-design-geometry] .forge-lab-school-icon { width: calc(29 * var(--lab-design-unit)); height: calc(29 * var(--lab-design-unit)); }
 .forge-lab-card[data-lab-design-geometry] .forge-lab-cost small { font-size: calc(7.5 * var(--lab-design-unit)); margin-top: calc(7 * var(--lab-design-unit)); }
 .forge-lab-card[data-lab-design-geometry] .forge-lab-cost strong { font-size: calc(28 * var(--lab-design-unit)); margin-top: calc(-9 * var(--lab-design-unit)); }

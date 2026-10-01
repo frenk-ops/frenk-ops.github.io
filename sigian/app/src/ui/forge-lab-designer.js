@@ -130,17 +130,19 @@
     const art = current.presets[mode].art;
     card.dataset.labArtFrame = art.frame;
     card.dataset.labArtAdjusted = String(art.zoom < 100 || art.panX !== 0 || art.panY !== 0);
+    const cardWidth = card.offsetWidth, cardHeight = card.offsetHeight;
+    const layer = card.querySelector(".forge-lab-art-layer");
+    const artWidth = layer?.offsetWidth || 0, artHeight = layer?.offsetHeight || 0;
     const image = card.querySelector("[data-lab-art-image]");
     if (image) {
-      const layer = card.querySelector(".forge-lab-art-layer");
       style(image,"objectPosition",`${art.imageX}% ${art.imageY}%`); style(image,"transformOrigin",`${art.imageX}% ${art.imageY}%`); style(image,"scale",String(art.zoom/100));
-      style(image,"translate",`${art.panX * layer.offsetWidth / 100}px ${art.panY * layer.offsetHeight / 100}px`);
+      style(image,"translate",`${art.panX * artWidth / 100}px ${art.panY * artHeight / 100}px`);
     }
     for (const item of entries) {
       const value = current.presets[mode].elements[item.id];
       const { element, visual } = targets(item);
       if (!value || !element) continue;
-      style(element, "translate", `${value.x * card.offsetWidth / 100}px ${value.y * card.offsetHeight / 100}px ${value.depth}px`);
+      style(element, "translate", `${value.x * cardWidth / 100}px ${value.y * cardHeight / 100}px ${value.depth}px`);
       style(element, "scale", `${value.scaleX / 100} ${value.scaleY / 100}`);
       style(element, "rotate", `${value.rotation}deg`);
       style(element, "opacity", String(value.opacity / 100));
@@ -163,6 +165,7 @@
     frame = window.requestAnimationFrame(() => { frame = 0; drawSelection(); });
   }
   function drawSelection() {
+    A.ForgeLabMagic?.fitName(root);
     const box = root?.querySelector("[data-design-box]");
     const visual = selected === "art" && artEditing === "image" ? root.querySelector("[data-lab-art-image]") : targets(entries.find(item => item.id === selected)).visual;
     if (!box || !visual) { if (box) box.hidden = true; return; }

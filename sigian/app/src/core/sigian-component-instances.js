@@ -3,6 +3,7 @@
 
   const SCHEMA_VERSION = 1;
   const STORAGE_KEY = "sigian.inventory.componentInstances.v1";
+  let verticalOptionsCache = null;
 
   function clone(value) {
     if (typeof A.deepClone === "function") return A.deepClone(value);
@@ -273,8 +274,8 @@
     };
   }
 
-  function projectedInstances(transaction = null) {
-    const instances = new Map(snapshot().instances.map(instance => [instance.componentInstanceId, clone(instance)]));
+  function projectedInstances(transaction = null, inventory = null) {
+    const instances = new Map((inventory || snapshot()).instances.map(instance => [instance.componentInstanceId, clone(instance)]));
     (transaction?.operations || []).forEach(operation => {
       const payload = operation?.payload || {};
       if (operation.type === "reclaim" && payload.craftingOnly) {
@@ -375,12 +376,12 @@
     return A.sigianConstraintInventoryId?.(constraint) || null;
   }
 
-  function projectedFreeInstances(options = {}) {
+  function projectedFreeInstances(options = {}, inventory = null) {
     const excluded = new Set([
       ...(options.excludeInstanceIds || []).map(String),
       ...draftUsedIds(options.transaction)
     ]);
-    return projectedInstances(options.transaction)
+    return projectedInstances(options.transaction, inventory)
       .filter(instance => {
         if (excluded.has(instance.componentInstanceId)) return false;
         if (instance.allocation?.state !== "free") return false;
@@ -614,10 +615,22 @@
   }
 
   function verticalCraftingOptions(transaction = null, options = {}) {
+    const inventory = snapshot();
     const free = projectedFreeInstances({
       transaction,
       compatibleSchool:options.compatibleSchool
-    });
+    }, inventory);
+    const catalog = canonicalItems();
+    const catalogIds = new Set(catalog.map(item => String(item.id)));
+    const key = JSON.stringify([inventory.revision, options.compatibleSchool || null, transaction, free, catalog]);
+    const planners = [A.planSigianVerticalFusion, A.planSigianVerticalSplit, A.sigianCanonicalComponentInventoryId, A.getSigianCanonicalV2];
+    if (verticalOptionsCache?.key === key && planners.every((fn,index) => fn === verticalOptionsCache.planners[index])) return clone(verticalOptionsCache.result);
+    // Metadata is irrelevant to eligibility, but the earliest concrete input
+    // must still supply the output metadata, exactly as in the exhaustive scan.
+    const semanticKey = instance => {
+      const { componentInstanceId, createdAt, allocation, ...component } = instance;
+      return JSON.stringify(component);
+    };
     const byInventory = new Map();
     free.forEach(instance => {
       if (!byInventory.has(instance.inventoryId)) byInventory.set(instance.inventoryId, []);
@@ -628,12 +641,24 @@
     const seenFusionOutcomes = new Set();
     byInventory.forEach(instances => {
       if (instances.length < 2) return;
-      for (let leftIndex = 0; leftIndex < instances.length - 1; leftIndex += 1) {
-        for (let rightIndex = leftIndex + 1; rightIndex < instances.length; rightIndex += 1) {
+      const groups = new Map();
+      instances.forEach((instance,index) => {
+        const key = semanticKey(instance);
+        if (!groups.has(key)) groups.set(key, []);
+        const group = groups.get(key);
+        if (group.length < 2) group.push(index);
+      });
+      const representatives = [...groups.values()], pairs = [];
+      representatives.forEach((left,index) => {
+        if (left.length > 1) pairs.push([left[0],left[1]]);
+        for (let right=index+1;right<representatives.length;right++) pairs.push([left[0],representatives[right][0]].sort((a,b)=>a-b));
+      });
+      pairs.sort((a,b)=>a[0]-b[0] || a[1]-b[1]);
+      for (const [leftIndex,rightIndex] of pairs) {
           try {
             const fusion = A.planSigianVerticalFusion?.(instances[leftIndex], instances[rightIndex]);
             const outputInventoryId = fusion ? verticalTargetInventoryId(fusion.output) : "";
-            if (!fusion || !outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) continue;
+            if (!fusion || !outputInventoryId || !catalogIds.has(outputInventoryId)) continue;
             const outcomeKey = [
               instances[leftIndex].inventoryId,
               fusion.affinity?.mode || "",
@@ -650,17 +675,20 @@
               affinityNarrowed:Boolean(fusion.affinityNarrowed)
             });
           } catch {}
-        }
       }
     });
 
     const splits = [];
     const seenSplitOutcomes = new Set();
+    const seenSplitInputs = new Set();
     free.forEach(instance => {
+      const inputKey = semanticKey(instance);
+      if (seenSplitInputs.has(inputKey)) return;
+      seenSplitInputs.add(inputKey);
       try {
         const split = A.planSigianVerticalSplit?.(instance);
         const outputInventoryId = split ? verticalTargetInventoryId(split.outputs[0]) : "";
-        if (!split || !outputInventoryId || !canonicalItemByInventoryId(outputInventoryId)) return;
+        if (!split || !outputInventoryId || !catalogIds.has(outputInventoryId)) return;
         const outcomeKey = [
           instance.inventoryId,
           split.outputs[0]?.affinity?.mode || "",
@@ -678,10 +706,12 @@
       } catch {}
     });
 
-    return {
+    const result = {
       fusions:clone(fusions),
       splits:clone(splits)
     };
+    verticalOptionsCache = { key, planners, result:clone(result) };
+    return result;
   }
 
   function mutate(expectedRevision, mutator) {

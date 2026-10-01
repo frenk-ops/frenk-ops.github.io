@@ -71,6 +71,7 @@
   let boardCreatureNames = preference("boardCreatureNames", defaultBoardCreatureNames ? "1" : "0") !== "0";
   let busy = false;
   let audioContext = null;
+  let forgeAudioWarmupPending = false;
   const originalSoundCache = new Map();
   const activeOriginalSounds = new Set();
 
@@ -2872,7 +2873,6 @@
     if (name === "inventory") A.SigianArchiveBrowser?.render?.($("#inventoryContent"), "inventory");
     if (name === "chronicles") A.SigianArchiveBrowser?.render?.($("#chroniclesContent"), "chronicles");
     if (name === "forge") {
-      renderForgePage();
       bindForgeAreaNavigation();
     }
     if (name === "uiLab") {
@@ -2883,6 +2883,7 @@
         switchView("forge", { forgeArea:"workbench" });
       };
     }
+    if (name === "forge" || name === "uiLab") prepareForgeAudio();
     if (name === "profile") {
       renderPlayerProfile();
       initializeOnlineAccount({ renderProfile: true }).catch(() => {});
@@ -2915,6 +2916,22 @@
     forgeSession = A.createSigianForgeSession?.({ draft:{ recipe } }) || null;
     switchView("forge", { forgeArea:"workbench" });
   });
+
+  function prepareForgeAudio() {
+    if (!soundEnabled || audioContext || forgeAudioWarmupPending) return;
+    forgeAudioWarmupPending = true;
+    const warm = () => {
+      forgeAudioWarmupPending = false;
+      if (!soundEnabled || audioContext || document.hidden || !document.querySelector('#forgeView.active, #uiLabView.active')) return;
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) return;
+      // Allocate only: resume/play still require the normal user gesture.
+      // Native desktop audio startup can otherwise block the first School tap.
+      try { audioContext = new Context(); } catch {}
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(warm, { timeout:1500 });
+    else window.setTimeout(warm, 150);
+  }
 
   function ensureAudio() {
     if (!soundEnabled) return null;
@@ -6748,6 +6765,7 @@
   }
 
   function forgeVerticalCraftingMarkup(recipe, transaction) {
+    if (!forgeVerticalCraftingOpen) return `<details class="forge-vertical-crafting" data-forge-vertical-crafting><summary><span><strong>${escapeHtml(t("forge.vertical.title"))}</strong><small>${escapeHtml(t("forge.vertical.subtitle"))}</small></span><b>＋</b></summary></details>`;
     const options = A.listSigianVerticalCraftingOptions?.(transaction, {
       compatibleSchool:recipe.school
     }) || { fusions:[], splits:[] };
@@ -6819,6 +6837,7 @@
   }
 
   function forgeHorizontalCraftingMarkup(recipe, transaction) {
+    if (!forgeHorizontalCraftingOpen) return `<details class="forge-vertical-crafting forge-horizontal-crafting" data-forge-horizontal-crafting><summary><span><strong>${escapeHtml(t("forge.horizontal.title"))}</strong><small>${escapeHtml(t("forge.horizontal.subtitle"))}</small></span><b>＋</b></summary></details>`;
     const session = ensureForgeSession();
     const options = session?.listHorizontalCraftingOptions?.() || { fusions:[], splits:[] };
     const stagedOps = (transaction?.operations || []).filter(operation =>
@@ -6887,7 +6906,7 @@
     </details>`;
   }
 
-  function forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit) {
+  function forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit, transaction = null) {
     if (forgeCardEditorSection === "sigils") {
       const selected = recipe.sigils.find(item => item.slotId === forgeSelectedSigilSlotId);
       if (selected) {
@@ -6900,7 +6919,6 @@
     }
     if (forgeCardEditorSection === "constraint") return forgeGlobalConstraintMarkup(recipe);
     if (forgeCardEditorSection === "cost") return forgeBudgetMarkup(recipe, analysis);
-    const transaction = ensureForgeSession()?.snapshot?.()?.draft?.transaction || null;
     return `<div class="forge-context-idle">
       <strong>Forgia card-first</strong>
       <p>Seleziona Nome, Scuola, Costo, Attacco, Vita, Sigilli o Vincolo direttamente sulla carta. Il tipo Creatura/Magia cambia con un singolo tocco.</p>
@@ -7442,6 +7460,10 @@
       panel.hidden = !active;
       panel.setAttribute("aria-hidden", active ? "false" : "true");
     });
+    // The hub and Ritual do not need a Formula analysis or hidden card render.
+    // Keep the single canonical workbench lazy until it is actually requested.
+    if (next === "workbench") renderForgePage();
+    else A.MenuSheetLock?.unlock?.("forge-card-editor");
     return next;
   }
 
@@ -7458,6 +7480,7 @@
   }
 
   function renderForgePage() {
+    if (forgeActiveArea !== "workbench") return;
     const root = $("#forgeContent");
     const session = ensureForgeSession();
     if (!root || !session) return;
@@ -7465,7 +7488,9 @@
     const snapshot = session.snapshot();
     const recipe = snapshot.draft.recipe;
     const analysis = snapshot.analysis;
-    const activeSigils = A.listSigianOwnedForgeSigilOptions?.(recipe.school, snapshot.draft.transaction) || [];
+    const activeSigils = forgeCardEditorSection === "sigils"
+      ? A.listSigianOwnedForgeSigilOptions?.(recipe.school, snapshot.draft.transaction) || []
+      : [];
     const atSigilLimit = recipe.sigils.length >= (A.SIGIAN_MAX_PRIMARY_SIGILS || 3);
     const inventoryReadOnly = Boolean(forgeInventoryPreviewCardId);
     const inventoryFormula = inventoryReadOnly ? A.getSigianInventoryFormula?.(forgeInventoryPreviewCardId) : null;
@@ -7519,7 +7544,7 @@
               <p class="forge-catalog-note"><strong>Conversione canonica completata.</strong> Questa Formula originale è in sola lettura.</p>
               <p class="forge-catalog-note">Sigilli e Vincoli canonici sono riepilogati nella colonna Struttura.</p>
             </div>
-          ` : forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit)}
+          ` : forgeWorkspaceBodyMarkup(recipe, analysis, activeSigils, atSigilLimit, snapshot.draft.transaction)}
         </aside>
       </div>
       ${!inventoryReadOnly && forgeCardEditorSection ? `<button type="button" class="forge-mobile-sheet-backdrop" data-forge-card-editor-close aria-label="Chiudi editor"></button>` : ""}
@@ -7822,7 +7847,18 @@
 
     root.querySelectorAll("[data-forge-vertical-crafting]").forEach(details => {
       details.addEventListener("toggle", () => {
+        if (forgeVerticalCraftingOpen === details.open) return;
         forgeVerticalCraftingOpen = details.open;
+        if (!details.open) { renderForgePage(); return; }
+        details.setAttribute('aria-busy', 'true');
+        const status = document.createElement('p');
+        status.setAttribute('role', 'status');
+        status.textContent = 'Calcolo combinazioni…';
+        details.append(status);
+        // Paint acknowledgement before calculating; never calculate on Forge entry.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (details.isConnected && details.open && forgeVerticalCraftingOpen) renderForgePage();
+        }));
       });
     });
     root.querySelectorAll("[data-forge-vertical-fuse-left]").forEach(button => button.addEventListener("click", () => {
@@ -7841,7 +7877,17 @@
 
     root.querySelectorAll("[data-forge-horizontal-crafting]").forEach(details => {
       details.addEventListener("toggle", () => {
+        if (forgeHorizontalCraftingOpen === details.open) return;
         forgeHorizontalCraftingOpen = details.open;
+        if (!details.open) { renderForgePage(); return; }
+        details.setAttribute('aria-busy', 'true');
+        const status = document.createElement('p');
+        status.setAttribute('role', 'status');
+        status.textContent = 'Calcolo combinazioni…';
+        details.append(status);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (details.isConnected && details.open && forgeHorizontalCraftingOpen) renderForgePage();
+        }));
       });
     });
     root.querySelectorAll("[data-forge-horizontal-fuse-left]").forEach(button => button.addEventListener("click", () => {

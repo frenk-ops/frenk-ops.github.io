@@ -38,6 +38,10 @@
     nameEditing: false
   };
 
+  let presentationSnapshot = null;
+  function currentSnapshot(session = ensureSession()) {
+    return presentationSnapshot || (presentationSnapshot = session?.snapshot?.() || null);
+  }
   const clamp = (value, min, max) => Math.max(min, Math.min(max, Number(value) || 0));
 
   const isInteractiveTarget = target => Boolean(target?.closest?.(INTERACTIVE_SELECTOR));
@@ -118,6 +122,8 @@
       card.style.setProperty("--lab-pointer-y", runtime.currentY.toFixed(3) + "deg");
       card.style.setProperty("--lab-motion-skew-x", (runtime.currentY * .45).toFixed(3) + "deg");
       card.style.setProperty("--lab-motion-skew-y", (runtime.currentX * .22).toFixed(3) + "deg");
+      const energy = runtime.root?.querySelector(".forge-lab-magic-field");
+      if (energy) energy.style.transform = "translate3d(" + (-runtime.currentY * .45).toFixed(3) + "px," + (runtime.currentX * .35).toFixed(3) + "px,0)";
       const parallax = motionParallaxVector(runtime.currentX, runtime.currentY);
       Object.entries(parallax).forEach(([layer, vector]) => {
         card.style.setProperty("--lab-motion-" + layer + "-x", vector.x.toFixed(3) + "px");
@@ -369,6 +375,7 @@
       water: "Acqua",
       air: "Aria",
       earth: "Terra",
+      nature: "Terra",
       death: "Morte"
     }[id] || String(id || ""));
   }
@@ -399,7 +406,7 @@
   }
 
   function forgeSigilOptions(recipe) {
-    const transaction = ensureSession()?.snapshot?.()?.draft?.transaction || null;
+    const transaction = currentSnapshot()?.draft?.transaction || null;
     return A.listSigianOwnedForgeSigilOptions?.(recipe?.school || "fire", transaction) || [];
   }
 
@@ -408,10 +415,10 @@
     return A.getSigianForgeSigilOption?.(sigil.collectibleId, recipe?.school || "fire") || null;
   }
 
-  function sigilCycleOptions(recipe, current) {
+  function sigilCycleOptions(recipe, current, options = forgeSigilOptions(recipe)) {
     const currentId = current?.collectibleId;
     const seen = new Set();
-    return forgeSigilOptions(recipe).filter(option => {
+    return options.filter(option => {
       if (!option?.id || seen.has(option.id)) return false;
       const eligible = option.id === currentId || Number(option.projectedFreeQuantity || 0) > 0;
       if (eligible) seen.add(option.id);
@@ -460,6 +467,7 @@
 
   function mutate(fn) {
     const result = fn();
+    presentationSnapshot = result?.draft ? result : null;
     changed();
     return result;
   }
@@ -574,6 +582,7 @@
 
   function sigilRowsMarkup(recipe) {
     const max = A.SIGIAN_MAX_PRIMARY_SIGILS || 3;
+    const options = recipe.sigils.length ? forgeSigilOptions(recipe) : [];
     const rows = [];
     for (let index = 0; index < max; index += 1) {
       const sigil = recipe.sigils[index] || null;
@@ -588,10 +597,10 @@
         continue;
       }
       const option = sigilOption(recipe, sigil);
-      const canCycle = sigilCycleOptions(recipe, sigil).length > 1;
+      const canCycle = sigilCycleOptions(recipe, sigil, options).length > 1;
       const imprint = state.imprintSlotId === sigil.slotId ? " is-imprinting" : "";
       const cycleReason = imprint ? "Impressione in corso" : canCycle ? "" : "Nessun altro Sigillo disponibile";
-      const cycleDisabled = cycleReason ? ' disabled aria-disabled="true" title="' + cycleReason + '"' : "";
+      const cycleDisabled = ' data-lab-cycle-ready="' + canCycle + '"' + (cycleReason ? ' disabled aria-disabled="true" title="' + cycleReason + '"' : "");
       const breaking = state.breakSlotId === sigil.slotId ? " is-breaking" : "";
       rows.push(
         '<div class="forge-lab-sigil-row forge-lab-sigil-anchor' + imprint + breaking + '" data-lab-control-anchor="sigil" data-lab-row="' + escapeHtml(sigil.slotId) + '" style="--lab-sigil-index:' + index + '">' +
@@ -665,7 +674,7 @@
       ? '<form class="forge-lab-nameplate forge-lab-name-editing' + longName + '" data-lab-name-inline-form>' +
           '<input name="name" maxlength="48" value="' + escapeHtml(name) + '" aria-label="Nome Formula" autocomplete="off">' +
         '</form>'
-      : '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-edit-name><span>' + escapeHtml(name) + '</span></button>';
+      : '<button type="button" class="forge-lab-nameplate' + longName + '" data-lab-edit-name aria-label="' + escapeHtml(name) + '">' + (A.ForgeLabMagic?.nameMarkup(name) || '<span>' + escapeHtml(name) + '</span>') + '</button>';
 
     return (
       '<div class="forge-lab-card-shell">' +
@@ -689,7 +698,7 @@
             '<button type="button" class="forge-lab-type" data-lab-toggle-type>' + (recipe.type === "spell" ? "MAGIA" : "CREATURA") + '</button>' +
           '</div>' +
           '<div class="forge-lab-control-anchor forge-lab-school-anchor" data-lab-control-anchor="school" data-lab-depth-layer="floating">' +
-            '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per la successiva; scorri per cambiare">' +
+            '<button type="button" class="forge-lab-school" data-lab-school-main aria-label="Scuola: ' + escapeHtml(schoolLabel(recipe.school)) + '. Tocca per la successiva compatibile; scorri per cambiare">' +
               schoolIconMarkup(recipe.school, "forge-lab-school-icon") +
             '</button>' +
             '<button type="button" class="forge-lab-school-picker-toggle" data-lab-school-picker-toggle aria-label="Apri selezione completa Scuole"><span aria-hidden="true">✥</span></button>' +
@@ -866,7 +875,7 @@
             school:schoolBound ? recipe.school : null,
             grade:gradeLess ? null : 1
           };
-          const transaction = ensureSession()?.snapshot?.()?.draft?.transaction || null;
+          const transaction = currentSnapshot()?.draft?.transaction || null;
           const availability = A.getSigianConstraintComponentAvailability?.(probe, recipe.school, transaction) || null;
           const owned = Number(availability?.total ?? A.getSigianOwnedConstraintQuantity?.(probe) ?? 0);
           const free = Number(availability?.projectedFree ?? owned);
@@ -972,7 +981,7 @@
             '<label>Rotazione <output data-lab-output="tiltZ">' + state.tiltZ + '°</output><input type="range" min="-5" max="4" step="1" value="' + state.tiltZ + '" data-lab-tuning="tiltZ"></label>' +
             '<label>Separazione elementi <output data-lab-output="depth">' + state.depth + 'px</output><input type="range" min="0" max="100" step="2" value="' + state.depth + '" data-lab-tuning="depth"></label>' +
           '</div>' +
-          '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Bagliori della Scuola</label>' +
+          '<label class="forge-lab-atmosphere-toggle"><input type="checkbox" data-lab-atmosphere ' + (state.atmosphere ? "checked" : "") + '> Magia della Scuola</label>' +
           '<label class="forge-lab-motion-toggle"><input type="checkbox" data-lab-motion ' + (state.motionEnabled ? "checked" : "") + '> Movimento carta</label>' +
           '<p class="forge-lab-motion-status" data-lab-motion-status aria-live="polite">' + escapeHtml(motionStatusText()) + '</p>' +
           '<fieldset class="forge-lab-constraint-preview-controls"><legend>Socket Vincolo · preview Lab</legend>' +
@@ -1007,6 +1016,7 @@
   }
 
   function cycleArt(recipe, delta) {
+    recipe = currentSnapshot().draft.recipe;
     const session = ensureSession();
     const set = artItems();
     if (!session || !set.length) return;
@@ -1015,17 +1025,104 @@
     const next = set[(index + Number(delta) + set.length) % set.length];
     mutate(() => session.setArt(next.id));
     state.artCardId = next.id;
-    render();
+    const root = document.getElementById('forgeUiLabContent');
+    const image = root?.querySelector('[data-lab-art-image]');
+    if (!image) { render(); return; }
+    image.classList.remove('is-error');
+    image.src = artUrl(next);
+    image.alt = cardDisplayName(next);
+    A.ForgeLabMagic?.refresh();
   }
 
   function cycleSchool(recipe, delta) {
     const session = ensureSession();
     const schools = activeSchools();
     if (!session || !schools.length) return;
+    recipe = currentSnapshot().draft.recipe;
     const index = Math.max(0, schools.findIndex(item => item.id === recipe.school));
-    const next = schools[(index + Number(delta) + schools.length) % schools.length];
-    mutate(() => session.setSchool(next.id));
-    render();
+    const skipped = [];
+    for (let step = 1; step < schools.length; step++) {
+      const next = schools[(index + Math.sign(Number(delta) || 1) * step + schools.length) % schools.length];
+      const changed = changeSchool(next.id, false);
+      if (changed === false) { skipped.push(schoolLabel(next.id)); continue; }
+      if (changed !== true) return;
+      updateSchoolPresentation();
+      if (skipped.length) schoolStatus('Scuole saltate: ' + skipped.join(', ') + '. Non possiedi copie compatibili disponibili per i Sigilli o il Vincolo presenti. Componenti conservati.');
+      return;
+    }
+    schoolStatus('Nessun’altra Scuola compatibile: ' + skipped.join(', ') + '. Non possiedi copie compatibili disponibili per i componenti presenti. Formula invariata.');
+  }
+
+  function schoolStatus(message) {
+    const root = document.getElementById('forgeUiLabContent');
+    let status = root?.querySelector('[data-lab-school-status]');
+    if (!status && root) {
+      status = document.createElement('p');
+      status.dataset.labSchoolStatus = '';
+      status.className = 'forge-lab-school-status forge-lab-canonical-note';
+      status.setAttribute('role','alert');
+      root.querySelector('.forge-lab-school-anchor')?.append(status);
+    }
+    if (status) status.textContent = message;
+  }
+
+  function updateSchoolPresentation() {
+    const root = document.getElementById('forgeUiLabContent');
+    if (!root) return;
+    const recipe = currentSnapshot().draft.recipe;
+    // Preserve hitboxes, motion controller, geometry and impressed Sigil nodes.
+    root.querySelectorAll('.forge-lab-card, .forge-lab-stage').forEach(node => {
+      [...node.classList].filter(name => name.startsWith('school-')).forEach(name => node.classList.remove(name));
+      node.classList.add('school-' + recipe.school);
+    });
+    const school = root.querySelector('[data-lab-school-main]');
+    school?.querySelector('.forge-lab-school-icon')?.remove();
+    school?.insertAdjacentHTML('afterbegin', schoolIconMarkup(recipe.school));
+    school?.setAttribute('aria-label', 'Scuola: ' + schoolLabel(recipe.school) + '. Tocca per la successiva compatibile; scorri per cambiare');
+    const options = recipe.sigils.length ? forgeSigilOptions(recipe) : [];
+    for (const sigil of recipe.sigils) {
+      const row = [...root.querySelectorAll('[data-lab-row]')].find(node => node.dataset.labRow === sigil.slotId);
+      if (!row) continue;
+      row.querySelector('.forge-lab-sigil-name').innerHTML = sigilNameLettersMarkup(sigilName(recipe, sigil));
+      row.querySelector('.forge-lab-sigil-glyph').textContent = sigilGlyph(recipe, sigil);
+      row.querySelector('.forge-lab-chip-row').innerHTML = sigilIdentityMarkup(recipe, sigil);
+      const ready = sigilCycleOptions(recipe, sigil, options).length > 1;
+      row.querySelectorAll('[data-lab-sigil-step]').forEach(button => {
+        const reason = row.classList.contains('is-imprinting') ? 'Impressione in corso' : ready ? '' : 'Nessun altro Sigillo disponibile';
+        const label = Number(button.dataset.labSigilStep) < 0 ? 'Sigillo precedente' : 'Sigillo successivo';
+        button.dataset.labCycleReady = String(ready);
+        button.disabled = Boolean(reason);
+        button.setAttribute('aria-disabled', String(Boolean(reason)));
+        button.setAttribute('aria-label', label + (reason ? ': ' + reason : ''));
+        button.title = reason;
+      });
+    }
+    const constraint = root.querySelector('[data-lab-constraint-main]');
+    if (constraint && recipe.constraint) {
+      [...constraint.classList].filter(name => name.startsWith('school-')).forEach(name => constraint.classList.remove(name));
+      if (recipe.constraint.school) constraint.classList.add('school-' + recipe.constraint.school);
+      constraint.setAttribute('aria-label', constraintName(recipe));
+    }
+    state.inlineControl = null;
+    state.modal = null;
+    root.querySelectorAll('[data-lab-inline-wheel], .forge-lab-sigil-quick').forEach(node => node.remove());
+    root.querySelector('[data-lab-modal-layer]')?.remove();
+    A.ForgeLabMagic?.refresh();
+  }
+
+  function changeSchool(id, announce = true) {
+    try {
+      mutate(() => ensureSession().setSchool(id));
+      document.querySelector('[data-lab-school-status]')?.remove();
+      return true;
+    } catch (error) {
+      if (!/Nessuna copia|compatibil/i.test(String(error.message))) {
+        schoolStatus('Impossibile cambiare Scuola. Riprova; la Formula è invariata.');
+        return null;
+      }
+      if (announce) schoolStatus('Scuola ' + schoolLabel(id) + ' non cambiata: non possiedi copie compatibili disponibili per i Sigilli o il Vincolo presenti. Formula invariata.');
+      return false;
+    }
   }
 
   function playImprint(slotId, options = {}) {
@@ -1036,11 +1133,24 @@
     window.setTimeout(() => {
       if (state.imprintSlotId !== slotId) return;
       state.imprintSlotId = null;
-      render();
+      // Finishing an impression must not detach another control mid-tap.
+      const root = document.getElementById('forgeUiLabContent');
+      root?.querySelectorAll('.is-imprinting').forEach(row => row.classList.remove('is-imprinting'));
+      root?.querySelectorAll('.is-ritual-active').forEach(node => node.classList.remove('is-ritual-active'));
+      root?.querySelectorAll('[data-lab-sigil-step]').forEach(button => {
+        const ready = button.dataset.labCycleReady === 'true';
+        const label = Number(button.dataset.labSigilStep) < 0 ? 'Sigillo precedente' : 'Sigillo successivo';
+        button.disabled = !ready;
+        button.setAttribute('aria-disabled',String(!ready));
+        button.setAttribute('aria-label',label + (ready ? '' : ': Nessun altro Sigillo disponibile'));
+        if (ready) button.removeAttribute('title');
+        else button.setAttribute('title','Nessun altro Sigillo disponibile');
+      });
     }, duration);
   }
 
   function cycleSigil(recipe, slotId, delta) {
+    recipe = currentSnapshot().draft.recipe;
     const session = ensureSession();
     const current = recipe.sigils.find(item => item.slotId === slotId);
     const list = sigilCycleOptions(recipe, current);
@@ -1061,14 +1171,14 @@
     const amount = Number(delta || 0);
     if (!amount) return 0;
 
-    const previous = controlValue(session.snapshot().draft.recipe, kind);
+    const previous = controlValue(currentSnapshot(session).draft.recipe, kind);
     let next = 0;
     if (kind === "cost") {
       const current = state.cost == null ? 0 : Number(state.cost);
       next = Math.max(0, Math.min(30, Math.trunc(current + amount)));
       state.cost = next;
     } else {
-      const liveRecipe = session.snapshot().draft.recipe;
+      const liveRecipe = currentSnapshot(session).draft.recipe;
       const stats = liveRecipe.stats || {};
       const attack = Number(stats.attack ?? 0);
       const health = Number(stats.health ?? 1);
@@ -1094,6 +1204,7 @@
         feedback.classList.add("is-pulsing");
       }
     }
+    if (button && next !== previous) A.ForgeLabMagic?.feedback(kind, next);
     return next;
   }
 
@@ -1192,9 +1303,8 @@
 
     root.querySelectorAll("[data-lab-inline-school]").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
-      mutate(() => session.setSchool(button.dataset.labInlineSchool));
-      state.inlineControl = null;
-      render();
+      if (!changeSchool(button.dataset.labInlineSchool)) return;
+      updateSchoolPresentation();
     }));
   }
 
@@ -1430,7 +1540,8 @@
     root.querySelectorAll("[data-lab-art-step]").forEach(button => button.addEventListener("click", () => cycleArt(recipe, button.dataset.labArtStep)));
     const artImage = root.querySelector("[data-lab-art-image]");
     const revealArtFallback = () => artImage?.classList.add("is-error");
-    artImage?.addEventListener("error", revealArtFallback, { once:true });
+    artImage?.addEventListener("error", revealArtFallback);
+    artImage?.addEventListener("load", () => artImage.classList.remove('is-error'));
     if (artImage?.complete && !artImage.naturalWidth) revealArtFallback();
     root.querySelectorAll("[data-lab-sigil-step]").forEach(button => button.addEventListener("click", () => cycleSigil(recipe, button.dataset.labSlot, button.dataset.labSigilStep)));
 
@@ -1463,9 +1574,8 @@
     }));
 
     root.querySelectorAll("[data-lab-school]").forEach(button => button.addEventListener("click", () => {
-      mutate(() => session.setSchool(button.dataset.labSchool));
-      state.modal = null;
-      render();
+      if (!changeSchool(button.dataset.labSchool)) return;
+      updateSchoolPresentation();
     }));
 
     root.querySelectorAll("[data-lab-add-collectible]").forEach(button => button.addEventListener("click", () => {
@@ -1609,15 +1719,16 @@
     const root = target || document.getElementById("forgeUiLabContent");
     const session = ensureSession();
     if (!root || !session) return;
-    const recipe = session.snapshot().draft.recipe;
+    const recipe = currentSnapshot().draft.recipe;
     selectedArtCard(recipe);
 
     root.innerHTML =
       '<div class="forge-lab-layout">' +
         '<section class="forge-lab-stage school-' + escapeHtml(recipe.school) + ' ' + (state.atmosphere ? "" : "no-atmosphere") + (state.imprintSlotId ? " is-ritual-active" : "") + '" data-lab-formula-state="unstable">' +
           '<div class="forge-lab-school-light" aria-hidden="true"><i></i><i></i></div>' +
+          '<div class="forge-lab-magic-field" aria-hidden="true"><i class="forge-lab-magic-haze"></i><i class="forge-lab-magic-haze is-right"></i><i class="forge-lab-magic-filament"></i><i class="forge-lab-magic-filament is-right"></i><i class="forge-lab-magic-arc"></i><i class="forge-lab-magic-arc is-right"></i></div>' +
           '<div class="forge-lab-card-stage">' + cardMarkup(recipe) + '</div>' +
-          '<p class="forge-lab-gesture-hint">Tap su Costo/ATT/Vita per la ruota · tap Scuola per la successiva · ✥ apre tutte le Scuole · scorri Art e Scuola direttamente sulla Formula</p>' +
+          '<p class="forge-lab-gesture-hint">Tap su Costo/ATT/Vita per la ruota · tap Scuola per la successiva compatibile · ✥ apre tutte le Scuole · scorri Art e Scuola direttamente sulla Formula</p>' +
         '</section>' +
         tuningMarkup() +
       '</div>' +
@@ -1649,19 +1760,22 @@
         render(root);
       }
     });
+    A.ForgeLabMagic?.mount(root);
   }
 
   function refreshFromPersistedDraft() {
     state.session = null;
+    presentationSnapshot = null;
     render();
   }
 
   A.ForgeUiLab = Object.freeze({
     render,
     refreshFromPersistedDraft,
-    suspendMotion: () => { motionController.suspend(); A.ForgeLabDesigner?.suspend(); },
+    suspendMotion: () => { motionController.suspend(); A.ForgeLabDesigner?.suspend(); A.ForgeLabMagic?.suspend(); },
     resetSession() {
       state.session = null;
+      presentationSnapshot = null;
     }
   });
 })(window.Arcane = window.Arcane || {});

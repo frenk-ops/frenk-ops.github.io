@@ -1,0 +1,31 @@
+/* Milestone 9: external Forge energy, never printed card content. */
+.forge-lab-magic-field { position:absolute; inset:9% 0 17%; z-index:2; pointer-events:none; color:var(--unstable-glow); transform:translate3d(0,0,0); }
+.forge-lab-magic-field i { position:absolute; pointer-events:none; background:currentColor; }
+.forge-lab-magic-haze { left:1%; top:8%; width:28%; height:76%; opacity:.24; mask:url("assets/ui/forge-lab/magic-cloud.svg") center / 100% 100% no-repeat; animation:labMagicCloud 13s ease-in-out infinite alternate; }
+.forge-lab-magic-haze.is-right { left:auto; right:1%; top:16%; animation-delay:-6s; animation-duration:17s; }
+.forge-lab-magic-filament { left:2%; top:0; width:20%; height:88%; opacity:.38; mask:url("assets/ui/forge-lab/magic-filament.svg") center / 100% 100% no-repeat; }
+.forge-lab-magic-filament.is-right { left:auto; right:2%; transform:scaleX(-1); }
+.forge-lab-magic-arc { left:6%; top:1%; width:12%; height:58%; opacity:0; mask:url("assets/ui/forge-lab/magic-arc.svg") center / 100% 100% no-repeat; }
+.forge-lab-magic-arc.is-right { left:auto; right:6%; top:5%; transform:scaleX(-1); }
+.forge-lab-magic-response,.forge-lab-magic-wave { position:absolute; inset:-8%; pointer-events:none; opacity:0; border-radius:50%; background:radial-gradient(ellipse,transparent 48%,var(--lab-school-bright) 65%,transparent 74%); }
+.forge-lab-magic-response { z-index:8; }
+.forge-lab-magic-response.is-art { inset:0; border-radius:0; background:linear-gradient(125deg,transparent 25%,var(--lab-school-bright) 50%,transparent 75%); }
+.forge-lab-magic-response.is-name,.forge-lab-magic-response.is-type { inset:0 12%; border-radius:40%; }
+.forge-lab-magic-response.is-attack { mask:url("assets/ui/forge-lab/magic-arc.svg") center / contain no-repeat; background:var(--lab-school-bright); }
+.forge-lab-magic-response.is-health { background:radial-gradient(ellipse,transparent 54%,#ffe8a6 65%,transparent 73%); }
+.forge-lab-magic-wave { inset:0; border-radius:0; background:radial-gradient(ellipse at 80% 5%,var(--lab-school-bright),transparent 70%); }
+.forge-lab-curved-name { display:block; overflow:visible; }
+.forge-lab-curved-name svg { display:block; width:100%; height:calc(21.5 * var(--lab-design-unit, 1px)); overflow:visible; fill:currentColor; font:inherit; }
+.forge-lab-curved-name text { font-family:inherit; font-weight:inherit; letter-spacing:0; }
+/* Replace two old light loops with two cloud loops, not four persistent loops. */
+.forge-lab-stage .forge-lab-school-light i { animation:none; }
+.forge-lab-stage.no-atmosphere .forge-lab-magic-field { display:none; }
+.is-designing .forge-lab-magic-field i,.lab-magic-paused .forge-lab-magic-field i { animation-play-state:paused; }
+[data-lab-magic-quality="medium"] .forge-lab-magic-haze { --lab-cloud-low:.12; --lab-cloud-high:.22; }
+[data-lab-magic-quality="low"] .forge-lab-magic-haze { animation:none; opacity:.14; }
+[data-lab-magic-quality="low"] .forge-lab-magic-arc { display:none; }
+@keyframes labMagicCloud { from { transform:translate3d(0,-5px,0) scale(.96); opacity:var(--lab-cloud-low,.18); } to { transform:translate3d(6px,8px,0) scale(1.04); opacity:var(--lab-cloud-high,.3); } }
+@media (prefers-reduced-motion:reduce) {
+  .forge-lab-magic-haze { animation:none; opacity:.14; }
+  .forge-lab-magic-arc,.forge-lab-magic-response,.forge-lab-magic-wave { display:none; }
+}
