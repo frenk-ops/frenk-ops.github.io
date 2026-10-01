@@ -41,6 +41,23 @@
   });
   const PRIMARY_TAG_WEIGHT = 0.7;
   const SECONDARY_TAG_WEIGHT = 0.3;
+  const CONFIDENCE_WEIGHTS = Object.freeze({
+    semanticCoverage:0.20,
+    mechanicAgreement:0.20,
+    bandMargin:0.20,
+    reviewStability:0.25,
+    canonicalAgreement:0.15
+  });
+  const CONFIDENCE_THRESHOLDS = Object.freeze({
+    low:0.70,
+    high:0.85,
+    largeReviewAdjustment:12.5,
+    nearBoundary:3,
+    flatAutomaticRange:25,
+    forbiddenCandidateScore:16.667,
+    forbiddenCandidateConfidence:0.85,
+    widthReviewDissonantSchools:2
+  });
   const ADHERENCE_RARITY = Object.freeze({ core:0, compatible:0.35, exotic:1.25, dissonant:2.2 });
   const COMPATIBILITY_BY_SIZE = Object.freeze({ 1:"mono", 2:"dual", 3:"triple" });
   const COMPATIBILITY_RARITY = Object.freeze({ mono:0, dual:0.12, triple:0.55, universal:1.25 });
@@ -512,6 +529,141 @@
     return { bySchool, evidence, primaryTag };
   }
 
+  function nearestBandBoundaryDistance(score100) {
+    const numeric = Number(score100);
+    if (!Number.isFinite(numeric)) return null;
+    return Math.min(...[25, 50, 75].map(boundary => Math.abs(numeric - boundary)));
+  }
+
+  function confidenceFactor(score, weight, reason) {
+    return {
+      score:round(clamp(score, 0, 1)),
+      weight:round(weight),
+      contribution:round(clamp(score, 0, 1) * weight),
+      reason
+    };
+  }
+
+  function confidenceForSchool(tags, primaryTag, finalAdherence, evidence, school) {
+    const grammar = evidence?.grammar || null;
+    const automaticScore100 = evidence?.automaticScore100;
+    const finalScore100 = evidence?.score100;
+    const source = evidence?.source || "unclassified";
+    const reviewAdjustment = Number(evidence?.reviewAdjustment || 0);
+
+    const calibratedTags = tags.filter(tag => Number.isFinite(TAG_SCHOOL_VALUES[tag]?.[school]));
+    const primaryCalibrated = Number.isFinite(TAG_SCHOOL_VALUES[primaryTag]?.[school]);
+    const semanticCoverageScore = tags.length && primaryCalibrated
+      ? calibratedTags.length / tags.length
+      : 0;
+
+    const primaryScore = grammar?.primaryScore100;
+    const secondaryScore = grammar?.secondaryScore100;
+    const mechanicAgreementScore = Number.isFinite(primaryScore) && Number.isFinite(secondaryScore)
+      ? 1 - Math.abs(primaryScore - secondaryScore) / 100
+      : Number.isFinite(primaryScore) ? 1 : 0;
+
+    const boundaryDistance = nearestBandBoundaryDistance(automaticScore100);
+    const bandMarginScore = boundaryDistance == null ? 0 : Math.min(1, boundaryDistance / 12.5);
+
+    const adjustmentPenalty = Math.min(1, Math.abs(reviewAdjustment) / 25);
+    const sourceBase = source === "canonical-review"
+      ? 1
+      : source === "manual-override" || source === "definition-override"
+        ? 0.60
+        : source === "grammar" || source === "weighted-grammar"
+          ? 0.70
+          : 0.40;
+    const reviewStabilityScore = sourceBase * (1 - adjustmentPenalty);
+
+    const automaticBand = Number.isFinite(Number(automaticScore100))
+      ? adherenceFromScore100(automaticScore100)
+      : null;
+    let canonicalAgreementScore = 0.40;
+    if (source === "canonical-review" && automaticBand) {
+      const automaticIndex = ADHERENCE_LEVELS.indexOf(automaticBand);
+      const finalIndex = ADHERENCE_LEVELS.indexOf(finalAdherence);
+      const distance = Math.abs(automaticIndex - finalIndex);
+      canonicalAgreementScore = distance === 0 ? 1 : distance === 1 ? 0.5 : distance === 2 ? 0.2 : 0;
+    } else if (source === "manual-override" || source === "definition-override") {
+      canonicalAgreementScore = 0.45;
+    } else if (automaticBand) {
+      canonicalAgreementScore = 0.65;
+    }
+
+    const breakdown = {
+      semanticCoverage:confidenceFactor(
+        semanticCoverageScore,
+        CONFIDENCE_WEIGHTS.semanticCoverage,
+        calibratedTags.length + "/" + tags.length + " tag calibrati per la Scuola; primaria " + (primaryCalibrated ? "coperta" : "non coperta")
+      ),
+      mechanicAgreement:confidenceFactor(
+        mechanicAgreementScore,
+        CONFIDENCE_WEIGHTS.mechanicAgreement,
+        Number.isFinite(secondaryScore)
+          ? "primaria=" + primaryScore + ", secondarie=" + secondaryScore
+          : "nessuna secondaria conflittuale; primaria=" + (primaryScore ?? "-")
+      ),
+      bandMargin:confidenceFactor(
+        bandMarginScore,
+        CONFIDENCE_WEIGHTS.bandMargin,
+        boundaryDistance == null
+          ? "score automatico non disponibile"
+          : "distanza dal confine di banda più vicino=" + round(boundaryDistance)
+      ),
+      reviewStability:confidenceFactor(
+        reviewStabilityScore,
+        CONFIDENCE_WEIGHTS.reviewStability,
+        "source=" + source + ", reviewAdjustment=" + round(reviewAdjustment)
+      ),
+      canonicalAgreement:confidenceFactor(
+        canonicalAgreementScore,
+        CONFIDENCE_WEIGHTS.canonicalAgreement,
+        "banda automatica=" + (automaticBand || "-") + ", banda finale=" + (finalAdherence || "-")
+      )
+    };
+    const score = round(Object.values(breakdown).reduce((sum, factor) => sum + factor.contribution, 0));
+    const score100 = round(score * 100, 1);
+    return {
+      score,
+      score100,
+      label:score >= CONFIDENCE_THRESHOLDS.high ? "alta" : score >= CONFIDENCE_THRESHOLDS.low ? "media" : "bassa",
+      requiresHumanReview:score < CONFIDENCE_THRESHOLDS.low || Math.abs(reviewAdjustment) >= CONFIDENCE_THRESHOLDS.largeReviewAdjustment,
+      automaticScore100:automaticScore100 ?? null,
+      finalScore100:finalScore100 ?? null,
+      automaticBand,
+      finalBand:finalAdherence || null,
+      source,
+      reviewAdjustment:round(reviewAdjustment),
+      breakdown
+    };
+  }
+
+  function deriveConfidence(tags, adherence) {
+    const bySchool = {};
+    schoolOrder().forEach(school => {
+      bySchool[school] = confidenceForSchool(
+        tags,
+        adherence.primaryTag,
+        adherence.bySchool[school],
+        adherence.evidence[school],
+        school
+      );
+    });
+    const values = Object.values(bySchool).map(item => item.score).filter(Number.isFinite);
+    const average = values.length ? round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+    const minimum = values.length ? round(Math.min(...values)) : 0;
+    return {
+      score:average,
+      score100:round(average * 100, 1),
+      minimum,
+      minimum100:round(minimum * 100, 1),
+      lowSchools:Object.entries(bySchool).filter(([, item]) => item.score < CONFIDENCE_THRESHOLDS.low).map(([school]) => school),
+      reviewSchools:Object.entries(bySchool).filter(([, item]) => item.requiresHumanReview).map(([school]) => school),
+      bySchool
+    };
+  }
+
   function deriveAdmissibility(definition, adherenceBySchool, options = {}) {
     const definitionOverrides = definition?.admissibility || {};
     const optionOverrides = options.admissibility || {};
@@ -734,6 +886,7 @@
     if (!definition.kind) throw new Error(`Il componente ${definition.id} richiede kind.`);
     const tags = semanticTags(definition, options);
     const adherence = deriveAdherence(definition, tags, options);
+    const confidence = deriveConfidence(tags, adherence);
     const admissibility = deriveAdmissibility(definition, adherence.bySchool, options);
     const gradeProfile = options.gradeProfile || parseGradeProfile(definition);
     if (gradeProfile.status === "unsupported" && !options.allowUnsupportedGradeProfile) {
@@ -755,6 +908,8 @@
       adherenceScores:Object.fromEntries(Object.entries(adherence.evidence).map(([school, item]) => [school, item?.score100 ?? null])),
       adherenceAutomaticScores:Object.fromEntries(Object.entries(adherence.evidence).map(([school, item]) => [school, item?.automaticScore100 ?? null])),
       adherenceEvidence:adherence.evidence,
+      confidence:confidence,
+      confidenceBySchool:confidence.bySchool,
       admissibility:admissibility.bySchool,
       admissibilityEvidence:admissibility.evidence,
       maxCompatibilityMode:admissibility.maxCompatibilityMode,
@@ -857,6 +1012,8 @@
       adherenceScore:Object.fromEntries(compatibility.schools.map(school => [school, profile.adherenceScores?.[school] ?? null])),
       adherenceMatrix:clone(profile.adherence),
       adherenceScoreMatrix:clone(profile.adherenceScores || {}),
+      confidence:Object.fromEntries(compatibility.schools.map(school => [school, clone(profile.confidenceBySchool?.[school] || null)])),
+      confidenceMatrix:clone(profile.confidenceBySchool || {}),
       grade:requestedGrade,
       intensity,
       arcaneWeight:round(arcaneWeight.value),
@@ -918,6 +1075,234 @@
       .map(definition => buildFamilyProfile(definition, options));
   }
 
+  function componentDesignAudit(options = {}) {
+    const profiles = options.profiles || canonicalCatalog(options);
+    const schools = schoolOrder();
+    const reviewQueue = [];
+    const forbiddenCandidates = [];
+    const compatibilityWidthCandidates = [];
+    const familyRows = profiles.map(profile => {
+      const auditFamily = familyDisplayName(profile, null);
+      const domain = compatibilityDomain(profile);
+      const domainCounts = {
+        standard:domain.filter(item => item.status === "standard").length,
+        exceptional:domain.filter(item => item.status === "exceptional").length,
+        forbidden:domain.filter(item => item.status === "forbidden").length,
+        legal:domain.filter(item => item.legal).length
+      };
+      const coreSchools = schools.filter(school => profile.adherence[school] === "core");
+      const dissonantSchools = schools.filter(school => profile.adherence[school] === "dissonant");
+      const lowConfidenceSchools = schools.filter(school => profile.confidenceBySchool[school]?.score < CONFIDENCE_THRESHOLDS.low);
+      const adjustedSchools = schools.filter(school => Math.abs(Number(profile.adherenceEvidence[school]?.reviewAdjustment || 0)) >= CONFIDENCE_THRESHOLDS.largeReviewAdjustment);
+      const nearBoundarySchools = schools.filter(school => {
+        const distance = nearestBandBoundaryDistance(profile.adherenceAutomaticScores[school]);
+        return distance != null && distance <= CONFIDENCE_THRESHOLDS.nearBoundary;
+      });
+      const admissibilityInconsistencies = schools.filter(school => {
+        const evidence = profile.admissibilityEvidence?.[school];
+        if (evidence?.source !== "adherence-default") return false;
+        return profile.admissibility[school] !== ADMISSIBILITY_FROM_ADHERENCE[profile.adherence[school]];
+      });
+      const automaticScores = schools.map(school => Number(profile.adherenceAutomaticScores[school])).filter(Number.isFinite);
+      const automaticRange = automaticScores.length ? round(Math.max(...automaticScores) - Math.min(...automaticScores)) : null;
+      const explicitAdmissibility = schools.filter(school => profile.admissibilityEvidence?.[school]?.source !== "adherence-default");
+      const anomalies = [];
+
+      if (!coreSchools.length) {
+        anomalies.push("no-core");
+        reviewQueue.push({ category:"no-core", familyId:profile.id, family:auditFamily, reason:"La Famiglia non ha alcuna Scuola Core." });
+      }
+      if (coreSchools.length > 2) {
+        anomalies.push("too-many-core");
+        reviewQueue.push({ category:"too-many-core", familyId:profile.id, family:auditFamily, schools:coreSchools, reason:"La Famiglia ha " + coreSchools.length + " Scuole Core." });
+      }
+      if (automaticRange != null && automaticRange <= CONFIDENCE_THRESHOLDS.flatAutomaticRange) {
+        anomalies.push("flat-automatic-profile");
+        reviewQueue.push({ category:"flat-automatic-profile", familyId:profile.id, family:auditFamily, automaticRange, reason:"Gli score automatici differiscono di soli " + automaticRange + " punti." });
+      }
+      lowConfidenceSchools.forEach(school => {
+        reviewQueue.push({
+          category:"low-confidence",
+          familyId:profile.id,
+          family:auditFamily,
+          school,
+          confidence:profile.confidenceBySchool[school].score,
+          confidence100:profile.confidenceBySchool[school].score100,
+          reason:"Confidence sotto " + CONFIDENCE_THRESHOLDS.low + "."
+        });
+      });
+      adjustedSchools.forEach(school => {
+        reviewQueue.push({
+          category:"large-review-adjustment",
+          familyId:profile.id,
+          family:auditFamily,
+          school,
+          automaticScore:profile.adherenceAutomaticScores[school],
+          finalScore:profile.adherenceScores[school],
+          adjustment:profile.adherenceEvidence[school].reviewAdjustment,
+          reason:"Review adjustment almeno " + CONFIDENCE_THRESHOLDS.largeReviewAdjustment + " punti."
+        });
+      });
+      nearBoundarySchools.forEach(school => {
+        reviewQueue.push({
+          category:"near-band-boundary",
+          familyId:profile.id,
+          family:auditFamily,
+          school,
+          automaticScore:profile.adherenceAutomaticScores[school],
+          distance:nearestBandBoundaryDistance(profile.adherenceAutomaticScores[school]),
+          reason:"Score automatico entro " + CONFIDENCE_THRESHOLDS.nearBoundary + " punti da un confine di banda."
+        });
+      });
+      admissibilityInconsistencies.forEach(school => {
+        reviewQueue.push({
+          category:"admissibility-incoherent",
+          familyId:profile.id,
+          family:auditFamily,
+          school,
+          adherence:profile.adherence[school],
+          admissibility:profile.admissibility[school],
+          expected:ADMISSIBILITY_FROM_ADHERENCE[profile.adherence[school]],
+          reason:"Ammissibilità derivata non coerente con il default dell'Aderenza."
+        });
+      });
+      if (explicitAdmissibility.length) {
+        anomalies.push("explicit-admissibility");
+        reviewQueue.push({
+          category:"explicit-admissibility",
+          familyId:profile.id,
+          family:auditFamily,
+          schools:explicitAdmissibility,
+          reason:"Sono presenti override espliciti di Ammissibilità; conservarli come decisioni tracciate."
+        });
+      }
+      if (domainCounts.legal < schools.length) {
+        anomalies.push("few-legal-combinations");
+        reviewQueue.push({
+          category:"few-legal-combinations",
+          familyId:profile.id,
+          family:auditFamily,
+          legalCombinations:domainCounts.legal,
+          reason:"Il Dominio legale contiene meno combinazioni delle cinque Mono teoriche."
+        });
+      }
+
+      schools.forEach(school => {
+        const confidence = profile.confidenceBySchool[school];
+        const adjustment = Math.abs(Number(profile.adherenceEvidence[school]?.reviewAdjustment || 0));
+        const automaticScore = Number(profile.adherenceAutomaticScores[school]);
+        if (
+          profile.adherence[school] === "dissonant"
+          && Number.isFinite(automaticScore)
+          && automaticScore <= CONFIDENCE_THRESHOLDS.forbiddenCandidateScore
+          && confidence?.score >= CONFIDENCE_THRESHOLDS.forbiddenCandidateConfidence
+          && adjustment <= 4.167
+        ) {
+          const candidate = {
+            familyId:profile.id,
+            family:auditFamily,
+            school,
+            score:profile.adherenceScores[school],
+            automaticScore,
+            confidence:confidence.score,
+            confidence100:confidence.score100,
+            currentAdmissibility:profile.admissibility[school],
+            reason:"Dissonanza forte, stabile e ad alta Confidence: candidata a review umana forbidden, non a modifica automatica."
+          };
+          forbiddenCandidates.push(candidate);
+          reviewQueue.push({ category:"forbidden-candidate", ...candidate });
+        }
+      });
+
+      if (
+        profile.maxCompatibilityMode === "universal"
+        && dissonantSchools.length >= CONFIDENCE_THRESHOLDS.widthReviewDissonantSchools
+      ) {
+        const candidate = {
+          familyId:profile.id,
+          family:auditFamily,
+          currentMaxCompatibilityMode:profile.maxCompatibilityMode,
+          dissonantSchools:[...dissonantSchools],
+          dissonantConfidence:Object.fromEntries(dissonantSchools.map(school => [school, profile.confidenceBySchool[school]?.score ?? null])),
+          exceptionalCombinations:domainCounts.exceptional,
+          legalCombinations:domainCounts.legal,
+          reason:"La Famiglia resta Universale pur avendo almeno due relazioni Dissonanti. È solo un segnale per review dell'ampiezza; non suggerisce automaticamente Mono/Dual/Triple e non sostituisce la review delle singole relazioni."
+        };
+        compatibilityWidthCandidates.push(candidate);
+        reviewQueue.push({ category:"max-width-candidate", ...candidate });
+      }
+
+      return {
+        id:profile.id,
+        family:auditFamily,
+        kind:profile.kind,
+        primaryTag:profile.primaryTag,
+        coreSchools,
+        dissonantSchools,
+        adherence:clone(profile.adherence),
+        automaticScores:clone(profile.adherenceAutomaticScores),
+        finalScores:clone(profile.adherenceScores),
+        reviewAdjustment:Object.fromEntries(schools.map(school => [school, profile.adherenceEvidence[school]?.reviewAdjustment ?? null])),
+        confidence:Object.fromEntries(schools.map(school => [school, profile.confidenceBySchool[school]?.score ?? null])),
+        confidence100:Object.fromEntries(schools.map(school => [school, profile.confidenceBySchool[school]?.score100 ?? null])),
+        confidenceAverage:profile.confidence.score,
+        confidenceMinimum:profile.confidence.minimum,
+        lowConfidenceSchools,
+        nearBoundarySchools,
+        admissibilityInconsistencies,
+        admissibility:clone(profile.admissibility),
+        maxCompatibilityMode:profile.maxCompatibilityMode,
+        domain:domainCounts,
+        automaticRange,
+        anomalies
+      };
+    });
+
+    const cells = profiles.flatMap(profile => schools.map(school => ({
+      profile,
+      school,
+      adherence:profile.adherence[school],
+      admissibility:profile.admissibility[school],
+      confidence:profile.confidenceBySchool[school]?.score ?? 0
+    })));
+    const countBy = (items, keyFn) => items.reduce((acc, item) => {
+      const key = keyFn(item);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      schemaVersion:COMPONENT_DESIGN_SCHEMA_VERSION,
+      thresholds:clone(CONFIDENCE_THRESHOLDS),
+      confidenceWeights:clone(CONFIDENCE_WEIGHTS),
+      families:familyRows,
+      summary:{
+        familyCount:profiles.length,
+        cellCount:cells.length,
+        adherenceDistribution:countBy(cells, cell => cell.adherence),
+        admissibilityDistribution:countBy(cells, cell => cell.admissibility),
+        confidenceDistribution:{
+          high:cells.filter(cell => cell.confidence >= CONFIDENCE_THRESHOLDS.high).length,
+          medium:cells.filter(cell => cell.confidence >= CONFIDENCE_THRESHOLDS.low && cell.confidence < CONFIDENCE_THRESHOLDS.high).length,
+          low:cells.filter(cell => cell.confidence < CONFIDENCE_THRESHOLDS.low).length
+        },
+        compatibilityDomainTotals:familyRows.reduce((acc, row) => {
+          ["standard","exceptional","forbidden","legal"].forEach(key => { acc[key] += row.domain[key]; });
+          return acc;
+        }, { standard:0, exceptional:0, forbidden:0, legal:0 }),
+        familiesWithoutCore:familyRows.filter(row => row.coreSchools.length === 0).length,
+        familiesWithMoreThanTwoCore:familyRows.filter(row => row.coreSchools.length > 2).length,
+        familiesWithLowConfidence:familyRows.filter(row => row.lowConfidenceSchools.length > 0).length,
+        reviewQueueItems:reviewQueue.length,
+        forbiddenCandidates:forbiddenCandidates.length,
+        compatibilityWidthCandidates:compatibilityWidthCandidates.length
+      },
+      reviewQueue,
+      forbiddenCandidates,
+      compatibilityWidthCandidates
+    };
+  }
+
   function compatibilityOnDissolution(options = {}) {
     const existing = options.imprintedCompatibility || options.componentCompatibility || null;
     if (existing) {
@@ -936,6 +1321,8 @@
   A.SIGIAN_COMPONENT_SCHOOL_DISPLAY_NAMES = SCHOOL_DISPLAY_NAMES;
   A.SIGIAN_COMPONENT_POWER_DISPLAY_NAMES = POWER_DISPLAY_NAMES;
   A.SIGIAN_COMPONENT_PRIMARY_TAG_WEIGHT = PRIMARY_TAG_WEIGHT;
+  A.SIGIAN_COMPONENT_CONFIDENCE_WEIGHTS = CONFIDENCE_WEIGHTS;
+  A.SIGIAN_COMPONENT_CONFIDENCE_THRESHOLDS = CONFIDENCE_THRESHOLDS;
   A.SIGIAN_COMPONENT_ADHERENCE_LABELS = ADHERENCE_LABELS;
   A.SIGIAN_COMPONENT_ADHERENCE_SCORE_BANDS = ADHERENCE_SCORE_BANDS;
   A.SIGIAN_COMPONENT_RARITY_TIERS = RARITY_TIERS;
@@ -947,5 +1334,6 @@
   A.calculateSigianComponentVariant = calculateVariant;
   A.generateSigianComponentVariants = generateVariants;
   A.buildSigianCanonicalComponentDesignCatalog = canonicalCatalog;
+  A.buildSigianComponentDesignAudit = componentDesignAudit;
   A.deriveSigianComponentCompatibilityOnDissolution = compatibilityOnDissolution;
 })(window.Arcane = window.Arcane || {});
