@@ -1,9 +1,10 @@
 (function (A) {
   "use strict";
 
-  const TEMPORAL_ORACLE_SCHEMA_VERSION = 1;
+  const TEMPORAL_ORACLE_SCHEMA_VERSION = 2;
   const DEFAULT_HORIZONS = Object.freeze([0, 1, 2, 3]);
   const ORACLE_AI_LEVEL = 5;
+  const DEFAULT_SCORE_DIVISOR = 1000;
 
   function clone(value) {
     if (typeof A.deepClone === "function") return A.deepClone(value);
@@ -183,17 +184,23 @@
     };
   }
 
-  function checkpoint(control, treated, side, ownerSide, horizon, seedBase) {
+  function checkpoint(control, treated, side, ownerSide, horizon, seedBase, scoreDivisor) {
     const controlAdvance = advanceOwnerTurns(control, ownerSide, horizon);
     const treatedAdvance = advanceOwnerTurns(treated, ownerSide, horizon);
     const controlScore = score(control, side, `${seedBase}-h${horizon}-control`);
     const treatedScore = score(treated, side, `${seedBase}-h${horizon}-treated`);
+    const marginal = treatedScore - controlScore;
+    const divisor = Math.max(1, finite(scoreDivisor, DEFAULT_SCORE_DIVISOR));
     return {
       horizon,
       ownerSide,
       controlScore,
       treatedScore,
-      marginal:treatedScore - controlScore,
+      marginal,
+      scoreDivisor:divisor,
+      controlOracleUnits:controlScore / divisor,
+      treatedOracleUnits:treatedScore / divisor,
+      marginalOracleUnits:marginal / divisor,
       reached:Boolean(controlAdvance.reached && treatedAdvance.reached),
       controlAdvance,
       treatedAdvance,
@@ -204,6 +211,7 @@
 
   A.SIGIAN_TEMPORAL_ORACLE_SCHEMA_VERSION = TEMPORAL_ORACLE_SCHEMA_VERSION;
   A.SIGIAN_TEMPORAL_ORACLE_DEFAULT_HORIZONS = DEFAULT_HORIZONS;
+  A.SIGIAN_TEMPORAL_ORACLE_DEFAULT_SCORE_DIVISOR = DEFAULT_SCORE_DIVISOR;
 
   A.advanceSigianTemporalOwnerTurns = function advanceSigianTemporalOwnerTurns(engine, ownerSide, turns, options = {}) {
     if (!engine?.state || !["player", "enemy"].includes(ownerSide)) {
@@ -220,6 +228,7 @@
   ) {
     const focusSide = options.focusSide === "enemy" ? "enemy" : "player";
     const ownerSide = options.ownerSide === "enemy" ? "enemy" : "player";
+    const scoreDivisor = Math.max(1, finite(options.scoreDivisor, DEFAULT_SCORE_DIVISOR));
     const horizons = [...new Set((options.horizons || DEFAULT_HORIZONS)
       .map(value => Math.max(0, Math.trunc(finite(value, 0)))))]
       .sort((a, b) => a - b);
@@ -252,7 +261,8 @@
       focusSide,
       ownerSide,
       horizon,
-      `${seedBase}-net`
+      `${seedBase}-net`,
+      scoreDivisor
     ));
     const gross = horizons.map(horizon => checkpoint(
       controlBase.clone(),
@@ -260,7 +270,8 @@
       focusSide,
       ownerSide,
       horizon,
-      `${seedBase}-gross`
+      `${seedBase}-gross`,
+      scoreDivisor
     ));
 
     return {
@@ -274,6 +285,9 @@
       cost:setup.cost,
       focusSide,
       ownerSide,
+      scoreDivisor,
+      rawScoreUnit:"recovered-oracle-score",
+      normalizedScoreUnit:"oracle-units",
       eventCount:Array.isArray(played.events) ? played.events.length : 0,
       horizons,
       net,
@@ -288,8 +302,9 @@
       const bucket = grouped[row.cardId] ||= { cardId:row.cardId, printedLevel:row.printedLevel, scenarios:0, horizons:{} };
       bucket.scenarios += 1;
       (row.gross || []).forEach(point => {
-        const h = bucket.horizons[point.horizon] ||= { values:[], reached:0, total:0 };
-        h.values.push(point.marginal);
+        const h = bucket.horizons[point.horizon] ||= { rawValues:[], oracleValues:[], reached:0, total:0 };
+        h.rawValues.push(point.marginal);
+        h.oracleValues.push(point.marginalOracleUnits);
         h.total += 1;
         if (point.reached) h.reached += 1;
       });
@@ -300,10 +315,14 @@
       printedLevel:bucket.printedLevel,
       scenarios:bucket.scenarios,
       horizons:Object.fromEntries(Object.entries(bucket.horizons).map(([h, data]) => [h, {
-        p75:quantile(data.values, q),
-        median:quantile(data.values, 0.5),
-        min:data.values.length ? Math.min(...data.values) : null,
-        max:data.values.length ? Math.max(...data.values) : null,
+        p75:quantile(data.rawValues, q),
+        median:quantile(data.rawValues, 0.5),
+        min:data.rawValues.length ? Math.min(...data.rawValues) : null,
+        max:data.rawValues.length ? Math.max(...data.rawValues) : null,
+        p75OracleUnits:quantile(data.oracleValues, q),
+        medianOracleUnits:quantile(data.oracleValues, 0.5),
+        minOracleUnits:data.oracleValues.length ? Math.min(...data.oracleValues) : null,
+        maxOracleUnits:data.oracleValues.length ? Math.max(...data.oracleValues) : null,
         reached:data.reached,
         total:data.total
       }]))
