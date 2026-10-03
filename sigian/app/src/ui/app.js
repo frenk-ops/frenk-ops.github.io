@@ -2559,6 +2559,7 @@
     const slot = command.payload?.slot ?? null;
 
     loadRemoteEngine(response.state);
+    if (result?.events?.some(event => event.type === "creatureMoved")) renderGame();
 
     if (type === A.MULTIPLAYER_COMMANDS.PLAY && result?.ok && result.card) {
       if (result.card.type === "spell") spellSound(result.card);
@@ -2909,8 +2910,9 @@
   }
 
   navigation = A.UINavigation?.create({ onViewChange: switchView, onReturnToGame: () => { if (!engine) restartDuel(); } });
-  window.addEventListener("sigian:forge-draft-updated", () => {
-    forgeSession = null;
+  window.addEventListener("sigian:forge-draft-updated", event => {
+    // Lab edits share the live session/history; external draft imports invalidate it.
+    forgeSession = event.detail?.session || null;
   });
 
   window.addEventListener("sigian:archive-scope-request", event => {
@@ -6284,6 +6286,9 @@
     return forgeSession;
   }
 
+  // One UI session for the two presentations of the same draft.
+  A.getSigianForgeUISession = ensureForgeSession;
+
   function forgeConstraintProbe(definitionId, recipe) {
     const definition = A.getSigianCanonicalV2?.(definitionId);
     if (!definition) return null;
@@ -7085,9 +7090,9 @@
       const min = key === "attack" ? 0 : 1;
       const value = Number(recipe.stats?.[key] ?? min);
       body = `<div class="forge-card-stat-editor">
-        <button type="button" data-forge-stat="${key}" data-delta="-1" aria-label="-1">−</button>
-        <input data-forge-stat-input="${key}" data-forge-autofocus type="number" min="${min}" value="${escapeHtml(value)}" aria-label="${escapeHtml(titleMap[key])}">
-        <button type="button" data-forge-stat="${key}" data-delta="1" aria-label="+1">+</button>
+        <button type="button" data-forge-stat="${key}" data-delta="-1" aria-label="-1" ${value <= min ? "disabled" : ""}>−</button>
+        <input data-forge-stat-input="${key}" data-forge-autofocus type="number" min="${min}" max="99" value="${escapeHtml(value)}" aria-label="${escapeHtml(titleMap[key])}">
+        <button type="button" data-forge-stat="${key}" data-delta="1" aria-label="+1" ${value >= 99 ? "disabled" : ""}>+</button>
       </div>`;
     } else if (section === "cost") {
       const auto = forgeTargetCost === "auto";
@@ -7796,7 +7801,23 @@
     }));
 
     root.querySelectorAll("[data-forge-school]").forEach(button => button.addEventListener("click", () => {
-      session.setSchool(button.dataset.forgeSchool);
+      try {
+        session.setSchool(button.dataset.forgeSchool);
+      } catch (error) {
+        const editor = button.closest("[data-forge-card-editor]");
+        let status = editor?.querySelector("[data-forge-school-status]");
+        if (!status && editor) {
+          status = document.createElement("p");
+          status.dataset.forgeSchoolStatus = "";
+          status.className = "forge-school-status";
+          status.setAttribute("role", "alert");
+          editor.querySelector(".forge-card-editor-body")?.append(status);
+        }
+        if (status) status.textContent = /Nessuna copia|compatibil/i.test(String(error?.message))
+          ? `Scuola ${schoolName(button.dataset.forgeSchool)} non cambiata: non possiedi copie compatibili disponibili per i Sigilli o il Vincolo presenti. Formula invariata.`
+          : "Impossibile cambiare Scuola. Riprova; la Formula è invariata.";
+        return;
+      }
       forgeCardEditorSection = null;
       renderForgePage();
     }));
@@ -7805,7 +7826,7 @@
       const current = session.snapshot().draft.recipe;
       const key = button.dataset.forgeStat;
       const min = key === "attack" ? 0 : 1;
-      const nextValue = Math.max(min, Number(current.stats[key] || min) + Number(button.dataset.delta || 0));
+      const nextValue = Math.min(99, Math.max(min, Math.trunc(Number(current.stats[key] || min) + Number(button.dataset.delta || 0))));
       session.setCreatureStats({ [key]:nextValue });
       renderForgePage();
     }));
@@ -7813,7 +7834,8 @@
     root.querySelectorAll("[data-forge-stat-input]").forEach(input => input.addEventListener("change", event => {
       const key = event.currentTarget.dataset.forgeStatInput;
       const min = key === "attack" ? 0 : 1;
-      session.setCreatureStats({ [key]:Math.max(min, Number(event.currentTarget.value || min)) });
+      const value = Number(event.currentTarget.value);
+      session.setCreatureStats({ [key]:Math.min(99, Math.max(min, Math.trunc(Number.isFinite(value) ? value : min))) });
       renderForgePage();
     }));
 
@@ -9407,6 +9429,7 @@
       const healthBefore = captureHealthState();
       const step = issueDuelCommand(side, A.MULTIPLAYER_COMMANDS.ATTACK_NEXT);
       if (!step.ok || step.done) break;
+      if (step.events?.some(event => event.type === "creatureMoved")) renderGame();
       if (step.skipped) continue;
       const healingShown = showHealingChanges(healthBefore, step);
       const triggeredDamageEvents = (step.events || []).filter(event =>

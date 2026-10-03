@@ -277,6 +277,17 @@
     const targetSideList = target ? targetSides(engine, actingSide, target.side) : [];
 
     switch (sigil.effect) {
+      case A.SIGIAN_EFFECTS.MOVE_FIRST_FREE_LANE: {
+        const fromSlot = engine.getFighter(actingSide).board.indexOf(source);
+        if (fromSlot < 0 || source.currentHealth <= 0) return { executed: false };
+        const opposite = engine.getFighter(engine.getOpponentSide(actingSide)).board[fromSlot];
+        if (!opposite || opposite.currentHealth <= 0) return { executed: false };
+        const toSlot = engine.getFullyFreeLanes()[0];
+        if (toSlot === undefined) return { executed: false };
+        const movement = engine.moveUnitToFreeLane(actingSide, fromSlot, toSlot);
+        if (movement.ok) events.push({ ...movement.event, reason: "before-attack" });
+        return { executed: movement.ok };
+      }
       case A.SIGIAN_EFFECTS.DAMAGE: {
         if (!target) throw new Error(`Sigillo ${sigil.id}: target danno mancante.`);
         for (const targetSide of targetSideList) {
@@ -999,6 +1010,22 @@
 
   A.sigianIsMultiTargetAttack = function sigianIsMultiTargetAttack(engine, unit) {
     return sigilsFor(engine, unit, { effect: A.SIGIAN_EFFECTS.ATTACK_ALL }).length > 0;
+  };
+
+  A.sigianHasInitiative = function sigianHasInitiative(engine, side, unit) {
+    const board = engine.getFighter(side).board;
+    if (!unit || unit.currentHealth <= 0 || !board.includes(unit)) return false;
+    return board.some(source => {
+      if (!source || source.currentHealth <= 0) return false;
+      return sigilsFor(engine, source, { effect: A.SIGIAN_EFFECTS.INITIATIVE }).some(sigil => {
+        const cfg = configOf(sigil);
+        // Reject unsupported versions/shapes rather than interpreting future semantics.
+        if (cfg.capabilityVersion !== 1 || sigil.kind !== A.SIGIAN_SIGIL_KINDS.PASSIVE
+          || sigil.trigger !== "passive" || sigil.modifiers.length !== 1
+          || Object.keys(cfg).some(key => !["capabilityVersion", "appliesTo"].includes(key))) return false;
+        return cfg.appliesTo === "allied-creatures" || (cfg.appliesTo === "source" && source === unit);
+      });
+    });
   };
 
   A.sigianBeforeUnitAttack = function sigianBeforeUnitAttack(engine, side, slot, unit, events) {

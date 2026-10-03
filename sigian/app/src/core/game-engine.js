@@ -76,6 +76,13 @@
     if (!["player", "enemy"].includes(state.activeSide)) snapshotError("lato attivo non valido");
     if (!Number.isInteger(state.attackCursor) || state.attackCursor < 0 || state.attackCursor > rules.boardSize) snapshotError("cursore di attacco non valido");
     if (!state.turnCounters || !["player", "enemy"].every(side => Number.isInteger(state.turnCounters[side]) && state.turnCounters[side] >= 0)) snapshotError("contatori turno non validi");
+    if (state.movementAttackLedger !== undefined) {
+      const ledger = state.movementAttackLedger;
+      if (!ledger || !["player", "enemy"].includes(ledger.side)
+        || !Array.isArray(ledger.instanceIds) || ledger.instanceIds.some(id => typeof id !== "string" || !id)
+        || new Set(ledger.instanceIds).size !== ledger.instanceIds.length
+        || state.phase !== sideAttackPhase(ledger.side)) snapshotError("registro attacchi Movimento non valido");
+    }
     if (![null, "player", "enemy", "draw"].includes(state.winner ?? null)) snapshotError("vincitore non valido");
     if (typeof state.gameOver !== "boolean") snapshotError("indicatore fine partita non valido");
     if (state.gameOver && (state.phase !== A.PHASES.GAME_OVER || !state.winner)) snapshotError("fine partita incoerente");
@@ -308,7 +315,10 @@
 
     isUnitSummoningSick(unit, side = unit?.owner) {
       if (!unit || !side || !Number.isFinite(Number(unit.summonedOnOwnerTurn))) return false;
-      return Number(unit.summonedOnOwnerTurn) >= this.getOwnerTurnCount(side);
+      const newlySummoned = Number(unit.summonedOnOwnerTurn) >= this.getOwnerTurnCount(side);
+      if (!newlySummoned) return false;
+      // Initiative bypasses sickness; it does not erase the summon timestamp.
+      return !(typeof A.sigianHasInitiative === "function" && A.sigianHasInitiative(this, side, unit));
     }
 
     canUnitAttackNormally(side, unit) {
@@ -505,6 +515,23 @@
       return { ok: true, events: normalizeEngineEvents([{ type: "pass", side }]), phase: this.state.phase };
     }
 
+    getFullyFreeLanes() {
+      return Array.from({ length: this.rules.boardSize }, (_, slot) => slot)
+        .filter(slot => !this.state.player.board[slot] && !this.state.enemy.board[slot]);
+    }
+
+    moveUnitToFreeLane(side, fromSlot, toSlot) {
+      if (!["player", "enemy"].includes(side) || !Number.isInteger(fromSlot)
+        || !Number.isInteger(toSlot) || fromSlot < 0 || fromSlot >= this.rules.boardSize
+        || !this.getFullyFreeLanes().includes(toSlot)) return { ok: false, reason: "Corsia non libera." };
+      const board = this.getFighter(side).board;
+      const unit = board[fromSlot];
+      if (!unit || unit.currentHealth <= 0 || !unit.instanceId) return { ok: false, reason: "Creatura assente." };
+      board[toSlot] = unit;
+      board[fromSlot] = null;
+      return { ok: true, event: { type: "creatureMoved", side, fromSlot, toSlot, instanceId: unit.instanceId, cardId: unit.id } };
+    }
+
     _resolveAttackAtSlot(side, slot, options = {}) {
       const attacker = this.getFighter(side);
       const enemySide = this.getOpponentSide(side);
@@ -533,6 +560,13 @@
         return { ok: true, done: false, event: normalizeEngineEvent(result.event), events: normalizeEngineEvents(result.events) };
       }
 
+      // Only the new capability is dispatched here: historical fallback semantics stay unchanged.
+      const movementEvents = [];
+      const formula = typeof A.getSigianFormulaFor === "function" ? A.getSigianFormulaFor(this, unit) : null;
+      if (formula?.sigils?.some(sigil => sigil.effect === A.SIGIAN_EFFECTS.MOVE_FIRST_FREE_LANE)
+        && typeof A.sigianBeforeUnitAttack === "function") A.sigianBeforeUnitAttack(this, side, slot, unit, movementEvents);
+      slot = attacker.board.indexOf(unit);
+      if (slot < 0 || unit.currentHealth <= 0) return { ok: true, done: false, skipped: true, events: normalizeEngineEvents(movementEvents) };
       const target = defender.board[slot];
       let event;
 
@@ -580,7 +614,7 @@
       }
 
       this.checkWinner();
-      return { ok: true, done: false, event: normalizeEngineEvent(event), events: normalizeEngineEvents([event]) };
+      return { ok: true, done: false, event: normalizeEngineEvent(event), events: normalizeEngineEvents([...movementEvents, event]) };
     }
 
     attackNext(side) {
@@ -589,7 +623,9 @@
       }
       const attacker = this.getFighter(side);
 
-      while (this.state.attackCursor < this.rules.boardSize && !attacker.board[this.state.attackCursor]) {
+      const spent = this.state.movementAttackLedger?.side === side ? this.state.movementAttackLedger.instanceIds : [];
+      while (this.state.attackCursor < this.rules.boardSize && (!attacker.board[this.state.attackCursor]
+        || spent.includes(attacker.board[this.state.attackCursor].instanceId))) {
         this.state.attackCursor += 1;
       }
       if (this.state.attackCursor >= this.rules.boardSize) {
@@ -598,7 +634,14 @@
 
       const slot = this.state.attackCursor;
       this.state.attackCursor += 1;
-      return this._resolveAttackAtSlot(side, slot, { forcedByEffect: false });
+      const unit = attacker.board[slot];
+      const result = this._resolveAttackAtSlot(side, slot, { forcedByEffect: false });
+      if (this.state.gameOver) delete this.state.movementAttackLedger;
+      else if (result.events?.some(event => event.type === "creatureMoved" && event.instanceId === unit.instanceId)) {
+        if (!this.state.movementAttackLedger) this.state.movementAttackLedger = { side, instanceIds: [] };
+        if (!this.state.movementAttackLedger.instanceIds.includes(unit.instanceId)) this.state.movementAttackLedger.instanceIds.push(unit.instanceId);
+      }
+      return result;
     }
 
     attackUnitFromEffect(side, slot) {
@@ -606,11 +649,14 @@
       if (!Number.isInteger(numericSlot) || numericSlot < 0 || numericSlot >= this.rules.boardSize) {
         return { ok: false, done: true, reason: "Slot di attacco non valido." };
       }
-      return this._resolveAttackAtSlot(side, numericSlot, { forcedByEffect: true });
+      const result = this._resolveAttackAtSlot(side, numericSlot, { forcedByEffect: true });
+      if (this.state.gameOver) delete this.state.movementAttackLedger;
+      return result;
     }
 
     finishAttack(side) {
       if (this.state.phase !== sideAttackPhase(side)) return { ok: false, reason: "L'attacco non è in corso." };
+      delete this.state.movementAttackLedger;
       this.state.attackCursor = 0;
       if (this.state.gameOver) {
         this.state.phase = A.PHASES.GAME_OVER;

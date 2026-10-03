@@ -244,7 +244,11 @@
         errors.push(`${label}: Sigillo ${recipeSigil.sigilId} non attivo (${definition.status}).`);
       }
 
-      if (recipeSigil.grade != null) {
+      if (definition.gradeModel?.type === "binary") {
+        if (recipeSigil.grade != null || recipeSigil.intensity != null) {
+          errors.push(`${label}: ${definition.id} è binario, senza Grado o intensità.`);
+        }
+      } else if (recipeSigil.grade != null) {
         const numeric = Number(recipeSigil.grade);
         const validGrade = Number.isInteger(numeric) && numeric > 0;
         if (!validGrade) errors.push(`${label}: Grade non valido ${recipeSigil.grade}.`);

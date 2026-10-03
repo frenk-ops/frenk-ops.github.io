@@ -22,6 +22,8 @@
     FORCE_ATTACK: "force-attack",
     EMIT: "emit",
     ATTACK_ALL: "attack-all",
+    INITIATIVE: "initiative",
+    MOVE_FIRST_FREE_LANE: "move-first-free-lane",
     ATTACK_FROM_POWER: "attack-from-power",
     ATTACK_MULTIPLIER: "attack-multiplier",
     SPELL_DAMAGE_MULTIPLIER: "spell-damage-multiplier",
@@ -231,6 +233,25 @@
         if (!Array.isArray(sigil?.modifiers)) errors.push(`Sigillo ${sigil?.id || index} senza lista Modifier.`);
         if (sigil?.kind !== SIGIL_KINDS.LEGACY_EFFECT && !Object.values(EFFECTS).includes(sigil.effect)) {
           errors.push(`Sigillo ${sigil.id || index} con effetto non riconosciuto: ${sigil.effect}.`);
+        }
+        if (sigil?.effect === EFFECTS.MOVE_FIRST_FREE_LANE) {
+          const config = sigil.modifiers?.[0];
+          if (formula.type !== "creature" || sigil.trigger !== "onBeforeAttack"
+            || sigil.kind !== SIGIL_KINDS.PASSIVE || sigil.modifiers?.length !== 1
+            || config?.kind !== MODIFIER_KINDS.CONFIG || config.params?.capabilityVersion !== 1
+            || Object.keys(config.params || {}).some(key => key !== "capabilityVersion")) {
+            errors.push(`Sigillo ${sigil.id}: Movimento richiede creatura, pre-attacco e versione esplicita 1 senza parametri extra.`);
+          }
+        }
+        if (sigil?.effect === EFFECTS.INITIATIVE) {
+          const configs = Array.isArray(sigil.modifiers) ? sigil.modifiers.filter(item => item?.kind === MODIFIER_KINDS.CONFIG) : [];
+          const config = configs[0]?.params;
+          if (formula.type !== "creature" || sigil.kind !== SIGIL_KINDS.PASSIVE || sigil.trigger !== "passive"
+            || configs.length !== 1 || sigil.modifiers.length !== 1 || config?.capabilityVersion !== 1
+            || !["source", "allied-creatures"].includes(config?.appliesTo)
+            || Object.keys(config || {}).some(key => !["capabilityVersion", "appliesTo"].includes(key))) {
+            errors.push(`Sigillo ${sigil.id}: Iniziativa richiede una capacità passiva v1 su creatura, senza condizioni o parametri extra.`);
+          }
         }
       });
     }

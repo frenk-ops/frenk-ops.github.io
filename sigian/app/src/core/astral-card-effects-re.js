@@ -638,7 +638,8 @@
     if (!unit || unit.currentHealth <= 0) return { events, skipped: true };
 
     beforeUnitAttack(engine, side, slot, unit, events);
-    if (engine.state.gameOver || !own.board[slot] || own.board[slot].currentHealth <= 0) {
+    slot = own.board.indexOf(unit);
+    if (engine.state.gameOver || slot < 0 || unit.currentHealth <= 0) {
       cleanupDeaths(engine, events, side);
       return { events, skipped: true };
     }

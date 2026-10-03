@@ -456,13 +456,15 @@
 
   function ensureSession() {
     if (state.session) return state.session;
+    state.session = A.getSigianForgeUISession?.() || null;
+    if (state.session) return state.session;
     const draft = A.loadSigianForgeDraft?.();
     state.session = A.createSigianForgeSession?.({ draft:draft || undefined }) || null;
     return state.session;
   }
 
   function changed() {
-    window.dispatchEvent(new CustomEvent("sigian:forge-draft-updated"));
+    window.dispatchEvent(new CustomEvent("sigian:forge-draft-updated", { detail:{ session:state.session } }));
   }
 
   function mutate(fn) {
@@ -633,12 +635,14 @@
       ? (state.cost == null ? 0 : Number(state.cost))
       : Number(recipe.stats?.[control] ?? (control === "health" ? 1 : 0));
     const label = control === "attack" ? "ATTACCO" : control === "health" ? "VITA" : "COSTO";
+    const min = control === "health" ? 1 : 0;
+    const max = isCost ? 30 : 99;
 
     return (
       '<div class="forge-lab-inline-wheel is-' + escapeHtml(control) + '" data-lab-inline-wheel="' + escapeHtml(control) + '">' +
-        '<button type="button" class="is-minus" data-lab-inline-step="' + escapeHtml(control) + '" data-lab-delta="-1" aria-label="Diminuisci ' + label.toLowerCase() + '">−</button>' +
+        '<button type="button" class="is-minus" data-lab-inline-step="' + escapeHtml(control) + '" data-lab-delta="-1" aria-label="Diminuisci ' + label.toLowerCase() + '"' + (value <= min ? ' disabled' : '') + '>−</button>' +
         '<span class="forge-lab-inline-wheel-value"><small>' + label + '</small><strong>' + escapeHtml(value) + '</strong></span>' +
-        '<button type="button" class="is-plus" data-lab-inline-step="' + escapeHtml(control) + '" data-lab-delta="1" aria-label="Aumenta ' + label.toLowerCase() + '">+</button>' +
+        '<button type="button" class="is-plus" data-lab-inline-step="' + escapeHtml(control) + '" data-lab-delta="1" aria-label="Aumenta ' + label.toLowerCase() + '"' + (value >= max ? ' disabled' : '') + '>+</button>' +
       '</div>'
     );
   }
@@ -1055,6 +1059,13 @@
 
   function schoolStatus(message) {
     const root = document.getElementById('forgeUiLabContent');
+    // The external selector must not obscure the refusal/skip explanation.
+    if (state.inlineControl === 'school') state.inlineControl = null;
+    root?.querySelector('[data-lab-inline-wheel="school"]')?.remove();
+    if (state.modal?.type === 'school') {
+      state.modal = null;
+      root?.querySelector('[data-lab-modal-layer]')?.remove();
+    }
     let status = root?.querySelector('[data-lab-school-status]');
     if (!status && root) {
       status = document.createElement('p');
@@ -1184,10 +1195,10 @@
       const health = Number(stats.health ?? 1);
       if (kind === "attack") {
         next = Math.max(0, Math.min(99, Math.trunc(attack + amount)));
-        mutate(() => session.setCreatureStats({ attack: next, health }));
+        if (next !== previous) mutate(() => session.setCreatureStats({ attack: next, health }));
       } else {
         next = Math.max(1, Math.min(99, Math.trunc(health + amount)));
-        mutate(() => session.setCreatureStats({ attack, health: next }));
+        if (next !== previous) mutate(() => session.setCreatureStats({ attack, health: next }));
       }
     }
 

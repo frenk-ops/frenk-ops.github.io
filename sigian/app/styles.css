@@ -16736,6 +16736,15 @@ button.sigian-full-constraint-slot {
   gap:10px;
 }
 
+/* School refusals are Forge feedback, not ink on the Formula. */
+.forge-card-editor .forge-school-status {
+  margin:0;
+  color:#fff1cf;
+  font-size:.875rem;
+  line-height:1.45;
+  text-align:left;
+}
+
 .forge-card-editor .forge-model-field,
 .forge-card-editor .forge-current-sigils-heading,
 .forge-card-editor .forge-current-sigil-copy strong {

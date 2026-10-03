@@ -514,6 +514,32 @@
     return [technicalSigil(sigil, "total-assault", "passive", A.SIGIAN_EFFECTS.ATTACK_ALL, [], A.SIGIAN_SIGIL_KINDS.PASSIVE)];
   });
 
+  ["initiative-v1", "collective-initiative-v1"].forEach(id => {
+    A.registerSigianSigilCompiler(id, function compileInitiative({ recipe, sigil }) {
+      if (recipe.type !== "creature" || sigil.config.capabilityVersion !== 1
+        || Object.keys(sigil.config).some(key => key !== "capabilityVersion")
+        || sigil.grade != null || sigil.intensity != null || sigil.modifiers.length) {
+        throw new Error(`FormulaRecipe ${recipe.id}: Iniziativa richiede creatura, versione esplicita 1, nessun Grado o parametro extra.`);
+      }
+      return [technicalSigil(sigil, id, "passive", A.SIGIAN_EFFECTS.INITIATIVE, [
+        configModifier(sigil.slotId, {
+          capabilityVersion: 1,
+          appliesTo: id === "initiative-v1" ? "source" : "allied-creatures"
+        })
+      ], A.SIGIAN_SIGIL_KINDS.PASSIVE)];
+    });
+  });
+
+  A.registerSigianSigilCompiler("move-first-free-lane-v1", function compileMovement({ recipe, sigil }) {
+    if (recipe.type !== "creature" || sigil.config.capabilityVersion !== 1
+      || Object.keys(sigil.config).some(key => key !== "capabilityVersion")
+      || sigil.grade != null || sigil.intensity != null || sigil.modifiers.length) {
+      throw new Error(`FormulaRecipe ${recipe.id}: Movimento richiede creatura, versione esplicita 1 e nessun parametro extra.`);
+    }
+    return [technicalSigil(sigil, "move-first-free-lane-v1", "onBeforeAttack", A.SIGIAN_EFFECTS.MOVE_FIRST_FREE_LANE,
+      [configModifier(sigil.slotId, { capabilityVersion: 1 })], A.SIGIAN_SIGIL_KINDS.PASSIVE)];
+  });
+
   A.registerSigianSigilCompiler("arcane-attack", function compileArcaneAttack({ recipe, sigil }) {
     const activation = activationPlan(recipe, sigil, "passive");
     if (activation.condition) {
