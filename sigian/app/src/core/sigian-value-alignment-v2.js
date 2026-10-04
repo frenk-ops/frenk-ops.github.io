@@ -63,8 +63,15 @@
     }
 
     const knobsTested = Math.max(0, Math.trunc(finiteNumber(input.knobsTested, 0)));
+    const reachableIntervals = input.reachableIntervals == null ? null : input.reachableIntervals.map(range => {
+      const minLevel=finiteInteger(range.minLevel,"sensitivity.interval.minLevel");
+      const maxLevel=finiteInteger(range.maxLevel,"sensitivity.interval.maxLevel");
+      if (minLevel > maxLevel) throw new Error("Formula alignment v2: intervallo sensitivity invertito.");
+      return {minLevel,maxLevel};
+    });
     // A completion flag alone is not evidence of a tested parameter domain.
-    const complete = declaredComplete && reachableMinLevel != null && knobsTested > 0;
+    const complete = declaredComplete && reachableMinLevel != null && knobsTested > 0
+      && (reachableIntervals == null || reachableIntervals.length > 0);
     return {
       complete,
       declaredComplete,
@@ -72,6 +79,7 @@
       reachableMaxLevel,
       requiresSemanticChange:input.requiresSemanticChange === true,
       knobsTested,
+      reachableIntervals,
       note:input.note == null ? null : String(input.note)
     };
   }
@@ -124,7 +132,9 @@
       };
     }
 
-    const targetReachable = sensitivity.reachableMinLevel != null
+    const targetReachable = sensitivity.reachableIntervals != null
+      ? sensitivity.reachableIntervals.some(range => targetCost >= range.minLevel && targetCost <= range.maxLevel)
+      : sensitivity.reachableMinLevel != null
       && targetCost >= sensitivity.reachableMinLevel
       && targetCost <= sensitivity.reachableMaxLevel;
 

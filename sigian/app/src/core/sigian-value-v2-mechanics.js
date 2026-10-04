@@ -47,7 +47,11 @@
       temporal:true,
       dimensions:["sourceTargetQuality","destinationTargetQuality","boardOccupancy","targetFreedom"],
       interactions:["swap-x-board-quality"],
-      canonicalRules:["Base Wind Shift swaps an allied and an enemy creature; empowered mode may swap any two creatures."]
+      canonicalRules:[
+        "Base Wind Shift swaps an allied and an enemy creature; empowered mode may swap any two creatures.",
+        "Swap the existing complete live instances; preserve personal runtime state, Formula identity, separate provenance and summon timestamp.",
+        "Cross-side controller follows destination. No heal, reset, summon or death triggers; external board auras are recalculated normally."
+      ]
     }),
     freezeEntry({
       id:"double-attack",
