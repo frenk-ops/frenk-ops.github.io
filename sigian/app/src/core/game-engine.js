@@ -3,6 +3,43 @@
 
   const CURRENT_STATE_VERSION = 2;
   const EVENT_CONTRACT_VERSION = 1;
+  const RUNTIME_COMPONENT_SCHEMA_VERSION = 1;
+  const RUNTIME_COMPONENT_LIMIT = 3;
+
+  // Optional/lazy: legacy snapshots and checksums remain byte-for-byte unchanged.
+  // Entries are pinned declarations, not executable code or active stat bonuses.
+  function validateRuntimeComponents(value, instanceId) {
+    const record = item => item && typeof item === "object" && !Array.isArray(item);
+    const text = item => typeof item === "string" && item.trim().length > 0;
+    const json = item => item === null || typeof item === "string" || typeof item === "boolean"
+      || (typeof item === "number" && Number.isFinite(item))
+      || (Array.isArray(item) && item.every(json))
+      || (record(item) && Object.values(item).every(json));
+    if (!record(value) || ![RUNTIME_COMPONENT_SCHEMA_VERSION, 2].includes(value.schemaVersion)
+      || !Number.isSafeInteger(value.nextOrdinal) || value.nextOrdinal < 1
+      || Object.keys(value).some(key => !["schemaVersion", "nextOrdinal", "appliedSigils", "imposedConstraints"].includes(key))) return false;
+    const ordinals = new Set();
+    return ["appliedSigils", "imposedConstraints"].every(key => Array.isArray(value[key])
+      && value[key].length <= RUNTIME_COMPONENT_LIMIT && value[key].every(entry => {
+        if (!record(entry) || !Number.isSafeInteger(entry.ordinal) || entry.ordinal < 1
+          || entry.ordinal >= value.nextOrdinal || ordinals.has(entry.ordinal)
+          || !text(entry.definitionId) || !Number.isSafeInteger(entry.definitionVersion) || entry.definitionVersion < 1
+          || !record(entry.component) || !json(entry.component)
+          || (key === "appliedSigils" ? entry.component.sigilId : entry.component.definitionId) !== entry.definitionId
+          || !record(entry.source) || !text(entry.source.cardId) || !text(entry.source.instanceId)
+          || Object.keys(entry.source).some(name => !["cardId", "instanceId"].includes(name))
+          || !A.SCHOOLS.some(school => school.id === entry.school)
+          || !["pending", "active"].includes(entry.execution)
+          || Object.keys(entry).some(name => !["ordinal", "definitionId", "definitionVersion", "school", "component", "source", "execution", "compiled"].includes(name))) return false;
+        if (entry.execution === "active") {
+          if (value.schemaVersion !== 2 || key !== "appliedSigils" || !record(entry.compiled) || !json(entry.compiled)
+            || entry.compiled.id !== `runtime:${instanceId}:${entry.ordinal}`
+            || typeof A.validateSigianRuntimeExecutable !== "function" || !A.validateSigianRuntimeExecutable(entry)) return false;
+        } else if (entry.compiled !== undefined) return false;
+        ordinals.add(entry.ordinal);
+        return true;
+      }));
+  }
 
   const EVENT_CATEGORIES = Object.freeze({
     cardPlayed: "card", summon: "summon", spell: "spell", pass: "turn",
@@ -109,6 +146,9 @@
         if (!Number.isFinite(unit.currentHealth) || unit.currentHealth <= 0) snapshotError(`vita creatura ${side}/${slot} non valida`);
         if (!Number.isFinite(unit.health) || unit.health <= 0) snapshotError(`vita massima creatura ${side}/${slot} non valida`);
         if (unit.summoningClockOffset !== undefined && !Number.isSafeInteger(unit.summoningClockOffset)) snapshotError(`clock evocazione ${side}/${slot} non valido`);
+        if (unit.sigianRuntimeComponents !== undefined && !validateRuntimeComponents(unit.sigianRuntimeComponents, unit.instanceId)) {
+          snapshotError(`componenti runtime creatura ${side}/${slot} non validi`);
+        }
       });
     });
     if (state.pendingCardId !== null && state.pendingCardId !== undefined) {
@@ -124,6 +164,15 @@
     if (!Number.isInteger(rules.boardSize) || rules.boardSize < 1 || rules.boardSize > 20) snapshotError("dimensione campo non valida");
     if (!Number.isFinite(rules.maxPower) || rules.maxPower < 1) snapshotError("limite potere non valido");
     const rawState = snapshot.state || snapshot;
+    // Validate before JSON cloning can erase non-finite numbers/functions.
+    ["player", "enemy"].forEach(side => {
+      if (!Array.isArray(rawState?.[side]?.board)) return;
+      rawState[side].board.forEach((unit, slot) => {
+        if (unit?.sigianRuntimeComponents !== undefined && !validateRuntimeComponents(unit.sigianRuntimeComponents, unit.instanceId)) {
+          snapshotError(`componenti runtime creatura ${side}/${slot} non validi`);
+        }
+      });
+    });
     const state = validateSnapshotState(migrateSnapshotState(rawState, rules), rules);
     return { rules, state };
   }
@@ -534,6 +583,58 @@
       return (A.getSigianSwapChoices?.(this, side, card) || []).some(pair =>
         matches(pair[0], targets[0]) && matches(pair[1], targets[1])
         || matches(pair[1], targets[0]) && matches(pair[0], targets[1]));
+    }
+
+    attachSigianRuntimeComponent(targetRef, descriptor, sourceRef) {
+      const resolve = ref => {
+        if (!ref || !["player", "enemy"].includes(ref.side) || !Number.isInteger(ref.slot)
+          || ref.slot < 0 || ref.slot >= this.rules.boardSize || typeof ref.instanceId !== "string") return null;
+        const unit = this.getFighter(ref.side).board[ref.slot];
+        return unit && unit.currentHealth > 0 && unit.instanceId === ref.instanceId ? unit : null;
+      };
+      const target = resolve(targetRef);
+      const source = resolve(sourceRef);
+      if (!target || !source) return { ok: false, changed: false, reason: "runtime-component-invalid-reference" };
+      if (!["sigil", "constraint"].includes(descriptor?.kind)) return { ok: false, changed: false, reason: "runtime-component-invalid-kind" };
+      const stored = target.sigianRuntimeComponents;
+      if (stored !== undefined && !validateRuntimeComponents(stored, target.instanceId)) return { ok: false, changed: false, reason: "runtime-component-invalid-state" };
+      const key = descriptor.kind === "sigil" ? "appliedSigils" : "imposedConstraints";
+      // At capacity the entire operation is a no-op, including the identity counter.
+      if ((stored?.[key]?.length || 0) >= RUNTIME_COMPONENT_LIMIT) return { ok: true, changed: false, reason: "runtime-component-capacity" };
+      if (typeof A.prepareSigianRuntimeComponent !== "function") return { ok: false, changed: false, reason: "runtime-component-validator-unavailable" };
+      const prepared = A.prepareSigianRuntimeComponent(target, descriptor);
+      if (!prepared.ok) return { ok: false, changed: false, reason: prepared.reason };
+      const state = stored || { schemaVersion: RUNTIME_COMPONENT_SCHEMA_VERSION, nextOrdinal: 1, appliedSigils: [], imposedConstraints: [] };
+      if (state.nextOrdinal >= Number.MAX_SAFE_INTEGER) return { ok: false, changed: false, reason: "runtime-component-identity-exhausted" };
+      const entry = { ordinal: state.nextOrdinal, ...prepared.entry,
+        source: { cardId: source.id, instanceId: source.instanceId }, execution: "pending" };
+      const next = { ...state, nextOrdinal: state.nextOrdinal + 1, [key]: [...state[key], entry] };
+      if (!validateRuntimeComponents(next, target.instanceId)) return { ok: false, changed: false, reason: "runtime-component-invalid-entry" };
+      target.sigianRuntimeComponents = next;
+      return { ok: true, changed: true, entry: A.deepClone(entry), event: {
+        type: "runtimeComponentAttached", targetKind: "creature", targetSide: targetRef.side,
+        targetInstanceId: target.instanceId, kind: descriptor.kind, entry: A.deepClone(entry)
+      } };
+    }
+
+    activateSigianRuntimeSigil(targetRef, ordinal) {
+      if (!targetRef || !["player", "enemy"].includes(targetRef.side) || !Number.isInteger(targetRef.slot)
+        || !Number.isSafeInteger(ordinal)) return { ok: false, changed: false, reason: "runtime-activation-invalid-reference" };
+      const unit = this.getFighter(targetRef.side).board[targetRef.slot];
+      if (!unit || unit.currentHealth <= 0 || unit.instanceId !== targetRef.instanceId) return { ok: false, changed: false, reason: "runtime-activation-invalid-reference" };
+      const state = unit.sigianRuntimeComponents;
+      if (!state || !validateRuntimeComponents(state, unit.instanceId)) return { ok: false, changed: false, reason: "runtime-activation-invalid-state" };
+      const entry = state.appliedSigils.find(item => item.ordinal === ordinal);
+      if (!entry) return { ok: false, changed: false, reason: "runtime-activation-sigil-missing" };
+      if (entry.execution === "active") return { ok: true, changed: false, reason: "runtime-activation-already-active" };
+      const result = A.compileSigianRuntimeExecutable?.(unit, entry);
+      if (!result?.ok) return { ok: false, changed: false, reason: result?.reason || "runtime-activation-unavailable" };
+      const active = { ...entry, execution: "active", compiled: result.formula };
+      const next = { ...state, schemaVersion: 2, appliedSigils: state.appliedSigils.map(item => item === entry ? active : item) };
+      if (!validateRuntimeComponents(next, unit.instanceId)) return { ok: false, changed: false, reason: "runtime-activation-invalid-entry" };
+      unit.sigianRuntimeComponents = next;
+      return { ok: true, changed: true, event: { type: "runtimeComponentActivated", targetKind: "creature",
+        targetSide: targetRef.side, targetInstanceId: unit.instanceId, ordinal, definitionId: entry.definitionId } };
     }
 
     swapCreatures(side, card, targets) {

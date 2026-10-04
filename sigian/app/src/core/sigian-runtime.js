@@ -72,11 +72,16 @@
   function sigilsFor(engine, source, options = {}) {
     const formula = formulaFor(engine, source);
     if (!formula) return [];
-    return formula.sigils.filter(sigil => {
+    return [...formula.sigils, ...runtimeSigilsFor(source)].filter(sigil => {
       if (options.trigger && sigil.trigger !== options.trigger) return false;
       if (options.effect && sigil.effect !== options.effect) return false;
       return true;
     });
+  }
+
+  function runtimeSigilsFor(source) {
+    return [...(source?.sigianRuntimeComponents?.appliedSigils || [])].sort((a, b) => a.ordinal - b.ordinal).flatMap(entry =>
+      entry.execution === "active" && A.validateSigianRuntimeExecutable?.(entry) ? entry.compiled.sigils : []);
   }
 
   function resolveOperand(engine, actingSide, operand) {
@@ -447,6 +452,9 @@
   function executeTrigger(engine, actingSide, formula, trigger, context = {}, events = []) {
     formula.sigils
       .filter(sigil => sigil.trigger === trigger)
+      .forEach(sigil => executeSigil(engine, actingSide, formula, sigil, context, events));
+    // Native trigger order is unchanged; additional declarations follow ordinal order.
+    runtimeSigilsFor(context.source).filter(sigil => sigil.trigger === trigger)
       .forEach(sigil => executeSigil(engine, actingSide, formula, sigil, context, events));
     return events;
   }
@@ -895,6 +903,97 @@
 
   A.getSigianFormulaFor = function getSigianFormulaFor(engine, source) {
     return formulaFor(engine, source);
+  };
+
+  // Storage contract only. Application/expiry/removal and execution are separate
+  // capabilities; adding a declaration must never mutate the collected recipe.
+  A.SIGIAN_RUNTIME_COMPONENT_SCHEMA_VERSION = 1;
+  A.SIGIAN_MAX_APPLIED_SIGILS = 3;
+  A.SIGIAN_MAX_IMPOSED_CONSTRAINTS = 3;
+  A.prepareSigianRuntimeComponent = function prepareSigianRuntimeComponent(target, descriptor) {
+    try {
+      const json = value => value === null || typeof value === "string" || typeof value === "boolean"
+        || (typeof value === "number" && Number.isFinite(value))
+        || (Array.isArray(value) && value.every(json))
+        || (value && Object.prototype.toString.call(value) === "[object Object]" && Object.values(value).every(json));
+      if (!target || target.type !== "creature" || !descriptor
+        || Object.keys(descriptor).some(key => !["kind", "definitionVersion", "component"].includes(key))
+        || !["sigil", "constraint"].includes(descriptor.kind)
+        || !Number.isSafeInteger(descriptor.definitionVersion) || descriptor.definitionVersion < 1
+        || !descriptor.component || typeof descriptor.component !== "object" || Array.isArray(descriptor.component)
+        || !json(descriptor.component)) {
+        return { ok: false, reason: "runtime-component-invalid-descriptor" };
+      }
+      const isSigil = descriptor.kind === "sigil";
+      const allowed = isSigil
+        ? ["slotId", "collectibleId", "sigilId", "grade", "intensity", "affinity", "config", "modifiers"]
+        : ["definitionId", "grade", "school", "intensity", "threshold", "damage", "percent", "multiplier", "affinity", "detail"];
+      if (Object.keys(descriptor.component).some(key => !allowed.includes(key))) return { ok: false, reason: "runtime-component-invalid-parameters" };
+      const definitionId = isSigil ? descriptor.component.sigilId : descriptor.component.definitionId;
+      const definition = isSigil ? A.getCanonicalSigil?.(definitionId) : A.getSigianCanonicalV2?.(definitionId);
+      if (!definition || (!isSigil && definition.kind !== "constraint")) return { ok: false, reason: "runtime-component-unknown-definition" };
+      if (descriptor.definitionVersion !== (definition.version || 1)) return { ok: false, reason: "runtime-component-unsupported-version" };
+      const recipe = A.createFormulaRecipe({ id: "runtime-component-validation", school: target.school, type: "creature",
+        sigils: isSigil ? [descriptor.component] : [], constraint: isSigil ? null : descriptor.component });
+      const validation = A.validateFormulaRecipe(recipe, { allowReservedSigils: true });
+      if (!validation.valid) return { ok: false, reason: "runtime-component-invalid-parameters" };
+      // One conceptual Sigillo may compile to multiple technical effect entries;
+      // capacity always counts the conceptual declaration, not those entries.
+      if (isSigil) A.compileFormulaRecipe(recipe, { validation: { allowReservedSigils: true } });
+      return { ok: true, entry: { definitionId, definitionVersion: descriptor.definitionVersion,
+        school: target.school, component: cloneRuntime(isSigil ? recipe.sigils[0] : recipe.constraint) } };
+    } catch (_) {
+      return { ok: false, reason: "runtime-component-invalid-parameters" };
+    }
+  };
+
+  A.getSigianRuntimeComponents = function getSigianRuntimeComponents(unit) {
+    const state = unit?.sigianRuntimeComponents;
+    return cloneRuntime({ schemaVersion: state?.schemaVersion || 1, appliedSigils: state?.appliedSigils || [], imposedConstraints: state?.imposedConstraints || [] });
+  };
+
+  const runtimeExecutableDefinitions = new Set(["initiative-v1", "collective-initiative-v1", "move-first-free-lane-v1", "total-assault"]);
+  const runtimeExecutableCache = new WeakMap();
+  function executableSignature(value) {
+    if (typeof A.stableStringify === "function") return A.stableStringify(value);
+    // Core-only consumers need the same key-order-independent comparison even
+    // when the multiplayer protocol has not been loaded.
+    const canonical = item => Array.isArray(item) ? item.map(canonical)
+      : item && typeof item === "object" ? Object.fromEntries(Object.keys(item).sort().map(key => [key, canonical(item[key])])) : item;
+    return JSON.stringify(canonical(value));
+  }
+  function compileRuntimeEntry(unit, entry) {
+    const definition = A.getCanonicalSigil(entry.definitionId);
+    if (!runtimeExecutableDefinitions.has(entry.definitionId) || entry.definitionVersion !== (definition?.version || 1)) throw new Error("unsupported-runtime-capability");
+    if (entry.definitionId === "total-assault" && (Number(entry.component.grade) !== 1
+      || entry.component.intensity != null || Object.keys(entry.component.config || {}).length
+      || entry.component.modifiers?.length)) throw new Error("unsupported-runtime-parameters");
+    return A.compileFormulaRecipe(A.createFormulaRecipe({
+      id: `runtime:${unit.instanceId}:${entry.ordinal}`, school: entry.school, type: "creature",
+      sigils: [{ ...entry.component, slotId: `runtime-${entry.ordinal}` }]
+    }), { validation: { allowReservedSigils: true } });
+  }
+  A.compileSigianRuntimeExecutable = function compileSigianRuntimeExecutable(unit, entry) {
+    try { return { ok: true, formula: compileRuntimeEntry(unit, entry) }; }
+    catch (_) { return { ok: false, reason: "runtime-activation-unsupported-capability" }; }
+  };
+  A.validateSigianRuntimeExecutable = function validateSigianRuntimeExecutable(entry) {
+    try {
+      if (entry?.execution !== "active" || !entry.compiled || !runtimeExecutableDefinitions.has(entry.definitionId)) return false;
+      const compiler = A.getSigianSigilCompiler(entry.definitionId);
+      const definition = A.getCanonicalSigil(entry.definitionId);
+      const signature = JSON.stringify([entry.ordinal, entry.definitionId, entry.definitionVersion, entry.school, entry.component, entry.compiled, definition]);
+      const cached = runtimeExecutableCache.get(entry);
+      if (cached?.signature === signature && cached.compiler === compiler) return cached.valid;
+      // Recompile only for validation, never for mutation: reject tampered snapshots
+      // and changed definition versions instead of silently granting another effect.
+      const id = entry.compiled.id;
+      if (typeof id !== "string" || !id.startsWith("runtime:") || !id.endsWith(`:${entry.ordinal}`)) return false;
+      const instanceId = id.slice(8, -(String(entry.ordinal).length + 1));
+      const valid = executableSignature(compileRuntimeEntry({ instanceId }, entry)) === executableSignature(entry.compiled);
+      runtimeExecutableCache.set(entry, { signature, compiler, valid });
+      return valid;
+    } catch (_) { return false; }
   };
 
   // null = this card has no explicit pair selection; [] = no legal pair.

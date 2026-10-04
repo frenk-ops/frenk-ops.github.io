@@ -813,8 +813,8 @@
     },
     "schemaVersion": 1
   },
-  "modelId": "4f4651351fd59311f20cda737d971b207c1e86aa7d817181337a5d6f3ca6fb18",
-  "sourceFingerprint": "ace60703c36b7076b3dc37a61acba9cb23923f4eda63f5281bac21d4d8b78e29",
+  "modelId": "71bb5aeda2aacf7305686eee7a4001fd083de7da7fa85753df151b9e9773b824",
+  "sourceFingerprint": "5877f339ba6e102cf9bedb787a72fd2fe81e1af1f6b0bd9be8e814e497d68cb1",
   "sourceManifest": [
     {
       "path": "src/core/constants.js",
@@ -942,11 +942,11 @@
     },
     {
       "path": "src/core/sigian-runtime.js",
-      "sha256": "94a7677c66b86dc72a89f012ed4485123e1c5ecb87157f5cc76c76bdc0bff784"
+      "sha256": "937512428ec7681b20ca5be6b580398c63c7a746a7715a213a5be23317a30156"
     },
     {
       "path": "src/core/game-engine.js",
-      "sha256": "3200a2750ebd4b4ca804fd543671f6c48d2a1ce7c0c1f79ea5e8500103e4bd36"
+      "sha256": "ccb414b707e486756024b355333adbff4b0cfb2d54f2831ecf4216749fb058b1"
     },
     {
       "path": "src/core/astral-ai-re.js",
