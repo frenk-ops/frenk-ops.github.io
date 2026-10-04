@@ -60,7 +60,7 @@
       if (opponent === "player" && entry.move.type === "play") {
         clone.state.phase = A.PHASES.PLAYER_TARGET;
         clone.state.pendingCardId = entry.move.cardId;
-        const result = clone.playSelected(entry.move.slot);
+        const result = clone.playSelected(entry.move.slot, entry.move.targets);
         if (!result.ok) return;
       } else {
         const result = clone.playMove(opponent, entry.move);

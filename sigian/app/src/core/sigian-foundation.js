@@ -24,6 +24,7 @@
     ATTACK_ALL: "attack-all",
     INITIATIVE: "initiative",
     MOVE_FIRST_FREE_LANE: "move-first-free-lane",
+    SWAP_CREATURES: "swap-creatures",
     ATTACK_FROM_POWER: "attack-from-power",
     ATTACK_MULTIPLIER: "attack-multiplier",
     SPELL_DAMAGE_MULTIPLIER: "spell-damage-multiplier",
@@ -243,6 +244,15 @@
             errors.push(`Sigillo ${sigil.id}: Movimento richiede creatura, pre-attacco e versione esplicita 1 senza parametri extra.`);
           }
         }
+        if (sigil?.effect === EFFECTS.SWAP_CREATURES) {
+          const config = sigil.modifiers?.[0];
+          if (formula.type !== "spell" || sigil.trigger !== "onPlay"
+            || sigil.kind !== SIGIL_KINDS.EFFECT || sigil.modifiers?.length !== 1
+            || config?.kind !== MODIFIER_KINDS.CONFIG || config.params?.capabilityVersion !== 1
+            || Object.keys(config.params || {}).some(key => key !== "capabilityVersion")) {
+            errors.push(`Sigillo ${sigil.id}: Scambio richiede Magia, onPlay e versione esplicita 1 senza parametri extra.`);
+          }
+        }
         if (sigil?.effect === EFFECTS.INITIATIVE) {
           const configs = Array.isArray(sigil.modifiers) ? sigil.modifiers.filter(item => item?.kind === MODIFIER_KINDS.CONFIG) : [];
           const config = configs[0]?.params;
@@ -254,6 +264,7 @@
           }
         }
       });
+      if (formula.sigils.filter(sigil => sigil?.effect === EFFECTS.SWAP_CREATURES).length > 1) errors.push("Formula: un solo Scambio per lancio.");
     }
     return { valid: errors.length === 0, errors };
   };

@@ -277,6 +277,11 @@
     const targetSideList = target ? targetSides(engine, actingSide, target.side) : [];
 
     switch (sigil.effect) {
+      case A.SIGIAN_EFFECTS.SWAP_CREATURES: {
+        const result = engine.swapCreatures(actingSide, source, context.targets);
+        if (result.ok) events.push(result.event);
+        return { executed: result.ok };
+      }
       case A.SIGIAN_EFFECTS.MOVE_FIRST_FREE_LANE: {
         const fromSlot = engine.getFighter(actingSide).board.indexOf(source);
         if (fromSlot < 0 || source.currentHealth <= 0) return { executed: false };
@@ -475,7 +480,7 @@
       applyAstralNets(engine, side, source, events);
     }
 
-    executeTrigger(engine, side, formula, trigger, { source }, events);
+    executeTrigger(engine, side, formula, trigger, { source, targets: options.targets }, events);
 
     if (["onSummon", "onPlay"].includes(trigger) && typeof A.astralCleanupDeaths === "function") {
       A.astralCleanupDeaths(engine, events, side);
@@ -892,6 +897,21 @@
     return formulaFor(engine, source);
   };
 
+  // null = this card has no explicit pair selection; [] = no legal pair.
+  A.getSigianSwapChoices = function getSigianSwapChoices(engine, side, source) {
+    const formula = formulaFor(engine, source);
+    if (!formula?.sigils?.some(sigil => sigil.effect === A.SIGIAN_EFFECTS.SWAP_CREATURES)) return null;
+    const enemySide = engine.getOpponentSide(side);
+    const anyPair = engine.getFighter(side).power.air > engine.getFighter(enemySide).power.air;
+    const refs = ["player", "enemy"].flatMap(owner => engine.getFighter(owner).board.flatMap((unit, slot) =>
+      unit && unit.currentHealth > 0 ? [{ side: owner, slot, instanceId: unit.instanceId }] : []));
+    const pairs = [];
+    refs.forEach((first, index) => refs.slice(index + 1).forEach(second => {
+      if (anyPair || first.side !== second.side) pairs.push([first, second]);
+    }));
+    return pairs;
+  };
+
   A.setSigianFormulaOverride = function setSigianFormulaOverride(engine, formula) {
     if (!engine) throw new Error("Override Formula: engine mancante.");
     const validation = A.validateFormula?.(formula);
@@ -920,11 +940,11 @@
     Object.keys(engine.__sigianFormulaOverrides).forEach(id => delete engine.__sigianFormulaOverrides[id]);
   };
 
-  A.resolveSigianCardEffect = function resolveSigianCardEffect(engine, side, source, trigger, events) {
+  A.resolveSigianCardEffect = function resolveSigianCardEffect(engine, side, source, trigger, events, options = {}) {
     const output = Array.isArray(events) ? events : [];
     const formula = formulaFor(engine, source);
     if (!formula) throw new Error(`Router Sigian: Formula mancante per ${source?.id || "senza-id"}.`);
-    const result = A.executeSigianFormula(engine, side, formula, { trigger, source });
+    const result = A.executeSigianFormula(engine, side, formula, { trigger, source, targets: options.targets });
     output.push(...result.events);
     return { mode: A.SIGIAN_MIGRATION_MODES.NATIVE, formulaId: formula.id, events: result.events };
   };

@@ -328,7 +328,8 @@
     return {
       type: move.type || "play",
       cardId: move.cardId || null,
-      slot: Number.isInteger(move.slot) ? move.slot : null
+      slot: Number.isInteger(move.slot) ? move.slot : null,
+      ...(move.targets ? { targets: A.deepClone(move.targets).sort((a, b) => a.side.localeCompare(b.side) || a.slot - b.slot) } : {})
     };
   };
 
@@ -340,10 +341,12 @@
     const oracle = A.canonicalAstralMove(oracleMove);
     const rankIndex = legal.findIndex(entry => {
       const candidate = A.canonicalAstralMove(entry.move);
-      return candidate.type === oracle.type && candidate.cardId === oracle.cardId && candidate.slot === oracle.slot;
+      return candidate.type === oracle.type && candidate.cardId === oracle.cardId && candidate.slot === oracle.slot
+        && JSON.stringify(candidate.targets || []) === JSON.stringify(oracle.targets || []);
     });
     const sameCard = recovered.type === oracle.type && recovered.cardId === oracle.cardId;
-    const exact = sameCard && recovered.slot === oracle.slot;
+    const exact = sameCard && recovered.slot === oracle.slot
+      && JSON.stringify(recovered.targets || []) === JSON.stringify(oracle.targets || []);
     const oracleEntry = rankIndex >= 0 ? legal[rankIndex] : null;
     return {
       status: exact ? "exact" : rankIndex < 0 ? "illegal-oracle" : sameCard ? "lane-difference" : "different",

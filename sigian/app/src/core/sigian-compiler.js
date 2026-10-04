@@ -540,6 +540,17 @@
       [configModifier(sigil.slotId, { capabilityVersion: 1 })], A.SIGIAN_SIGIL_KINDS.PASSIVE)];
   });
 
+  A.registerSigianSigilCompiler("swap-creatures-v1", function compileSwap({ recipe, sigil }) {
+    if (recipe.sigils.filter(item => item.sigilId === "swap-creatures-v1").length > 1) throw new Error("Formula: un solo Scambio per lancio nella capacità v1.");
+    if (recipe.type !== "spell" || sigil.config.capabilityVersion !== 1
+      || Object.keys(sigil.config).some(key => key !== "capabilityVersion")
+      || sigil.grade != null || sigil.intensity != null || sigil.modifiers.length) {
+      throw new Error(`FormulaRecipe ${recipe.id}: Scambio richiede Magia, versione esplicita 1 e nessun parametro extra.`);
+    }
+    return [technicalSigil(sigil, "swap-creatures-v1", "onPlay", A.SIGIAN_EFFECTS.SWAP_CREATURES,
+      [configModifier(sigil.slotId, { capabilityVersion: 1 })], A.SIGIAN_SIGIL_KINDS.EFFECT)];
+  });
+
   A.registerSigianSigilCompiler("arcane-attack", function compileArcaneAttack({ recipe, sigil }) {
     const activation = activationPlan(recipe, sigil, "passive");
     if (activation.condition) {

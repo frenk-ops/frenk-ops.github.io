@@ -813,8 +813,8 @@
     },
     "schemaVersion": 1
   },
-  "modelId": "8c27bbd9ebff1c478f531c036a356a21ffb4fe5c2d930f074de68233aaba90ee",
-  "sourceFingerprint": "8bc5d949f385961a17dc2a8a17ff6ec2ee0f28d706a8e13ec73b2cbde5ba3ca4",
+  "modelId": "4f4651351fd59311f20cda737d971b207c1e86aa7d817181337a5d6f3ca6fb18",
+  "sourceFingerprint": "ace60703c36b7076b3dc37a61acba9cb23923f4eda63f5281bac21d4d8b78e29",
   "sourceManifest": [
     {
       "path": "src/core/constants.js",
@@ -838,11 +838,11 @@
     },
     {
       "path": "src/core/sigian-foundation.js",
-      "sha256": "b870859583ebc44a56fdb4ad86f3ac123d31e4cb46d3330691916f691c1f1a9f"
+      "sha256": "ffedd046b4d171fb49d7608eb3fb8d53ebf923ee0d8891a0cb396c7346002c98"
     },
     {
       "path": "src/core/sigian-registry.js",
-      "sha256": "89b75b58143b6279de7abc142c716a7cf328eceaa2736b2f8e2f524112bf3121"
+      "sha256": "33e185a38fecdb0761dd2a56129dc850a9be68f4a9580330d3e90efec700f5e4"
     },
     {
       "path": "src/core/sigian-content-catalog.js",
@@ -870,7 +870,7 @@
     },
     {
       "path": "src/core/sigian-compiler.js",
-      "sha256": "22d0df18e7499ac1e637d44eb898937e1eff343c0a9750c45688f13d249c44fe"
+      "sha256": "c806b59686e4530be50e537a6c0df930077a44ed2f97bc56679fa94a8e97c2e8"
     },
     {
       "path": "src/data/astral-ai-card-metadata.js",
@@ -942,15 +942,15 @@
     },
     {
       "path": "src/core/sigian-runtime.js",
-      "sha256": "11ed7e01179fa1e169d508cce5d573cdfb31a831a7613f2c8c3e1ffb98cc5945"
+      "sha256": "94a7677c66b86dc72a89f012ed4485123e1c5ecb87157f5cc76c76bdc0bff784"
     },
     {
       "path": "src/core/game-engine.js",
-      "sha256": "169e5821ca8389116cc8a78e87d043421a9e58d39396c216c7bc98814138387b"
+      "sha256": "3200a2750ebd4b4ca804fd543671f6c48d2a1ce7c0c1f79ea5e8500103e4bd36"
     },
     {
       "path": "src/core/astral-ai-re.js",
-      "sha256": "093229c13d935db4f83445d8fbdaa7f1660310854fe731626703896025fab41a"
+      "sha256": "216d3178da990122a542f9c6ccba964587299a03d528831f76b947add0170672"
     },
     {
       "path": "src/core/sigian-value-calibration.js",

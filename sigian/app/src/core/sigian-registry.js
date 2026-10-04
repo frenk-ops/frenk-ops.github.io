@@ -296,7 +296,7 @@
   });
 
   // Executable but not admitted to the collectible/Forge catalog until calibration.
-  ["initiative-v1", "collective-initiative-v1", "move-first-free-lane-v1"].forEach(id => sigils.register({
+  ["initiative-v1", "collective-initiative-v1", "move-first-free-lane-v1", "swap-creatures-v1"].forEach(id => sigils.register({
     id, version: 1, family: "combat", status: "reserved",
     gradeModel: { type: "binary" },
     modifierFamilies: [], modifierOptions: {},

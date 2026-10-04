@@ -61,7 +61,8 @@
         return engine.playMove(command.actor, {
           type: "play",
           cardId: String(payload.cardId || ""),
-          slot: payload.slot === null || payload.slot === undefined ? null : Number(payload.slot)
+          slot: payload.slot === null || payload.slot === undefined ? null : Number(payload.slot),
+          ...(payload.targets !== undefined ? { targets: A.deepClone(payload.targets) } : {})
         });
       case COMMANDS.PASS:
         return engine.pass(command.actor);

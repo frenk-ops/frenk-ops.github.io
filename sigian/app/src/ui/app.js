@@ -43,6 +43,7 @@
   };
 
   let engine = null;
+  let swapSelectedTargets = [];
   let duelCommandSession = null;
   let activeSchool = "fire";
   let enemySchool = "fire";
@@ -2432,6 +2433,15 @@
     const oriented = A.deepClone(snapshot);
     if (side !== "enemy") return oriented;
     [oriented.state.player, oriented.state.enemy] = [oriented.state.enemy, oriented.state.player];
+    [oriented.state.turnCounters.player, oriented.state.turnCounters.enemy] = [oriented.state.turnCounters.enemy, oriented.state.turnCounters.player];
+    ["player", "enemy"].forEach(owner => oriented.state[owner].board.forEach(unit => {
+      if (!unit) return;
+      unit.owner = owner;
+      (unit.astralPowerModifiers || []).forEach(modifier => {
+        if (["player", "enemy"].includes(modifier.targetSide)) modifier.targetSide = modifier.targetSide === "player" ? "enemy" : "player";
+      });
+    }));
+    if (oriented.state.movementAttackLedger) oriented.state.movementAttackLedger.side = oriented.state.movementAttackLedger.side === "player" ? "enemy" : "player";
     const phaseSwap = {
       [A.PHASES.PLAYER_SELECT]: A.PHASES.ENEMY_PLAY,
       [A.PHASES.PLAYER_TARGET]: A.PHASES.ENEMY_PLAY,
@@ -2559,7 +2569,7 @@
     const slot = command.payload?.slot ?? null;
 
     loadRemoteEngine(response.state);
-    if (result?.events?.some(event => event.type === "creatureMoved")) renderGame();
+    if (result?.events?.some(event => ["creatureMoved", "creaturesSwapped"].includes(event.type))) renderGame();
 
     if (type === A.MULTIPLAYER_COMMANDS.PLAY && result?.ok && result.card) {
       if (result.card.type === "spell") spellSound(result.card);
@@ -4369,6 +4379,7 @@
   }
 
   function phaseLabel(phase) {
+    if (phase === A.PHASES.PLAYER_TARGET && pendingSwapChoices() !== null) return t("phase.swapTargets");
     return ({
       [A.PHASES.PLAYER_SELECT]: t("phase.playerSelect"),
       [A.PHASES.PLAYER_TARGET]: t("phase.playerTarget"),
@@ -4440,6 +4451,7 @@
       if (currentUnit) startMobileHoldPreview(event, currentUnit, side);
     });
     cell.addEventListener("click", () => {
+      if (pendingSwapChoices() !== null) { onSwapTarget(side, slot); return; }
       inspectUnit();
       const currentUnit = engine?.state?.[side]?.board?.[slot];
       if (currentUnit && !isMobileDuelLayout()) openDuelCardZoom(currentUnit, side);
@@ -4482,6 +4494,13 @@
     cell.classList.add("school-" + unit.school);
     cell.classList.toggle("multi-target-attacker", isMultiTargetAttacker);
     cell.classList.toggle("summoning-sick", hasSummoningSickness);
+    const pairs = pendingSwapChoices();
+    const selected = swapSelectedTargets.some(ref => ref.instanceId === unit.instanceId);
+    const valid = pairs?.some(pair => pair.some(ref => ref.side === side && ref.slot === slot)
+      && (!swapSelectedTargets.length || pair.some(ref => ref.instanceId === swapSelectedTargets[0].instanceId)));
+    cell.classList.toggle("swap-target", Boolean(valid));
+    cell.classList.toggle("swap-selected", pairs !== null && selected);
+    cell.setAttribute("aria-pressed", String(pairs !== null && selected));
 
     let art = cell.querySelector(".unit-art");
     if (!art) {
@@ -8938,6 +8957,22 @@
     inspectedCardInstanceId = null;
     renderCollectionPanels();
     if (!engine || busy) return;
+    const swapCard = engine.getCard("player", cardId);
+    if (swapCard && A.getSigianSwapChoices?.(engine, "player", swapCard) != null) {
+      if (engine.state.phase === A.PHASES.PLAYER_TARGET && engine.state.pendingCardId === cardId) {
+        return setMessage(t(swapSelectedTargets.length ? "status.swapSecond" : "status.swapFirst"));
+      }
+      if (engine.state.phase === A.PHASES.PLAYER_TARGET) {
+        if (remoteDuelActive) engine.cancelSelection();
+        else issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.CANCEL_SELECTION);
+      }
+      const result = remoteDuelActive ? engine.selectCard(cardId) : issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.SELECT, { cardId });
+      if (!result.ok) return setMessage(result.reason);
+      swapSelectedTargets = [];
+      renderGame();
+      return setMessage(t("status.swapFirst"));
+    }
+    swapSelectedTargets = [];
     if (remoteDuelActive) {
       const card = engine.getCard("player", cardId);
       if (!card) return;
@@ -9026,6 +9061,49 @@
     } else {
       setMessage(t("status.pending", { card: cardName(result.card), state: t(result.card.type === "spell" ? "status.prepared" : "status.selected") }));
     }
+  }
+
+  function pendingSwapChoices() {
+    if (!engine || engine.state.phase !== A.PHASES.PLAYER_TARGET || !engine.state.pendingCardId) return null;
+    const card = engine.getCard("player", engine.state.pendingCardId);
+    return card ? A.getSigianSwapChoices?.(engine, "player", card) ?? null : null;
+  }
+
+  async function onSwapTarget(side, slot) {
+    if (busy) return;
+    const pairs = pendingSwapChoices();
+    if (!pairs) return;
+    const unit = engine.state[side].board[slot];
+    if (!unit) return;
+    const ref = { side, slot, instanceId: unit.instanceId };
+    if (swapSelectedTargets[0]?.instanceId === ref.instanceId) {
+      swapSelectedTargets = [];
+      renderGame();
+      return setMessage(t("status.swapFirst"));
+    }
+    const choice = pairs.find(pair => pair.some(value => value.instanceId === ref.instanceId)
+      && (!swapSelectedTargets.length || pair.some(value => value.instanceId === swapSelectedTargets[0].instanceId)));
+    if (!choice) return setMessage(t("status.swapInvalid"));
+    if (!swapSelectedTargets.length) {
+      swapSelectedTargets = [ref];
+      renderGame();
+      return setMessage(t("status.swapSecond"));
+    }
+    const payload = { cardId: engine.state.pendingCardId, slot: null, targets: choice };
+    swapSelectedTargets = [];
+    if (remoteDuelActive) {
+      await resolveRemoteMove(A.MULTIPLAYER_COMMANDS.PLAY, { ...payload, targets: orientRemotePresentation(choice) });
+      return;
+    }
+    busy = true;
+    try {
+      const result = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, payload);
+      renderGame();
+      if (!result.ok) return setMessage(result.reason);
+      spellSound(result.card);
+      recordCardResolution(result);
+      await resolveAttackFlow("player");
+    } finally { busy = false; }
   }
 
   async function onPlayerSlot(slot) {
@@ -9492,7 +9570,7 @@
       const healthBefore = captureHealthState();
       const result = move.type === "pass"
         ? issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PASS)
-        : issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: move.cardId, slot: move.slot ?? null });
+        : issueDuelCommand("enemy", A.MULTIPLAYER_COMMANDS.PLAY, { cardId: move.cardId, slot: move.slot ?? null, ...(move.targets ? { targets: move.targets } : {}) });
       if (result.ok && result.card?.type === "spell") spellSound(result.card);
       if (result.ok && result.card?.type === "creature") playOriginalSound("summon2", 0.36);
       if (result.ok && result.card) await animateCardPlay(result, "enemy", move?.slot ?? null, healthBefore);

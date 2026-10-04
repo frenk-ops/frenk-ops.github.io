@@ -342,6 +342,8 @@
     "cards.viewRevealed": "View Formulas", "cards.revealedEnemy": "Opponent's revealed Formulas", "cards.revealed": "Revealed Formulas",
     "cards.hiddenEnemy": "Hidden opponent Formula", "cards.enemySummary": "{school}: {total} total Formulas · {revealed} revealed", "log.title": "Battle log",
     "status.noAbility": "no ability", "status.talent": "School", "status.selectSlot": "{card}: choose a slot.", "status.selectionCancelled": "Selection cancelled.",
+    "status.swapFirst": "Swap: choose the first highlighted creature.", "status.swapSecond": "Swap: choose the second creature; press the first to deselect it.", "status.swapInvalid": "This pair is not valid for Swap.",
+    "phase.swapTargets": "Swap (2)",
     "status.cast": "{card} is cast.", "status.pending": "{card} {state}. Tap again to cast it.", "status.pendingCreature": "{card} selected: choose a free slot.", "status.prepared": "prepared", "status.selected": "selected",
     "ranked.kicker": "Competitive", "ranked.title": "Ranked match", "ranked.modeTab": "Ranked", "ranked.modeTabHint": "Competitive matchmaking, rating and seasonal leaderboard.",
     "ranked.classic": "Classic", "ranked.classicHint": "Shared Formula pool and standard competitive rules.",

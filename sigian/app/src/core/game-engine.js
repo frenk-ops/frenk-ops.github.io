@@ -108,6 +108,7 @@
         if (typeof unit.id !== "string" || !unit.id) snapshotError(`creatura ${side}/${slot} senza id`);
         if (!Number.isFinite(unit.currentHealth) || unit.currentHealth <= 0) snapshotError(`vita creatura ${side}/${slot} non valida`);
         if (!Number.isFinite(unit.health) || unit.health <= 0) snapshotError(`vita massima creatura ${side}/${slot} non valida`);
+        if (unit.summoningClockOffset !== undefined && !Number.isSafeInteger(unit.summoningClockOffset)) snapshotError(`clock evocazione ${side}/${slot} non valido`);
       });
     });
     if (state.pendingCardId !== null && state.pendingCardId !== undefined) {
@@ -315,7 +316,8 @@
 
     isUnitSummoningSick(unit, side = unit?.owner) {
       if (!unit || !side || !Number.isFinite(Number(unit.summonedOnOwnerTurn))) return false;
-      const newlySummoned = Number(unit.summonedOnOwnerTurn) >= this.getOwnerTurnCount(side);
+      const ownerClock = this.getOwnerTurnCount(side) + (unit.summoningClockOffset || 0);
+      const newlySummoned = Number(unit.summonedOnOwnerTurn) >= ownerClock;
       if (!newlySummoned) return false;
       // Initiative bypasses sickness; it does not erase the summon timestamp.
       return !(typeof A.sigianHasInitiative === "function" && A.sigianHasInitiative(this, side, unit));
@@ -361,6 +363,8 @@
           return { ok: false, reason: "Lo slot selezionato non è disponibile." };
         }
       }
+      const pairs = A.getSigianSwapChoices?.(this, side, card);
+      if (pairs && !pairs.length) return { ok: false, reason: "Nessuna coppia di creature valida per lo Scambio." };
       return { ok: true, reason: "" };
     }
 
@@ -394,7 +398,8 @@
       if (!playable.ok) return playable;
       this.state.pendingCardId = cardId;
       this.state.phase = A.PHASES.PLAYER_TARGET;
-      return { ok: true, card: A.deepClone(card), requiresSlot: card.type === "creature" };
+      return { ok: true, card: A.deepClone(card), requiresSlot: card.type === "creature",
+        ...(A.getSigianSwapChoices?.(this, "player", card) ? { requiresTargets: true } : {}) };
     }
 
     cancelSelection() {
@@ -404,13 +409,13 @@
       return true;
     }
 
-    playSelected(slot = null) {
+    playSelected(slot = null, targets) {
       if (this.state.phase !== A.PHASES.PLAYER_TARGET || !this.state.pendingCardId) {
         return { ok: false, reason: "Prima seleziona una carta." };
       }
       const cardId = this.state.pendingCardId;
-      this.state.pendingCardId = null;
-      return this.playMove("player", { type: "play", cardId, slot });
+      if (A.getSigianSwapChoices?.(this, "player", this.getCard("player", cardId)) == null) this.state.pendingCardId = null;
+      return this.playMove("player", { type: "play", cardId, slot, ...(targets ? { targets } : {}) });
     }
 
     legalMoves(side) {
@@ -419,7 +424,9 @@
       fighter.hand.forEach(card => {
         if (!this.canPlay(side, card)) return;
         if (card.type === "spell") {
-          moves.push({ type: "play", cardId: card.id, slot: null });
+          const pairs = A.getSigianSwapChoices?.(this, side, card);
+          if (pairs) pairs.forEach(targets => moves.push({ type: "play", cardId: card.id, slot: null, targets }));
+          else moves.push({ type: "play", cardId: card.id, slot: null });
         } else {
           fighter.board.forEach((unit, slot) => {
             if (!unit && this.canPlay(side, card, slot)) moves.push({ type: "play", cardId: card.id, slot });
@@ -434,6 +441,8 @@
       if (move?.type === "pass") return this.pass(side);
       const card = this.getCard(side, move?.cardId);
       if (!card) return { ok: false, reason: "Carta non trovata." };
+      const pairs = A.getSigianSwapChoices?.(this, side, card);
+      if (pairs && !this.isValidSwapChoice(side, card, move.targets)) return { ok: false, reason: "Seleziona due creature valide per lo Scambio." };
       if (card.type === "creature") {
         const slot = move?.slot;
         if (!Number.isInteger(slot) || slot < 0 || slot >= this.rules.boardSize) {
@@ -458,7 +467,7 @@
 
       // Nel binario originale gli effetti usano il potere pre-costo. Il costo viene
       // sottratto soltanto dopo la risoluzione del ramo della carta.
-      if (!recoveredAstral) fighter.power[card.school] -= cost;
+      if (!recoveredAstral && !pairs) fighter.power[card.school] -= cost;
 
       const events = [{ type: "cardPlayed", side, cardId: card.id, cardName: card.name, cost, school: card.school }];
       if (card.type === "creature") {
@@ -486,7 +495,9 @@
       } else {
         events.push({ type: "spell", side, cardId: card.id, cardName: card.name });
         if (recoveredAstral && typeof A.resolveSigianCardEffect === "function") {
-          A.resolveSigianCardEffect(this, side, card, "onPlay", events);
+          A.resolveSigianCardEffect(this, side, card, "onPlay", events, { targets: move.targets });
+        } else if (!recoveredAstral && pairs && typeof A.resolveSigianCardEffect === "function") {
+          A.resolveSigianCardEffect(this, side, card, "onPlay", events, { targets: move.targets });
         } else if (recoveredAstral && typeof A.astralOnSpell === "function") {
           A.astralOnSpell(this, side, card, events);
         } else {
@@ -495,7 +506,7 @@
         this.addLog(`${side === "player" ? "Tu lanci" : "L'avversario lancia"} ${card.name}.`);
       }
 
-      if (recoveredAstral) fighter.power[card.school] = Math.max(0, fighter.power[card.school] - cost);
+      if (recoveredAstral || pairs) fighter.power[card.school] = Math.max(0, fighter.power[card.school] - cost);
       this.state.pendingCardId = null;
       this.state.attackCursor = 0;
       this.state.phase = sideAttackPhase(side);
@@ -513,6 +524,48 @@
       this.state.phase = sideAttackPhase(side);
       this.addLog(`${side === "player" ? "Tu passi" : "L'avversario passa"}.`);
       return { ok: true, events: normalizeEngineEvents([{ type: "pass", side }]), phase: this.state.phase };
+    }
+
+    isValidSwapChoice(side, card, targets) {
+      if (!["player", "enemy"].includes(side) || !Array.isArray(targets) || targets.length !== 2 || targets.some(ref => !ref
+        || !["player", "enemy"].includes(ref.side) || !Number.isInteger(ref.slot)
+        || typeof ref.instanceId !== "string" || !ref.instanceId)) return false;
+      const matches = (a, b) => a.side === b.side && a.slot === b.slot && a.instanceId === b.instanceId;
+      return (A.getSigianSwapChoices?.(this, side, card) || []).some(pair =>
+        matches(pair[0], targets[0]) && matches(pair[1], targets[1])
+        || matches(pair[1], targets[0]) && matches(pair[0], targets[1]));
+    }
+
+    swapCreatures(side, card, targets) {
+      if (!this.isValidSwapChoice(side, card, targets)) return { ok: false, reason: "Bersagli Scambio non validi." };
+      const [first, second] = targets;
+      const a = this.getFighter(first.side).board[first.slot];
+      const b = this.getFighter(second.side).board[second.slot];
+      const transfer = (unit, oldSide, newSide) => {
+        if (oldSide === newSide) return;
+        if (Number.isFinite(unit.summonedOnOwnerTurn)) {
+          // Preserve the original timestamp. Rebase only its controller clock.
+          const offset = (unit.summoningClockOffset || 0)
+            + this.getOwnerTurnCount(oldSide) - this.getOwnerTurnCount(newSide);
+          if (offset === 0) delete unit.summoningClockOffset;
+          else unit.summoningClockOffset = offset;
+        }
+        (unit.astralPowerModifiers || []).forEach(modifier => {
+          const oldTarget = modifier.targetSide;
+          const newTarget = oldTarget === oldSide ? newSide : oldTarget === newSide ? oldSide : oldTarget;
+          if (newTarget === oldTarget) return;
+          this.getFighter(oldTarget).powerGain[modifier.school] -= modifier.delta;
+          this.getFighter(newTarget).powerGain[modifier.school] += modifier.delta;
+          modifier.targetSide = newTarget;
+        });
+        unit.owner = newSide;
+      };
+      transfer(a, first.side, second.side);
+      transfer(b, second.side, first.side);
+      this.getFighter(first.side).board[first.slot] = b;
+      this.getFighter(second.side).board[second.slot] = a;
+      return { ok: true, event: { type: "creaturesSwapped", sourceSide: side,
+        first: A.deepClone(first), second: A.deepClone(second), controlTransferred: first.side !== second.side } };
     }
 
     getFullyFreeLanes() {

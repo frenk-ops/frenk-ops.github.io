@@ -343,6 +343,8 @@
     "cards.viewRevealed": "Vedi Formule", "cards.revealedEnemy": "Formule rivelate dell'avversario", "cards.revealed": "Formule rivelate",
     "cards.hiddenEnemy": "Formula avversaria nascosta", "cards.enemySummary": "{school}: {total} Formule totali · {revealed} rivelate", "log.title": "Registro battaglia",
     "status.noAbility": "nessuna abilità", "status.talent": "Scuola", "status.selectSlot": "{card}: scegli uno slot.", "status.selectionCancelled": "Selezione annullata.",
+    "status.swapFirst": "Scambio: scegli la prima creatura evidenziata.", "status.swapSecond": "Scambio: scegli la seconda creatura; premi la prima per deselezionarla.", "status.swapInvalid": "Questa coppia non è valida per lo Scambio.",
+    "phase.swapTargets": "Scambio (2)",
     "status.cast": "{card} viene lanciata.", "status.pending": "{card} {state}. Tocca di nuovo per lanciarla.", "status.pendingCreature": "{card} selezionata: scegli uno slot libero.", "status.prepared": "preparata", "status.selected": "selezionata",
     "ranked.kicker": "Competitivo", "ranked.title": "Partita Classificata", "ranked.modeTab": "Classificata", "ranked.modeTabHint": "Matchmaking competitivo, rating e classifica stagionale.",
     "ranked.classic": "Classica", "ranked.classicHint": "Pool comune e regole competitive standard.",
