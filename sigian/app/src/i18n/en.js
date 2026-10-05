@@ -387,6 +387,9 @@
     "phase.roundEnd": "End of round", "phase.gameOver": "Duel over",
     "status.duelRestored": "Match restored after restart.",
     "status.summoningSickness": "Summoning sickness — can attack from the next turn",
+    "status.silence": "Silence",
+    "status.neutralization": "Neutralization",
+    "status.permanent": "Permanent",
     "schools.fire": "Fire", "schools.water": "Water", "schools.air": "Air",
     "schools.earth": "Earth", "schools.nature": "Earth", "schools.death": "Death"
   };

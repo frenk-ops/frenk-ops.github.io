@@ -3,6 +3,21 @@
 
   const CURRENT_STATE_VERSION = 2;
   const EVENT_CONTRACT_VERSION = 1;
+
+  function validateControlStates(states) {
+    if (!states || typeof states !== "object" || Array.isArray(states)) return false;
+    const entries = Object.entries(states);
+    if (!entries.length || entries.some(([kind]) => !["silence", "neutralization"].includes(kind))) return false;
+    return entries.every(([kind, status]) => {
+      if (!status || typeof status !== "object" || Array.isArray(status) || typeof status.permanent !== "boolean") return false;
+      if (status.permanent) return kind === "silence" && Object.keys(status).length === 1;
+      if (Object.keys(status).some(key => !["permanent", "remainingOwnerTurns", "countingTurn"].includes(key))
+        || ![1, 2].includes(status.remainingOwnerTurns)) return false;
+      const clock = status.countingTurn;
+      return clock === undefined || (clock && Object.keys(clock).length === 2
+        && ["player", "enemy"].includes(clock.side) && Number.isSafeInteger(clock.turn) && clock.turn >= 0);
+    });
+  }
   const RUNTIME_COMPONENT_SCHEMA_VERSION = 1;
   const RUNTIME_COMPONENT_LIMIT = 3;
 
@@ -146,6 +161,7 @@
         if (!Number.isFinite(unit.currentHealth) || unit.currentHealth <= 0) snapshotError(`vita creatura ${side}/${slot} non valida`);
         if (!Number.isFinite(unit.health) || unit.health <= 0) snapshotError(`vita massima creatura ${side}/${slot} non valida`);
         if (unit.summoningClockOffset !== undefined && !Number.isSafeInteger(unit.summoningClockOffset)) snapshotError(`clock evocazione ${side}/${slot} non valido`);
+        if (unit.sigianControlStates !== undefined && !validateControlStates(unit.sigianControlStates)) snapshotError(`stati controllo ${side}/${slot} non validi`);
         if (unit.sigianRuntimeComponents !== undefined && !validateRuntimeComponents(unit.sigianRuntimeComponents, unit.instanceId)) {
           snapshotError(`componenti runtime creatura ${side}/${slot} non validi`);
         }
@@ -168,6 +184,7 @@
     ["player", "enemy"].forEach(side => {
       if (!Array.isArray(rawState?.[side]?.board)) return;
       rawState[side].board.forEach((unit, slot) => {
+        if (unit?.sigianControlStates !== undefined && !validateControlStates(unit.sigianControlStates)) snapshotError(`stati controllo ${side}/${slot} non validi`);
         if (unit?.sigianRuntimeComponents !== undefined && !validateRuntimeComponents(unit.sigianRuntimeComponents, unit.instanceId)) {
           snapshotError(`componenti runtime creatura ${side}/${slot} non validi`);
         }
@@ -360,7 +377,87 @@
       const counters = this.ensureTurnCounters();
       counters[side] = Number(counters[side] || 0) + 1;
       this.state.activeSide = side;
+      this.getFighter(side).board.forEach(unit => {
+        for (const status of Object.values(unit?.sigianControlStates || {})) {
+          if (!status.permanent) status.countingTurn = { side, turn: counters[side] };
+        }
+      });
       return counters[side];
+    }
+
+    canTargetSigianControlState(targetRef, kind) {
+      if (!targetRef || !["player", "enemy"].includes(targetRef.side)
+        || !Number.isInteger(targetRef.slot) || targetRef.slot < 0 || targetRef.slot >= this.rules.boardSize
+        || !["silence", "neutralization"].includes(kind)) return false;
+      const unit = this.getFighter(targetRef.side).board[targetRef.slot];
+      return Boolean(unit && unit.currentHealth > 0 && unit.instanceId === targetRef.instanceId && !unit.sigianControlStates?.[kind]);
+    }
+
+    applySigianControlState(targetRef, kind, options = {}) {
+      if (!targetRef || !["player", "enemy"].includes(targetRef.side)
+        || !Number.isInteger(targetRef.slot) || targetRef.slot < 0 || targetRef.slot >= this.rules.boardSize
+        || !["silence", "neutralization"].includes(kind)
+        || !options || typeof options !== "object" || Array.isArray(options)
+        || Object.keys(options).some(key => !["permanent", "applicationMode"].includes(key))
+        || (options.applicationMode !== undefined && !["targeted", "untargeted"].includes(options.applicationMode))
+        || (options.permanent !== undefined && typeof options.permanent !== "boolean")
+        || (kind === "neutralization" && options.permanent)) return { ok: false, reason: "control-state-invalid-input" };
+      const unit = this.getFighter(targetRef.side).board[targetRef.slot];
+      if (!unit || unit.currentHealth <= 0 || unit.instanceId !== targetRef.instanceId) return { ok: false, reason: "control-state-invalid-reference" };
+      // An existing state cannot be targeted again. Untargeted effects skip
+      // that instance without refreshing, stacking or upgrading its state.
+      if (!this.canTargetSigianControlState(targetRef, kind)) {
+        return options.applicationMode === "untargeted"
+          ? { ok: true, changed: false, ignored: true, reason: "control-state-already-active" }
+          : { ok: false, changed: false, reason: "control-state-already-active" };
+      }
+      const status = options.permanent ? { permanent: true } : { permanent: false, remainingOwnerTurns: 2 };
+      unit.sigianControlStates = { ...unit.sigianControlStates, [kind]: status };
+      return { ok: true, changed: true, event: { type: "controlStateApplied", targetSide: targetRef.side,
+        targetKind: "creature", targetInstanceId: unit.instanceId, kind, permanent: status.permanent } };
+    }
+
+    applySigianSilence(actingSide, targetRef, options = {}) {
+      if (!["player", "enemy"].includes(actingSide)) return { ok: false, reason: "control-state-invalid-input" };
+      const permanent = this.getFighter(actingSide).power.water > this.getFighter(this.getOpponentSide(actingSide)).power.water;
+      return this.applySigianControlState(targetRef, "silence", { ...options, permanent });
+    }
+
+    applySigianNeutralization(targetRef, options = {}) {
+      return this.applySigianControlState(targetRef, "neutralization", options);
+    }
+
+    completeSigianControlStateTurn(side, events = []) {
+      this.getFighter(side).board.forEach(unit => {
+        if (!unit?.sigianControlStates) return;
+        for (const [kind, status] of Object.entries(unit.sigianControlStates)) {
+          if (status.permanent || status.countingTurn?.side !== side
+            || status.countingTurn.turn !== this.getOwnerTurnCount(side)) continue;
+          delete status.countingTurn;
+          status.remainingOwnerTurns -= 1;
+          if (status.remainingOwnerTurns === 0) {
+            delete unit.sigianControlStates[kind];
+            events.push({ type: "controlStateExpired", targetSide: side, targetKind: "creature", targetInstanceId: unit.instanceId, kind });
+          }
+        }
+        if (Object.keys(unit.sigianControlStates).length === 0) delete unit.sigianControlStates;
+      });
+      return events;
+    }
+
+    canUnitDefend(unit) {
+      return Boolean(unit && unit.currentHealth > 0 && !unit.sigianControlStates?.neutralization);
+    }
+
+    getEffectivePowerGain(side, school) {
+      let gain = this.getFighter(side).powerGain[school];
+      for (const owner of ["player", "enemy"]) this.getFighter(owner).board.forEach(unit => {
+        if (!unit?.sigianControlStates?.silence && !unit?.sigianControlStates?.neutralization) return;
+        for (const modifier of unit.astralPowerModifiers || []) {
+          if (modifier.targetSide === side && modifier.school === school) gain -= modifier.delta;
+        }
+      });
+      return gain;
     }
 
     isUnitSummoningSick(unit, side = unit?.owner) {
@@ -373,7 +470,7 @@
     }
 
     canUnitAttackNormally(side, unit) {
-      return Boolean(unit && unit.currentHealth > 0 && !this.isUnitSummoningSick(unit, side));
+      return Boolean(unit && unit.currentHealth > 0 && !unit.sigianControlStates?.neutralization && !this.isUnitSummoningSick(unit, side));
     }
 
     getCard(side, cardId) {
@@ -694,6 +791,7 @@
       if (!unit || unit.currentHealth <= 0) return { ok: true, done: false, skipped: true };
 
       const forcedByEffect = options.forcedByEffect === true;
+      if (unit.sigianControlStates?.neutralization) return { ok: true, done: false, skipped: true, reason: "neutralization", events: [] };
       if (!forcedByEffect && this.isUnitSummoningSick(unit, side)) {
         return {
           ok: true,
@@ -721,7 +819,7 @@
         && typeof A.sigianBeforeUnitAttack === "function") A.sigianBeforeUnitAttack(this, side, slot, unit, movementEvents);
       slot = attacker.board.indexOf(unit);
       if (slot < 0 || unit.currentHealth <= 0) return { ok: true, done: false, skipped: true, events: normalizeEngineEvents(movementEvents) };
-      const target = defender.board[slot];
+      const target = this.canUnitDefend(defender.board[slot]) ? defender.board[slot] : null;
       let event;
 
       if (target) {
@@ -817,10 +915,12 @@
         return { ok: true, phase: this.state.phase };
       }
 
+      const statusEvents = this.completeSigianControlStateTurn(side);
+
       const recoveredAstral = typeof A.isRecoveredAstralEngine === "function" && A.isRecoveredAstralEngine(this);
       if (recoveredAstral && typeof A.astralGrowPowers === "function") {
         const nextSide = this.getOpponentSide(side);
-        const events = [];
+        const events = [...statusEvents];
         A.astralGrowPowers(this, nextSide, events);
         this.beginSideTurn(nextSide);
         this.state.pendingCardId = null;
@@ -842,7 +942,8 @@
         this.state.phase = A.PHASES.ROUND_END;
         this.startNextRound();
       }
-      return { ok: true, phase: this.state.phase };
+      return statusEvents.length ? { ok: true, events: normalizeEngineEvents(statusEvents), phase: this.state.phase }
+        : { ok: true, phase: this.state.phase };
     }
 
     beginEnemyPlay() {
@@ -860,7 +961,7 @@
         A.SCHOOLS.forEach(school => {
           fighter.power[school.id] = Math.min(
             this.rules.maxPower,
-            fighter.power[school.id] + fighter.powerGain[school.id]
+            fighter.power[school.id] + this.getEffectivePowerGain(side, school.id)
           );
         });
       });

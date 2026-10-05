@@ -636,6 +636,7 @@
     const enemy = fighter(engine, enemySide);
     const unit = own.board[slot];
     if (!unit || unit.currentHealth <= 0) return { events, skipped: true };
+    if (unit.sigianControlStates?.neutralization) return { events, skipped: true };
 
     beforeUnitAttack(engine, side, slot, unit, events);
     slot = own.board.indexOf(unit);
@@ -660,7 +661,7 @@
         unit.currentHealth -= 2;
         events.push({ type: "astralFireAura", side, amount: 2, sourceId: unit.id });
       }
-    } else if (enemy.board[slot]) {
+    } else if (enemy.board[slot] && engine.canUnitDefend(enemy.board[slot])) {
       const target = enemy.board[slot];
       const targetId = target.instanceId;
       const targetName = target.name;
@@ -686,6 +687,7 @@
     ["player", "enemy"].forEach(ownerSide => {
       fighter(engine, ownerSide).board.forEach((unit, slot) => {
         if (!unit || unit.currentHealth <= 0) return;
+        if (A.sigianEffectsInactive?.(unit)) return;
         (unit.astralPowerModifiers || []).forEach(modifier => {
           const amount = Math.trunc(modifier?.delta || 0);
           if (!amount || modifier?.targetSide !== targetSide || !modifier?.school) return;
@@ -707,11 +709,11 @@
   function growPowers(engine, side, events) {
     const target = fighter(engine, side);
     const beforePower = A.deepClone(target.power);
-    const gain = A.deepClone(target.powerGain);
+    const gain = Object.fromEntries(A.SCHOOLS.map(school => [school.id, engine.getEffectivePowerGain(side, school.id)]));
     const sources = growthModifierSources(engine, side);
     const applied = {};
     A.SCHOOLS.forEach(school => {
-      const growth = Math.trunc(target.powerGain[school.id] || 0);
+      const growth = Math.trunc(gain[school.id] || 0);
       const before = Number(target.power[school.id] || 0);
       target.power[school.id] = Math.max(0, Math.min(engine.rules.maxPower, before + growth));
       applied[school.id] = target.power[school.id] - before;

@@ -813,8 +813,8 @@
     },
     "schemaVersion": 1
   },
-  "modelId": "71bb5aeda2aacf7305686eee7a4001fd083de7da7fa85753df151b9e9773b824",
-  "sourceFingerprint": "5877f339ba6e102cf9bedb787a72fd2fe81e1af1f6b0bd9be8e814e497d68cb1",
+  "modelId": "2b17d696d0f548c5680ac6b53c19c5c2c71260e3e9190160bd6c5c01f18186e5",
+  "sourceFingerprint": "a9f4ce4d1606fb0519bfd4f1fe88584f999f053a662725f84cf3022eecef5aff",
   "sourceManifest": [
     {
       "path": "src/core/constants.js",
@@ -902,7 +902,7 @@
     },
     {
       "path": "src/core/astral-card-effects-re.js",
-      "sha256": "2d93222871a2ee89523e0d2b3924735e746a2b01d79a4f1cfcd386f0fb4c7399"
+      "sha256": "3aa8eac6bb464b4c1fbd1a8199a525f9781183ce44af24aa9398f8e57bec390e"
     },
     {
       "path": "src/data/sigian-base-recipes.js",
@@ -942,11 +942,11 @@
     },
     {
       "path": "src/core/sigian-runtime.js",
-      "sha256": "937512428ec7681b20ca5be6b580398c63c7a746a7715a213a5be23317a30156"
+      "sha256": "1a961290bfa40c4686389a1617ae8fb97d637e6d7dff148693fc3c3f130c93d7"
     },
     {
       "path": "src/core/game-engine.js",
-      "sha256": "ccb414b707e486756024b355333adbff4b0cfb2d54f2831ecf4216749fb058b1"
+      "sha256": "a238885ae7f338a1ff9c4d2b476f65877583e034e45a5785430941f1d9a03040"
     },
     {
       "path": "src/core/astral-ai-re.js",

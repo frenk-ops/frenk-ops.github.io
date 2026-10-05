@@ -2435,6 +2435,9 @@
     [oriented.state.player, oriented.state.enemy] = [oriented.state.enemy, oriented.state.player];
     [oriented.state.turnCounters.player, oriented.state.turnCounters.enemy] = [oriented.state.turnCounters.enemy, oriented.state.turnCounters.player];
     ["player", "enemy"].forEach(owner => oriented.state[owner].board.forEach(unit => {
+      Object.values(unit?.sigianControlStates || {}).forEach(status => {
+        if (status.countingTurn) status.countingTurn.side = status.countingTurn.side === "player" ? "enemy" : "player";
+      });
       if (!unit) return;
       unit.owner = owner;
       (unit.astralPowerModifiers || []).forEach(modifier => {
@@ -4520,6 +4523,10 @@
 
     syncBoardUnitBadge(cell, "multi-target-badge", isMultiTargetAttacker, t("ability.multiAttack"), t("ability.multiAttackDescription"), multiTargetAttackIconMarkup());
     syncBoardUnitBadge(cell, "summoning-sickness-badge", hasSummoningSickness, "Debolezza da evocazione — potrà attaccare dal prossimo turno", "Debolezza da evocazione — potrà attaccare dal prossimo turno", '<span aria-hidden="true">Zz</span>');
+    const controlStates = Object.entries(unit.sigianControlStates || {}).map(([kind, status]) =>
+      `${t(kind === "silence" ? "status.silence" : "status.neutralization")} — ${status.permanent ? t("status.permanent") : status.remainingOwnerTurns}`);
+    syncBoardUnitBadge(cell, "control-state-badge", controlStates.length > 0,
+      controlStates.join("; "), controlStates.join("; "), '<span aria-hidden="true">∅</span>');
 
     let stats = cell.querySelector(".unit-stats");
     if (!stats) {

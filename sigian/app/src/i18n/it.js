@@ -388,6 +388,9 @@
     "phase.roundEnd": "Fine round", "phase.gameOver": "Duello terminato",
     "status.duelRestored": "Partita ripristinata dopo il riavvio.",
     "status.summoningSickness": "Debolezza da evocazione — potrà attaccare dal prossimo turno",
+    "status.silence": "Silenzio",
+    "status.neutralization": "Neutralizzazione",
+    "status.permanent": "Permanente",
     "schools.fire": "Fuoco", "schools.water": "Acqua", "schools.air": "Aria",
     "schools.earth": "Terra", "schools.nature": "Terra", "schools.death": "Morte"
   };

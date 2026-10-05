@@ -70,6 +70,7 @@
   }
 
   function sigilsFor(engine, source, options = {}) {
+    if (effectsInactive(source)) return [];
     const formula = formulaFor(engine, source);
     if (!formula) return [];
     return [...formula.sigils, ...runtimeSigilsFor(source)].filter(sigil => {
@@ -80,9 +81,15 @@
   }
 
   function runtimeSigilsFor(source) {
+    if (effectsInactive(source)) return [];
     return [...(source?.sigianRuntimeComponents?.appliedSigils || [])].sort((a, b) => a.ordinal - b.ordinal).flatMap(entry =>
       entry.execution === "active" && A.validateSigianRuntimeExecutable?.(entry) ? entry.compiled.sigils : []);
   }
+
+  function effectsInactive(source) {
+    return Boolean(source?.sigianControlStates?.silence || source?.sigianControlStates?.neutralization);
+  }
+  A.sigianEffectsInactive = effectsInactive;
 
   function resolveOperand(engine, actingSide, operand) {
     if (!operand || typeof operand !== "object") return Number(operand || 0);
@@ -450,6 +457,7 @@
   }
 
   function executeTrigger(engine, actingSide, formula, trigger, context = {}, events = []) {
+    if (effectsInactive(context.source)) return events;
     formula.sigils
       .filter(sigil => sigil.trigger === trigger)
       .forEach(sigil => executeSigil(engine, actingSide, formula, sigil, context, events));
@@ -1050,6 +1058,13 @@
 
   A.sigianEffectiveAttack = function sigianEffectiveAttack(engine, side, unit) {
     const formula = formulaFor(engine, unit);
+    if (effectsInactive(unit)) {
+      // Historical aura carriers encode their printed body separately from the
+      // legacy self-amplified Attack. Retain that body, not the disabled aura.
+      const aura = formula?.sigils?.find(sigil => sigil.effect === A.SIGIAN_EFFECTS.ATTACK_MULTIPLIER);
+      const body = Number(configOf(aura).sourceBaseAttack);
+      return Math.max(0, Math.trunc(Number.isFinite(body) ? body : Number(unit?.attack || 0)));
+    }
     if (!formula) return Math.max(0, Math.trunc(Number(unit?.attack || 0)));
     const dynamic = formula.sigils.find(sigil => sigil.effect === A.SIGIAN_EFFECTS.ATTACK_FROM_POWER);
     if (dynamic) {
@@ -1156,6 +1171,7 @@
 
   function absorptionSigilFor(engine, sourceUnit, sourceCard) {
     const source = sourceUnit || sourceCard;
+    if (effectsInactive(source)) return null;
     if (!source) return null;
     const formula = formulaFor(engine, source);
     if (!formula) return null;
@@ -1205,6 +1221,7 @@
   };
 
   A.sigianResolveSelfDeath = function sigianResolveSelfDeath(engine, side, slot, unit, events) {
+    if (effectsInactive(unit)) return false;
     const formula = formulaFor(engine, unit);
     if (!formula) return false;
     const sigils = formula.sigils.filter(sigil => sigil.trigger === "onSelfDeath" && sigil.effect === A.SIGIAN_EFFECTS.RESURRECT);

@@ -236,6 +236,9 @@
     "phase.roundEnd": "Fine round", "phase.gameOver": "Duello terminato",
     "status.duelRestored": "Partita ripristinata dopo il riavvio.",
     "status.summoningSickness": "Debolezza da evocazione — potrà attaccare dal prossimo turno",
+    "status.silence": "Silenzio",
+    "status.neutralization": "Neutralizzazione",
+    "status.permanent": "Permanente",
     "schools.fire": "Fuoco", "schools.water": "Acqua", "schools.air": "Aria",
     "schools.earth": "Terra", "schools.nature": "Terra", "schools.death": "Morte"
   },
@@ -465,6 +468,9 @@
     "phase.roundEnd": "End of round", "phase.gameOver": "Duel over",
     "status.duelRestored": "Match restored after restart.",
     "status.summoningSickness": "Summoning sickness — can attack from the next turn",
+    "status.silence": "Silence",
+    "status.neutralization": "Neutralization",
+    "status.permanent": "Permanent",
     "schools.fire": "Fire", "schools.water": "Water", "schools.air": "Air",
     "schools.earth": "Earth", "schools.nature": "Earth", "schools.death": "Death"
   }
