@@ -459,8 +459,25 @@
     })
   });
 
+  // Custom Formula identities use the same school palette, while their targets
+  // come exclusively from resolved engine events (never from translated names).
+  const FORMULA_FX_REGISTRY = Object.freeze(Object.fromEntries([
+    ["fire", "triangle", 360, 980],
+    ["water", "sine", 820, 460],
+    ["air", "triangle", 960, 1440],
+    ["nature", "triangle", 240, 520],
+    ["death", "sine", 210, 90]
+  ].map(([school, type, frequency, secondFrequency]) => [school, Object.freeze({
+    vfx: "resolved-events",
+    sfx: Object.freeze({
+      cast: Object.freeze([{ type, frequency, secondFrequency, duration: 0.24, volume: 0.04 }]),
+      impact: Object.freeze([{ type, frequency: secondFrequency, secondFrequency: frequency, duration: 0.18, volume: 0.03 }])
+    })
+  })])));
+
   function cardFxProfile(card) {
-    return card?.id ? CARD_FX_REGISTRY[card.id] || null : null;
+    if (!card?.id) return null;
+    return CARD_FX_REGISTRY[card.id] || FORMULA_FX_REGISTRY[card.school] || null;
   }
 
   function spellFxProfile(card) {
@@ -2949,7 +2966,7 @@
   });
 
   function prepareForgeAudio() {
-    if (!soundEnabled || audioContext || forgeAudioWarmupPending) return;
+    if (!soundEnabled || UI_MODE === "essential" || audioContext || forgeAudioWarmupPending) return;
     forgeAudioWarmupPending = true;
     const warm = () => {
       forgeAudioWarmupPending = false;
@@ -2965,57 +2982,66 @@
   }
 
   function ensureAudio() {
-    if (!soundEnabled) return null;
+    if (!soundEnabled || UI_MODE === "essential") return null;
     const Context = window.AudioContext || window.webkitAudioContext;
     if (!Context) return null;
-    if (!audioContext) audioContext = new Context();
-    if (audioContext.state === "suspended") audioContext.resume();
-    return audioContext;
+    try {
+      if (!audioContext) audioContext = new Context();
+      if (audioContext.state === "closed") return null;
+      if (audioContext.state === "suspended") audioContext.resume()?.catch(() => {});
+      return audioContext;
+    } catch {
+      return null;
+    }
   }
 
   function playSyntheticCue(options = {}) {
-    const ctx = ensureAudio();
-    if (!ctx) return false;
-    const now = ctx.currentTime + Math.max(0, Number(options.delay || 0));
-    const duration = Math.max(0.08, Number(options.duration || 0.22));
-    const volume = Math.max(0.0001, Math.min(0.18, Number(options.volume || 0.05)));
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(volume, now + Math.min(0.02, duration * 0.2));
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    try {
+      const ctx = ensureAudio();
+      if (!ctx) return false;
+      const now = ctx.currentTime + Math.max(0, Number(options.delay || 0));
+      const duration = Math.max(0.08, Number(options.duration || 0.22));
+      const volume = Math.max(0.0001, Math.min(0.18, Number(options.volume || 0.05)));
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + Math.min(0.02, duration * 0.2));
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
-    if (options.type === "noise") {
-      const frameCount = Math.max(1, Math.ceil(ctx.sampleRate * duration));
-      const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
-      const channel = buffer.getChannelData(0);
-      for (let index = 0; index < frameCount; index += 1) channel[index] = Math.random() * 2 - 1;
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      const filter = ctx.createBiquadFilter();
-      filter.type = options.filterType || "bandpass";
-      const initialFrequency = Math.max(40, Number(options.filterFrequency || 1200));
-      const finalFrequency = Math.max(40, Number(options.filterEndFrequency || initialFrequency));
-      filter.frequency.setValueAtTime(initialFrequency, now);
-      if (finalFrequency !== initialFrequency) {
-        filter.frequency.exponentialRampToValueAtTime(finalFrequency, now + duration * 0.82);
+      if (options.type === "noise") {
+        const frameCount = Math.max(1, Math.ceil(ctx.sampleRate * duration));
+        const buffer = ctx.createBuffer(1, frameCount, ctx.sampleRate);
+        const channel = buffer.getChannelData(0);
+        for (let index = 0; index < frameCount; index += 1) channel[index] = Math.random() * 2 - 1;
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = options.filterType || "bandpass";
+        const initialFrequency = Math.max(40, Number(options.filterFrequency || 1200));
+        const finalFrequency = Math.max(40, Number(options.filterEndFrequency || initialFrequency));
+        filter.frequency.setValueAtTime(initialFrequency, now);
+        if (finalFrequency !== initialFrequency) {
+          filter.frequency.exponentialRampToValueAtTime(finalFrequency, now + duration * 0.82);
+        }
+        filter.Q.setValueAtTime(Math.max(0.1, Number(options.filterQ || 0.8)), now);
+        source.connect(filter).connect(gain).connect(ctx.destination);
+        source.start(now);
+        source.stop(now + duration + 0.01);
+        return true;
       }
-      filter.Q.setValueAtTime(Math.max(0.1, Number(options.filterQ || 0.8)), now);
-      source.connect(filter).connect(gain).connect(ctx.destination);
-      source.start(now);
-      source.stop(now + duration + 0.01);
-      return true;
-    }
 
-    const osc = ctx.createOscillator();
-    osc.type = options.type || "sine";
-    osc.frequency.setValueAtTime(options.frequency || 440, now);
-    if (options.secondFrequency) {
-      osc.frequency.exponentialRampToValueAtTime(options.secondFrequency, now + duration * 0.65);
+      const osc = ctx.createOscillator();
+      osc.type = options.type || "sine";
+      osc.frequency.setValueAtTime(options.frequency || 440, now);
+      if (options.secondFrequency) {
+        osc.frequency.exponentialRampToValueAtTime(options.secondFrequency, now + duration * 0.65);
+      }
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.01);
+      return true;
+    } catch {
+      return false;
     }
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + duration + 0.01);
-    return true;
   }
 
   function battleCryProfile(card) {
@@ -3050,10 +3076,10 @@
 
   function showBattleCry(card, side, slot = null) {
     const profile = battleCryProfile(card);
-    if (!profile || card?.type !== "creature") return false;
+    if (!profile || card?.type !== "creature" || UI_MODE === "essential") return false;
     (profile.sfx || []).forEach(cue => playSyntheticCue(cue));
 
-    const target = Number.isInteger(slot) ? $`#${side}Board [data-slot="${slot}"]` : null;
+    const target = Number.isInteger(slot) ? $(`#${side}Board [data-slot="${slot}"]`) : null;
     target?.classList.add("battle-cry-pulse");
     setTimeout(() => target?.classList.remove("battle-cry-pulse"), fxDuration(900) || 40);
 
@@ -4174,9 +4200,68 @@
     return wisp;
   }
 
+  function showFormulaResolutionFx(result) {
+    if (UI_MODE === "essential") return false;
+    const school = result?.card?.school;
+    if (!FORMULA_FX_REGISTRY[school]) return false;
+    const targets = new Map();
+    const add = (side, slot, kind, schoolId = null) => {
+      if (!["player", "enemy"].includes(side)) return;
+      if (slot !== null && (!Number.isInteger(slot) || slot < 0 || slot >= (engine?.rules?.boardSize || 5))) return;
+      const key = `${side}:${slot ?? "hero"}:${kind}:${schoolId || ""}`;
+      targets.set(key, { side, slot, kind, schoolId });
+    };
+    (result?.events || []).forEach(event => {
+      const side = event.targetSide || event.side;
+      if (["astralCreatureDamage", "creatureDamage", "astralHeroDamage", "heroDamage"].includes(event.type) && Number(event.amount) > 0) {
+        add(side, ["astralCreatureDamage", "creatureDamage"].includes(event.type) ? event.slot : null, "damage");
+      } else if (["astralHealHero", "heroHeal", "astralUnitHeal", "astralVampireHeal"].includes(event.type) && Number(event.amount) > 0) {
+        const slot = event.type === "astralUnitHeal" ? event.slot
+          : event.type === "astralVampireHeal" ? engine?.state?.[side]?.board.findIndex(unit => unit?.instanceId === event.sourceId) : null;
+        add(side, slot, "heal");
+      } else if (event.type === "statChange" && Number.isFinite(Number(event.delta)) && Number(event.delta) !== 0) {
+        add(side, event.slot, event.stat === "health" && event.delta > 0 ? "heal" : "change");
+      } else if (["astralPowerChange", "powerChange"].includes(event.type) && Number.isFinite(Number(event.delta ?? event.amount)) && Number(event.delta ?? event.amount) !== 0) {
+        add(side, null, "power", event.school);
+      } else if (event.type === "astralPowerReduction") {
+        A.SCHOOLS.filter(item => Number(event.changes?.[item.id]) !== 0 && Number.isFinite(Number(event.changes?.[item.id])))
+          .forEach(item => add(side, null, "power", item.id));
+      } else if (event.type === "astralDeath") {
+        add(side, event.slot, "death");
+      } else if (event.type === "astralPhoenixRebirth") {
+        add(side, event.slot, "heal");
+      } else if (event.type === "creatureMoved") {
+        add(side, event.fromSlot, "change");
+        add(side, event.toSlot, "change");
+      } else if (event.type === "creaturesSwapped") {
+        [event.first, event.second].filter(Boolean).forEach(target => add(target.side, target.slot, "change"));
+      }
+    });
+    let shown = 0;
+    // Bound simultaneous feedback even when several Sigils resolve on one cast.
+    for (const target of [...targets.values()].slice(0, 20)) {
+      const element = target.kind === "power" ? spellPowerAnchor(target.side, target.schoolId)
+        : target.slot === null ? spellHeroAnchor(target.side)
+        : $(`#${target.side}Board [data-slot="${target.slot}"]`);
+      const marker = addSpellMarker(element, `spell-resolved-marker school-${school} kind-${target.kind}`, 1050, shown);
+      if (!marker) continue;
+      marker.dataset.fxKind = target.kind;
+      marker.dataset.fxSide = target.side;
+      if (target.slot !== null) marker.dataset.fxSlot = String(target.slot);
+      if (target.schoolId) marker.dataset.fxSchool = target.schoolId;
+      shown += 1;
+    }
+    return shown > 0;
+  }
+
   function showCardResolutionIdentityFx(result) {
     const profile = cardFxProfile(result?.card);
-    if (!profile) return false;
+    if (!profile || UI_MODE === "essential") return false;
+    if (profile.vfx === "resolved-events") {
+      const shown = showFormulaResolutionFx(result);
+      if (shown) playCardFxSound(result.card, "impact");
+      return shown;
+    }
     playCardFxSound(result.card, "impact");
     if (!profile.vfx) return false;
 
@@ -4185,13 +4270,13 @@
     const enemySide = side === "player" ? "enemy" : "player";
     const ownHero = spellHeroAnchor(side);
     const enemyHero = spellHeroAnchor(enemySide);
-    const ownBoard = $`#${side}Board` || ownHero;
+    const ownBoard = $(`#${side}Board`) || ownHero;
     const battlePanel = $("#battlePanel");
     let shown = false;
 
     const damageTargets = events
       .filter(event => ["astralCreatureDamage", "creatureDamage"].includes(event.type))
-      .map(event => $`#${event.targetSide || event.side}Board [data-slot="${event.slot}"]`)
+      .map(event => $(`#${event.targetSide || event.side}Board [data-slot="${event.slot}"]`))
       .filter(Boolean);
     const uniqueDamageTargets = [...new Set(damageTargets)];
     const enemyHeroDamaged = events.some(event =>
@@ -4236,7 +4321,7 @@
         .sort((a, b) => b.attack - a.attack || a.slot - b.slot)
         .slice(0, 2);
       ranked.forEach((entry, index) => {
-        const target = $`#${enemySide}Board [data-slot="${entry.slot}"]`;
+        const target = $(`#${enemySide}Board [data-slot="${entry.slot}"]`);
         if (addSpellMarker(target, "spell-hypnosis-marker", 1120, index)) shown = true;
         if (target && enemyHero) addSpellLine(target, enemyHero, "spell-hypnosis-line", 900);
       });
@@ -4259,7 +4344,7 @@
       });
     } else if (profile.vfx === "tornado") {
       const death = events.find(event => event.type === "astralDeath" && (event.side === enemySide || !event.side));
-      const target = death ? $`#${death.side || enemySide}Board [data-slot="${death.slot}"]` : uniqueDamageTargets[0];
+      const target = death ? $(`#${death.side || enemySide}Board [data-slot="${death.slot}"]`) : uniqueDamageTargets[0];
       if (addSpellMarker(target, "spell-tornado-marker", 1150)) shown = true;
     } else if (profile.vfx === "nature-ritual") {
       if (addSpellMarker(ownHero, "spell-nature-ritual-marker spell-nature-ritual-hero", 1180)) shown = true;
@@ -4281,7 +4366,7 @@
     } else if (profile.vfx === "drain-souls") {
       const deaths = events.filter(event => event.type === "astralDeath");
       deaths.forEach((event, index) => {
-        const target = $`#${event.side}Board [data-slot="${event.slot}"]`;
+        const target = $(`#${event.side}Board [data-slot="${event.slot}"]`);
         if (addSoulWisp(target, ownHero, index)) shown = true;
         addSpellMarker(target, "spell-soul-source-marker", 900, index);
       });
@@ -4355,7 +4440,10 @@
       layer.appendChild(cast);
       requestAnimationFrame(() => cast.classList.add("active"));
       if (card.type === "creature" && battleCryProfile(card)) {
-        setTimeout(() => showBattleCry(card, side, slot), fxDuration(160) || 0);
+        setTimeout(() => {
+          try { showBattleCry(card, side, slot); }
+          catch (error) { console.warn("Battle cry presentation failed", error); }
+        }, fxDuration(160) || 0);
       }
       setTimeout(() => cast.remove(), fxDuration(820) || 40);
     }
@@ -9104,10 +9192,15 @@
     }
     busy = true;
     try {
+      const before = captureHealthState();
       const result = issueDuelCommand("player", A.MULTIPLAYER_COMMANDS.PLAY, payload);
       renderGame();
       if (!result.ok) return setMessage(result.reason);
       spellSound(result.card);
+      await animateCardPlay(result, "player", null, before);
+      await presentResolutionBeforeUpdate(result, before);
+      renderGame();
+      showResolutionAfterUpdate(result);
       recordCardResolution(result);
       await resolveAttackFlow("player");
     } finally { busy = false; }

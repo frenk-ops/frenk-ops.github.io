@@ -25639,3 +25639,26 @@ body.ui-classic .classic-topbar .classic-nav {
     grid-column:auto;
   }
 }
+
+/* Resolved Formula feedback follows the existing School palette. */
+.spell-resolved-marker {
+  --formula-fx-color:#bbd8f0;
+  border:2px solid var(--formula-fx-color);
+  border-radius:14px;
+  box-shadow:inset 0 0 16px var(--formula-fx-color),0 0 14px var(--formula-fx-color);
+  animation:formulaResolvedPulse .8s ease-out both;
+  animation-delay:calc(min(var(--spell-index,0),4) * 35ms);
+}
+.spell-resolved-marker.school-fire { --formula-fx-color:#ffac61; }
+.spell-resolved-marker.school-water { --formula-fx-color:#80daff; }
+.spell-resolved-marker.school-air { --formula-fx-color:#d4edff; }
+.spell-resolved-marker.school-nature { --formula-fx-color:#a3db87; }
+.spell-resolved-marker.school-death { --formula-fx-color:#d6a2ed; }
+.spell-resolved-marker.kind-heal { border-style:double; border-width:4px; }
+.spell-resolved-marker.kind-power { border-radius:50%; }
+.spell-resolved-marker.kind-death { border-style:dashed; }
+@keyframes formulaResolvedPulse {
+  0% { opacity:0; transform:translate(-50%,-50%) scale(.86); }
+  22% { opacity:.85; }
+  100% { opacity:0; transform:translate(-50%,-50%) scale(1.08); }
+}
