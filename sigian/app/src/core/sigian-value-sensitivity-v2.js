@@ -53,6 +53,21 @@
     if (!Number.isSafeInteger(maxCases) || maxCases < 1 || maxCases > 100000) fail("invalid case budget");
     const totalCases = knobs.reduce((count, item) => count * item.testedRange.length, 1);
     if (!Number.isSafeInteger(totalCases)) fail("declared domain too large");
+    const caseOffset=options.caseOffset??0;
+    if(!Number.isSafeInteger(caseOffset)||caseOffset<0||caseOffset>=totalCases) fail("invalid case offset");
+    if(caseOffset>0&&(typeof options.expectedDomainSignature!=="string"||!options.expectedDomainSignature.length))
+      fail("continuation domain signature required");
+    if(caseOffset>0&&options.evaluationIdentity===undefined) fail("explicit evaluator identity required for continuation");
+    if(options.evaluationIdentity!==undefined&&(typeof options.evaluationIdentity!=="string"||!options.evaluationIdentity.length))
+      fail("invalid evaluator identity");
+    const domainSignature=JSON.stringify({version:1,formula,targetCost,parameters:knobs,
+      evaluationIdentity:options.evaluationIdentity??null});
+    if(options.expectedDomainSignature!==undefined&&options.expectedDomainSignature!==domainSignature)
+      fail("continuation domain or evaluator identity changed");
+    const endIndexExclusive=Math.min(totalCases,caseOffset+maxCases);
+    const scanWindow={startIndex:caseOffset,endIndexExclusive,
+      nextOffset:endIndexExclusive<totalCases?endIndexExclusive:null,
+      firstWindow:caseOffset===0,lastWindow:endIndexExclusive===totalCases,domainSignature};
     const signature = value => {
       const masked = clone(value);
       knobs.forEach(item => put(masked, item.path, "AUTHORIZED_NUMERIC_PARAMETER"));
@@ -83,14 +98,14 @@
     const baseline = evaluate(clone(formula), originals);
     const rows = [];
     // Mixed-radix enumeration is deterministic and explores coupled parameters.
-    for (let index=0; index<Math.min(totalCases,maxCases); index+=1) {
+    for (let index=caseOffset; index<endIndexExclusive; index+=1) {
       let cursor=index;
       const values=knobs.map(item => {const value=item.testedRange[cursor % item.testedRange.length];cursor=Math.floor(cursor/item.testedRange.length);return value;});
       const candidate=clone(formula);
       knobs.forEach((item,j) => put(candidate,item.path,values[j]));
       rows.push(evaluate(candidate,values));
     }
-    const complete = rows.length === totalCases && baseline.coverageComplete && rows.every(row=>row.coverageComplete);
+    const complete = scanWindow.firstWindow&&scanWindow.lastWindow && baseline.coverageComplete && rows.every(row=>row.coverageComplete);
     const minLevel=rows.reduce((min,row)=>Math.min(min,row.predictedCostRange.minLevel),Infinity);
     const maxLevel=rows.reduce((max,row)=>Math.max(max,row.predictedCostRange.maxLevel),0);
     const reaching=rows.filter(row=>row.distanceFromTarget === 0)
@@ -105,7 +120,7 @@
       classification.reason="Evaluator coverage is incomplete; no final design verdict.";
     }
     return {schemaVersion:1,status:"diagnostic-only",targetDesignCost:targetCost,baseline,parameters:knobs,
-      totalCases,testedCases:rows.length,complete,rows,sensitivity:evidence,classification,
+      totalCases,testedCases:rows.length,scanWindow,complete,rows,sensitivity:evidence,classification,
       smallestChangeReachingTarget:reaching[0] || null,
       scope:"declared domain only; no mechanism changes, no Formula mutation, no production promotion"};
   };
