@@ -4,16 +4,16 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const t = (key, vars) => A.i18n?.t(key, vars) ?? key;
-  const APP_VERSION = String(document.querySelector('meta[name="arcane-app-version"]')?.content || "").trim();
+  const APP_VERSION = String(document.querySelector('meta[name="sigian-app-version"]')?.content || "").trim();
   A.APP_VERSION = APP_VERSION;
   const DOCUMENT_REVISION = document.currentScript?.src ? new URL(document.currentScript.src).searchParams.get("v") : null;
   if ("serviceWorker" in navigator && DOCUMENT_REVISION) {
     const reportRevision = () => navigator.serviceWorker.controller?.postMessage({
-      type: "ARCANE_CLIENT_REVISION", revision: DOCUMENT_REVISION
+      type: "SIGIAN_CLIENT_REVISION", revision: DOCUMENT_REVISION
     });
     navigator.serviceWorker.addEventListener("controllerchange", reportRevision);
     navigator.serviceWorker.addEventListener("message", event => {
-      if (event.data?.type === "ARCANE_SW_ACTIVATED") reportRevision();
+      if (event.data?.type === "SIGIAN_SW_ACTIVATED") reportRevision();
     });
     window.addEventListener("pageshow", reportRevision);
     window.addEventListener("focus", reportRevision);
@@ -27,7 +27,7 @@
     "astral-original": A.getCardSet("astral-original")
   };
   const configuredMultiplayerApiUrl = String(
-    document.querySelector('meta[name="arcane-multiplayer-api"]')?.content || ""
+    document.querySelector('meta[name="sigian-multiplayer-api"]')?.content || ""
   ).trim().replace(/\/$/, "");
   const localMultiplayerApiUrl = /^https?:$/.test(location.protocol)
     && ["127.0.0.1", "localhost", "::1"].includes(location.hostname)
@@ -37,7 +37,7 @@
   const multiplayerEnabled = Boolean(A.MULTIPLAYER_API_URL);
   const preference = (key, fallback) => {
     try {
-      const value = localStorage.getItem(`arcane.${key}`);
+      const value = localStorage.getItem(`sigian.${key}`);
       return value === null ? fallback : value;
     } catch { return fallback; }
   };
@@ -72,9 +72,9 @@
   const defaultBoardCreatureNames = !isMobileLayout;
   if (isMobileLayout) {
     try {
-      const migrationKey = "arcane.boardCreatureNamesMobileDefault.v1";
+      const migrationKey = "sigian.boardCreatureNamesMobileDefault.v1";
       if (!localStorage.getItem(migrationKey)) {
-        localStorage.setItem("arcane.boardCreatureNames", "0");
+        localStorage.setItem("sigian.boardCreatureNames", "0");
         localStorage.setItem(migrationKey, "1");
       }
     } catch {}
@@ -567,10 +567,10 @@
   let forgeHorizontalCraftingOpen = false;
   const forgeCraftingPageSize = 8;
   const forgeCraftingPages = { verticalFusion:0, verticalSplit:0, horizontalFusion:0, horizontalSplit:0 };
-  const ACTIVE_LOCAL_DUEL_KEY = "arcane.activeLocalDuel.v1";
-  const ACTIVE_VIEW_KEY = "arcane.ui.activeView.v1";
-  const ACADEMY_SUMMONS_SEEN_KEY = "arcane.academy.summonsSeen.v1";
-  const ACADEMY_ADMISSION_SEEN_KEY = "arcane.academy.admissionSeen.v1";
+  const ACTIVE_LOCAL_DUEL_KEY = "sigian.activeLocalDuel.v1";
+  const ACTIVE_VIEW_KEY = "sigian.ui.activeView.v1";
+  const ACADEMY_SUMMONS_SEEN_KEY = "sigian.academy.summonsSeen.v1";
+  const ACADEMY_ADMISSION_SEEN_KEY = "sigian.academy.admissionSeen.v1";
   const RESTORABLE_VIEWS = new Set(["play", "game", "academy", "multiplayer", "tournament", "cards", "inventory", "chronicles", "forge", "uiLab", "profile", "rules", "diagnostics"]);
   let academySchoolWingOpen = false;
 
@@ -605,7 +605,7 @@
     if (params.get("qa") || params.get("view")) return false;
     try {
       if (localStorage.getItem(ACTIVE_LOCAL_DUEL_KEY)) return false;
-      const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
+      const savedRoom = JSON.parse(localStorage.getItem("sigian.remoteRoom") || "null");
       if (savedRoom?.code && savedRoom?.token) return false;
     } catch {}
     return true;
@@ -873,8 +873,8 @@
       ratio:"4:5"
     });
     const buildLabel = String(
-      document.body?.dataset?.arcaneBuildLabel
-      || document.querySelector("[data-arcane-version]")?.textContent
+      document.body?.dataset?.sigianBuildLabel
+      || document.querySelector("[data-sigian-version]")?.textContent
       || ""
     ).trim();
     const schoolChoices = A.SCHOOLS.map(item => {
@@ -1280,7 +1280,7 @@
   function selectedPlayerName(input = null) {
     const candidate = input?.value
       ?? $("#optionsPlayerNameInput")?.value
-      ?? localStorage.getItem("arcane.playerName")
+      ?? localStorage.getItem("sigian.playerName")
       ?? profile?.playerName
       ?? $("#playerNameInput")?.value;
     return normalizedPlayerName(candidate);
@@ -1291,7 +1291,7 @@
     if ($("#playerNameInput")) $("#playerNameInput").value = name;
     if ($("#optionsPlayerNameInput")) $("#optionsPlayerNameInput").value = name;
     if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = name;
-    localStorage.setItem("arcane.playerName", name);
+    localStorage.setItem("sigian.playerName", name);
     if (profile) {
       profile.playerName = name;
       A.saveProfile?.(profile);
@@ -1333,7 +1333,7 @@
     if (rankedTicket && next !== "ranked") return false;
     multiplayerEntryMode = next;
     if (options.persist !== false) {
-      try { localStorage.setItem("arcane.multiplayerEntryMode", next); } catch {}
+      try { localStorage.setItem("sigian.multiplayerEntryMode", next); } catch {}
     }
     renderMultiplayerEntryMode();
     if (next === "ranked") {
@@ -1353,7 +1353,7 @@
     const avatarRoot = $("#onlinePlayerAvatar");
     if (avatarRoot) {
       avatarRoot.innerHTML = profileAvatarMarkup(
-        snapshot.profile?.avatar_url || localStorage.getItem("arcane.profileAvatar") || "",
+        snapshot.profile?.avatar_url || localStorage.getItem("sigian.profileAvatar") || "",
         snapshot.profile?.display_name || selectedPlayerName(),
         "profile-avatar"
       );
@@ -1388,7 +1388,7 @@
     if (onlineAccountSnapshot?.user && onlineAccountSnapshot?.profile) {
       const localName = selectedPlayerName();
       const remoteName = String(onlineAccountSnapshot.profile.display_name || "");
-      const localAvatar = normalizeProfileAvatar(localStorage.getItem("arcane.profileAvatar") || "");
+      const localAvatar = normalizeProfileAvatar(localStorage.getItem("sigian.profileAvatar") || "");
       const shouldSyncName = localName && remoteName === "Giocatore" && localName !== "Giocatore" && localName !== "Player";
       const shouldSyncAvatar = localAvatar && !normalizeProfileAvatar(onlineAccountSnapshot.profile.avatar_url || "");
       if (shouldSyncName || shouldSyncAvatar) {
@@ -1777,8 +1777,8 @@
   }
 
   function saveRemoteRoom() {
-    if (!remoteRoomClient?.code) return localStorage.removeItem("arcane.remoteRoom");
-    localStorage.setItem("arcane.remoteRoom", JSON.stringify({
+    if (!remoteRoomClient?.code) return localStorage.removeItem("sigian.remoteRoom");
+    localStorage.setItem("sigian.remoteRoom", JSON.stringify({
       code: remoteRoomClient.code, token: remoteRoomClient.token, side: remoteRoomClient.side,
       sequence: remoteRoomClient.sequence, matchNumber: remoteRoomClient.matchNumber || 0, checksum: remoteRoomClient.checksum,
       startedAt: remoteMatchStartedAt || null
@@ -2167,7 +2167,7 @@
   }
 
   function setRemoteMutePreference(key, value) {
-    try { localStorage.setItem(`arcane.${key}`, value ? "1" : "0"); } catch {}
+    try { localStorage.setItem(`sigian.${key}`, value ? "1" : "0"); } catch {}
   }
 
   function syncRemoteMuteControls() {
@@ -2852,7 +2852,7 @@
     if (!/^https?:$/.test(location.protocol) || !["127.0.0.1", "localhost", "::1"].includes(location.hostname)) return;
     const clientId = globalThis.crypto?.randomUUID?.()
       || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    const endpoint = action => `/__arcane_duels__/${action}?client=${encodeURIComponent(clientId)}`;
+    const endpoint = action => `/__sigian__/${action}?client=${encodeURIComponent(clientId)}`;
     let heartbeatTimer = null;
     let connected = false;
 
@@ -10125,7 +10125,7 @@
     const stats = profile.stats || {};
     const single = stats.singlePlayer || {};
     const multi = stats.multiplayer || {};
-    const storedName = profile.playerName || localStorage.getItem("arcane.playerName") || t("ui.player");
+    const storedName = profile.playerName || localStorage.getItem("sigian.playerName") || t("ui.player");
     const achievements = A.PROFILE_ACHIEVEMENTS || [];
     const online = onlineAccountSnapshot || {};
     const onlineProgress = online.progression || {};
@@ -10179,7 +10179,7 @@
         : academy.schoolConfirmed
           ? t("profile.schoolConfirmedHint")
           : t("profile.schoolExploratoryHint");
-    const selectedAvatar = normalizeProfileAvatar(onlineProfile.avatar_url || localStorage.getItem("arcane.profileAvatar") || "");
+    const selectedAvatar = normalizeProfileAvatar(onlineProfile.avatar_url || localStorage.getItem("sigian.profileAvatar") || "");
     const avatarCards = profileAvatarChoices(selectedAvatar);
     let draftAvatar = selectedAvatar;
     const onlineCard = !online.configured
@@ -10392,9 +10392,9 @@
       profile.playerName = name;
       A.saveProfile(profile);
       profile = A.loadProfile();
-      localStorage.setItem("arcane.playerName", name);
-      if (draftAvatar) localStorage.setItem("arcane.profileAvatar", draftAvatar);
-      else localStorage.removeItem("arcane.profileAvatar");
+      localStorage.setItem("sigian.playerName", name);
+      if (draftAvatar) localStorage.setItem("sigian.profileAvatar", draftAvatar);
+      else localStorage.removeItem("sigian.profileAvatar");
       if ($("#playerNameInput")) $("#playerNameInput").value = name;
       if ($("#onlinePlayerNameInput")) $("#onlinePlayerNameInput").value = name;
       if (onlineAccountSnapshot?.user && A.onlineAccount?.configured?.()) {
@@ -10551,7 +10551,7 @@
 
   $("#animationSpeed").addEventListener("change", event => {
     animationSpeed = normalizeAnimationSpeed(event.target.value);
-    localStorage.setItem("arcane.animationSpeed", String(animationSpeed));
+    localStorage.setItem("sigian.animationSpeed", String(animationSpeed));
     document.body.dataset.animationSpeed = animationSpeedMode(animationSpeed);
     // keep menu selector in sync if present
     try { const m = $("#animationSpeedMenu"); if (m && m.value !== String(event.target.value)) m.value = String(event.target.value); } catch (e) {}
@@ -10569,14 +10569,14 @@
       const main = $("#animationSpeed");
       if (main && main.value !== v) main.value = v;
       animationSpeed = normalizeAnimationSpeed(v);
-      localStorage.setItem("arcane.animationSpeed", String(animationSpeed));
+      localStorage.setItem("sigian.animationSpeed", String(animationSpeed));
       document.body.dataset.animationSpeed = animationSpeedMode(animationSpeed);
     });
   }
   // If on narrow screens, default to slow animations
   try {
     const isMobile = window.matchMedia && window.matchMedia('(max-width:760px)').matches;
-    const hasSavedAnimationSpeed = window.localStorage.getItem("arcane.animationSpeed") !== null;
+    const hasSavedAnimationSpeed = window.localStorage.getItem("sigian.animationSpeed") !== null;
     if (isMobile && !hasSavedAnimationSpeed) {
       const slowVal = '1.5';
       const main = $("#animationSpeed");
@@ -11028,7 +11028,7 @@
     boardCreatureNames = Boolean(enabled);
     document.body.dataset.boardCreatureNames = boardCreatureNames ? "show" : "hide";
     if (persist) {
-      try { localStorage.setItem("arcane.boardCreatureNames", boardCreatureNames ? "1" : "0"); } catch (e) {}
+      try { localStorage.setItem("sigian.boardCreatureNames", boardCreatureNames ? "1" : "0"); } catch (e) {}
     }
     if ($("#optionsBoardCreatureNames")) $("#optionsBoardCreatureNames").checked = boardCreatureNames;
     if ($("#duelOptionsBoardCreatureNames")) $("#duelOptionsBoardCreatureNames").checked = boardCreatureNames;
@@ -11081,7 +11081,7 @@
   });
   function setParchmentSpellFrames(enabled) {
     parchmentSpellFrames = Boolean(enabled);
-    localStorage.setItem("arcane.parchmentSpellFrames", parchmentSpellFrames ? "1" : "0");
+    localStorage.setItem("sigian.parchmentSpellFrames", parchmentSpellFrames ? "1" : "0");
     document.body.dataset.spellFrame = parchmentSpellFrames ? "parchment" : "arcane";
     if ($("#optionsParchmentSpells")) $("#optionsParchmentSpells").checked = parchmentSpellFrames;
     if ($("#duelOptionsParchmentSpells")) $("#duelOptionsParchmentSpells").checked = parchmentSpellFrames;
@@ -11116,14 +11116,14 @@
     musicVolume.dispatchEvent(new Event("input"));
   });
   $("#resetPreferencesBtn")?.addEventListener("click", () => {
-    localStorage.removeItem("arcane.animationSpeed");
-    localStorage.removeItem("arcane.cardArtStyle");
-    localStorage.removeItem("arcane.soundEnabled");
-    localStorage.removeItem("arcaneLanguage");
+    localStorage.removeItem("sigian.animationSpeed");
+    localStorage.removeItem("sigian.cardArtStyle");
+    localStorage.removeItem("sigian.soundEnabled");
+    localStorage.removeItem("sigian.language");
     localStorage.removeItem("bgmEnabled");
     localStorage.removeItem("bgmVolume");
-    localStorage.removeItem("arcane.parchmentSpellFrames");
-    localStorage.removeItem("arcane.boardCreatureNames");
+    localStorage.removeItem("sigian.parchmentSpellFrames");
+    localStorage.removeItem("sigian.boardCreatureNames");
     animationSpeed = 1.5;
     cardArtStyle = "new";
     soundEnabled = true;
@@ -11150,7 +11150,7 @@
   $("#collectionSearch")?.addEventListener("input", event => { collectionState.search = event.target.value; renderCollectionPanels(); const other = $("#collectionPageSearch"); if (other && other.value !== event.target.value) other.value = event.target.value; });
   $("#soundEnabled").addEventListener("change", event => {
     soundEnabled = event.target.checked;
-    localStorage.setItem("arcane.soundEnabled", soundEnabled ? "1" : "0");
+    localStorage.setItem("sigian.soundEnabled", soundEnabled ? "1" : "0");
     if ($("#optionsSoundEnabled")) $("#optionsSoundEnabled").checked = soundEnabled;
     if ($("#duelOptionsSoundEnabled")) $("#duelOptionsSoundEnabled").checked = soundEnabled;
     if (soundEnabled) ensureAudio();
@@ -11407,7 +11407,7 @@
     refreshRoomBrowser();
     if ($("#onlineFormMessage")) $("#onlineFormMessage").textContent = "";
   });
-  window.addEventListener("arcane:languagechange", () => {
+  window.addEventListener("sigian:languagechange", () => {
     const playerNameInput = $("#playerNameInput");
     if (playerNameInput && ["Giocatore", "Player"].includes(playerNameInput.value.trim())) playerNameInput.value = t("ui.player");
     const onlinePlayerNameInput = $("#onlinePlayerNameInput");
@@ -11440,7 +11440,7 @@
   }).catch(() => {});
   setupDifficultyOptions();
   if ($("#playerNameInput") || $("#onlinePlayerNameInput") || $("#optionsPlayerNameInput")) {
-    const storedPlayerName = localStorage.getItem("arcane.playerName") || profile?.playerName;
+    const storedPlayerName = localStorage.getItem("sigian.playerName") || profile?.playerName;
     const resolvedPlayerName = ["Giocatore", "Player"].includes(String(storedPlayerName || "").trim())
       ? t("ui.player")
       : normalizedPlayerName(storedPlayerName, t("ui.player"));
@@ -11468,13 +11468,13 @@
   });
   $("#cardArtStyleSelect").addEventListener("change", event => {
     cardArtStyle = event.target.value === "new" ? "new" : "original";
-    localStorage.setItem("arcane.cardArtStyle", cardArtStyle);
+    localStorage.setItem("sigian.cardArtStyle", cardArtStyle);
     if ($("#optionsCardArtStyle")) $("#optionsCardArtStyle").value = cardArtStyle;
     document.body.dataset.cardArtStyle = cardArtStyle;
     renderCollectionPanels();
   });
   $("#cardArtStyleSelect").value = cardArtStyle;
-  localStorage.setItem("arcane.cardArtStyle", "new");
+  localStorage.setItem("sigian.cardArtStyle", "new");
   $("#animationSpeed").value = String(animationSpeed);
   $("#soundEnabled").checked = soundEnabled;
   document.body.dataset.cardArtStyle = cardArtStyle;
@@ -11494,7 +11494,7 @@
   if (presentAcademySummons) openAcademySummons();
   let restoredRemoteRoom = false;
   try {
-    const savedRoom = JSON.parse(localStorage.getItem("arcane.remoteRoom") || "null");
+    const savedRoom = JSON.parse(localStorage.getItem("sigian.remoteRoom") || "null");
     if (multiplayerEnabled && savedRoom?.code && savedRoom?.token) {
       restoredRemoteRoom = true;
       remoteRoomClient = createRemoteRoomClient();
@@ -11509,7 +11509,7 @@
         renderRecoverableMatch();
       });
     }
-  } catch { localStorage.removeItem("arcane.remoteRoom"); }
+  } catch { localStorage.removeItem("sigian.remoteRoom"); }
   if (urlParams.get("qa") === "duel") {
     clearPersistedLocalDuel();
     setTimeout(() => startDuel("fire", false, null, "arcane"), 30);

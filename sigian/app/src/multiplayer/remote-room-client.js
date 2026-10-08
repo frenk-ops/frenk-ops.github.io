@@ -312,14 +312,14 @@
       if (options.token) headers.Authorization = `Bearer ${options.token}`;
       if (options.identity && this.identityTokenProvider) {
         const identityToken = String(await this.identityTokenProvider() || "");
-        if (identityToken) headers["X-Arcane-Identity"] = identityToken;
+        if (identityToken) headers["X-Sigian-Identity"] = identityToken;
         else if (options.requireIdentity) {
-          const error = new Error("Account Arcane Duels non disponibile.");
+          const error = new Error("Account SIGIAN non disponibile.");
           error.code = "ACCOUNT_REQUIRED";
           throw error;
         }
       } else if (options.requireIdentity) {
-        const error = new Error("Account Arcane Duels non disponibile.");
+        const error = new Error("Account SIGIAN non disponibile.");
         error.code = "ACCOUNT_REQUIRED";
         throw error;
       }

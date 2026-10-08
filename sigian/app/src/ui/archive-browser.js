@@ -1676,7 +1676,7 @@
         if (root?.isConnected) render(root, scope);
       });
     };
-    window.addEventListener("arcane:languagechange", rerenderConnectedRoots);
+    window.addEventListener("sigian:languagechange", rerenderConnectedRoots);
     window.addEventListener("sigian:formative-school-change", rerenderConnectedRoots);
   }
 })(window.Arcane = window.Arcane || {});

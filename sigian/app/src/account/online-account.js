@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
 
-  const SESSION_KEY = "arcane.onlineAccount.session.v1";
+  const SESSION_KEY = "sigian.onlineAccount.session.v1";
 
   function meta(name) {
     return String(document.querySelector(`meta[name="${name}"]`)?.content || "").trim();
@@ -9,8 +9,8 @@
 
   class OnlineAccount {
     constructor(options = {}) {
-      this.url = String(options.url || meta("arcane-supabase-url")).trim().replace(/\/$/, "");
-      this.publishableKey = String(options.publishableKey || meta("arcane-supabase-key")).trim();
+      this.url = String(options.url || meta("sigian-supabase-url")).trim().replace(/\/$/, "");
+      this.publishableKey = String(options.publishableKey || meta("sigian-supabase-key")).trim();
       this.session = null;
       this.user = null;
       this.profile = null;

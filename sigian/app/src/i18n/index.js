@@ -1,7 +1,7 @@
 (function (A) {
   "use strict";
   const supported = ["it", "en"];
-  const storageKey = "arcaneLanguage";
+  const storageKey = "sigian.language";
   const normalize = value => supported.includes(String(value || "").toLowerCase().split("-")[0])
     ? String(value).toLowerCase().split("-")[0] : null;
   const params = typeof location !== "undefined" ? new URLSearchParams(location.search) : null;
@@ -41,7 +41,7 @@
     }
     applyDocumentTranslations();
     if (typeof window !== "undefined" && typeof CustomEvent === "function") {
-      window.dispatchEvent(new CustomEvent("arcane:languagechange", { detail: { language } }));
+      window.dispatchEvent(new CustomEvent("sigian:languagechange", { detail: { language } }));
     }
     return true;
   }
