@@ -138,14 +138,14 @@
 
   const tests = [
     {
-      name: "Profilo v5: XP canonico migra e sincronizza il livello derivato",
+      name: "Profilo SIGIAN v5: XP canonico normalizza e sincronizza il livello derivato",
       run() {
         const data = {
-          "arcane-duels-profile-v013": JSON.stringify({
-            version:3,
+          "sigian.profile.v1": JSON.stringify({ appId:"sigian", storageVersion:1, kind:"profile", data:{
+            version:5,
             playerName:"Legacy",
             accountProgression:{ xp:400, level:99, source:"local" }
-          })
+          }})
         };
         const storage = {
           getItem:key => data[key] ?? null,
@@ -160,7 +160,7 @@
         A.syncProfileAccountProgression(migrated, { xp:100, level:999, games_played:2 }, storage);
         assert(migrated.accountProgression.xp === 100, "L'XP online autorevole non ha aggiornato la cache locale");
         assert(A.normalizeAccountProgression(migrated.accountProgression).level === 2, "Il livello sincronizzato non deriva dall'XP online");
-        const persisted = JSON.parse(storage.getItem("arcane-duels-profile-v013"));
+        const persisted = JSON.parse(storage.getItem("sigian.profile.v1")).data;
         assert(persisted.version === 5 && persisted.accountProgression.xp === 100, "La progressione sincronizzata non è stata persistita");
         assert(!Object.hasOwn(persisted.accountProgression, "level"), "Il profilo persistito non deve contenere il livello derivato");
       }
@@ -708,13 +708,13 @@
         })();
         const legacyWizard = {
           ...A.createTournament({ seed:"legacy-wizard-base", specialization:"fire" }),
-          version:3,
+          version:4,
           specialization:"wizard",
           specializationFormulaId:null
         };
-        legacyStorage.setItem("arcane-duels-tournament-v013", JSON.stringify(legacyWizard));
+        legacyStorage.setItem("sigian.tournament.v1", JSON.stringify({ appId:"sigian", storageVersion:1, kind:"tournament", data:legacyWizard }));
         assert(A.loadTournament(legacyStorage) === null, "I vecchi tornei Wizard devono essere scartati");
-        assert(legacyStorage.getItem("arcane-duels-tournament-v013") === null, "Il salvataggio Wizard deve essere eliminato dallo storage");
+        assert(legacyStorage.getItem("sigian.tournament.v1") === null, "Il salvataggio Wizard deve essere eliminato dallo storage");
 
         const randomA = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });
         const randomB = A.createTournament({ seed: "random-specialization-cup", specialization: "random" });

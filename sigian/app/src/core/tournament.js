@@ -1,8 +1,67 @@
 (function (A) {
   "use strict";
 
-  const PROFILE_KEY = "arcane-duels-profile-v013";
-  const TOURNAMENT_KEY = "arcane-duels-tournament-v013";
+  const PROFILE_KEY = "sigian.profile.v1";
+  const TOURNAMENT_KEY = "sigian.tournament.v1";
+  A.SIGIAN_PROGRESS_STORAGE = Object.freeze({ profileKey: PROFILE_KEY, tournamentKey: TOURNAMENT_KEY, version: 1 });
+
+  const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  const optional = (value, keys, check) => keys.every(key => value[key] === undefined || check(value[key]));
+  const finite = value => typeof value === "number" && Number.isFinite(value);
+  const text = value => typeof value === "string";
+  const nullableText = value => value === null || text(value);
+  const strings = value => Array.isArray(value) && value.every(text);
+  const records = value => Array.isArray(value) && value.every(record);
+
+  function safeStoredShape(value) {
+    if (value === null || typeof value !== "object") return typeof value !== "number" || finite(value);
+    return Object.keys(value).every(key => !["__proto__", "constructor", "prototype"].includes(key)
+      && safeStoredShape(value[key]));
+  }
+
+  function validProgressData(kind, value) {
+    if (!record(value) || !safeStoredShape(value)) return false;
+    if (kind === "profile") {
+      return value.version === 5
+        && optional(value, ["playerName", "updatedAt"], text)
+        && optional(value, ["formativeSchoolId", "formativeSchoolConfirmedAt"], nullableText)
+        && optional(value, ["xp", "tournamentsPlayed", "tournamentsWon", "duelsWon", "duelsLost", "highestRank"], finite)
+        && optional(value, ["achievements", "recordedMatches"], strings)
+        && optional(value, ["trophies"], records)
+        && optional(value, ["victoriesByClass"], item => record(item) && Object.values(item).every(finite))
+        && optional(value, ["accountProgression"], item => record(item)
+          && optional(item, ["xp", "level"], finite) && optional(item, ["source"], text)
+          && optional(item, ["synced_at", "syncedAt"], nullableText))
+        && optional(value, ["stats"], item => record(item)
+          && optional(item, ["creaturesPlayed", "spellsPlayed", "cardsPlayed", "damageDealt", "maxTurnDamage", "lifeDrained"], finite)
+          && optional(item, ["cardsBySchool"], counts => record(counts) && Object.values(counts).every(finite))
+          && optional(item, ["singlePlayer", "multiplayer"], mode => record(mode)
+            && optional(mode, ["played", "wins", "losses", "draws"], finite)
+            && optional(mode, ["fastestWinMs"], ms => ms === null || finite(ms))));
+    }
+    return value.version === 4 && text(value.id) && text(value.seed)
+      && ["currentMatch", "points", "wins", "losses"].every(key => finite(value[key]))
+      && records(value.opponents)
+      && value.opponents.every(item => optional(item, ["id", "name", "rank", "talent", "difficulty", "league"], text)
+        && optional(item, ["specialization", "specializationFormulaId", "result"], nullableText)
+        && optional(item, ["score"], finite) && optional(item, ["defeated"], item => typeof item === "boolean"))
+      && optional(value, ["tournamentMode", "spellbookDistribution", "setId", "startedAt"], text)
+      && optional(value, ["specialization", "specializationFormulaId"], nullableText)
+      && optional(value, ["specializationsEnabled", "evolutionEnabled", "pendingPassiveChoice", "completed", "won"], item => typeof item === "boolean")
+      && optional(value, ["selectedPassives", "offeredPassives"], strings)
+      && optional(value, ["results"], records);
+  }
+
+  function readProgressRecord(storage, key, kind) {
+    const saved = JSON.parse(storage.getItem(key) || "null");
+    return record(saved) && saved.appId === "sigian" && saved.storageVersion === 1
+      && saved.kind === kind && validProgressData(kind, saved.data) ? saved.data : null;
+  }
+
+  function writeProgressRecord(storage, key, kind, data) {
+    if (!validProgressData(kind, data)) throw new Error(`Invalid SIGIAN ${kind} storage payload.`);
+    storage.setItem(key, JSON.stringify({ appId: "sigian", storageVersion: 1, kind, data }));
+  }
   const REWARD_WINS = [2, 4, 6];
   const WIN_TARGET = 5;
   const LEAGUE_BY_MATCH = ["starting", "starting", "advanced", "advanced", "major", "major", "major"];
@@ -225,7 +284,7 @@
   A.getStorage = function getStorage() {
     try {
       const storage = window.localStorage;
-      const testKey = "__arcane_test__";
+      const testKey = "__sigian_progress_probe_v1__";
       storage.setItem(testKey, "1");
       storage.removeItem(testKey);
       return storage;
@@ -239,7 +298,8 @@
     const target = storage || A.getStorage();
     try {
       const base = A.createDefaultProfile();
-      const stored = JSON.parse(target.getItem(PROFILE_KEY) || "{}");
+      // No legacy key is read: a compatible schema is not proof of provenance.
+      const stored = readProgressRecord(target, PROFILE_KEY, "profile") || {};
       const formativeSchoolId = normalizeFormativeSchool(stored.formativeSchoolId);
       const profile = {
         ...base,
@@ -279,7 +339,7 @@
       });
     }
     profile.updatedAt = new Date().toISOString();
-    target.setItem(PROFILE_KEY, JSON.stringify(profile));
+    writeProgressRecord(target, PROFILE_KEY, "profile", profile);
     return profile;
   };
 
@@ -427,7 +487,7 @@
   A.loadTournament = function loadTournament(storage) {
     const target = storage || A.getStorage();
     try {
-      const saved = JSON.parse(target.getItem(TOURNAMENT_KEY) || "null");
+      const saved = readProgressRecord(target, TOURNAMENT_KEY, "tournament");
       const normalized = normalizeTournament(saved);
       if (saved && !normalized) target.removeItem(TOURNAMENT_KEY);
       return normalized;
@@ -439,7 +499,7 @@
   A.saveTournament = function saveTournament(tournament, storage) {
     const target = storage || A.getStorage();
     if (!tournament) target.removeItem(TOURNAMENT_KEY);
-    else target.setItem(TOURNAMENT_KEY, JSON.stringify(tournament));
+    else writeProgressRecord(target, TOURNAMENT_KEY, "tournament", tournament);
     return tournament;
   };
 

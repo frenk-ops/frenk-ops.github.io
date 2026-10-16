@@ -10926,7 +10926,7 @@
   function setBackgroundMusicEnabled(enabled) {
     bgmEnabled = Boolean(enabled);
     try {
-      window.localStorage.setItem("bgmEnabled", bgmEnabled ? "1" : "0");
+      window.localStorage.setItem("sigian.bgmEnabled", bgmEnabled ? "1" : "0");
     } catch (e) {}
     const battleToggle = document.querySelector("#bgmEnabled");
     const optionsToggle = document.querySelector("#optionsBgmEnabled");
@@ -10983,12 +10983,12 @@
   armMusicUnlock();
 
   try {
-    const stored = window.localStorage.getItem("bgmEnabled");
+    const stored = window.localStorage.getItem("sigian.bgmEnabled");
     bgmEnabled = stored === null ? false : stored === "1";
     const bgmCheckbox = $("#bgmEnabled");
     const bgmSlider = $("#bgmVolume");
 
-    const storedVol = window.localStorage.getItem("bgmVolume");
+    const storedVol = window.localStorage.getItem("sigian.bgmVolume");
     if (storedVol !== null) {
       const n = Number(storedVol);
       if (!Number.isNaN(n)) bgmVolume = Math.max(0, Math.min(1, n / 100));
@@ -10999,7 +10999,7 @@
       bgmSlider.addEventListener("input", e => {
         const v = Number(e.target.value || 0);
         bgmVolume = Math.max(0, Math.min(1, v / 100));
-        window.localStorage.setItem("bgmVolume", String(Math.round(bgmVolume * 100)));
+        window.localStorage.setItem("sigian.bgmVolume", String(Math.round(bgmVolume * 100)));
         musicManager.setVolume();
         const duelVolume = $("#duelOptionsBgmVolume");
         const duelValue = $("#duelOptionsBgmVolumeValue");
@@ -11120,8 +11120,8 @@
     localStorage.removeItem("sigian.cardArtStyle");
     localStorage.removeItem("sigian.soundEnabled");
     localStorage.removeItem("sigian.language");
-    localStorage.removeItem("bgmEnabled");
-    localStorage.removeItem("bgmVolume");
+    localStorage.removeItem("sigian.bgmEnabled");
+    localStorage.removeItem("sigian.bgmVolume");
     localStorage.removeItem("sigian.parchmentSpellFrames");
     localStorage.removeItem("sigian.boardCreatureNames");
     animationSpeed = 1.5;
